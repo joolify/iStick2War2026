@@ -2,8 +2,8 @@ using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
-    public float moveSpeed = 8f;
-    public float jumpForce = 12f;
+    public float moveSpeed = 10f;
+    public float jumpForce = 40f;
 
     public Transform groundCheck;
     public float groundCheckRadius = 0.2f;
