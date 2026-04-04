@@ -14,8 +14,8 @@ TagManager:
   - UI
   - Player
   - Ground
-  - 
-  - 
+  - Background
+  - Water
   - 
   - 
   - 
@@ -44,6 +44,15 @@ TagManager:
     locked: 0
   - name: Background
     uniqueID: 1877412533
+    locked: 0
+  - name: Mountain
+    uniqueID: 4248582633
+    locked: 0
+  - name: Water
+    uniqueID: 1420322987
+    locked: 0
+  - name: Icebergs
+    uniqueID: 2634404131
     locked: 0
   - name: Ground
     uniqueID: 197812401
