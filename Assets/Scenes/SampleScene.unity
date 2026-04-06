@@ -991,7 +991,7 @@ GameObject:
   - component: {fileID: 1012898414}
   - component: {fileID: 1012898413}
   - component: {fileID: 1012898412}
-  - component: {fileID: 1012898418}
+  - component: {fileID: 1012898422}
   - component: {fileID: 1012898421}
   - component: {fileID: 1012898420}
   - component: {fileID: 1012898419}
@@ -1144,21 +1144,6 @@ Transform:
   - {fileID: 264893751}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1012898418
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1012898411}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e741851cba3ad425c91ecf922cc6b379, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.VisualScripting.Core::Unity.VisualScripting.Variables
-  _data:
-    _json: '{"declarations":{"Kind":"Object","collection":{"$content":[],"$version":"A"},"$version":"A"}}'
-    _objectReferences: []
 --- !u!114 &1012898419
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1251,6 +1236,43 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 3.0529823, y: 2.494564}
   m_EdgeRadius: 0
+--- !u!114 &1012898422
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1012898411}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5167a45409d630247896d94deffd576f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::iStick2War.HeroInput
+  horizontalAxis: Horizontal
+  verticalAxis: Vertical
+  attackButton: Fire1
+  jumpButton: Jump
+  selectedWeapon: 0
+  cam: {fileID: 0}
+  crosshairBoneName: 
+  grenadeEvent: {fileID: 0}
+  reloadEvent: {fileID: 0}
+  startShootEevent: {fileID: 0}
+  stopShootEevent: {fileID: 0}
+  leftWeaponButton: {fileID: 0}
+  leftWeaponButtonPressed: {fileID: 0}
+  leftWeaponButtonRect: {fileID: 0}
+  rightWeaponButton: {fileID: 0}
+  rightWeaponButtonPressed: {fileID: 0}
+  rightWeaponButtonRect: {fileID: 0}
+  reloadButton: {fileID: 0}
+  reloadButtonPressed: {fileID: 0}
+  reloadButtonRect: {fileID: 0}
+  grenadeButton: {fileID: 0}
+  grenadeButtonPressed: {fileID: 0}
+  grenadeButtonRect: {fileID: 0}
+  joystickBgRect: {fileID: 0}
+  joystickHandleRect: {fileID: 0}
 --- !u!1 &1075343219
 GameObject:
   m_ObjectHideFlags: 0
