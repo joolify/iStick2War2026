@@ -1,3 +1,4 @@
+using Spine.Unity;
 using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
@@ -9,25 +10,38 @@ public class PlayerMovement : MonoBehaviour
     public float groundCheckRadius = 0.2f;
     public LayerMask groundLayer;
 
-    private Rigidbody2D rb;
-    private float moveHorizontal;
+    private Rigidbody2D rigidBody2D;
+    private float xVelocity;
     private bool isGrounded;
+
+    private Animator animator;
+
+    private SkeletonAnimation skeletonAnimation;
 
     void Start()
     {
-        rb = GetComponent<Rigidbody2D>();
+        rigidBody2D = GetComponent<Rigidbody2D>();
+        animator = GetComponent<Animator>();
+        animator.SetFloat("xVelocity", 0f);
     }
 
     void Update()
     {
-        moveHorizontal = Input.GetAxisRaw("Horizontal");
+        xVelocity = Input.GetAxisRaw("Horizontal");
+
+        Debug.Log("speed: " + xVelocity);
 
         // Jump
-        if (Input.GetButtonDown("Jump") && isGrounded)
+        var isJumping = Input.GetButtonDown("Jump") && isGrounded;
+        if (isJumping)
         {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+            rigidBody2D.linearVelocity = new Vector2(rigidBody2D.linearVelocity.x, jumpForce);
         }
+
+        //animator.SetBool("isJumping", !isGrounded);
         Debug.Log("PlayerMovement.isGrounded: " + isGrounded);
+
+        Debug.Log("yVelocity: " + rigidBody2D.linearVelocity.y);
 
         Debug.Log("PlayerMovement.Jump: " + Input.GetButtonDown("Jump"));
     }
@@ -35,7 +49,15 @@ public class PlayerMovement : MonoBehaviour
     void FixedUpdate()
     {
         // Smooth horizontal movement
-        rb.linearVelocity = new Vector2(moveHorizontal * moveSpeed, rb.linearVelocity.y);
+        rigidBody2D.linearVelocity = new Vector2(xVelocity * moveSpeed, rigidBody2D.linearVelocity.y);
+
+        var speed = Mathf.Abs(xVelocity);
+
+        animator.SetFloat("speed", speed);
+
+        animator.SetBool("isJumping", !isGrounded);
+
+        animator.SetFloat("yVelocity", rigidBody2D.linearVelocity.y);
     }
 
     void OnDrawGizmosSelected()

@@ -19,6 +19,8 @@
 /[Aa]ssets/Resources/CoreGameKit
 /[Aa]ssets/Cartoon Particles - Fire & Smoke/
 
+Assets/Unity.VisualScripting.Generated/
+
 # Asset meta data should only be ignored when the corresponding asset is also ignored
 !/[Aa]ssets/**/*.meta
 !/[Aa]ssets/[Pp]lugins/*.meta
