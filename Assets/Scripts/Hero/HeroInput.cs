@@ -45,8 +45,6 @@ namespace iStick2War
         //*private Tesla tesla;
         //*private Flamethrower flamethrower;
 
-        //*private Flippable flippable;
-
         //*public Mk2 mk2;
 
         //*private Hero hero;
@@ -73,6 +71,9 @@ namespace iStick2War
         private Vector2 touchPos = Vector2.zero;
         private Touch touch;
 
+        //Flippable
+        private bool facingRight = true;
+
         void OnValidate()
         {
             //*if (model == null)
@@ -92,7 +93,6 @@ namespace iStick2War
             //skeletonAnimation.AnimationState.Event += HandleEvent;
 
             //*hero = model.transform.GetComponent<Hero>();
-            //*flippable = model.transform.GetComponentInChildren<Flippable>();
             //*if (tesla == null) tesla = transform.GetComponentInChildren<Tesla>();
             //*if (flamethrower == null) flamethrower = transform.GetComponentInChildren<Flamethrower>();
 
@@ -232,11 +232,11 @@ namespace iStick2War
             }
         }
 
-        private void SetCrosshair(Vector2 localTouchPos)
+        private void SetCrosshair(Vector3 localTouchPos)
         {
 
             Debug.Log("SetCrosshair: " + localTouchPos);
-        //*    if (IsButtonPressed()) return;
+            //*    if (IsButtonPressed()) return;
             //*var skeletonSpacePoint = skeletonAnimation.transform.InverseTransformPoint(localTouchPos);
             //*skeletonSpacePoint.x *= skeletonAnimation.Skeleton.ScaleX;
             //*skeletonSpacePoint.y *= skeletonAnimation.Skeleton.ScaleY;
@@ -616,35 +616,80 @@ namespace iStick2War
         void FaceMouse()
         {
 
-            int i = 0;
+            //            int i = 0;
 
-            Vector3 delta = Vector3.zero;
+            //            Vector3 delta = Vector3.zero;
 
-#if (UNITY_IPHONE || UNITY_ANDROID) && !UNITY_EDITOR
-            while (i < Input.touchCount)
+            //#if (UNITY_IPHONE || UNITY_ANDROID) && !UNITY_EDITOR
+            //            while (i < Input.touchCount)
+            //            {
+            //                var localTouch = Input.GetTouch(i);
+            //                if (!JoystickIsUsed(i) && !AreButtonsPressed(i))
+            //                {
+            //                    delta = GetTouchPosition(localTouch.position) - new Vector2(view.transform.position.x, view.transform.position.y);
+            //                }
+            //                i++;
+            //            }
+            //#else
+
+            //            delta = cam.ScreenToWorldPoint(Input.mousePosition) - transform.position;
+
+            //var touchPos = new Vector2(Camera.main.ScreenToWorldPoint(Input.mousePosition).x, Camera.main.ScreenToWorldPoint(Input.mousePosition).y);
+
+            // Get mouse position in world space
+            Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+
+            // Match skeleton's Z plane
+            mouseWorldPos.z = skeletonMecanim.transform.position.z;
+
+            // Flip based on X delta
+            if (mouseWorldPos.x > skeletonMecanim.transform.position.x && !facingRight)
             {
-                var localTouch = Input.GetTouch(i);
-                if (!JoystickIsUsed(i) && !AreButtonsPressed(i))
-                {
-                    delta = GetTouchPosition(localTouch.position) - new Vector2(view.transform.position.x, view.transform.position.y);
-                }
-                i++;
+                skeletonMecanim.Skeleton.ScaleX *= -1;
+                facingRight = true;
             }
-#else
+            else if (mouseWorldPos.x < skeletonMecanim.transform.position.x && facingRight)
+            {
+                skeletonMecanim.Skeleton.ScaleX *= -1;
+                facingRight = false;
+            }
 
-            //*   delta = cam.ScreenToWorldPoint(Input.mousePosition) - view.transform.position;
-#endif
+            ////#endif
 
-            //* if (delta.x > 0 && !flippable.facingRight && !IsButtonPressed())
-            //*{
-            //*skeletonAnimation.Skeleton.ScaleX *= -1;
-            //*flippable.facingRight = true;
-            //*}
-            //*  else if (delta.x < 0 && flippable.facingRight && !IsButtonPressed())
-            //*  {
-            //* skeletonAnimation.Skeleton.ScaleX *= -1;
-            //* flippable.facingRight = false;
-            //*}
+            //if (touchPos.x > 0 && !facingRight/* && !IsButtonPressed()*/)
+            //{
+            //    skeletonMecanim.Skeleton.ScaleX *= -1;
+            //    facingRight = true;
+            //}
+            //else if (touchPos.x < 0 && flippable.facingRight && !IsButtonPressed())
+            //{
+            //    skeletonMecanim.Skeleton.ScaleX *= -1;
+            //    facingRight = false;
+            //}
+
+
+
+            // Get mouse position in world space
+            //Vector3 mouseWorldPos = cam.ScreenToWorldPoint(Input.mousePosition);
+            // mouseWorldPos.z = skeletonMecanim.transform.position.z; // match Z plane
+
+            //// Delta from player to mouse
+            //Vector3 delta = mouseWorldPos - transform.position;
+
+            //// Flip the character if necessary
+            //if (delta.x > 0 && !facingRight)
+            //{
+            //    //*skeletonMecanim.Skeleton.ScaleX *= -1;
+            //    skeletonMecanim.Skeleton.FlipX = false;
+            //    facingRight = true;
+            //}
+            //else if (delta.x < 0 && facingRight)
+            //{
+            //    //*skeletonMecanim.Skeleton.ScaleX *= -1;
+            //    skeletonMecanim.Skeleton.FlipX = true;
+            //    facingRight = false;
+            //}
+
         }
 
         private void SelectWeapon()
