@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+namespace iStick2War
+{
     public class Flippable : MonoBehaviour
     {
         public bool facingRight = true;
@@ -19,3 +21,4 @@ using UnityEngine;
             facingRight = !facingRight;
         }
     }
+}

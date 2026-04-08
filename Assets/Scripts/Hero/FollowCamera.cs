@@ -1,37 +1,41 @@
 using UnityEngine;
 using System.Collections;
 
-public class FollowCamera : MonoBehaviour
+namespace iStick2War
 {
 
-    public float interpVelocity;
-    public float minDistance;
-    public float followDistance;
-    public GameObject target;
-    public Vector3 offset;
-    Vector3 targetPos;
-    // Use this for initialization
-    void Start()
+    public class FollowCamera : MonoBehaviour
     {
-        targetPos = transform.position;
-    }
 
-    // Update is called once per frame
-    void FixedUpdate()
-    {
-        if (target)
+        public float interpVelocity;
+        public float minDistance;
+        public float followDistance;
+        public GameObject target;
+        public Vector3 offset;
+        Vector3 targetPos;
+        // Use this for initialization
+        void Start()
         {
-            Vector3 posNoZ = transform.position;
-            posNoZ.z = target.transform.position.z;
+            targetPos = transform.position;
+        }
 
-            Vector3 targetDirection = (target.transform.position - posNoZ);
+        // Update is called once per frame
+        void FixedUpdate()
+        {
+            if (target)
+            {
+                Vector3 posNoZ = transform.position;
+                posNoZ.z = target.transform.position.z;
 
-            interpVelocity = targetDirection.magnitude * 5f;
+                Vector3 targetDirection = (target.transform.position - posNoZ);
 
-            targetPos = transform.position + (targetDirection.normalized * interpVelocity * Time.deltaTime);
+                interpVelocity = targetDirection.magnitude * 5f;
 
-            transform.position = Vector3.Lerp(transform.position, targetPos + offset, 0.25f);
+                targetPos = transform.position + (targetDirection.normalized * interpVelocity * Time.deltaTime);
 
+                transform.position = Vector3.Lerp(transform.position, targetPos + offset, 0.25f);
+
+            }
         }
     }
 }

@@ -2,6 +2,8 @@ using Spine.Unity;
 using System;
 using UnityEngine;
 
+namespace iStick2War
+{
     public class HeroView : BaseView
     {
         #region Inspector
@@ -1120,8 +1122,8 @@ using UnityEngine;
             //skeleton.SetToSetupPose();
             //var newGunModelState = model.currentGunState;
             var track = skeletonAnimation.AnimationState.SetAnimation(0, GetAimAnimation(newGunModelState), false);
-        //*track.AttachmentThreshold = 1f;
-        track.MixDuration = 0f;
+            //*track.AttachmentThreshold = 1f;
+            track.MixDuration = 0f;
             //var empty1 = skeletonAnimation.state.SetEmptyAnimation(1, 0.1f);
             //empty1.AttachmentThreshold = 1f;
         }
@@ -1129,14 +1131,14 @@ using UnityEngine;
         public void StartPlayingCrouchIdle()
         {
             var empty1 = skeletonAnimation.state.SetEmptyAnimation(1, 0.5f);
-        //*empty1.AttachmentThreshold = 1f;
+            //*empty1.AttachmentThreshold = 1f;
 
-        var newGunModelState = model.currentGunState;
+            var newGunModelState = model.currentGunState;
 
             // Play the shoot animation on track 1.
             var track = skeletonAnimation.AnimationState.SetAnimation(0, GetCrouchIdlehAnimation(newGunModelState), false);
-        //*track.AttachmentThreshold = 1f;
-        track.MixDuration = 0f;
+            //*track.AttachmentThreshold = 1f;
+            track.MixDuration = 0f;
 
             gunSource.pitch = GetRandomPitch(gunsoundPitchOffset);
             gunSource.Play();
@@ -1150,8 +1152,8 @@ using UnityEngine;
 
             // Play the shoot animation on track 1.
             var track = skeletonAnimation.AnimationState.SetAnimation(1, GetCrouchGrenadeAnimation(newGunModelState), false);
-        //*track.AttachmentThreshold = 1f;
-        track.MixDuration = 0f;
+            //*track.AttachmentThreshold = 1f;
+            track.MixDuration = 0f;
             track.Complete += PlayThrowCrouchGrenade_Complete;
 
             gunSource.pitch = GetRandomPitch(gunsoundPitchOffset);
@@ -1184,8 +1186,8 @@ using UnityEngine;
 
             // Play the shoot animation on track 1.
             var track = skeletonAnimation.AnimationState.SetAnimation(1, GetCrouchShootAnimation(newGunModelState), true);
-        //*track.AttachmentThreshold = 1f;
-        track.MixDuration = 0f;
+            //*track.AttachmentThreshold = 1f;
+            track.MixDuration = 0f;
 
             gunSource.pitch = GetRandomPitch(gunsoundPitchOffset);
             gunSource.Play();
@@ -1196,17 +1198,17 @@ using UnityEngine;
         public void StopPlayingCrouchShoot()
         {
             var empty1 = skeletonAnimation.state.SetEmptyAnimation(1, 0.5f);
-        //*empty1.AttachmentThreshold = 1f;
-    }
+            //*empty1.AttachmentThreshold = 1f;
+        }
 
-    public void StartPlayingCrouchWalk()
+        public void StartPlayingCrouchWalk()
         {
             var newGunModelState = model.currentGunState;
 
             // Play the shoot animation on track 1.
             var track = skeletonAnimation.AnimationState.SetAnimation(1, GetCrouchWalkAnimation(newGunModelState), true);
-        //*track.AttachmentThreshold = 1f;
-        track.MixDuration = 0f;
+            //*track.AttachmentThreshold = 1f;
+            track.MixDuration = 0f;
 
             gunSource.pitch = GetRandomPitch(gunsoundPitchOffset);
             gunSource.Play();
@@ -1233,8 +1235,8 @@ using UnityEngine;
 
             // Play the aim animation on track 2 to aim at the mouse target.
             var track = skeletonAnimation.AnimationState.SetAnimation(1, GetCrouchReloadAnimation(newGunModelState), false);
-        //*track.AttachmentThreshold = 1f;
-        track.MixDuration = 0f;
+            //*track.AttachmentThreshold = 1f;
+            track.MixDuration = 0f;
 
             skeletonAnimation.state.AddEmptyAnimation(1, 0.5f, 0f);
 
@@ -1248,8 +1250,8 @@ using UnityEngine;
 
             // Play the aim animation on track 2 to aim at the mouse target.
             var track = skeletonAnimation.AnimationState.SetAnimation(1, GetReloadAnimation(newGunModelState), false);
-        //*track.AttachmentThreshold = 1f;
-        track.MixDuration = 0f;
+            //*track.AttachmentThreshold = 1f;
+            track.MixDuration = 0f;
 
             //aimTrack.AttachmentThreshold = 1f;
             //aimTrack.MixDuration = 0f;
@@ -1260,9 +1262,9 @@ using UnityEngine;
         public void PlayIdle()
         {
             var empty1 = skeletonAnimation.state.SetEmptyAnimation(1, 0.5f);
-        //*empty1.AttachmentThreshold = 1f;
+            //*empty1.AttachmentThreshold = 1f;
 
-        Debug.Log("PlayIdle");
+            Debug.Log("PlayIdle");
             var newGunModelState = model.currentGunState;
 
             // Play the aim animation on track 2 to aim at the mouse target.
@@ -1274,14 +1276,14 @@ using UnityEngine;
         public void PlayGrenade()
         {
             var empty1 = skeletonAnimation.state.SetEmptyAnimation(1, 0.5f);
-        //*empty1.AttachmentThreshold = 1f;
+            //*empty1.AttachmentThreshold = 1f;
 
-        var newGunModelState = model.currentGunState;
+            var newGunModelState = model.currentGunState;
 
             // Play the shoot animation on track 1.
             var track = skeletonAnimation.AnimationState.SetAnimation(1, GetGrenadeAnimation(newGunModelState), false);
-        //*track.AttachmentThreshold = 1f;
-        track.MixDuration = 0f;
+            //*track.AttachmentThreshold = 1f;
+            track.MixDuration = 0f;
             track.Complete += PlayThrowGrenade_Complete;
 
             gunSource.pitch = GetRandomPitch(gunsoundPitchOffset);
@@ -1291,3 +1293,4 @@ using UnityEngine;
         }
         #endregion
     }
+}

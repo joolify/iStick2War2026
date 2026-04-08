@@ -1,5 +1,7 @@
 using UnityEngine;
 
+namespace iStick2War
+{
     [RequireComponent(typeof(Flippable))]
     public class Transformable : MonoBehaviour
     {
@@ -18,3 +20,4 @@ using UnityEngine;
             transform.Translate((flip.facingRight && translateRight) ? speed : -1 * speed, 0f, 0f);
         }
     }
+}

@@ -21,9 +21,9 @@ namespace iStick2War
 
         public int selectedWeapon = 0;
 
-        //*public HeroModel model;
+        public HeroModel model;
 
-        //*public HeroView view;
+        public HeroView view;
 
         public Camera cam;
 
@@ -39,9 +39,9 @@ namespace iStick2War
         public EventDataReferenceAsset startShootEevent;
         public EventDataReferenceAsset stopShootEevent;
 
-        //*private Cache<int, WeaponBase> _cache = new Cache<int, WeaponBase>();
-        //*private Tesla tesla;
-        //*private Flamethrower flamethrower;
+        private Cache<int, WeaponBase> _cache = new Cache<int, WeaponBase>();
+        private Tesla tesla;
+        private Flamethrower flamethrower;
 
         //*public Mk2 mk2;
 
@@ -272,47 +272,47 @@ namespace iStick2War
             isTriggerUp = Input.GetMouseButtonUp(0);
 #endif
 
-            //*if (isTriggerDown && !model.isShooting && !MustReload())
-            //*{
-            //*if (model.currentGunState == StickmanGunState.Tesla)
-            //*{
-            //*model.shootTesla = true;
-            //*StartCoroutine(ShootTesla());
-            //*}
-            //*if (model.currentGunState == StickmanGunState.Flamethrower)
-            //*{
-            //*model.shootFlameThrower = true;
-            //*StartCoroutine(ShootFlamethrower());
-            //*}
-            //*if (model.isCrouching)
-            //*{
-            //*//*model.isShooting = true;
-            //*model.StartCrouchShoot();
-            //*}
-            //*else
-            //*{
-            //*model.isShooting = true;
-            //*model.StartShoot();
-            //*}
-            //*}
+            if (isTriggerDown && !model.isShooting && !MustReload())
+            {
+                //if (model.currentGunState == StickmanGunState.Tesla)
+                //{
+                //    model.shootTesla = true;
+                //    StartCoroutine(ShootTesla());
+                //}
+                //if (model.currentGunState == StickmanGunState.Flamethrower)
+                //{
+                //    model.shootFlameThrower = true;
+                //    StartCoroutine(ShootFlamethrower());
+                //}
+                if (model.isCrouching)
+                {
+                    model.isShooting = true;
+                    model.StartCrouchShoot();
+                }
+                else
+                {
+                    model.isShooting = true;
+                    model.StartShoot();
+                }
+            }
 
 
             if (isTriggerUp)
             {
-                //*if (model.currentGunState == StickmanGunState.Tesla)
-                //*{
-                //* StopCoroutine(ShootTesla());
-                //* model.shootTesla = false;
-                //*if (tesla != null) tesla.StopShoot();
-                //*model.isShooting = false;
-                //*}
-                //* if (model.currentGunState == StickmanGunState.Flamethrower)
-                //* {
-                //*     StopCoroutine(ShootFlamethrower());
-                //*   model.shootFlameThrower = false;
-                //*   if (flamethrower != null) flamethrower.StopShoot();
-                //*   model.isShooting = false;
-                //* }
+                //if (model.currentGunState == StickmanGunState.Tesla)
+                //{
+                //    StopCoroutine(ShootTesla());
+                //    model.shootTesla = false;
+                //    if (tesla != null) tesla.StopShoot();
+                //    model.isShooting = false;
+                //}
+                //if (model.currentGunState == StickmanGunState.Flamethrower)
+                //{
+                //    StopCoroutine(ShootFlamethrower());
+                //    model.shootFlameThrower = false;
+                //    if (flamethrower != null) flamethrower.StopShoot();
+                //    model.isShooting = false;
+                //}
             }
         }
 
@@ -350,54 +350,55 @@ namespace iStick2War
             }
         }
 
-        //*private WeaponBase GetWeapon()
-        //*{
-        //*var weapon = _cache.Get(selectedWeapon);
-        //* if (weapon == null)
-        //* {
-        //*    if (transform.GetChild(selectedWeapon).TryGetComponent<WeaponBase>(out var temp))
-        //*   {
-        //* weapon = temp;
-        //* _cache.Store(selectedWeapon, weapon, TimeSpan.FromMinutes(5));
-        //*}
-        //* }
+        private WeaponBase GetWeapon()
+        {
+            var weapon = _cache.Get(selectedWeapon);
+            if (weapon == null)
+            {
+                if (transform.GetChild(selectedWeapon).TryGetComponent<WeaponBase>(out var temp))
+                {
+                    weapon = temp;
+                    _cache.Store(selectedWeapon, weapon, TimeSpan.FromMinutes(5));
+                }
 
-        //* return weapon;
-        //*}
+            }
 
-        //*   IEnumerator ShootTesla()
-        //*{
-        //*   while (model.shootTesla)
-        //*   {
-        //*model.isShooting = true;
-        //*      if (tesla == null) yield return null;
-        //*       tesla.StartShoot(touchPos);
-        //*yield return new WaitForSeconds(0.1f);
-        //* }
-        //*     model.isShooting = false;
-        //*  }
+            return weapon;
+        }
 
-        //*IEnumerator ShootFlamethrower()
-        //*{
-        //* while (model.shootFlameThrower)
-        //*  {
-        //*model.isShooting = true;
-        //*     if (flamethrower != null) flamethrower.StartShoot(touchPos);
-        //* yield return new WaitForSeconds(0.1f);
-        //*}
-        //*   model.isShooting = false;
-        //* }
+        IEnumerator ShootTesla()
+        {
+            while (model.shootTesla)
+            {
+                model.isShooting = true;
+                if (tesla == null) yield return null;
+                tesla.StartShoot(touchPos);
+                yield return new WaitForSeconds(0.1f);
+            }
+            model.isShooting = false;
+        }
 
-        //*private bool MustReload()
-        //*{
-        //*var weapon = GetWeapon();
-        //*if (weapon.shouldReload)
-        //*{
-        //*model.isShooting = false;
-        //*return true;
-        //*}
-        //* return false;
-        //*  }
+        IEnumerator ShootFlamethrower()
+        {
+            while (model.shootFlameThrower)
+            {
+                model.isShooting = true;
+                if (flamethrower != null) flamethrower.StartShoot(touchPos);
+                yield return new WaitForSeconds(0.1f);
+            }
+            model.isShooting = false;
+        }
+
+        private bool MustReload()
+        {
+            var weapon = GetWeapon();
+            if (weapon.shouldReload)
+            {
+                model.isShooting = false;
+                return true;
+            }
+            return false;
+        }
 
         private void Crouch()
         {

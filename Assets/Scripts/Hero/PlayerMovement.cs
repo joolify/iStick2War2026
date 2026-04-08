@@ -1,87 +1,80 @@
 using Spine.Unity;
 using UnityEngine;
 
-public class PlayerMovement : MonoBehaviour
+namespace iStick2War
 {
-    public float moveSpeed = 10f;
-    public float jumpForce = 40f;
-
-    public Transform groundCheck;
-    public float groundCheckRadius = 0.2f;
-    public LayerMask groundLayer;
-
-    private Rigidbody2D rigidBody2D;
-    private float xVelocity;
-    private bool isGrounded;
-
-    private Animator animator;
-
-    private SkeletonAnimation skeletonAnimation;
-
-    void Start()
+    public class PlayerMovement : MonoBehaviour
     {
-        rigidBody2D = GetComponent<Rigidbody2D>();
-        animator = GetComponent<Animator>();
-        animator.SetFloat("xVelocity", 0f);
-    }
+        public float moveSpeed = 10f;
+        public float jumpForce = 40f;
 
-    void Update()
-    {
-        xVelocity = Input.GetAxisRaw("Horizontal");
+        public Transform groundCheck;
+        public float groundCheckRadius = 0.2f;
+        public LayerMask groundLayer;
 
-        Debug.Log("speed: " + xVelocity);
+        private Rigidbody2D rigidBody2D;
+        private float xVelocity;
+        private bool isGrounded;
 
-        // Jump
-        var isJumping = Input.GetButtonDown("Jump") && isGrounded;
-        if (isJumping)
+        private SkeletonAnimation skeletonAnimation;
+
+        void Start()
         {
-            rigidBody2D.linearVelocity = new Vector2(rigidBody2D.linearVelocity.x, jumpForce);
+            rigidBody2D = GetComponent<Rigidbody2D>();
         }
 
-        //animator.SetBool("isJumping", !isGrounded);
-        Debug.Log("PlayerMovement.isGrounded: " + isGrounded);
-
-        Debug.Log("yVelocity: " + rigidBody2D.linearVelocity.y);
-
-        Debug.Log("PlayerMovement.Jump: " + Input.GetButtonDown("Jump"));
-    }
-
-    void FixedUpdate()
-    {
-        // Smooth horizontal movement
-        rigidBody2D.linearVelocity = new Vector2(xVelocity * moveSpeed, rigidBody2D.linearVelocity.y);
-
-        var speed = Mathf.Abs(xVelocity);
-
-        animator.SetFloat("speed", speed);
-
-        animator.SetBool("isJumping", !isGrounded);
-
-        animator.SetFloat("yVelocity", rigidBody2D.linearVelocity.y);
-    }
-
-    void OnDrawGizmosSelected()
-    {
-        if (groundCheck != null)
+        void Update()
         {
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
+            xVelocity = Input.GetAxisRaw("Horizontal");
+
+            //Debug.Log("speed: " + xVelocity);
+
+            // Jump
+            var isJumping = Input.GetButtonDown("Jump") && isGrounded;
+            if (isJumping)
+            {
+                rigidBody2D.linearVelocity = new Vector2(rigidBody2D.linearVelocity.x, jumpForce);
+            }
+
+            //animator.SetBool("isJumping", !isGrounded);
+            //Debug.Log("PlayerMovement.isGrounded: " + isGrounded);
+
+            //Debug.Log("yVelocity: " + rigidBody2D.linearVelocity.y);
+
+            //Debug.Log("PlayerMovement.Jump: " + Input.GetButtonDown("Jump"));
         }
-    }
 
-    void OnTriggerEnter2D(Collider2D collision)
-    {
-        if (collision.gameObject.layer == LayerMask.NameToLayer("Ground"))
+        void FixedUpdate()
         {
-            isGrounded = true;
+            // Smooth horizontal movement
+            rigidBody2D.linearVelocity = new Vector2(xVelocity * moveSpeed, rigidBody2D.linearVelocity.y);
+
+            var speed = Mathf.Abs(xVelocity);
         }
-    }
 
-    void OnTriggerExit2D(Collider2D collision)
-    {
-        if (collision.gameObject.layer == LayerMask.NameToLayer("Ground"))
+        void OnDrawGizmosSelected()
         {
-            isGrounded = false;
+            if (groundCheck != null)
+            {
+                Gizmos.color = Color.red;
+                Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
+            }
+        }
+
+        void OnTriggerEnter2D(Collider2D collision)
+        {
+            if (collision.gameObject.layer == LayerMask.NameToLayer("Ground"))
+            {
+                isGrounded = true;
+            }
+        }
+
+        void OnTriggerExit2D(Collider2D collision)
+        {
+            if (collision.gameObject.layer == LayerMask.NameToLayer("Ground"))
+            {
+                isGrounded = false;
+            }
         }
     }
 }

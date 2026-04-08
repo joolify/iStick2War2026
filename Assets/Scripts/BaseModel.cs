@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+namespace iStick2War
+{
     public class BaseModel : MonoBehaviour
     {
         #region Inspector
@@ -293,3 +295,4 @@ using UnityEngine;
             }
         }
     }
+}

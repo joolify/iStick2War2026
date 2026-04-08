@@ -4,6 +4,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+namespace iStick2War
+{
     public class BaseView : MonoBehaviour
     {
         #region Inspector
@@ -66,6 +68,7 @@ using UnityEngine;
 
         void Awake()
         {
+            skeletonAnimation = GetComponent<SkeletonAnimation>();
             flippable = GetComponent<Flippable>();
 
             if (spineAnimationState == null) spineAnimationState = skeletonAnimation.AnimationState;
@@ -347,3 +350,4 @@ using UnityEngine;
         }
         #endregion
     }
+}

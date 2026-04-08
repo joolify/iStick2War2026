@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+namespace iStick2War
+{
     public class HeroModel : BaseModel
     {
         public event System.Action StartAimEvent;
@@ -20,7 +22,7 @@ using UnityEngine;
             if (StopAimEvent != null) StopAimEvent();
         }
 
-        
+
         public void SwitchWeapon(StickmanGunState gunState)
         {
             currentGunState = gunState;
@@ -30,3 +32,4 @@ using UnityEngine;
         #endregion
 
     }
+}
