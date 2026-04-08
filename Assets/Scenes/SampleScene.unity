@@ -625,6 +625,72 @@ MonoBehaviour:
   followDistance: 0
   target: {fileID: 1075343219}
   offset: {x: 0, y: 0, z: 0}
+--- !u!1 &405716497
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 405716498}
+  - component: {fileID: 405716499}
+  m_Layer: 0
+  m_Name: Thompson
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &405716498
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 405716497}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 679969734}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &405716499
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 405716497}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 716e92ce919871144a4a61191d6c6683, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::iStick2War.Thompson
+  RocketPrefab: {fileID: 0}
+  gunState: 11
+  weaponType: 12
+  Damage: 10
+  shouldReload: 0
+  aimPointBoneName: thompson-aim
+  crossHairBoneName: crosshair
+  skeletonAnimation: {fileID: 2001884897}
+  cam: {fileID: 330585545}
+  whatToHit:
+    serializedVersion: 2
+    m_Bits: 1024
+  offSetX: 0
+  offSetY: 0
+  offSetZ: 90
+  TrailPrefab: {fileID: 1070164800395407800, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
+  BloodPrefabs: []
+  Muzzles: []
+  timeToSpawnEffect: 0
+  effectSpawnRate: 10
+  maxAmmo: 10
+  muzzle: {fileID: 0}
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -991,6 +1057,38 @@ Transform:
   - {fileID: 2023875946}
   - {fileID: 2065613634}
   m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &679969733
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 679969734}
+  m_Layer: 0
+  m_Name: Weapons
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &679969734
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 679969733}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1.01531, y: -0.57885, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 405716498}
+  m_Father: {fileID: 2001884900}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &832575517
 GameObject:
@@ -1394,14 +1492,15 @@ MonoBehaviour:
   verticalAxis: Vertical
   attackButton: Fire1
   jumpButton: Jump
-  selectedWeapon: 0
+  model: {fileID: 0}
+  view: {fileID: 0}
   cam: {fileID: 0}
   skeletonAnimation: {fileID: 0}
   crosshairBoneName: 
-  grenadeEvent: {fileID: 0}
-  reloadEvent: {fileID: 0}
-  startShootEevent: {fileID: 0}
-  stopShootEevent: {fileID: 0}
+  startShootEventName: 
+  stopShootEventName: 
+  grenadeEventName: 
+  reloadEventName: 
   leftWeaponButton: {fileID: 0}
   leftWeaponButtonPressed: {fileID: 0}
   leftWeaponButtonRect: {fileID: 0}
@@ -1416,6 +1515,8 @@ MonoBehaviour:
   grenadeButtonRect: {fileID: 0}
   joystickBgRect: {fileID: 0}
   joystickHandleRect: {fileID: 0}
+  weaponArray: []
+  selectedWeapon: 0
 --- !u!114 &1012898423
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1430,11 +1531,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::iStick2War.Thompson
   RocketPrefab: {fileID: 0}
   gunState: 0
+  weaponType: 0
   Damage: 10.09
   shouldReload: 0
-  skeletonMecanim: {fileID: 0}
-  crosshairBoneName: 
   aimPointBoneName: 
+  crossHairBoneName: 
+  skeletonAnimation: {fileID: 0}
   cam: {fileID: 0}
   whatToHit:
     serializedVersion: 2
@@ -1769,6 +1871,84 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0.79, y: -15.36, z: 0}
   m_LocalScale: {x: 0.7, y: 0.7, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1626496578
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1626496580}
+  - component: {fileID: 1626496579}
+  m_Layer: 10
+  m_Name: Enemy
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!61 &1626496579
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1626496578}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 1, y: 1}
+  m_EdgeRadius: 0
+--- !u!4 &1626496580
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1626496578}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -1.514, y: -1.551, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -2236,7 +2416,7 @@ MonoBehaviour:
   physicsMovementRelativeTo: {fileID: 0}
   updateTiming: 1
   unscaledTime: 0
-  _animationName: H/colt_run
+  _animationName: H/thompson_run
   loop: 1
   timeScale: 1
 --- !u!23 &2001884898
@@ -2313,6 +2493,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 882681834}
+  - {fileID: 679969734}
   m_Father: {fileID: 635239655}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2001884901
@@ -2331,14 +2512,15 @@ MonoBehaviour:
   verticalAxis: Vertical
   attackButton: Fire1
   jumpButton: Jump
-  selectedWeapon: 0
+  model: {fileID: 635239654}
+  view: {fileID: 2001884905}
   cam: {fileID: 330585545}
   skeletonAnimation: {fileID: 0}
   crosshairBoneName: 
-  grenadeEvent: {fileID: 0}
-  reloadEvent: {fileID: 0}
-  startShootEevent: {fileID: 0}
-  stopShootEevent: {fileID: 0}
+  startShootEventName: start_shoot
+  stopShootEventName: stop_shoot
+  grenadeEventName: throw_grenade
+  reloadEventName: reload
   leftWeaponButton: {fileID: 0}
   leftWeaponButtonPressed: {fileID: 0}
   leftWeaponButtonRect: {fileID: 0}
@@ -2353,6 +2535,9 @@ MonoBehaviour:
   grenadeButtonRect: {fileID: 0}
   joystickBgRect: {fileID: 0}
   joystickHandleRect: {fileID: 0}
+  weaponArray:
+  - {fileID: 405716499}
+  selectedWeapon: 12
 --- !u!114 &2001884902
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2486,7 +2671,7 @@ MonoBehaviour:
   gunSource: {fileID: 0}
   jumpSource: {fileID: 0}
   gunParticles: {fileID: 0}
-  model: {fileID: 0}
+  model: {fileID: 635239654}
   aimBazookaAnim: {fileID: 11400000, guid: cd5a96557068c214e991e655aac78205, type: 2}
   crouchGrenadeBazookaAnim: {fileID: 11400000, guid: b9836bf724fe3be47af8d2353cef331c, type: 2}
   crouchIdleBazookaAnim: {fileID: 11400000, guid: b484eeabfb13bc44e9caf36ec704f54b, type: 2}
@@ -2581,7 +2766,7 @@ MonoBehaviour:
   crouchGrenadeThompsonAnim: {fileID: 11400000, guid: a0a847531001fc54486c376102a8c405, type: 2}
   crouchIdleThompsonAnim: {fileID: 11400000, guid: 16ec7e9a50a66f940ab71efd3092a88d, type: 2}
   crouchReloadThompsonAnim: {fileID: 11400000, guid: 1fb583e16fb4b294ea3fbdf0af516413, type: 2}
-  crouchShootThompsonAnim: {fileID: 11400000, guid: 1fb583e16fb4b294ea3fbdf0af516413, type: 2}
+  crouchShootThompsonAnim: {fileID: 11400000, guid: 8279521a7ab7ab748a87f9560debf577, type: 2}
   crouchWalkThompsonAnim: {fileID: 11400000, guid: 7ae377dd0eb03a040b2ad2fed40b8f79, type: 2}
   grenadeThompsonAnim: {fileID: 11400000, guid: e9be1077a6a4f004e956b3561e6e55eb, type: 2}
   idleThompsonAnim: {fileID: 11400000, guid: 4c2f987a9570dab428c02fc531fe18c4, type: 2}
@@ -2862,7 +3047,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 652812391}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &2222829386730805733
+--- !u!1001 &2147091497
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -2872,11 +3057,11 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1070164800395407800, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: -2.5105433
       objectReference: {fileID: 0}
     - target: {fileID: 1070164800395407800, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: -2.3442585
       objectReference: {fileID: 0}
     - target: {fileID: 1070164800395407800, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
       propertyPath: m_LocalPosition.z
@@ -2935,5 +3120,6 @@ SceneRoots:
   - {fileID: 636748124}
   - {fileID: 1012898416}
   - {fileID: 1991422066}
-  - {fileID: 2222829386730805733}
   - {fileID: 635239655}
+  - {fileID: 1626496580}
+  - {fileID: 2147091497}

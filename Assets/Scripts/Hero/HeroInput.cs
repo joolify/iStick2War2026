@@ -461,11 +461,12 @@ namespace iStick2War
             }
 
             Debug.Log("MustReload.weapon: " + weapon.gunState);
-            if (weapon.shouldReload)
-            {
-                model.isShooting = false;
-                return true;
-            }
+            //if (weapon.shouldReload)
+            //{
+            //    model.isShooting = false;
+            //    return true;
+            //}
+            //FIXME reload
             return false;
         }
 

@@ -19,25 +19,17 @@ namespace iStick2War
 
         public bool shouldReload = false;
 
-        public SkeletonMecanim skeletonMecanim;
+        [SpineBone(dataField: "skeletonAnimation")] public string aimPointBoneName;
 
-        public string crosshairBoneName;
-        public Bone crossHairBone;
+        [SpineBone(dataField: "skeletonAnimation")] public string crossHairBoneName;
 
-        public string aimPointBoneName;
-        public Bone aimPointBone;
+        protected Bone crossHairBone;
+
+        protected Bone aimPointBone;
 
         public SkeletonAnimation skeletonAnimation;
 
-        [SpineBone(dataField: "skeletonAnimation")]
-        public string aimPointName;
-
-        //*[SpineBone(dataField: "skeletonAnimation")]
-        //*public string crossHairName;
         public Camera cam;
-
-        //*public Bone crossHairBone;
-        //*public Bone aimPointBone;
 
         private Dictionary<WeaponType, WeaponBase> _weapons;
 
@@ -45,9 +37,6 @@ namespace iStick2War
         {
             skeletonAnimation = GetComponent<SkeletonAnimation>();
 
-            crossHairBone = skeletonAnimation.Skeleton.FindBone("crosshair");
-
-            aimPointBone = skeletonAnimation.Skeleton.FindBone("gunBone"); //FIXME
         }
         public virtual void StartShoot(Vector2 touchPos)
         {

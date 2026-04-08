@@ -28,11 +28,28 @@ namespace iStick2War
         public override void Start()
         {
             if (skeletonAnimation == null) skeletonAnimation = GetComponent<SkeletonAnimation>();
-            if (crossHairBone == null) crossHairBone = skeletonAnimation.Skeleton.FindBone("crosshair");
-            if (aimPointBone == null) aimPointBone = skeletonAnimation.Skeleton.FindBone("gunBone"); //FIXME
-            if (crossHairBone == null) Debug.LogError("Crosshairbone of " + gunState + " is null");
-            if (aimPointBone == null) Debug.LogError("AimPointBone of " + gunState + " is null");
             if (skeletonAnimation == null) Debug.LogError("SkeletonAnimation of " + gunState + " is null");
+
+            if (!string.IsNullOrEmpty(aimPointBoneName))
+            {
+                aimPointBone = skeletonAnimation.Skeleton.FindBone(aimPointBoneName);
+            }
+
+            if (aimPointBone == null)
+            {
+                Debug.LogError("Aim bone not found!");
+            }
+
+            if (!string.IsNullOrEmpty(crossHairBoneName))
+            {
+                crossHairBone = skeletonAnimation.Skeleton.FindBone(crossHairBoneName);
+            }
+
+            if (crossHairBone == null)
+            {
+                Debug.LogError("Cross hair bone not found!");
+            }
+
 
             Debug.Log("Gunstate: " + gunState);
             currentAmmo = maxAmmo;
@@ -50,7 +67,13 @@ namespace iStick2War
                 currentAmmo--;
             }
 
-            UnityEngine.Vector2 firePointPosition = new UnityEngine.Vector2((skeletonMecanim.transform.position.x + aimPointBone.WorldX) * transform.localScale.x, (skeletonMecanim.transform.position.y + aimPointBone.WorldY) * transform.localScale.y);
+            if (aimPointBone == null)
+            {
+                Debug.LogError($"{name}: aimPointBone is NULL");
+                return;
+            }
+
+            UnityEngine.Vector2 firePointPosition = new UnityEngine.Vector2((skeletonAnimation.transform.position.x + aimPointBone.WorldX) * transform.localScale.x, (skeletonAnimation.transform.position.y + aimPointBone.WorldY) * transform.localScale.y);
 
             var direction = touchPos - firePointPosition;
 
@@ -122,16 +145,38 @@ namespace iStick2War
 
         public override void Effect(Vector3 hitPos, Vector3 hitNormal)
         {
+            Debug.Log("Effect0: ");
             // using mousePosition and player's transform (on orthographic camera view)
-            UnityEngine.Vector2 firePointPosition = new UnityEngine.Vector2((skeletonMecanim.transform.position.x + aimPointBone.WorldX) * transform.localScale.x, (skeletonMecanim.transform.position.y + aimPointBone.WorldY) * transform.localScale.y);
+            //UnityEngine.Vector2 firePointPosition = new UnityEngine.Vector2((skeletonAnimation.transform.position.x + aimPointBone.WorldX) * transform.localScale.x, (skeletonAnimation.transform.position.y + aimPointBone.WorldY) * transform.localScale.y);
 
+            Vector3 firePointPosition = skeletonAnimation.transform.TransformPoint(new Vector3(aimPointBone.WorldX, aimPointBone.WorldY, 0));
+
+            Debug.DrawLine(firePointPosition, firePointPosition + Vector3.up * 0.2f, Color.red, 0.1f);
+            Debug.DrawLine(firePointPosition, firePointPosition + Vector3.right * 0.2f, Color.red, 0.1f);
+
+            var aimPos = skeletonAnimation.transform.TransformPoint(new Vector3(aimPointBone.WorldX, aimPointBone.WorldY, 0));
+
+            var crossPos = skeletonAnimation.transform.TransformPoint(
+                new Vector3(crossHairBone.WorldX, crossHairBone.WorldY, 0)
+            );
+
+            Debug.DrawLine(aimPos, aimPos + Vector3.up * 0.2f, Color.red, 0.1f);
+            Debug.DrawLine(crossPos, crossPos + Vector3.up * 0.2f, Color.green, 0.1f);
+
+            Debug.Log("Effect1: " + firePointPosition);
             Transform trail = Instantiate(TrailPrefab, firePointPosition, UnityEngine.Quaternion.Euler(aimPointBone.WorldRotationX, aimPointBone.WorldRotationY, 0f));
+            Debug.Log("Effect2: " + trail);
             LineRenderer lr = trail.GetComponent<LineRenderer>();
 
+            //lr.useWorldSpace = true;
+
+            Debug.Log("Effect3: " + lr);
             if (lr != null)
             {
                 lr.SetPosition(0, firePointPosition);
                 lr.SetPosition(1, hitPos);
+                Debug.Log("Effect4: " + lr.GetPosition(0));
+                Debug.Log("Effect5: " + lr.GetPosition(1));
             }
 
             Destroy(trail.gameObject, 0.04f);
@@ -153,11 +198,12 @@ namespace iStick2War
 
         private void Muzzle(Vector2 direction)
         {
-            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-            var randMuzzle = Random.Range(0, muzzle.muzzles.Length);
-            var muzzleInst = muzzle.muzzles[randMuzzle];
-            var muzzleParticle = Instantiate(muzzleInst, new UnityEngine.Vector3(skeletonMecanim.transform.position.x + aimPointBone.WorldX, skeletonMecanim.transform.position.y + aimPointBone.WorldY, 0f), UnityEngine.Quaternion.Euler(0f, 0f, angle));
-            Destroy(muzzleParticle.gameObject, 0.1f);
+            //float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+            //var randMuzzle = Random.Range(0, muzzle.muzzles.Length);
+            //var muzzleInst = muzzle.muzzles[randMuzzle];
+            //var muzzleParticle = Instantiate(muzzleInst, new UnityEngine.Vector3(skeletonAnimation.transform.position.x + aimPointBone.WorldX, skeletonAnimation.transform.position.y + aimPointBone.WorldY, 0f), UnityEngine.Quaternion.Euler(0f, 0f, angle));
+            //FIXME Muzzle
+
         }
     }
 }
