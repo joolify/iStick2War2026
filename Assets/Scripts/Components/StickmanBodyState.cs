@@ -1,0 +1,30 @@
+﻿namespace iStick2War
+{
+    public enum StickmanBodyState
+    {
+        Awake,
+        Aiming,
+        CrouchIdle,
+        CrouchGrenade,
+        CrouchShoot,
+        CrouchReload,
+        CrouchWalk,
+        Deploy,
+        Die,
+        Electrocuted,
+        FireDie,
+        Grenade,
+        Glide,
+        GlideDie,
+        GlideElectrocuted,
+        Idle,
+        Jump,
+        Land,
+        LandDie,
+        MagicSpell,
+        OnFire,
+        Reload,
+        Run,
+        Shoot,
+    }
+}
