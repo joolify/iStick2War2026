@@ -10,6 +10,7 @@ namespace iStick2War
         {
             base.Start();
             gunState = StickmanGunState.Thompson;
+            weaponType = WeaponType.Thompson;
         }
     }
 }

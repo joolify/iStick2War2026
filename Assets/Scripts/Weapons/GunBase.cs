@@ -27,13 +27,14 @@ namespace iStick2War
 
         public override void Start()
         {
-            if (skeletonMecanim == null) skeletonMecanim = GetComponent<SkeletonMecanim>();
-            var skeleton = skeletonMecanim.Skeleton; 
-            if (crossHairBone == null) crossHairBone = skeleton.FindBone("crosshair");
-            if (aimPointBone == null) aimPointBone = skeleton.FindBone("gunBone"); //FIXME
+            if (skeletonAnimation == null) skeletonAnimation = GetComponent<SkeletonAnimation>();
+            if (crossHairBone == null) crossHairBone = skeletonAnimation.Skeleton.FindBone("crosshair");
+            if (aimPointBone == null) aimPointBone = skeletonAnimation.Skeleton.FindBone("gunBone"); //FIXME
             if (crossHairBone == null) Debug.LogError("Crosshairbone of " + gunState + " is null");
             if (aimPointBone == null) Debug.LogError("AimPointBone of " + gunState + " is null");
-            if (skeleton == null) Debug.LogError("Skeleton of " + gunState + " is null");
+            if (skeletonAnimation == null) Debug.LogError("SkeletonAnimation of " + gunState + " is null");
+
+            Debug.Log("Gunstate: " + gunState);
             currentAmmo = maxAmmo;
         }
 

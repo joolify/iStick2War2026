@@ -19,8 +19,6 @@ namespace iStick2War
         public string jumpButton = "Jump";
         private string scrollWheel = "Mouse ScrollWheel";
 
-        public int selectedWeapon = 0;
-
         public HeroModel model;
 
         public HeroView view;
@@ -72,6 +70,30 @@ namespace iStick2War
         //Flippable
         private bool facingRight = true;
 
+        private Dictionary<WeaponType, WeaponBase> _weapons;
+        [SerializeField] private WeaponBase[] weaponArray;
+
+        [SerializeField] private WeaponType selectedWeapon;
+        private WeaponBase _currentWeapon;
+
+        private void Awake()
+        {
+            _weapons = new Dictionary<WeaponType, WeaponBase>();
+
+            foreach (var weapon in weaponArray)
+            {
+                if (weapon == null) continue;
+
+                if (_weapons.ContainsKey(weapon.weaponType))
+                {
+                    Debug.LogWarning($"Duplicate weapon type: {weapon.weaponType}");
+                    continue;
+                }
+
+                _weapons.Add(weapon.weaponType, weapon);
+            }
+        }
+
         void OnValidate()
         {
             //*if (model == null)
@@ -92,18 +114,18 @@ namespace iStick2War
             //*if (tesla == null) tesla = transform.GetComponentInChildren<Tesla>();
             //*if (flamethrower == null) flamethrower = transform.GetComponentInChildren<Flamethrower>();
 
-            leftWeaponButton.onClick.AddListener(LeftWeaponButton);
-            rightWeaponButton.onClick.AddListener(RightWeaponButton);
-            reloadButton.onClick.AddListener(ReloadButton);
-            grenadeButton.onClick.AddListener(GrenadeButton);
-            if (leftWeaponButtonPressed == null) leftWeaponButtonPressed = leftWeaponButton.GetComponent<ButtonPressed>();
-            if (rightWeaponButtonPressed == null) rightWeaponButtonPressed = rightWeaponButton.GetComponent<ButtonPressed>();
-            if (reloadButtonPressed == null) reloadButtonPressed = reloadButton.GetComponent<ButtonPressed>();
-            if (grenadeButtonPressed == null) grenadeButtonPressed = grenadeButton.GetComponent<ButtonPressed>();
-            if (leftWeaponButtonRect == null) leftWeaponButtonRect = leftWeaponButton.GetComponent<RectTransform>();
-            if (rightWeaponButtonRect == null) rightWeaponButtonRect = rightWeaponButton.GetComponent<RectTransform>();
-            if (reloadButtonRect == null) reloadButtonRect = reloadButton.GetComponent<RectTransform>();
-            if (grenadeButtonRect == null) grenadeButtonRect = grenadeButton.GetComponent<RectTransform>();
+            //leftWeaponButton.onClick.AddListener(LeftWeaponButton);
+            //rightWeaponButton.onClick.AddListener(RightWeaponButton);
+            //reloadButton.onClick.AddListener(ReloadButton);
+            //grenadeButton.onClick.AddListener(GrenadeButton);
+            //if (leftWeaponButtonPressed == null) leftWeaponButtonPressed = leftWeaponButton.GetComponent<ButtonPressed>();
+            //if (rightWeaponButtonPressed == null) rightWeaponButtonPressed = rightWeaponButton.GetComponent<ButtonPressed>();
+            //if (reloadButtonPressed == null) reloadButtonPressed = reloadButton.GetComponent<ButtonPressed>();
+            //if (grenadeButtonPressed == null) grenadeButtonPressed = grenadeButton.GetComponent<ButtonPressed>();
+            //if (leftWeaponButtonRect == null) leftWeaponButtonRect = leftWeaponButton.GetComponent<RectTransform>();
+            //if (rightWeaponButtonRect == null) rightWeaponButtonRect = rightWeaponButton.GetComponent<RectTransform>();
+            //if (reloadButtonRect == null) reloadButtonRect = reloadButton.GetComponent<RectTransform>();
+            //if (grenadeButtonRect == null) grenadeButtonRect = grenadeButton.GetComponent<RectTransform>();
 
             //*if (joystickBgRect == null) joystickBgRect = joystick.GetComponent<FixedJoystick>().background;
             //*if (joystickHandleRect == null) joystickHandleRect = joystick.GetComponent<FixedJoystick>().handle;
@@ -272,6 +294,8 @@ namespace iStick2War
             isTriggerUp = Input.GetMouseButtonUp(0);
 #endif
 
+            //Debug.Log("model.isShooting: " + model.isShooting);
+
             if (isTriggerDown && !model.isShooting && !MustReload())
             {
                 //if (model.currentGunState == StickmanGunState.Tesla)
@@ -350,21 +374,43 @@ namespace iStick2War
             }
         }
 
-        private WeaponBase GetWeapon()
-        {
-            var weapon = _cache.Get(selectedWeapon);
-            if (weapon == null)
-            {
-                if (transform.GetChild(selectedWeapon).TryGetComponent<WeaponBase>(out var temp))
-                {
-                    weapon = temp;
-                    _cache.Store(selectedWeapon, weapon, TimeSpan.FromMinutes(5));
-                }
+        //private WeaponBase GetWeapon()
+        //{
+        //    if (_cache == null)
+        //    {
+        //        Debug.LogError("_cache is NULL");
+        //        return null;
+        //    }
 
-            }
+        //    var weapon = _cache.Get(selectedWeapon);
 
-            return weapon;
-        }
+        //    if (weapon != null)
+        //        return weapon;
+
+        //    if (selectedWeapon >= transform.childCount)
+        //    {
+        //        Debug.LogError("Invalid weapon index: " + selectedWeapon);
+        //        return null;
+        //    }
+
+        //    var child = transform.GetChild(selectedWeapon);
+
+        //    if (!child.TryGetComponent<WeaponBase>(out var temp))
+        //    {
+        //        temp = child.GetComponentInChildren<WeaponBase>();
+        //    }
+
+        //    if (temp == null)
+        //    {
+        //        Debug.LogError("No WeaponBase found in child hierarchy: " + selectedWeapon);
+        //        return null;
+        //    }
+
+        //    weapon = temp;
+        //    _cache.Store(selectedWeapon, weapon, TimeSpan.FromMinutes(5));
+
+        //    return weapon;
+        //}
 
         IEnumerator ShootTesla()
         {
@@ -391,7 +437,15 @@ namespace iStick2War
 
         private bool MustReload()
         {
-            var weapon = GetWeapon();
+            var weapon = _currentWeapon;
+
+            if (weapon == null)
+            {
+                Debug.LogError("Weapon is NULL");
+                throw new NullReferenceException("Weapon is NULL");
+            }
+
+            Debug.Log("MustReload.weapon: " + weapon.gunState);
             if (weapon.shouldReload)
             {
                 model.isShooting = false;
@@ -448,107 +502,144 @@ namespace iStick2War
 
         private void WeaponSwitching()
         {
-            int previousSelectedWeapon = selectedWeapon;
+            //int previousSelectedWeapon = selectedWeapon;
 
-            if (Input.GetAxis(scrollWheel) < 0f)
+            //if (Input.GetAxis(scrollWheel) < 0f)
+            //{
+            //    if (selectedWeapon >= transform.childCount - 1)
+            //    {
+            //        selectedWeapon = 0;
+            //    }
+            //    else
+            //    {
+            //        selectedWeapon++;
+            //    }
+            //}
+
+            //if (Input.GetAxis(scrollWheel) > 0f)
+            //{
+            //    if (selectedWeapon <= 0)
+            //    {
+            //        selectedWeapon = transform.childCount - 1;
+            //    }
+            //    else
+            //    {
+            //        selectedWeapon--;
+            //    }
+            //}
+
+            //if (Input.GetKeyDown(KeyCode.Alpha1))
+            //{
+            //    selectedWeapon = 0;
+            //}
+
+            //if (Input.GetKeyDown(KeyCode.Alpha2) && transform.childCount >= 2)
+            //{
+            //    selectedWeapon = 1;
+            //}
+
+            //if (Input.GetKeyDown(KeyCode.Alpha3) && transform.childCount >= 3)
+            //{
+            //    selectedWeapon = 2;
+            //}
+
+            //if (Input.GetKeyDown(KeyCode.Alpha3) && transform.childCount >= 4)
+            //{
+            //    selectedWeapon = 3;
+            //}
+
+            //if (Input.GetKeyDown(KeyCode.Alpha4) && transform.childCount >= 5)
+            //{
+            //    selectedWeapon = 4;
+            //}
+
+            //ChangeWeapon(previousSelectedWeapon);
+
+            WeaponType previousSelectedWeapon = selectedWeapon; // store previous weapon
+
+            // Scroll wheel input
+            float scroll = Input.GetAxis(scrollWheel);
+
+            if (scroll < 0f) // scroll down
             {
-                if (selectedWeapon >= transform.childCount - 1)
-                {
-                    selectedWeapon = 0;
-                }
-                else
-                {
-                    selectedWeapon++;
-                }
+                int nextIndex = (int)selectedWeapon + 1;
+                if (nextIndex >= weaponArray.Length)
+                    nextIndex = 0;
+
+                selectedWeapon = weaponArray[nextIndex].weaponType;
+            }
+            else if (scroll > 0f) // scroll up
+            {
+                int prevIndex = (int)selectedWeapon - 1;
+                if (prevIndex < 0)
+                    prevIndex = weaponArray.Length - 1;
+
+                selectedWeapon = weaponArray[prevIndex].weaponType;
             }
 
-            if (Input.GetAxis(scrollWheel) > 0f)
-            {
-                if (selectedWeapon <= 0)
-                {
-                    selectedWeapon = transform.childCount - 1;
-                }
-                else
-                {
-                    selectedWeapon--;
-                }
-            }
+            // Hotkeys
+            if (Input.GetKeyDown(KeyCode.Alpha1) && weaponArray.Length >= 1)
+                selectedWeapon = weaponArray[0].weaponType;
 
-            if (Input.GetKeyDown(KeyCode.Alpha1))
-            {
-                selectedWeapon = 0;
-            }
+            if (Input.GetKeyDown(KeyCode.Alpha2) && weaponArray.Length >= 2)
+                selectedWeapon = weaponArray[1].weaponType;
 
-            if (Input.GetKeyDown(KeyCode.Alpha2) && transform.childCount >= 2)
-            {
-                selectedWeapon = 1;
-            }
+            if (Input.GetKeyDown(KeyCode.Alpha3) && weaponArray.Length >= 3)
+                selectedWeapon = weaponArray[2].weaponType;
 
-            if (Input.GetKeyDown(KeyCode.Alpha3) && transform.childCount >= 3)
-            {
-                selectedWeapon = 2;
-            }
-
-            if (Input.GetKeyDown(KeyCode.Alpha3) && transform.childCount >= 4)
-            {
-                selectedWeapon = 3;
-            }
-
-            if (Input.GetKeyDown(KeyCode.Alpha4) && transform.childCount >= 5)
-            {
-                selectedWeapon = 4;
-            }
+            if (Input.GetKeyDown(KeyCode.Alpha4) && weaponArray.Length >= 4)
+                selectedWeapon = weaponArray[3].weaponType;
 
             ChangeWeapon(previousSelectedWeapon);
         }
 
-        private void ChangeWeapon(int previousSelectedWeapon)
+        private void ChangeWeapon(WeaponType previousSelectedWeapon)
         {
             if (previousSelectedWeapon != selectedWeapon)
             {
                 SelectWeapon();
-                //* model.isShooting = false;
-                //* if (model.isCrouching)
-                //*  {
-                //*  model.StopCrouchShoot();
-                //*}
-                //*else
-                //*  {
-                //*       model.StopShoot();
-                //*}
+                model.isShooting = false;
+                if (model.isCrouching)
+                {
+                    model.StopCrouchShoot();
+                }
+                else
+                {
+                    model.StopShoot();
+                }
             }
         }
 
-        private void LeftWeaponButton()
-        {
-            int previousSelectedWeapon = selectedWeapon;
+        //private void LeftWeaponButton()
+        //{
+        //    int previousSelectedWeapon = selectedWeapon;
 
-            if (selectedWeapon <= 0)
-            {
-                selectedWeapon = transform.childCount - 1;
-            }
-            else
-            {
-                selectedWeapon--;
-            }
+        //    if (selectedWeapon <= 0)
+        //    {
+        //        selectedWeapon = transform.childCount - 1;
+        //    }
+        //    else
+        //    {
+        //        selectedWeapon--;
+        //    }
 
-            ChangeWeapon(previousSelectedWeapon);
-        }
-        private void RightWeaponButton()
-        {
-            int previousSelectedWeapon = selectedWeapon;
+        //    ChangeWeapon(previousSelectedWeapon);
+        //}
+        //private void RightWeaponButton()
+        //{
+        //    int previousSelectedWeapon = selectedWeapon;
 
-            if (selectedWeapon >= transform.childCount - 1)
-            {
-                selectedWeapon = 0;
-            }
-            else
-            {
-                selectedWeapon++;
-            }
+        //    if (selectedWeapon >= transform.childCount - 1)
+        //    {
+        //        selectedWeapon = 0;
+        //    }
+        //    else
+        //    {
+        //        selectedWeapon++;
+        //    }
 
-            ChangeWeapon(previousSelectedWeapon);
-        }
+        //    ChangeWeapon(previousSelectedWeapon);
+        //}
 
         private void GrenadeButton()
         {
@@ -636,43 +727,57 @@ namespace iStick2War
         }
         private void SelectWeapon()
         {
-            //*var previousGunState = model.currentGunState;
-            //*var currentGunState = GetWeapon().gunState;
+            var previousGunState = model.currentGunState;
+            Debug.Log("previousGunState: " + previousGunState);
 
-            //* if (previousGunState == StickmanGunState.Tesla && previousGunState != currentGunState)
-            //* {
-            //*if (model.shootTesla)
-            //*{
-            //*model.shootTesla = false;
-            //* StopCoroutine(ShootTesla());
-            //*if (tesla != null) tesla.StopShoot();
-            //* }
-            //*  }
-            //*   if (previousGunState == StickmanGunState.Flamethrower && previousGunState != currentGunState)
-            //*   {
-            //*   if (model.shootFlameThrower)
-            //*{
-            //*     model.shootFlameThrower = false;
-            //*StopCoroutine(ShootFlamethrower());
-            //*if (flamethrower != null) flamethrower.StopShoot();
-            //*}
-            //*}
+            if (!_weapons.TryGetValue(selectedWeapon, out var weapon))
+            {
+                Debug.LogError($"Weapon not found: {selectedWeapon}");
+                _currentWeapon = null;
+                return;
+            }
 
-            //*    model.SwitchWeapon(currentGunState);
+            _currentWeapon = weapon;
 
-            //* int i = 0;
-            //* foreach (Transform weapon in transform)
-            //* {
-            //*if (i == selectedWeapon)
-            //*{
-            //*weapon.gameObject.SetActive(true);
-            //*}
-            //*   else
-            //* {
-            //*weapon.gameObject.SetActive(false);
-            //*}
-            //*  i++;
-            //* }
+            var currentGunState = _currentWeapon.gunState;
+
+            Debug.Log($"Selected weapon: {selectedWeapon}, State: {currentGunState}");
+
+            //if (previousGunState == StickmanGunState.Tesla && previousGunState != currentGunState)
+            //{
+            //    if (model.shootTesla)
+            //    {
+            //        model.shootTesla = false;
+            //        StopCoroutine(ShootTesla());
+            //        if (tesla != null) tesla.StopShoot();
+            //    }
+            //}
+            //if (previousGunState == StickmanGunState.Flamethrower && previousGunState != currentGunState)
+            //{
+            //    if (model.shootFlameThrower)
+            //    {
+            //        model.shootFlameThrower = false;
+            //        StopCoroutine(ShootFlamethrower());
+            //        if (flamethrower != null) flamethrower.StopShoot();
+            //    }
+            //}
+
+            model.SwitchWeapon(currentGunState);
+
+            //int i = 0;
+            //foreach (Transform transformWeapon in transform)
+            //{
+            //    if (i == selectedWeapon)
+            //    {
+            //        transformWeapon.gameObject.SetActive(true);
+            //    }
+            //    else
+            //    {
+            //        transformWeapon.gameObject.SetActive(false);
+            //    }
+            //    i++;
+            //}
+            //FIXME
         }
     }
 }
