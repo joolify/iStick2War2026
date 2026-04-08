@@ -32,12 +32,22 @@ namespace iStick2War
         public string crosshairBoneName;
         Bone crossHairBone;
 
-        public EventDataReferenceAsset grenadeEvent;
-        public EventDataReferenceAsset reloadEvent;
-        public EventDataReferenceAsset startShootEevent;
-        public EventDataReferenceAsset stopShootEevent;
+        [SpineEvent] public string startShootEventName;
+        [SpineEvent] public string stopShootEventName;
+        [SpineEvent] public string grenadeEventName;
+        [SpineEvent] public string reloadEventName;
 
-        private Cache<int, WeaponBase> _cache = new Cache<int, WeaponBase>();
+        private EventData startShootEventData;
+        private EventData stopShootEventData;
+        private EventData grenadeEventData;
+        private EventData reloadEventData;
+
+        //public EventDataReferenceAsset grenadeEvent;
+        //public EventDataReferenceAsset reloadEvent;
+        //public EventDataReferenceAsset startShootEvent;
+        //public EventDataReferenceAsset stopShootEvent;
+
+        //private Cache<int, WeaponBase> _cache = new Cache<int, WeaponBase>();
         private Tesla tesla;
         private Flamethrower flamethrower;
 
@@ -108,7 +118,12 @@ namespace iStick2War
             //*if (skeletonAnimation == null) skeletonAnimation = //FIXME
             crossHairBone = skeletonAnimation.Skeleton.FindBone("crosshair");
 
-            //*skeletonAnimation.AnimationState.Event += HandleEvent;
+            startShootEventData = skeletonAnimation.Skeleton.Data.FindEvent(startShootEventName);
+            stopShootEventData = skeletonAnimation.Skeleton.Data.FindEvent(stopShootEventName);
+            grenadeEventData = skeletonAnimation.Skeleton.Data.FindEvent(grenadeEventName);
+            reloadEventData = skeletonAnimation.Skeleton.Data.FindEvent(reloadEventName);
+
+            skeletonAnimation.AnimationState.Event += HandleEvent;
 
             //*hero = model.transform.GetComponent<Hero>();
             //*if (tesla == null) tesla = transform.GetComponentInChildren<Tesla>();
@@ -137,14 +152,14 @@ namespace iStick2War
 
         protected virtual void HandleEvent(Spine.TrackEntry trackEntry, Spine.Event e)
         {
-            if (e.Data == startShootEevent.EventData)
+            if (e.Data == startShootEventData)
             {
-                //*model.isShooting = true;
-                //* var weapon = GetWeapon();
-                //* if (weapon != null) weapon.StartShoot(touchPos);
+                model.isShooting = true;
+                var weapon = _currentWeapon;
+                if (weapon != null) weapon.StartShoot(touchPos);
             }
 
-            if (e.Data == stopShootEevent.EventData)
+            if (e.Data == stopShootEventData)
             {
                 bool isTriggerDown = false;
 
@@ -156,19 +171,19 @@ namespace iStick2War
 
                 if (!isTriggerDown)
                 {
-                    //*model.isShooting = false;
-                    //*if (model.isCrouching)
-                    //*{
-                    //*model.StopCrouchShoot();
-                    //*}
-                    //*else
-                    //*{
-                    //*model.StopShoot();
-                    //*}
+                    model.isShooting = false;
+                    if (model.isCrouching)
+                    {
+                        model.StopCrouchShoot();
+                    }
+                    else
+                    {
+                        model.StopShoot();
+                    }
                 }
             }
 
-            if (e.Data == reloadEvent.EventData)
+            if (e.Data == reloadEventData)
             {
                 //* (model.isCrouching)
                 //*{
@@ -182,7 +197,7 @@ namespace iStick2War
                 //* if (weapon != null) weapon.StartReload();
             }
 
-            if (e.Data == grenadeEvent.EventData)
+            if (e.Data == grenadeEventData)
             {
                 //*mk2.StartShoot(touchPos);
             }

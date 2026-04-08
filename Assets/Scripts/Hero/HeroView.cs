@@ -1109,10 +1109,11 @@ namespace iStick2War
             //*track.AttachmentThreshold = 1f;
             track.MixDuration = 0f;
 
-            gunSource.pitch = GetRandomPitch(gunsoundPitchOffset);
-            gunSource.Play();
-            //gunParticles.randomSeed = (uint)Random.Range(0, 100);
-            gunParticles.Play();
+            //gunSource.pitch = GetRandomPitch(gunsoundPitchOffset);
+            //gunSource.Play();
+            ////gunParticles.randomSeed = (uint)Random.Range(0, 100);
+            //gunParticles.Play();
+            //FIXME sound
         }
 
         public void StopPlayingShoot()
