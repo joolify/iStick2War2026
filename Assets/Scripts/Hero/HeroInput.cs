@@ -53,7 +53,7 @@ namespace iStick2War
 
         //*public Mk2 mk2;
 
-        //*private Hero hero;
+        //private Hero hero; FIXME
 
         //Buttons 
         public Button leftWeaponButton;
@@ -504,16 +504,16 @@ namespace iStick2War
             directionalInput = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
 #endif
 
-            //*if (model.isCrouching)
-            //*{
-            //*    model.TryCrouchMove(directionalInput.x);
-            //*}
-            //*  else
-            //*  {
-            //*  model.TryMove(directionalInput.x);
-            //*}
+            if (model.isCrouching)
+            {
+                model.TryCrouchMove(directionalInput.x);
+            }
+            else
+            {
+                model.TryMove(directionalInput.x);
+            }
 
-            //*  hero.SetDirectionalInput(directionalInput);
+            //hero.SetDirectionalInput(directionalInput);
         }
 
         private void WeaponSwitching()

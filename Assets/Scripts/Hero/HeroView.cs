@@ -318,6 +318,7 @@ namespace iStick2War
         protected virtual void PlayNewStableAnimation()
         {
             var newBodyModelState = model.currentBodyState;
+            Debug.Log("PlayNewStableAnimation: " + newBodyModelState);
             var newGunModelState = model.currentGunState;
             bool loop;
             Spine.Animation nextAnimation;

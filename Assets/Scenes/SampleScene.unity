@@ -689,7 +689,7 @@ MonoBehaviour:
   Muzzles: []
   timeToSpawnEffect: 0
   effectSpawnRate: 10
-  maxAmmo: 10
+  maxAmmo: 1000
   muzzle: {fileID: 0}
 --- !u!1 &410087039
 GameObject:
