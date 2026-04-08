@@ -73,33 +73,41 @@ namespace iStick2War
                 return;
             }
 
-            UnityEngine.Vector2 firePointPosition = new UnityEngine.Vector2((skeletonAnimation.transform.position.x + aimPointBone.WorldX) * transform.localScale.x, (skeletonAnimation.transform.position.y + aimPointBone.WorldY) * transform.localScale.y);
+            //UnityEngine.Vector2 firePointPosition = new UnityEngine.Vector2((skeletonAnimation.transform.position.x + aimPointBone.WorldX) * transform.localScale.x, (skeletonAnimation.transform.position.y + aimPointBone.WorldY) * transform.localScale.y);
 
-            var direction = touchPos - firePointPosition;
+            Vector3 aimPos = skeletonAnimation.transform.TransformPoint(new Vector3(aimPointBone.WorldX, aimPointBone.WorldY, 0));
+            Vector3 crossPos = skeletonAnimation.transform.TransformPoint(new Vector3(crossHairBone.WorldX, crossHairBone.WorldY, 0));
+
+            //var direction = touchPos - firePointPosition;
+
+            Vector3 direction = (crossPos - aimPos).normalized;
 
             Muzzle(direction);
 
-            RaycastHit2D hit = Physics2D.Raycast(firePointPosition, direction, 100, whatToHit);
+            //RaycastHit2D hit = Physics2D.Raycast(firePointPosition, direction, 100, whatToHit);
 
-            Debug.DrawLine(firePointPosition, (direction) * 100, Color.cyan);
-            if (hit.collider != null)
-            {
-                Debug.DrawLine(firePointPosition, hit.point, Color.red);
+            RaycastHit2D hit = Physics2D.Raycast(aimPos, direction, 100f, whatToHit);
 
-                var enemyBodyPart = hit.collider.GetComponent<StickmanBodypart>();
+            //Debug.DrawLine(firePointPosition, (direction) * 100, Color.cyan);
+            //if (hit.collider != null)
+            //{
+            //    Debug.DrawLine(firePointPosition, hit.point, Color.red);
 
-                if (enemyBodyPart != null)
-                {
-                    HitBodyPart(enemyBodyPart);
-                }
+            //    var enemyBodyPart = hit.collider.GetComponent<StickmanBodypart>();
 
-                var explodable = hit.collider.GetComponent<Explodable>();
+            //    if (enemyBodyPart != null)
+            //    {
+            //        HitBodyPart(enemyBodyPart);
+            //    }
 
-                if (explodable != null)
-                {
-                    HitExplodable(explodable);
-                }
-            }
+            //    var explodable = hit.collider.GetComponent<Explodable>();
+
+            //    if (explodable != null)
+            //    {
+            //        HitExplodable(explodable);
+            //    }
+            //}
+            //FIXME
 
             Vector3 hitPos;
             Vector3 hitNormal;
@@ -115,7 +123,11 @@ namespace iStick2War
                 hitNormal = hit.normal;
             }
 
-            Effect(hitPos, hitNormal);
+            Vector3 finalPos = hit.collider != null ? (Vector3)hit.point : aimPos + direction * 100f;
+
+            //Effect(hitPos, hitNormal);
+
+            Effect(finalPos, hit.collider != null ? hit.normal : Vector3.zero);
         }
 
         public override void HitExplodable(Explodable explodable)
@@ -143,51 +155,71 @@ namespace iStick2War
 
         }
 
-        public override void Effect(Vector3 hitPos, Vector3 hitNormal)
+        //public override void Effect(Vector3 hitPos, Vector3 hitNormal)
+        //{
+        //    Debug.Log("Effect0: ");
+        //    // using mousePosition and player's transform (on orthographic camera view)
+        //    //UnityEngine.Vector2 firePointPosition = new UnityEngine.Vector2((skeletonAnimation.transform.position.x + aimPointBone.WorldX) * transform.localScale.x, (skeletonAnimation.transform.position.y + aimPointBone.WorldY) * transform.localScale.y);
+
+        //    Vector3 firePointPosition = skeletonAnimation.transform.TransformPoint(new Vector3(aimPointBone.WorldX, aimPointBone.WorldY, 0));
+
+        //    Debug.DrawLine(firePointPosition, firePointPosition + Vector3.up * 0.2f, Color.red, 0.1f);
+        //    Debug.DrawLine(firePointPosition, firePointPosition + Vector3.right * 0.2f, Color.red, 0.1f);
+
+        //    var aimPos = skeletonAnimation.transform.TransformPoint(new Vector3(aimPointBone.WorldX, aimPointBone.WorldY, 0));
+
+        //    var crossPos = skeletonAnimation.transform.TransformPoint(
+        //        new Vector3(crossHairBone.WorldX, crossHairBone.WorldY, 0)
+        //    );
+
+        //    Debug.DrawLine(aimPos, aimPos + Vector3.up * 0.2f, Color.red, 0.1f);
+        //    Debug.DrawLine(crossPos, crossPos + Vector3.up * 0.2f, Color.green, 0.1f);
+
+        //    Debug.Log("Effect1: " + firePointPosition);
+        //    Transform trail = Instantiate(TrailPrefab, firePointPosition, UnityEngine.Quaternion.Euler(aimPointBone.WorldRotationX, aimPointBone.WorldRotationY, 0f));
+        //    Debug.Log("Effect2: " + trail);
+        //    LineRenderer lr = trail.GetComponent<LineRenderer>();
+
+        //    lr.useWorldSpace = true;
+
+        //    Debug.Log("Effect3: " + lr);
+        //    if (lr != null)
+        //    {
+        //        lr.SetPosition(0, firePointPosition);
+        //        //lr.SetPosition(1, hitPos);
+        //        lr.SetPosition(1, crossPos);
+        //        Debug.Log("Effect4: " + lr.GetPosition(0));
+        //        Debug.Log("Effect5: " + lr.GetPosition(1));
+        //    }
+
+        //    Destroy(trail.gameObject, 0.04f);
+
+        //    if (hitNormal != new UnityEngine.Vector3(9999, 9999, 9999))
+        //    {
+        //        //TODO FIXME
+        //        //var bloodPrefab = BloodPrefabs[UnityEngine.Random.Range(0, BloodPrefabs.Length - 1)];
+        //        //Transform hitParticle = Instantiate(bloodPrefab, new UnityEngine.Vector3(transform.position.x + bloodHeadBone.WorldX, transform.position.y +bloodHeadBone.WorldY, 0f), UnityEngine.Quaternion.Euler(bloodHeadBone.WorldToLocalRotationX, bloodHeadBone.WorldToLocalRotationY, 0f)) as Transform;
+        //        //Destroy(hitParticle.gameObject, 1f);
+        //    }
+        //}
+
+        public override void Effect(Vector3 finalPos, Vector3 hitNormal)
         {
-            Debug.Log("Effect0: ");
-            // using mousePosition and player's transform (on orthographic camera view)
-            //UnityEngine.Vector2 firePointPosition = new UnityEngine.Vector2((skeletonAnimation.transform.position.x + aimPointBone.WorldX) * transform.localScale.x, (skeletonAnimation.transform.position.y + aimPointBone.WorldY) * transform.localScale.y);
-
-            Vector3 firePointPosition = skeletonAnimation.transform.TransformPoint(new Vector3(aimPointBone.WorldX, aimPointBone.WorldY, 0));
-
-            Debug.DrawLine(firePointPosition, firePointPosition + Vector3.up * 0.2f, Color.red, 0.1f);
-            Debug.DrawLine(firePointPosition, firePointPosition + Vector3.right * 0.2f, Color.red, 0.1f);
-
-            var aimPos = skeletonAnimation.transform.TransformPoint(new Vector3(aimPointBone.WorldX, aimPointBone.WorldY, 0));
-
-            var crossPos = skeletonAnimation.transform.TransformPoint(
-                new Vector3(crossHairBone.WorldX, crossHairBone.WorldY, 0)
+            Vector3 aimPos = skeletonAnimation.transform.TransformPoint(
+                new Vector3(aimPointBone.WorldX, aimPointBone.WorldY, 0)
             );
 
-            Debug.DrawLine(aimPos, aimPos + Vector3.up * 0.2f, Color.red, 0.1f);
-            Debug.DrawLine(crossPos, crossPos + Vector3.up * 0.2f, Color.green, 0.1f);
+            Transform trail = Instantiate(TrailPrefab, aimPos, Quaternion.identity);
 
-            Debug.Log("Effect1: " + firePointPosition);
-            Transform trail = Instantiate(TrailPrefab, firePointPosition, UnityEngine.Quaternion.Euler(aimPointBone.WorldRotationX, aimPointBone.WorldRotationY, 0f));
-            Debug.Log("Effect2: " + trail);
             LineRenderer lr = trail.GetComponent<LineRenderer>();
-
-            //lr.useWorldSpace = true;
-
-            Debug.Log("Effect3: " + lr);
             if (lr != null)
             {
-                lr.SetPosition(0, firePointPosition);
-                lr.SetPosition(1, hitPos);
-                Debug.Log("Effect4: " + lr.GetPosition(0));
-                Debug.Log("Effect5: " + lr.GetPosition(1));
+                lr.useWorldSpace = true;
+                lr.SetPosition(0, aimPos);
+                lr.SetPosition(1, finalPos);
             }
 
             Destroy(trail.gameObject, 0.04f);
-
-            if (hitNormal != new UnityEngine.Vector3(9999, 9999, 9999))
-            {
-                //TODO FIXME
-                //var bloodPrefab = BloodPrefabs[UnityEngine.Random.Range(0, BloodPrefabs.Length - 1)];
-                //Transform hitParticle = Instantiate(bloodPrefab, new UnityEngine.Vector3(transform.position.x + bloodHeadBone.WorldX, transform.position.y +bloodHeadBone.WorldY, 0f), UnityEngine.Quaternion.Euler(bloodHeadBone.WorldToLocalRotationX, bloodHeadBone.WorldToLocalRotationY, 0f)) as Transform;
-                //Destroy(hitParticle.gameObject, 1f);
-            }
         }
 
         public override void StartReload()
