@@ -831,9 +831,8 @@ GameObject:
   - component: {fileID: 569340910}
   - component: {fileID: 569340909}
   - component: {fileID: 569340913}
-  - component: {fileID: 569340912}
   m_Layer: 10
-  m_Name: Spine GameObject (Infantry)
+  m_Name: PARATROOPER VIew
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -960,22 +959,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 569340907}
   m_Mesh: {fileID: 0}
---- !u!114 &569340912
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 569340907}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5e86a8bcf4db07d48971d1ee9a1b057f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::iStick2War.ParatrooperInput
-  model: {fileID: 1721460133}
-  view: {fileID: 569340913}
-  shootEvent: {fileID: 0}
-  grenadeEvent: {fileID: 0}
 --- !u!114 &569340913
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1000,12 +983,12 @@ MonoBehaviour:
   torso1: {fileID: 0}
   torso2: {fileID: 0}
   torso3: {fileID: 0}
-  fallDownBackwardAnim: {fileID: 0}
-  fallDownBackward2Anim: {fileID: 0}
-  fallDownBackward3Anim: {fileID: 0}
+  fallDownBackwardAnim: {fileID: 11400000, guid: 7e99336b7cbbf2d4b954de972969dfca, type: 2}
+  fallDownBackward2Anim: {fileID: 11400000, guid: 1ad5348a9e509f64491c973b33d4d66c, type: 2}
+  fallDownBackward3Anim: {fileID: 11400000, guid: 0993850e44247bf408eb421832ee90b9, type: 2}
   fallBackwardAnim: {fileID: 0}
   fallBackward2Anim: {fileID: 0}
-  fallForwardAnim: {fileID: 0}
+  fallForwardAnim: {fileID: 11400000, guid: a639f863d849c874884b17d30fdbfa2c, type: 2}
   weapon: {fileID: 0}
   helmet: {fileID: 0}
   armsBoneName: arm-upper-front
@@ -1021,7 +1004,7 @@ MonoBehaviour:
   fireParticleSystemTrigger: {fileID: 0}
   deployAnim: {fileID: 11400000, guid: 196580e9010fa3443931524c02d2dcfa, type: 2}
   electrocutedAnim: {fileID: 11400000, guid: 9ef5ae72f74b5514e86ad14206f8ce2b, type: 2}
-  fallDownAnim: {fileID: 11400000, guid: 2c074bb615123f44fb8beca6c2f891a2, type: 2}
+  fallDownAnim: {fileID: 11400000, guid: afd7800c375df5f498df3fecff069940, type: 2}
   fireFallForwardDeathAnim: {fileID: 11400000, guid: 2c074bb615123f44fb8beca6c2f891a2, type: 2}
   fireRunAnim: {fileID: 11400000, guid: e7501a15d121b2f478a202f56e79795c, type: 2}
   fireRunDeathAnim: {fileID: 11400000, guid: e459eb22154a8eb47a9dc4913b2942f4, type: 2}
@@ -1323,6 +1306,99 @@ Transform:
   - {fileID: 405716498}
   m_Father: {fileID: 2001884900}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &814914119
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 814914121}
+  - component: {fileID: 814914120}
+  - component: {fileID: 814914122}
+  m_Layer: 11
+  m_Name: LandingPoint
+  m_TagString: LandingPoint
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!61 &814914120
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 814914119}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 1
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 1, y: 1}
+  m_EdgeRadius: 0
+--- !u!4 &814914121
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 814914119}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.33, y: -2.24, z: 0}
+  m_LocalScale: {x: 23.855936, y: 0.31265625, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &814914122
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 814914119}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66558463f10e7d2429081c738d000e45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Helpers.DebugVisualization
+  x: 25
+  y: 0.3
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0
@@ -2258,6 +2334,7 @@ GameObject:
   - component: {fileID: 1721460133}
   - component: {fileID: 1721460135}
   - component: {fileID: 1721460136}
+  - component: {fileID: 1721460137}
   m_Layer: 10
   m_Name: PARATROOPER Model
   m_TagString: Untagged
@@ -2373,7 +2450,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
+  m_Offset: {x: 0.111311674, y: -0.111311555}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -2383,8 +2460,24 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 1, y: 1}
+  m_Size: {x: 1.2226233, y: 1.2226231}
   m_EdgeRadius: 0
+--- !u!114 &1721460137
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1721460132}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e86a8bcf4db07d48971d1ee9a1b057f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::iStick2War.ParatrooperInput
+  model: {fileID: 1721460133}
+  view: {fileID: 569340913}
+  shootEventName: start_shoot
+  grenadeEventName: throw_grenade
 --- !u!1 &1733754169
 GameObject:
   m_ObjectHideFlags: 0
@@ -3556,3 +3649,4 @@ SceneRoots:
   - {fileID: 2147091497}
   - {fileID: 965732801}
   - {fileID: 1721460134}
+  - {fileID: 814914121}

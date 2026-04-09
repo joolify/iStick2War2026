@@ -12,8 +12,13 @@ namespace iStick2War
         public ParatrooperModel model;
         public ParatrooperView view;
         private SkeletonAnimation skeletonAnimation;
-        public EventDataReferenceAsset shootEvent;
-        public EventDataReferenceAsset grenadeEvent;
+
+        [SpineEvent] public string shootEventName;
+        [SpineEvent] public string grenadeEventName;
+
+        private EventData shootEventData;
+        private EventData grenadeEventData;
+
         //public MP40 mp40;
         //public Potatomasher potatomasher;
         private Flippable flippable;
@@ -38,21 +43,30 @@ namespace iStick2War
         protected virtual void HandleEvent(Spine.TrackEntry trackEntry, Spine.Event e)
         {
             //TODO Add footstep event in Spine
-            if (e.Data == shootEvent.EventData)
+            if (e.Data == shootEventData)
             {
                 //if (!model.isDead)
                 //    mp40.StartShoot(Vector2.zero);
             }
 
-            if (e.Data == grenadeEvent.EventData)
+            if (e.Data == grenadeEventData)
             {
                 //if (!model.isDead)
                 //    potatomasher.StartShoot(Vector2.zero);
             }
         }
 
+        void OnCollisionEnter2D(Collision2D col)
+        {
+            Debug.Log("COLLISION with: " + col.gameObject.name);
+        }
+
         void OnTriggerEnter2D(Collider2D other)
         {
+            Debug.Log("TRIGGER with: " + other.gameObject.name);
+
+            Debug.Log("ParatrooperInput: " + other.gameObject.tag);
+
             if (other.gameObject.CompareTag("LandingPoint") && model.isInAir)
             {
                 //TODO Add random time until deploy
@@ -66,13 +80,14 @@ namespace iStick2War
                 }
             }
 
-            if (other.gameObject.CompareTag("Explosion"))
-            {
-                if (!model.isDead)
-                {
-                    model.Explode();
-                }
-            }
+            //if (other.gameObject.CompareTag("Explosion"))
+            //{
+            //    if (!model.isDead)
+            //    {
+            //        model.Explode();
+            //    }
+            //}
+            //FIXME
         }
     }
 }

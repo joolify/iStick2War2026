@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 3
   tags:
   - Platform
+  - LandingPoint
   layers:
   - Default
   - TransparentFX
@@ -17,7 +18,7 @@ TagManager:
   - Background
   - Water
   - Enemy
-  - 
+  - LandingPoint
   - 
   - 
   - 
@@ -59,6 +60,9 @@ TagManager:
     locked: 0
   - name: Foreground
     uniqueID: 2062274835
+    locked: 0
+  - name: LandingPoint
+    uniqueID: 4263339047
     locked: 0
   m_RenderingLayers:
   - Default
