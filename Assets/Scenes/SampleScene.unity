@@ -1008,8 +1008,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::iStick2War.StickmanBodypart
   DamageMultiplier: 1
   skeletonAnimation: {fileID: 569340909}
-  bodyPart: 0
-  bloodBoneName: head
+  bodyPart: 1
+  bloodBoneName: arm-upper-front
   damageable: {fileID: 569340914}
   model: {fileID: 1721460133}
 --- !u!1 &569340907
@@ -1189,8 +1189,8 @@ MonoBehaviour:
   fallBackwardAnim: {fileID: 0}
   fallBackward2Anim: {fileID: 0}
   fallForwardAnim: {fileID: 11400000, guid: a639f863d849c874884b17d30fdbfa2c, type: 2}
-  weapon: {fileID: 0}
-  helmet: {fileID: 0}
+  weapon: {fileID: 4854728456510285400, guid: 162f328190df44b4e991a702150f0335, type: 3}
+  helmet: {fileID: 1117837663858016309, guid: 4a8724382f0d00c4e876a70c887d335e, type: 3}
   armsBoneName: arm-upper-front
   headBoneName: head
   footstepEvent: {fileID: 0}

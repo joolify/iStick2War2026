@@ -335,8 +335,9 @@ namespace iStick2War
 
         private void DisableColliders()
         {
-            var fireParticleSystemTrigger = model.fireParticleSystemTrigger.GetComponent<Collider2D>(); ;
-            if (fireFallForwardDeathAnim != null) fireParticleSystemTrigger.enabled = false;
+            //var fireParticleSystemTrigger = model.fireParticleSystemTrigger.GetComponent<Collider2D>(); ;
+            //if (fireFallForwardDeathAnim != null) fireParticleSystemTrigger.enabled = false;
+            //FIXME
             foreach (Transform child in transform)
             {
                 if (child.GetComponent<StickmanBodypart>())
@@ -392,7 +393,8 @@ namespace iStick2War
 
         public void PlayDie()
         {
-            DisableColliders();
+            //DisableColliders();
+            //FIXME ChatGPT this, why disable colliders on death?
 
             if (model.isInAir)
             {
