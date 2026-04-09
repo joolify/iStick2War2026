@@ -850,7 +850,8 @@ Transform:
   m_LocalPosition: {x: 0.3, y: -1.41, z: 0}
   m_LocalScale: {x: 0.5, y: 0.5, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 1445804473}
   m_Father: {fileID: 1721460134}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &569340909
@@ -1379,7 +1380,7 @@ Transform:
   m_GameObject: {fileID: 814914119}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.33, y: -2.24, z: 0}
+  m_LocalPosition: {x: -0.33, y: -0.58, z: 0}
   m_LocalScale: {x: 23.855936, y: 0.31265625, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1526,6 +1527,11 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
+--- !u!4 &901363550 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1070164800395407800, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
+  m_PrefabInstance: {fileID: 2147091497}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &965732798
 GameObject:
   m_ObjectHideFlags: 0
@@ -1998,6 +2004,72 @@ MonoBehaviour:
   effectSpawnRate: 10
   maxAmmo: 10
   muzzle: {fileID: 0}
+--- !u!1 &1025108094
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1025108096}
+  - component: {fileID: 1025108097}
+  m_Layer: 10
+  m_Name: MP40
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1025108096
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1025108094}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1445804473}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1025108097
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1025108094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ff609cffedf0ec4385146d21416c646, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::iStick2War.MP40
+  RocketPrefab: {fileID: 0}
+  gunState: 7
+  weaponType: 8
+  Damage: 10
+  shouldReload: 0
+  aimPointBoneName: mp40-aim
+  crossHairBoneName: crosshair
+  skeletonAnimation: {fileID: 569340909}
+  cam: {fileID: 330585545}
+  whatToHit:
+    serializedVersion: 2
+    m_Bits: 64
+  offSetX: 0
+  offSetY: 0
+  offSetZ: 90
+  TrailPrefab: {fileID: 901363550}
+  BloodPrefabs: []
+  Muzzles: []
+  timeToSpawnEffect: 0
+  effectSpawnRate: 10
+  maxAmmo: 1000
+  muzzle: {fileID: 0}
 --- !u!1 &1075343219
 GameObject:
   m_ObjectHideFlags: 0
@@ -2322,6 +2394,38 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1445804472
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1445804473}
+  m_Layer: 10
+  m_Name: Weapons
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1445804473
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1445804472}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1025108096}
+  m_Father: {fileID: 569340908}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1721460132
 GameObject:
   m_ObjectHideFlags: 0
@@ -2382,8 +2486,8 @@ Transform:
   m_GameObject: {fileID: 1721460132}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 5.21, y: 1.32, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalPosition: {x: 5.19, y: 1.99, z: 0}
+  m_LocalScale: {x: -1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 569340908}
@@ -2450,7 +2554,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0.111311674, y: -0.111311555}
+  m_Offset: {x: 0.111311674, y: -0.4730742}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -2460,7 +2564,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 1.2226233, y: 1.2226231}
+  m_Size: {x: 1.2226233, y: 1.9461484}
   m_EdgeRadius: 0
 --- !u!114 &1721460137
 MonoBehaviour:
@@ -2478,6 +2582,7 @@ MonoBehaviour:
   view: {fileID: 569340913}
   shootEventName: start_shoot
   grenadeEventName: throw_grenade
+  mp40: {fileID: 1025108097}
 --- !u!1 &1733754169
 GameObject:
   m_ObjectHideFlags: 0
@@ -2896,7 +3001,7 @@ GameObject:
   - component: {fileID: 2001884905}
   m_Layer: 6
   m_Name: HERO View
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

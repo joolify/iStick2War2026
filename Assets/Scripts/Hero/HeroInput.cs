@@ -102,6 +102,12 @@ namespace iStick2War
 
                 _weapons.Add(weapon.weaponType, weapon);
             }
+
+            Debug.Log("Hero.Input.Weapons:");
+            foreach (var wpn in weaponArray)
+            {
+                Debug.Log("Hero.Input." + wpn.gunState);
+            }
         }
 
         void OnValidate()

@@ -19,7 +19,7 @@ namespace iStick2War
         private EventData shootEventData;
         private EventData grenadeEventData;
 
-        //public MP40 mp40;
+        public MP40 mp40;
         //public Potatomasher potatomasher;
         private Flippable flippable;
 
@@ -33,6 +33,9 @@ namespace iStick2War
 
             if (flippable == null) flippable = view.transform.GetComponent<Flippable>();
 
+            shootEventData = skeletonAnimation.Skeleton.Data.FindEvent(shootEventName);
+            grenadeEventData = skeletonAnimation.Skeleton.Data.FindEvent(grenadeEventName);
+
             skeletonAnimation.AnimationState.Event += HandleEvent;
 
             GetComponentInChildren<MeshRenderer>().sortingOrder = Random.Range(1, 32767);
@@ -42,11 +45,13 @@ namespace iStick2War
 
         protected virtual void HandleEvent(Spine.TrackEntry trackEntry, Spine.Event e)
         {
+            Debug.Log("ParatrooperInput.HandleEvent");
             //TODO Add footstep event in Spine
             if (e.Data == shootEventData)
             {
-                //if (!model.isDead)
-                //    mp40.StartShoot(Vector2.zero);
+                Debug.Log("ParatrooperInput.shootEventData");
+                if (!model.isDead)
+                    mp40.StartShoot(Vector2.zero);
             }
 
             if (e.Data == grenadeEventData)
