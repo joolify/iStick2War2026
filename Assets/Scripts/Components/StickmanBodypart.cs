@@ -32,7 +32,7 @@ namespace iStick2War
         public string bloodBoneName;
         public Bone bloodBone;
 
-        private Damageable damageable;
+        public Damageable damageable;
 
         public BaseModel model;
         // Start is called before the first frame update
@@ -65,6 +65,8 @@ namespace iStick2War
 
         public void TakeDamage(float damage)
         {
+            Debug.Log("StickmanBodypart.damageable" + (damageable == null));
+            Debug.Log("StickmanBodypart.damageable.stats" + (damageable.stats == null));
             damageable.stats.curHealth -= damage * DamageMultiplier;
             Debug.Log("StickmanBodyPart.TakeDamage " + gameObject.name + " got hit " + damage * DamageMultiplier);
 

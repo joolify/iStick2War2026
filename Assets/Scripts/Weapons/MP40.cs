@@ -38,7 +38,6 @@ namespace iStick2War
 
         public override void StartShoot(Vector2 touchPos)
         {
-            Debug.Log("StartShoot CALLED at frame: " + Time.frameCount);
             Debug.Log("MP40.Shoot");
             Debug.Log("skeletonAnimation: " + (skeletonAnimation == null));
             Debug.Log("aimPointBone: " + (aimPointBone == null));
@@ -60,7 +59,8 @@ namespace iStick2War
             //Debug.DrawLine(firePointPosition, firePointPosition + direction * 100, Color.cyan);
 #if UNITY_EDITOR
             //Debug.DrawLine(firePointPosition, firePointPosition + direction.normalized * 100, Color.cyan);
-            Debug.DrawLine(firePointPosition, firePointPosition + direction.normalized * 100, Color.cyan);
+            Debug.DrawLine( aimPos, aimPos + (Vector3)(direction.normalized * 100f), Color.cyan
+);
 #endif
             Debug.Log("StickmanAutoShoot: hit.collider:" + hit.collider);
             if (hit.collider != null)

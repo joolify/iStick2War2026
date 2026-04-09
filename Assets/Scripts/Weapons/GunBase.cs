@@ -69,7 +69,13 @@ namespace iStick2War
 
             if (aimPointBone == null)
             {
-                Debug.LogError($"{name}: aimPointBone is NULL");
+                Debug.LogError($"{name}: {nameof(aimPointBone)} is NULL");
+                return;
+            }
+
+            if (crossHairBone == null)
+            {
+                Debug.LogError($"{name}: {nameof(crossHairBone)} is NULL");
                 return;
             }
 
@@ -89,24 +95,29 @@ namespace iStick2War
             RaycastHit2D hit = Physics2D.Raycast(aimPos, direction, 100f, whatToHit);
 
             //Debug.DrawLine(firePointPosition, (direction) * 100, Color.cyan);
-            //if (hit.collider != null)
-            //{
-            //    Debug.DrawLine(firePointPosition, hit.point, Color.red);
+            Debug.Log("GunBase.StartShoot1");
+            if (hit.collider != null)
+            {
+                Debug.Log("GunBase.StartShoot2");
+                Debug.DrawLine(aimPos, hit.point, Color.red);
 
-            //    var enemyBodyPart = hit.collider.GetComponent<StickmanBodypart>();
+                var enemyBodyPart = hit.collider.GetComponent<StickmanBodypart>();
 
-            //    if (enemyBodyPart != null)
-            //    {
-            //        HitBodyPart(enemyBodyPart);
-            //    }
+                Debug.Log("GunBase.StartShoot3: " + (enemyBodyPart == null));
+                if (enemyBodyPart != null)
+                {
+                    Debug.Log("GunBase.StartShoot4: " + (enemyBodyPart == null));
+                    HitBodyPart(enemyBodyPart);
+                }
 
-            //    var explodable = hit.collider.GetComponent<Explodable>();
+                var explodable = hit.collider.GetComponent<Explodable>();
 
-            //    if (explodable != null)
-            //    {
-            //        HitExplodable(explodable);
-            //    }
-            //}
+                if (explodable != null)
+                {
+                    Debug.Log("GunBase.StartShoot5");
+                    HitExplodable(explodable);
+                }
+            }
             //FIXME
 
             Vector3 hitPos;
@@ -143,15 +154,17 @@ namespace iStick2War
             Debug.Log("GunBase.HitBodyPart");
             enemyBodyPart.TakeDamage(Damage);
 
-            var bloodPrefab = BloodPrefabs[UnityEngine.Random.Range(0, BloodPrefabs.Length)];
-            var bodyPartBone = enemyBodyPart.bloodBone;
-            bloodPrefab.GetComponent<SpriteRenderer>().sortingOrder = enemyBodyPart.transform.parent.GetComponent<MeshRenderer>().sortingOrder + 1;
+            //var bloodPrefab = BloodPrefabs[UnityEngine.Random.Range(0, BloodPrefabs.Length)];
+            //var bodyPartBone = enemyBodyPart.bloodBone;
+            //bloodPrefab.GetComponent<SpriteRenderer>().sortingOrder = enemyBodyPart.transform.parent.GetComponent<MeshRenderer>().sortingOrder + 1;
 
-            if (bodyPartBone == null) return;
-            Debug.Log("HitBodyPart enemyBodyPart: " + enemyBodyPart == null);
-            Debug.Log("HitBodyPart bodyPartBone: " + bodyPartBone == null);
-            Transform hitParticle = Instantiate(bloodPrefab, new UnityEngine.Vector3(enemyBodyPart.transform.position.x + bodyPartBone.WorldX, enemyBodyPart.transform.position.y + bodyPartBone.WorldY, 0f), UnityEngine.Quaternion.Euler(0f, 0f, 0f)) as Transform;
-            Destroy(hitParticle.gameObject, 1f);
+            //if (bodyPartBone == null) return;
+            //Debug.Log("HitBodyPart enemyBodyPart: " + enemyBodyPart == null);
+            //Debug.Log("HitBodyPart bodyPartBone: " + bodyPartBone == null);
+            //Transform hitParticle = Instantiate(bloodPrefab, new UnityEngine.Vector3(enemyBodyPart.transform.position.x + bodyPartBone.WorldX, enemyBodyPart.transform.position.y + bodyPartBone.WorldY, 0f), UnityEngine.Quaternion.Euler(0f, 0f, 0f)) as Transform;
+            //Destroy(hitParticle.gameObject, 1f);
+
+            //FIXME
 
         }
 
@@ -205,7 +218,6 @@ namespace iStick2War
 
         public override void Effect(Vector3 finalPos, Vector3 hitNormal)
         {
-            Debug.Log("Effect CALLED at frame: " + Time.frameCount);
             Vector3 aimPos = skeletonAnimation.transform.TransformPoint(
                 new Vector3(aimPointBone.WorldX, aimPointBone.WorldY, 0)
             );
