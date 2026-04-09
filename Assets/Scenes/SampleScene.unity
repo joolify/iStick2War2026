@@ -1527,11 +1527,6 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
---- !u!4 &901363550 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 1070164800395407800, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
-  m_PrefabInstance: {fileID: 2147091497}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &965732798
 GameObject:
   m_ObjectHideFlags: 0
@@ -2063,7 +2058,7 @@ MonoBehaviour:
   offSetX: 0
   offSetY: 0
   offSetZ: 90
-  TrailPrefab: {fileID: 901363550}
+  TrailPrefab: {fileID: 1070164800395407800, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
   BloodPrefabs: []
   Muzzles: []
   timeToSpawnEffect: 0
@@ -3728,6 +3723,10 @@ PrefabInstance:
     - target: {fileID: 8278588295320617153, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
       propertyPath: m_Name
       value: BulletTrail
+      objectReference: {fileID: 0}
+    - target: {fileID: 8278588295320617153, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

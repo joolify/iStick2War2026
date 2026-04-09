@@ -205,6 +205,7 @@ namespace iStick2War
 
         public override void Effect(Vector3 finalPos, Vector3 hitNormal)
         {
+            Debug.Log("Effect CALLED at frame: " + Time.frameCount);
             Vector3 aimPos = skeletonAnimation.transform.TransformPoint(
                 new Vector3(aimPointBone.WorldX, aimPointBone.WorldY, 0)
             );
@@ -212,6 +213,10 @@ namespace iStick2War
             Transform trail = Instantiate(TrailPrefab, aimPos, Quaternion.identity);
 
             LineRenderer lr = trail.GetComponent<LineRenderer>();
+
+            lr.positionCount = 0;   // clear prefab state
+            lr.positionCount = 2;
+
             if (lr != null)
             {
                 lr.useWorldSpace = true;
@@ -219,6 +224,7 @@ namespace iStick2War
                 lr.SetPosition(1, finalPos);
             }
 
+            //FIXME At 100 waves = 💀 performance issues later
             Destroy(trail.gameObject, 0.04f);
         }
 

@@ -38,12 +38,15 @@ namespace iStick2War
 
         public override void StartShoot(Vector2 touchPos)
         {
+            Debug.Log("StartShoot CALLED at frame: " + Time.frameCount);
             Debug.Log("MP40.Shoot");
             Debug.Log("skeletonAnimation: " + (skeletonAnimation == null));
             Debug.Log("aimPointBone: " + (aimPointBone == null));
-            Vector2 firePointPosition = new Vector2((skeletonAnimation.transform.position.x + aimPointBone.WorldX), (skeletonAnimation.transform.position.y + aimPointBone.WorldY) * skeletonAnimation.skeleton.ScaleY);
+            Vector3 aimPos = skeletonAnimation.transform.TransformPoint( new Vector3(aimPointBone.WorldX, aimPointBone.WorldY, 0));
+            //Vector2 firePointPosition = new Vector2((skeletonAnimation.transform.position.x + aimPointBone.WorldX), (skeletonAnimation.transform.position.y + aimPointBone.WorldY) * skeletonAnimation.skeleton.ScaleY);
+            Vector2 firePointPosition = aimPos;
             //Add randomness to AI bots
-            var shootingRangeY = UnityEngine.Random.Range(0f, 2f);
+            var shootingRangeY = UnityEngine.Random.Range(0f, 1f);
             var shootingUp = UnityEngine.Random.value > 0.5f;
             Vector2 playerPosition = new Vector2(target.position.x, firePointPosition.y + (shootingUp ? shootingRangeY : -shootingRangeY));
 
@@ -53,7 +56,12 @@ namespace iStick2War
 
             RaycastHit2D hit = Physics2D.Raycast(firePointPosition, direction, 100, whatToHit);
 
-            Debug.DrawLine(firePointPosition, direction * 100, Color.cyan);
+            //Debug.DrawLine(firePointPosition, direction * 100, Color.cyan);
+            //Debug.DrawLine(firePointPosition, firePointPosition + direction * 100, Color.cyan);
+#if UNITY_EDITOR
+            //Debug.DrawLine(firePointPosition, firePointPosition + direction.normalized * 100, Color.cyan);
+            Debug.DrawLine(firePointPosition, firePointPosition + direction.normalized * 100, Color.cyan);
+#endif
             Debug.Log("StickmanAutoShoot: hit.collider:" + hit.collider);
             if (hit.collider != null)
             {
@@ -86,7 +94,8 @@ namespace iStick2War
 
                 if (hit.collider == null)
                 {
-                    hitPos = direction * 9999;
+                    //hitPos = direction * 9999;
+                    hitPos = firePointPosition + direction.normalized * 100f;
                     hitNormal = new Vector3(9999, 9999, 9999);
                 }
                 else
