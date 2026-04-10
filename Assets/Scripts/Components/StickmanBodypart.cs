@@ -29,8 +29,8 @@ namespace iStick2War
         public BodyPart bodyPart;
 
         [SpineBone(dataField: "skeletonAnimation")]
-        public string bloodBoneName;
-        public Bone bloodBone;
+        public string bodyPartBoneName;
+        public Bone bodyPartBone;
 
         public Damageable damageable;
 
@@ -60,7 +60,19 @@ namespace iStick2War
 
             coll2D = GetComponent<Collider2D>();
 
-            if (bloodBone == null) bloodBone = skeleton.FindBone(bloodBoneName);
+            if (bodyPartBone == null) bodyPartBone = skeleton.FindBone(bodyPartBoneName);
+        }
+
+        void LateUpdate()
+        {
+            if (bodyPartBone == null) return;
+
+            // Convert Spine bone position → Unity world position
+            Vector3 boneWorldPos = skeletonAnimation.transform.TransformPoint(
+                new Vector3(bodyPartBone.WorldX, bodyPartBone.WorldY, 0)
+            );
+
+            transform.position = boneWorldPos;
         }
 
         public void TakeDamage(float damage)
@@ -98,13 +110,28 @@ namespace iStick2War
                     model.DropWeapon();
                 model.Die();
 
-                foreach (Transform child in transform.parent)
-                {
-                    if (child.GetComponent<StickmanBodypart>())
-                    {
-                        child.GetComponent<Collider2D>().enabled = false;
-                    }
-                }
+                //foreach (Transform child in transform.parent)
+                //{
+                //    if (child.GetComponent<StickmanBodypart>())
+                //    {
+                //        child.GetComponent<Collider2D>().enabled = false;
+                //    }
+                //}
+
+                int deadLayer = LayerMask.NameToLayer("EnemyDead");
+                SetLayerRecursively(model.gameObject, deadLayer);
+
+                //FIXME Collider2D
+            }
+        }
+
+        void SetLayerRecursively(GameObject obj, int newLayer)
+        {
+            obj.layer = newLayer;
+
+            foreach (Transform child in obj.transform)
+            {
+                SetLayerRecursively(child.gameObject, newLayer);
             }
         }
     }

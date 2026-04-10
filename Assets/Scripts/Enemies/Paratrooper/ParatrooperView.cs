@@ -338,13 +338,13 @@ namespace iStick2War
             //var fireParticleSystemTrigger = model.fireParticleSystemTrigger.GetComponent<Collider2D>(); ;
             //if (fireFallForwardDeathAnim != null) fireParticleSystemTrigger.enabled = false;
             //FIXME
-            foreach (Transform child in transform)
-            {
-                if (child.GetComponent<StickmanBodypart>())
-                {
-                    child.GetComponent<Collider2D>().enabled = false;
-                }
-            }
+            //foreach (Transform child in transform)
+            //{
+            //    if (child.GetComponent<StickmanBodypart>())
+            //    {
+            //        child.GetComponent<Collider2D>().enabled = false;
+            //    }
+            //}
         }
 
         private void StopElectrocute()

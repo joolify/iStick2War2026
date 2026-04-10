@@ -1,6 +1,7 @@
 Infantry.png
 size:8116,4232
 filter:Linear,Linear
+pma:true
 scale:1.2
 backpack
 bounds:7253,928,220,445
@@ -253,6 +254,7 @@ bounds:7380,2908,636,204
 Infantry_2.png
 size:1172,4144
 filter:Linear,Linear
+pma:true
 scale:1.2
 black/images/arm-lower
 bounds:1089,2070,80,383
@@ -350,6 +352,7 @@ bounds:164,10,160,413
 Infantry_3.png
 size:3772,1092
 filter:Linear,Linear
+pma:true
 scale:1.2
 white/images/arm-lower
 bounds:3466,299,79,379
