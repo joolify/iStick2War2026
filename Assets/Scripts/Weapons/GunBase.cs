@@ -1,4 +1,5 @@
-﻿using Spine.Unity;
+﻿using Assets.Scripts.Components;
+using Spine.Unity;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -94,9 +95,28 @@ namespace iStick2War
 
             //RaycastHit2D hit = Physics2D.Raycast(firePointPosition, direction, 100, whatToHit);
 
+            //RaycastHit2D hit = Physics2D.Raycast(aimPos, direction, 100f, whatToHit);
+
+            //int mask = LayerMask.GetMask("EnemyBodyPart") & ~LayerMask.GetMask("Player");
+
+            Physics2D.SyncTransforms();
+
             RaycastHit2D hit = Physics2D.Raycast(aimPos, direction, 100f, whatToHit);
 
-            Debug.Log("whatToHit: " + whatToHit);
+            Debug.DrawRay(aimPos, direction * 100f, Color.green, 1f);
+
+            Debug.Log("LayerMask value: " + whatToHit.value);
+
+            if (hit.collider != null)
+            {
+                Debug.Log("Hit object: " + hit.collider.name);
+                Debug.Log("Hit layer: " + hit.collider.gameObject.layer);
+                Debug.Log("Hit layer name: " + LayerMask.LayerToName(hit.collider.gameObject.layer));
+            }
+            else
+            {
+                Debug.Log("Hit object is null");
+            }
 
             //Debug.DrawLine(firePointPosition, (direction) * 100, Color.cyan);
             Debug.Log("GunBase.StartShoot1: " + (hit.collider == null));
@@ -104,25 +124,38 @@ namespace iStick2War
             {
                 DEBUGCOUNTER++;
                 Debug.Log("DEBUGCOUNTER: " + DEBUGCOUNTER);
+
                 Debug.Log("GunBase.StartShoot2");
                 Debug.DrawLine(aimPos, hit.point, Color.red);
 
-                var enemyBodyPart = hit.collider.GetComponent<StickmanBodypart>();
+                var bodyPart = hit.collider.GetComponent<ParatrooperBodyPart_V2>();
 
-                Debug.Log("GunBase.StartShoot3: " + (enemyBodyPart == null));
-                if (enemyBodyPart != null)
+                if (bodyPart != null)
                 {
-                    Debug.Log("GunBase.StartShoot4: " + (enemyBodyPart == null));
-                    HitBodyPart(enemyBodyPart);
+                    var damageInfo = new DamageInfo
+                    {
+                        BaseDamage = 10f,
+                        HitPoint = hit.point,
+                    };
+                    bodyPart.OnHit(damageInfo);
                 }
 
-                var explodable = hit.collider.GetComponent<Explodable>();
+                //var enemyBodyPart = hit.collider.GetComponent<StickmanBodypart>();
 
-                if (explodable != null)
-                {
-                    Debug.Log("GunBase.StartShoot5");
-                    HitExplodable(explodable);
-                }
+                //Debug.Log("GunBase.StartShoot3: " + (enemyBodyPart == null));
+                //if (enemyBodyPart != null)
+                //{
+                //    Debug.Log("GunBase.StartShoot4: " + (enemyBodyPart == null));
+                //    HitBodyPart(enemyBodyPart);
+                //}
+
+                //var explodable = hit.collider.GetComponent<Explodable>();
+
+                //if (explodable != null)
+                //{
+                //    Debug.Log("GunBase.StartShoot5");
+                //    HitExplodable(explodable);
+                //}
             }
             //FIXME
 

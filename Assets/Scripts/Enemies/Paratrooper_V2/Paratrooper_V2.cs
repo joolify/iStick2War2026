@@ -164,7 +164,8 @@ public class Paratrooper : MonoBehaviour
         _stateMachine.Initialize(_model);
 
         // 3. Init DamageReceiver
-        _damageReceiver.Initialize(_model, _stateMachine);
+        //_damageReceiver.Initialize(_model, _stateMachine);
+        //FIXME
 
         // 4. Init Controller (brain)
         _controller.Initialize(_model, _stateMachine, _damageReceiver, _weaponSystem);
@@ -176,10 +177,11 @@ public class Paratrooper : MonoBehaviour
         _deathHandler.Initialize(_stateMachine);
 
         // 7. Wire BodyParts → DamageReceiver
-        foreach (var part in _bodyParts)
-        {
-            part.Initialize(_damageReceiver);
-        }
+        //foreach (var part in _bodyParts)
+        //{
+        //    part.Initialize(_damageReceiver);
+        //}
+        //FIXME
 
         // 8. Wire Spine Events → Controller
         _spineEventForwarder.Initialize(_controller, _skeletonAnimation);

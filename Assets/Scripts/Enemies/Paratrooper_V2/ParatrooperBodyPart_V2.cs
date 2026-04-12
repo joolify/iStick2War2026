@@ -30,14 +30,17 @@ using UnityEngine;
 public class ParatrooperBodyPart_V2 : MonoBehaviour
 {
 
-    public BodyPartType type;
-    public ParatrooperDamageReceiver_V2 _damageReceiver;
+    public BodyPartType bodyPart;
+
+    private ParatrooperDamageReceiver_V2 _damageReceiver;
 
     private ParatrooperModel_V2 _model;
 
-    public void Initialize(ParatrooperDamageReceiver_V2 damageReceiver)
+    void Awake()
     {
-        _damageReceiver = damageReceiver;
+        _damageReceiver = GetComponentInParent<ParatrooperDamageReceiver_V2>();
+
+        gameObject.layer = LayerMask.NameToLayer("EnemyBodyPart");
     }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -62,7 +65,8 @@ public class ParatrooperBodyPart_V2 : MonoBehaviour
     /// </summary>
     public void OnHit(DamageInfo info)
     {
-        info.BodyPart = type;
+        Debug.Log("ParatrooperBodyPart_V2.OnHit: " + info.BaseDamage + "HP on " + info.BodyPart);
+        info.BodyPart = bodyPart;
         _damageReceiver.TakeDamage(info);
     }
 }

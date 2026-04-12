@@ -1,5 +1,6 @@
 using Assets.Scripts.Components;
 using iStick2War;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 /// <summary>
@@ -39,10 +40,10 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
     private ParatrooperModel_V2 _model;
     private ParatrooperStateMachine_V2 _stateMachine;
 
-    public void Initialize(ParatrooperModel_V2 model, ParatrooperStateMachine_V2 stateMachine)
+    void Awake()
     {
-        _model = model;
-        _stateMachine = stateMachine;
+        _model = GetComponentInParent<ParatrooperModel_V2>();
+        _stateMachine = GetComponentInParent<ParatrooperStateMachine_V2>();
     }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -62,21 +63,15 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
     /// </summary>
     public void TakeDamage(DamageInfo info)
     {
-        // 1. Get body part multiplier
-        float multiplier = GetBodyPartMultiplier(info.BodyPart);
+        Debug.Log($"Hit {info.BodyPart} for {info.BaseDamage}");
 
-        // 2. Apply armor reduction
+        float multiplier = _model.GetMultiplier(info.BodyPart);
+
         float finalDamage = info.BaseDamage * multiplier * _model.armorMultiplier;
 
-        // 3. Update health
-        _model.health -= finalDamage;
+        float remainingHealth = _model.ApplyDamage(finalDamage);
 
-        // 4. Clamp health
-        if (_model.health < 0)
-            _model.health = 0;
-
-        // 5. Trigger state changes
-        if (_model.health <= 0)
+        if (_model.IsDead())
         {
             _stateMachine.ChangeState(StickmanBodyState.Die);
         }
@@ -84,6 +79,8 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
         {
             _stateMachine.ChangeState(StickmanBodyState.Land);
         }
+
+        Debug.Log($"Final damage: {finalDamage}, HP left: {remainingHealth}");
     }
 
     private float GetBodyPartMultiplier(BodyPartType bodyPart)

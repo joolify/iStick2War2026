@@ -26,19 +26,49 @@ public class ParatrooperModel_V2 : MonoBehaviour
     public float health;
     public float armorMultiplier;
 
-    public StickmanBodyState currentState; 
+    public StickmanBodyState currentState;
 
     public Dictionary<BodyPartType, float> damageMultipliers;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    void Awake()
     {
-        
+        SetDamageMultipliers();
     }
 
-    // Update is called once per frame
-    void Update()
+    private void SetDamageMultipliers()
     {
-        
+        damageMultipliers = new Dictionary<BodyPartType, float>
+    {
+        { BodyPartType.Head, 2f },
+        { BodyPartType.Torso, 1f },
+        { BodyPartType.Arms, 0.5f },
+        { BodyPartType.Legs, 0.7f }
+    };
+    }
+
+    public float ApplyDamage(float damage)
+    {
+        health -= damage;
+
+        if (health < 0)
+            health = 0;
+
+        return health;
+    }
+
+    public bool IsDead()
+    {
+        return health <= 0;
+    }
+
+    public float GetMultiplier(BodyPartType part)
+    {
+        if (damageMultipliers != null &&
+            damageMultipliers.TryGetValue(part, out var value))
+        {
+            return value;
+        }
+
+        return 1f;
     }
 }

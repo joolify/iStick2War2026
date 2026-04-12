@@ -39,9 +39,9 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
     /// </summary>
     public void Initialize(ParatrooperModel_V2 model, Transform firePoint, LayerMask hitMask)
     {
-        this._model = model;
-        this._firePoint = firePoint;
-        this._hitMask = hitMask;
+        _model = model;
+        _firePoint = firePoint;
+        _hitMask = hitMask;
     }
 
     /// <summary>
@@ -89,7 +89,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
                 DamageInfo info = new DamageInfo
                 {
                     BaseDamage = 10f,
-                    BodyPart = bodyPart.type,
+                    BodyPart = bodyPart.bodyPart,
                     HitPoint = hit.point
                 };
 
