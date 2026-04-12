@@ -6,9 +6,6 @@ namespace Assets.Scripts.Components
 {
     public enum AnimationEventType
     {
-        Shoot,
-        Grenade,
-        None,
         DeployStarted,
         DeployFinished,
         GrenadeStarted,
@@ -19,6 +16,7 @@ namespace Assets.Scripts.Components
         GrenadeThrow,
         ReloadStarted,
         ShootStarted,
-        ShootFinished
+        ShootFinished,
+        None, //FIXME
     }
 }

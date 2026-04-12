@@ -26,22 +26,22 @@ using UnityEngine;
 /// </remarks>
 public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 {
-    private ParatrooperModel_V2 model;
+    private ParatrooperModel_V2 _model;
 
     private float fireCooldown = 0.5f;
     private float lastFireTime;
 
-    private Transform firePoint;
-    private LayerMask hitMask;
+    private Transform _firePoint;
+    private LayerMask _hitMask;
 
     /// <summary>
     /// Initialize weapon system.
     /// </summary>
-    public void Init(ParatrooperModel_V2 model, Transform firePoint, LayerMask hitMask)
+    public void Initialize(ParatrooperModel_V2 model, Transform firePoint, LayerMask hitMask)
     {
-        this.model = model;
-        this.firePoint = firePoint;
-        this.hitMask = hitMask;
+        this._model = model;
+        this._firePoint = firePoint;
+        this._hitMask = hitMask;
     }
 
     /// <summary>
@@ -52,7 +52,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         if (Time.time < lastFireTime + fireCooldown)
             return false;
 
-        if (model.currentState == iStick2War.StickmanBodyState.Die)
+        if (_model.currentState == iStick2War.StickmanBodyState.Die)
             return false;
 
         return true;
@@ -73,10 +73,10 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 
     private void ShootRaycast()
     {
-        Vector2 origin = firePoint.position;
-        Vector2 direction = firePoint.right; // assuming right = forward
+        Vector2 origin = _firePoint.position;
+        Vector2 direction = _firePoint.right; // assuming right = forward
 
-        RaycastHit2D hit = Physics2D.Raycast(origin, direction, 100f, hitMask);
+        RaycastHit2D hit = Physics2D.Raycast(origin, direction, 100f, _hitMask);
 
         Debug.DrawLine(origin, origin + direction * 100f, Color.red, 0.5f);
 

@@ -6860,6 +6860,8 @@ MonoBehaviour:
   _damageReceiver: {fileID: 2115464551}
   _deathHandler: {fileID: 2115464550}
   _weaponSystem: {fileID: 0}
+  _spineEventForwarder: {fileID: 1882248629}
+  _skeletonAnimation: {fileID: 1882248630}
   _view: {fileID: 1882248633}
   _bodyParts: []
 --- !u!4 &2115464554

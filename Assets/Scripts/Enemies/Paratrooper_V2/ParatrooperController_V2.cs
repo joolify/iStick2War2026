@@ -58,12 +58,8 @@ public class ParatrooperController_V2 : MonoBehaviour
     {
         switch (eventName)
         {
-            case AnimationEventType.Shoot:
-                _weaponSystem.Shoot();
-                break;
-
-            case AnimationEventType.Grenade:
-                _weaponSystem.Grenade();
+            case AnimationEventType.DeployFinished:
+                _stateMachine.ChangeState(StickmanBodyState.Glide);
                 break;
         }
     }
@@ -81,11 +77,6 @@ public class ParatrooperController_V2 : MonoBehaviour
     internal void Tick(float deltaTime)
     {
         //FIXME
-    }
-
-    internal void EnterInitialState()
-    {
-        throw new NotImplementedException();
     }
 
     internal void OnAnimationEvent(object reloadStarted)

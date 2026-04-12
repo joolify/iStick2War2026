@@ -1,5 +1,6 @@
 using Assets.Scripts.Enemies.Paratrooper_V2;
 using iStick2War;
+using Spine.Unity;
 using System;
 using System.Collections.Generic;
 using UnityEditor;
@@ -102,6 +103,8 @@ public class Paratrooper : MonoBehaviour
     [SerializeField] private ParatrooperDamageReceiver_V2 _damageReceiver;
     [SerializeField] private ParatrooperDeathHandler_V2 _deathHandler;
     [SerializeField] private ParatrooperWeaponSystem_V2 _weaponSystem;
+    [SerializeField] private SpineEventForwarder _spineEventForwarder;
+    [SerializeField] private SkeletonAnimation _skeletonAnimation;
 
     [Header("View")]
     [SerializeField] private ParatrooperView_V2 _view;
@@ -130,12 +133,12 @@ public class Paratrooper : MonoBehaviour
     private void InitializeDependencies()
     {
         // Ensure references exist (safe setup pattern)
-        if (_model == null) _model = GetComponent<ParatrooperModel_V2>();
         if (_controller == null) _controller = GetComponent<ParatrooperController_V2>();
         if (_view == null) _view = GetComponent<ParatrooperView_V2>();
         if (_damageReceiver == null) _damageReceiver = GetComponent<ParatrooperDamageReceiver_V2>();
         if (_stateMachine == null) _stateMachine = GetComponent<ParatrooperStateMachine_V2>();
         if (_deathHandler == null) _deathHandler = GetComponent<ParatrooperDeathHandler_V2>();
+        if (_spineEventForwarder == null) _spineEventForwarder = GetComponent<SpineEventForwarder>();
         if (_weaponSystem == null) _weaponSystem = GetComponent<ParatrooperWeaponSystem_V2>();
     }
 
@@ -178,13 +181,21 @@ public class Paratrooper : MonoBehaviour
             part.Initialize(_damageReceiver);
         }
 
-        // 8. Hook events (StateMachine → View & Death)
+        // 8. Wire Spine Events → Controller
+        _spineEventForwarder.Initialize(_controller, _skeletonAnimation);
+
+        // Init WeaponSystem
+        //FIXME
+        //_weaponSystem.Initialize(_controller, _stateMachine);
+
+        // 9. Hook events (StateMachine → View & Death)
         _stateMachine.OnStateChanged += HandleStateChanged;
     }
 
     private void OnDestroy()
     {
-        _stateMachine.OnStateChanged -= HandleStateChanged;
+        if (_stateMachine != null)
+            _stateMachine.OnStateChanged -= HandleStateChanged;
     }
 
     /*
@@ -198,10 +209,7 @@ public class Paratrooper : MonoBehaviour
     */
     private void HandleStateChanged(StickmanBodyState from, StickmanBodyState to)
     {
-        Console.WriteLine($"State changed: {from} → {to}");
-        // View reacts visually
-        _view.PlayAnimation(to);
-
+        Debug.Log($"HandleStateChanged: State changed: {from} → {to}");
         // Death handling
         if (to == StickmanBodyState.Die)
         {
@@ -212,7 +220,6 @@ public class Paratrooper : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        _controller.EnterInitialState();
     }
 
 

@@ -93,6 +93,7 @@ public class ParatrooperView_V2 : MonoBehaviour
     /// </summary>
     public void PlayAnimation(StickmanBodyState state)
     {
+        Debug.Log("PlayAnimation() - State: " + state);
         Spine.Animation nextAnimation = null;
         int trackIndex = 0;
         bool loop = false;
@@ -104,6 +105,11 @@ public class ParatrooperView_V2 : MonoBehaviour
             case StickmanBodyState.Deploy:
                 nextAnimation = _deployAnim;
                 loop = false;
+                trackIndex = 1;
+                break;
+            case StickmanBodyState.Glide:
+                nextAnimation = _glideAnim;
+                loop = true;
                 trackIndex = 1;
                 break;
         }

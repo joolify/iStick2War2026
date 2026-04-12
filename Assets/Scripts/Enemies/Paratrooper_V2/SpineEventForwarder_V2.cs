@@ -116,6 +116,8 @@ namespace Assets.Scripts.Enemies.Paratrooper_V2
             if (_controller == null)
                 return;
 
+            Debug.Log($"SpineEventForwarder: Received event '{e.Data.Name}' at time {e.Time} (int: {e.Int}, float: {e.Float}, string: '{e.String}')");
+
             // ✅ Use EventData instead of string compare (faster & safer)
             if (e.Data == _deployStartedEventData)
             {
