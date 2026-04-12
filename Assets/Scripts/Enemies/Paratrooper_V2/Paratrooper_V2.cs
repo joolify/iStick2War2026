@@ -123,6 +123,8 @@ public class Paratrooper : MonoBehaviour
         InitializeDependencies();
 
         WireSystems();
+
+        _controller.StartGame();
     }
 
     private void InitializeDependencies()

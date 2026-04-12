@@ -84,8 +84,22 @@ public class ParatrooperStateMachine_V2 : MonoBehaviour
         return true;
     }
 
+    /*
+    Controller
+       ↓
+    StateMachine.ChangeState()
+       ↓
+    EnterState()
+       ↓
+    OnStateChanged event
+       ↓
+    View.PlayAnimation()
+       ↓
+    Spine animation plays
+    */
     private void EnterState(StickmanBodyState state)
     {
+        // ONLY gameplay hooks, NOT visuals
         switch (state)
         {
             case StickmanBodyState.Idle:
@@ -93,7 +107,7 @@ public class ParatrooperStateMachine_V2 : MonoBehaviour
                 break;
 
             case StickmanBodyState.Glide:
-                // start gliding
+                // start gliding. // adjust movement physics
                 break;
 
             case StickmanBodyState.Run:
@@ -102,6 +116,10 @@ public class ParatrooperStateMachine_V2 : MonoBehaviour
 
             case StickmanBodyState.Die:
                 // trigger death flow
+                break;
+
+            case StickmanBodyState.Deploy:
+                // start deploy from parachute. enable gravity, disable shooting, etc.
                 break;
         }
     }

@@ -51,11 +51,29 @@ namespace Assets.Scripts.Enemies.Paratrooper_V2
         private ParatrooperController_V2 _controller;
         private SkeletonAnimation _skeletonAnimation;
 
-        [SpineEvent] public string shootEventName;
-        [SpineEvent] public string grenadeEventName;
+        [SpineEvent] public string deployStartedEventName;
+        [SpineEvent] public string deployFinishedEventName;
+        [SpineEvent] public string grenadeStartedEventName;
+        [SpineEvent] public string grenadeFinishedEventName;
+        [SpineEvent] public string grenadeThrowEventName;
+        [SpineEvent] public string landStartedEventName;
+        [SpineEvent] public string landFinishedEventName;
+        [SpineEvent] public string reloadStartedEventName;
+        [SpineEvent] public string reloadFinishedEventName;
+        [SpineEvent] public string shootStartedEventName;
+        [SpineEvent] public string shootFinishedEventName;
 
-        private EventData _shootEventData;
-        private EventData _grenadeEventData;
+        private EventData _deployStartedEventData;
+        private EventData _deployFinishedEventData;
+        private EventData _grenadeStartedEventData;
+        private EventData _grenadeFinishedEventData;
+        private EventData _grenadeThrowEventData;
+        private EventData _landStartedEventData;
+        private EventData _landFinishedEventData;
+        private EventData _reloadStartedEventData;
+        private EventData _reloadFinishedEventData;
+        private EventData _shootStartedEventData;
+        private EventData _shootFinishedEventData;
 
         private bool _initialized;
 
@@ -64,8 +82,17 @@ namespace Assets.Scripts.Enemies.Paratrooper_V2
             _controller = controller;
             _skeletonAnimation = skeletonAnimation;
 
-            _shootEventData = _skeletonAnimation.Skeleton.Data.FindEvent(shootEventName);
-            _grenadeEventData = _skeletonAnimation.Skeleton.Data.FindEvent(grenadeEventName);
+            _deployStartedEventData = _skeletonAnimation.Skeleton.Data.FindEvent(deployStartedEventName);
+            _deployFinishedEventData = _skeletonAnimation.Skeleton.Data.FindEvent(deployFinishedEventName);
+            _grenadeStartedEventData = _skeletonAnimation.Skeleton.Data.FindEvent(grenadeStartedEventName);
+            _grenadeFinishedEventData = _skeletonAnimation.Skeleton.Data.FindEvent(grenadeFinishedEventName);
+            _grenadeThrowEventData = _skeletonAnimation.Skeleton.Data.FindEvent(grenadeThrowEventName);
+            _landStartedEventData = _skeletonAnimation.Skeleton.Data.FindEvent(landStartedEventName);
+            _landFinishedEventData = _skeletonAnimation.Skeleton.Data.FindEvent(landFinishedEventName);
+            _reloadStartedEventData = _skeletonAnimation.Skeleton.Data.FindEvent(reloadStartedEventName);
+            _reloadFinishedEventData = _skeletonAnimation.Skeleton.Data.FindEvent(reloadFinishedEventName);
+            _shootStartedEventData = _skeletonAnimation.Skeleton.Data.FindEvent(shootStartedEventName);
+            _shootFinishedEventData = _skeletonAnimation.Skeleton.Data.FindEvent(shootFinishedEventName);
 
             _skeletonAnimation.AnimationState.Event += OnSpineEvent;
 
@@ -90,17 +117,57 @@ namespace Assets.Scripts.Enemies.Paratrooper_V2
                 return;
 
             // ✅ Use EventData instead of string compare (faster & safer)
-            if (e.Data == _shootEventData)
+            if (e.Data == _deployStartedEventData)
             {
-                _controller.OnAnimationEvent(AnimationEventType.Shoot);
+                _controller.OnAnimationEvent(AnimationEventType.DeployStarted);
             }
-            else if (e.Data == _grenadeEventData)
+            else if (e.Data == _deployFinishedEventData)
             {
-                _controller.OnAnimationEvent(AnimationEventType.Grenade);
+                _controller.OnAnimationEvent(AnimationEventType.DeployFinished);
+            }
+            else if (e.Data == _grenadeStartedEventData)
+            {
+                _controller.OnAnimationEvent(AnimationEventType.GrenadeStarted);
+            }
+            else if (e.Data == _grenadeFinishedEventData)
+            {
+                _controller.OnAnimationEvent(AnimationEventType.GrenadeFinished);
+            }
+            else if (e.Data == _grenadeThrowEventData)
+            {
+                _controller.OnAnimationEvent(AnimationEventType.GrenadeThrow);
+            }
+            else if (e.Data == _landStartedEventData)
+            {
+                _controller.OnAnimationEvent(AnimationEventType.LandStarted);
+            }
+            else if (e.Data == _landFinishedEventData)
+            {
+                _controller.OnAnimationEvent(AnimationEventType.LandFinished);
+            }
+            else if (e.Data == _landFinishedEventData)
+            {
+                _controller.OnAnimationEvent(AnimationEventType.LandFinished);
+            }
+            else if (e.Data == _reloadStartedEventData)
+            {
+                _controller.OnAnimationEvent(AnimationEventType.ReloadStarted);
+            }
+            else if (e.Data == _reloadFinishedEventData)
+            {
+                _controller.OnAnimationEvent(AnimationEventType.ReloadFinished);
+            }
+            else if (e.Data == _shootStartedEventData)
+            {
+                _controller.OnAnimationEvent(AnimationEventType.ShootStarted);
+            }
+            else if (e.Data == _shootFinishedEventData)
+            {
+                _controller.OnAnimationEvent(AnimationEventType.ShootFinished);
             }
             else
             {
-                // fallback (optional)
+                // fallback (optional) FIXME
                 _controller.OnAnimationEvent(AnimationEventType.None);
             }
         }

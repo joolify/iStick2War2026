@@ -8,6 +8,17 @@ namespace Assets.Scripts.Components
     {
         Shoot,
         Grenade,
-        None
+        None,
+        DeployStarted,
+        DeployFinished,
+        GrenadeStarted,
+        GrenadeFinished,
+        LandStarted,
+        LandFinished,
+        ReloadFinished,
+        GrenadeThrow,
+        ReloadStarted,
+        ShootStarted,
+        ShootFinished
     }
 }

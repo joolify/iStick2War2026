@@ -38,7 +38,7 @@ using UnityEngine;
 /// </remarks>
 public class ParatrooperView_V2 : MonoBehaviour
 {
-    private SkeletonAnimation spine;
+    private SkeletonAnimation _skeletonAnimation;
     private ParticleSystem hitEffect;
 
     //Add animation mapping (cleaner than switch)
@@ -46,15 +46,32 @@ public class ParatrooperView_V2 : MonoBehaviour
 
     private ParatrooperStateMachine_V2 _stateMachine;
 
+    [Header("Animations")]
+    public AnimationReferenceAsset _deployAnim;
+    public AnimationReferenceAsset _glideAnim;
+
     public void Initialize(ParatrooperStateMachine_V2 stateMachine)
     {
-        _stateMachine = stateMachine;  
+        _stateMachine = stateMachine;
+
+        _stateMachine.OnStateChanged += HandleStateChanged;
+    }
+
+    private void OnDestroy()
+    {
+        if (_stateMachine != null)
+            _stateMachine.OnStateChanged -= HandleStateChanged;
+    }
+
+    private void HandleStateChanged(StickmanBodyState from, StickmanBodyState to)
+    {
+        PlayAnimation(to);
     }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-
+        CheckAnimationNames();
     }
 
     // Update is called once per frame
@@ -63,12 +80,34 @@ public class ParatrooperView_V2 : MonoBehaviour
 
     }
 
+    private void CheckAnimationNames()
+    {
+        if (!_deployAnim.name.Equals("E_deploy")) Debug.LogError(nameof(_deployAnim) + " has wrong animation");
+        if (!_glideAnim.name.Equals("E_glide")) Debug.LogError(nameof(_glideAnim) + " has wrong animation");
+    }
+
     /// <summary>
     /// Plays the appropriate animation for the given state.
     /// </summary>
     public void PlayAnimation(StickmanBodyState state)
     {
+        Spine.Animation nextAnimation = null;
+        int trackIndex = 0;
+        bool loop = false;
+        Spine.AnimationState.TrackEntryDelegate @complete = null;
+
         // Map state → animation
+
+        switch (state)
+        {
+            case StickmanBodyState.Deploy:
+                nextAnimation = _deployAnim;
+                loop = false;
+                trackIndex = 1;
+                break;
+        }
+
+        _skeletonAnimation.AnimationState.SetAnimation(trackIndex, nextAnimation, loop);
     }
 
     /// <summary>
@@ -78,4 +117,22 @@ public class ParatrooperView_V2 : MonoBehaviour
     {
         // Trigger particle effects / animation overlays
     }
+
+    private void PlayDeploy_Complete(Spine.TrackEntry trackEntry)
+    {
+        Debug.Log("PlayDeploy_Complete()");
+        PlayGlide();
+    }
+
+    public void PlayGlide()
+    {
+        Debug.Log("PlayGlide()");
+        // Play the shoot animation on track 1.
+        var track = _skeletonAnimation.AnimationState.SetAnimation(1, _glideAnim, true);
+        //track.AttachmentThreshold = 1f;
+        track.MixDuration = 0f;
+
+        //TODO Add sound
+    }
+
 }

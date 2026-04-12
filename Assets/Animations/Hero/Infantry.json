@@ -1,6 +1,6 @@
 {
 "skeleton": {
-	"hash": "yQhg3XxlKLg",
+	"hash": "vH18dhcQpts",
 	"spine": "4.2.43",
 	"x": -49.38,
 	"y": -2.11,
@@ -2371,7 +2371,16 @@
 	}
 ],
 "events": {
+	"deploy_finished": {},
+	"deploy_started": {},
+	"grenade_finished": {},
+	"grenade_started": {},
+	"grenade_throw": {},
+	"land_finished": {},
+	"land_started": {},
 	"reload": {},
+	"reload_finished": {},
+	"reload_started": {},
 	"start_shoot": {},
 	"stop_shoot": {},
 	"throw_grenade": {}
@@ -2754,6 +2763,10 @@
 					{ "slot": "head", "offset": -18 }
 				]
 			}
+		],
+		"events": [
+			{ "name": "deploy_started" },
+			{ "time": 0.7, "name": "deploy_finished" }
 		]
 	},
 	"E/electrocuted": {
@@ -4536,7 +4549,10 @@
 			}
 		],
 		"events": [
-			{ "time": 1.3667, "name": "throw_grenade" }
+			{ "name": "grenade_started" },
+			{ "time": 1.3667, "name": "grenade_throw" },
+			{ "time": 1.3667, "name": "throw_grenade" },
+			{ "time": 2.1667, "name": "grenade_finished" }
 		]
 	},
 	"E/land": {
@@ -4619,7 +4635,11 @@
 					{ "time": 0.5, "x": -25.3, "y": -16.94 }
 				]
 			}
-		}
+		},
+		"events": [
+			{ "name": "land_started" },
+			{ "time": 0.7, "name": "land_finished" }
+		]
 	},
 	"E/land_fall_down_back": {
 		"slots": {
@@ -5721,7 +5741,11 @@
 			"aim-torso-const": [
 				{ "mixRotate": 0.4, "mixX": 0, "mixScaleX": 0, "mixShearY": 0 }
 			]
-		}
+		},
+		"events": [
+			{ "name": "reload_started" },
+			{ "time": 0.5, "name": "reload_finished" }
+		]
 	},
 	"E/mp40_run": {
 		"slots": {

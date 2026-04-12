@@ -49,6 +49,11 @@ public class ParatrooperController_V2 : MonoBehaviour
         
     }
 
+    public void StartGame()
+    {
+        OnDeploy();
+    }
+
     public void OnAnimationEvent(AnimationEventType eventName)
     {
         switch (eventName)
@@ -61,6 +66,16 @@ public class ParatrooperController_V2 : MonoBehaviour
                 _weaponSystem.Grenade();
                 break;
         }
+    }
+
+    public void OnDeploy()
+    {
+        _stateMachine.ChangeState(StickmanBodyState.Deploy);
+    }
+
+    public void OnLanded()
+    {
+        _stateMachine.ChangeState(StickmanBodyState.Shoot);
     }
 
     internal void Tick(float deltaTime)
