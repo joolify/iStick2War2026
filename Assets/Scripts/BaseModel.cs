@@ -21,6 +21,7 @@ namespace iStick2War
         public bool isMagicSpelled = false;
         public bool isElectrocuted = false;
         public bool shouldRun = false;
+        public bool isFacingRight;
 
         public bool shootFlameThrower = false;
         public bool shootTesla = false;

@@ -25,6 +25,8 @@ namespace iStick2War
 
         public Muzzle muzzle;
 
+        public int DEBUGCOUNTER;
+
         public override void Start()
         {
             if (skeletonAnimation == null) skeletonAnimation = GetComponent<SkeletonAnimation>();
@@ -94,10 +96,14 @@ namespace iStick2War
 
             RaycastHit2D hit = Physics2D.Raycast(aimPos, direction, 100f, whatToHit);
 
+            Debug.Log("whatToHit: " + whatToHit);
+
             //Debug.DrawLine(firePointPosition, (direction) * 100, Color.cyan);
-            Debug.Log("GunBase.StartShoot1");
+            Debug.Log("GunBase.StartShoot1: " + (hit.collider == null));
             if (hit.collider != null)
             {
+                DEBUGCOUNTER++;
+                Debug.Log("DEBUGCOUNTER: " + DEBUGCOUNTER);
                 Debug.Log("GunBase.StartShoot2");
                 Debug.DrawLine(aimPos, hit.point, Color.red);
 

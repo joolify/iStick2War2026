@@ -170,8 +170,10 @@ namespace iStick2War
             if (model.shouldRun)
             {
                 HideParachute();
-                var isFacingRight = transform.parent.localScale.x > 0;
+                //var isFacingRight = transform.parent.localScale.x > 0;
+                var isFacingRight = model.isFacingRight;
                 transform.Translate(isFacingRight ? -0.2f : 0.2f, 0f, 0f);
+
             }
         }
 
@@ -259,7 +261,8 @@ namespace iStick2War
         {
             base.Explode();
 
-            var isFacingRight = transform.parent.localScale.x > 0;
+            //var isFacingRight = transform.parent.localScale.x > 0;
+            var isFacingRight = model.isFacingRight;
 
             var mp40 = Instantiate(weapon, skeletonAnimation.transform.position, UnityEngine.Quaternion.Euler(0f, 0f, 0f));
             var mp40Sprite = mp40.GetComponent<SpriteRenderer>();

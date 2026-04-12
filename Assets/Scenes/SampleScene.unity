@@ -448,7 +448,8 @@ GameObject:
   - component: {fileID: 264126703}
   - component: {fileID: 264126702}
   - component: {fileID: 264126701}
-  m_Layer: 10
+  - component: {fileID: 264126705}
+  m_Layer: 13
   m_Name: Arm-Lower-Front-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -591,6 +592,25 @@ MonoBehaviour:
   usedByEffector: 0
   usedByComposite: 0
   clearStateOnDisable: 1
+--- !u!114 &264126705
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 264126699}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43a11e1ef77c24848bf3d91fc6e845f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::iStick2War.StickmanBodypart
+  DamageMultiplier: 1
+  skeletonAnimation: {fileID: 569340909}
+  bodyPart: 1
+  damageMultiplier: 1
+  bodyPartBoneName: arm-lower-front
+  damageable: {fileID: 569340914}
+  model: {fileID: 1721460133}
 --- !u!1 &264893750
 GameObject:
   m_ObjectHideFlags: 0
@@ -682,7 +702,8 @@ GameObject:
   - component: {fileID: 314199766}
   - component: {fileID: 314199765}
   - component: {fileID: 314199764}
-  m_Layer: 10
+  - component: {fileID: 314199768}
+  m_Layer: 13
   m_Name: Arm-Upper-Front-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -825,6 +846,25 @@ MonoBehaviour:
   usedByEffector: 0
   usedByComposite: 0
   clearStateOnDisable: 1
+--- !u!114 &314199768
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 314199762}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43a11e1ef77c24848bf3d91fc6e845f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::iStick2War.StickmanBodypart
+  DamageMultiplier: 1
+  skeletonAnimation: {fileID: 569340909}
+  bodyPart: 1
+  damageMultiplier: 1
+  bodyPartBoneName: arm-upper-front
+  damageable: {fileID: 569340914}
+  model: {fileID: 1721460133}
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -993,7 +1033,8 @@ GameObject:
   - component: {fileID: 357300265}
   - component: {fileID: 357300264}
   - component: {fileID: 357300263}
-  m_Layer: 10
+  - component: {fileID: 357300267}
+  m_Layer: 13
   m_Name: Leg-Lower-Back-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1009,7 +1050,7 @@ Transform:
   m_GameObject: {fileID: 357300261}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.6293059, w: 0.77715766}
-  m_LocalPosition: {x: 0.37219846, y: 0.8899331, z: 0}
+  m_LocalPosition: {x: 0.372198, y: 0.8899331, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1136,6 +1177,25 @@ MonoBehaviour:
   usedByEffector: 0
   usedByComposite: 0
   clearStateOnDisable: 1
+--- !u!114 &357300267
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 357300261}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43a11e1ef77c24848bf3d91fc6e845f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::iStick2War.StickmanBodypart
+  DamageMultiplier: 1
+  skeletonAnimation: {fileID: 569340909}
+  bodyPart: 3
+  damageMultiplier: 1
+  bodyPartBoneName: leg-lower-back
+  damageable: {fileID: 569340914}
+  model: {fileID: 1721460133}
 --- !u!1 &405716497
 GameObject:
   m_ObjectHideFlags: 0
@@ -1191,7 +1251,7 @@ MonoBehaviour:
   cam: {fileID: 330585545}
   whatToHit:
     serializedVersion: 2
-    m_Bits: 1024
+    m_Bits: 8192
   offSetX: 0
   offSetY: 0
   offSetZ: 90
@@ -1202,6 +1262,7 @@ MonoBehaviour:
   effectSpawnRate: 10
   maxAmmo: 1000
   muzzle: {fileID: 0}
+  DEBUGCOUNTER: 0
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -1342,7 +1403,8 @@ GameObject:
   - component: {fileID: 430915100}
   - component: {fileID: 430915099}
   - component: {fileID: 430915098}
-  m_Layer: 10
+  - component: {fileID: 430915102}
+  m_Layer: 13
   m_Name: Leg-Upper-Back-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1358,7 +1420,7 @@ Transform:
   m_GameObject: {fileID: 430915096}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.38096988, w: 0.9245874}
-  m_LocalPosition: {x: -0.043711305, y: 1.3058698, z: 0}
+  m_LocalPosition: {x: -0.043711662, y: 1.3058698, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1485,6 +1547,25 @@ MonoBehaviour:
   usedByEffector: 0
   usedByComposite: 0
   clearStateOnDisable: 1
+--- !u!114 &430915102
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 430915096}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43a11e1ef77c24848bf3d91fc6e845f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::iStick2War.StickmanBodypart
+  DamageMultiplier: 1
+  skeletonAnimation: {fileID: 569340909}
+  bodyPart: 3
+  damageMultiplier: 1
+  bodyPartBoneName: leg-upper-back
+  damageable: {fileID: 569340914}
+  model: {fileID: 1721460133}
 --- !u!1 &488909758
 GameObject:
   m_ObjectHideFlags: 0
@@ -1498,7 +1579,8 @@ GameObject:
   - component: {fileID: 488909762}
   - component: {fileID: 488909761}
   - component: {fileID: 488909760}
-  m_Layer: 10
+  - component: {fileID: 488909764}
+  m_Layer: 13
   m_Name: Leg-Upper-Front-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1514,7 +1596,7 @@ Transform:
   m_GameObject: {fileID: 488909758}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.45540038, w: 0.89028674}
-  m_LocalPosition: {x: -0.04391253, y: 1.3072696, z: 0}
+  m_LocalPosition: {x: -0.04391265, y: 1.3072696, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1641,6 +1723,25 @@ MonoBehaviour:
   usedByEffector: 0
   usedByComposite: 0
   clearStateOnDisable: 1
+--- !u!114 &488909764
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 488909758}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43a11e1ef77c24848bf3d91fc6e845f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::iStick2War.StickmanBodypart
+  DamageMultiplier: 1
+  skeletonAnimation: {fileID: 569340909}
+  bodyPart: 3
+  damageMultiplier: 1
+  bodyPartBoneName: leg-upper-front
+  damageable: {fileID: 569340914}
+  model: {fileID: 1721460133}
 --- !u!1 &492235553
 GameObject:
   m_ObjectHideFlags: 0
@@ -1689,6 +1790,7 @@ MonoBehaviour:
   DamageMultiplier: 1
   skeletonAnimation: {fileID: 569340909}
   bodyPart: 2
+  damageMultiplier: 1
   bodyPartBoneName: torso
   damageable: {fileID: 569340914}
   model: {fileID: 1721460133}
@@ -1793,6 +1895,7 @@ MonoBehaviour:
   DamageMultiplier: 1
   skeletonAnimation: {fileID: 569340909}
   bodyPart: 1
+  damageMultiplier: 1
   bodyPartBoneName: arm-upper-front
   damageable: {fileID: 569340914}
   model: {fileID: 1721460133}
@@ -1949,6 +2052,7 @@ MonoBehaviour:
   DamageMultiplier: 1
   skeletonAnimation: {fileID: 569340909}
   bodyPart: 3
+  damageMultiplier: 1
   bodyPartBoneName: leg-lower-front
   damageable: {fileID: 569340914}
   model: {fileID: 1721460133}
@@ -2311,6 +2415,7 @@ MonoBehaviour:
   isMagicSpelled: 0
   isElectrocuted: 0
   shouldRun: 0
+  isFacingRight: 0
   shootFlameThrower: 0
   shootTesla: 0
   currentSpeed: 0
@@ -2554,7 +2659,8 @@ GameObject:
   - component: {fileID: 688802029}
   - component: {fileID: 688802028}
   - component: {fileID: 688802027}
-  m_Layer: 10
+  - component: {fileID: 688802031}
+  m_Layer: 13
   m_Name: Head-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2570,7 +2676,7 @@ Transform:
   m_GameObject: {fileID: 688802025}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: 0.6604605, w: 0.7508608}
-  m_LocalPosition: {x: -0.14702952, y: 1.9559703, z: 0}
+  m_LocalPosition: {x: -0.14702928, y: 1.9559703, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2699,6 +2805,25 @@ MonoBehaviour:
   usedByEffector: 0
   usedByComposite: 0
   clearStateOnDisable: 1
+--- !u!114 &688802031
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 688802025}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43a11e1ef77c24848bf3d91fc6e845f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::iStick2War.StickmanBodypart
+  DamageMultiplier: 1
+  skeletonAnimation: {fileID: 569340909}
+  bodyPart: 0
+  damageMultiplier: 1
+  bodyPartBoneName: head
+  damageable: {fileID: 569340914}
+  model: {fileID: 1721460133}
 --- !u!1 &805326341
 GameObject:
   m_ObjectHideFlags: 0
@@ -2799,6 +2924,7 @@ MonoBehaviour:
   DamageMultiplier: 1
   skeletonAnimation: {fileID: 569340909}
   bodyPart: 1
+  damageMultiplier: 1
   bodyPartBoneName: arm-lower-front
   damageable: {fileID: 569340914}
   model: {fileID: 1721460133}
@@ -3154,7 +3280,7 @@ Transform:
   m_GameObject: {fileID: 965732798}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.88, y: -1.56, z: 0}
+  m_LocalPosition: {x: 8.59, y: -1.56, z: 0}
   m_LocalScale: {x: -0.2679, y: 0.2679, z: 0.5358}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3494,6 +3620,7 @@ MonoBehaviour:
   effectSpawnRate: 10
   maxAmmo: 10
   muzzle: {fileID: 0}
+  DEBUGCOUNTER: 0
 --- !u!1 &1025108094
 GameObject:
   m_ObjectHideFlags: 0
@@ -3560,6 +3687,7 @@ MonoBehaviour:
   effectSpawnRate: 10
   maxAmmo: 1000
   muzzle: {fileID: 0}
+  DEBUGCOUNTER: 0
 --- !u!1 &1050344624
 GameObject:
   m_ObjectHideFlags: 0
@@ -3644,6 +3772,7 @@ MonoBehaviour:
   DamageMultiplier: 1
   skeletonAnimation: {fileID: 569340909}
   bodyPart: 0
+  damageMultiplier: 1
   bodyPartBoneName: head
   damageable: {fileID: 569340914}
   model: {fileID: 1721460133}
@@ -3893,7 +4022,8 @@ GameObject:
   - component: {fileID: 1227363696}
   - component: {fileID: 1227363695}
   - component: {fileID: 1227363694}
-  m_Layer: 10
+  - component: {fileID: 1227363698}
+  m_Layer: 13
   m_Name: Arm-Upper-Back-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3909,7 +4039,7 @@ Transform:
   m_GameObject: {fileID: 1227363692}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.60981345, w: 0.79254496}
-  m_LocalPosition: {x: -0.18455279, y: 1.9210145, z: 0}
+  m_LocalPosition: {x: -0.18455303, y: 1.9210145, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4036,6 +4166,25 @@ MonoBehaviour:
   usedByEffector: 0
   usedByComposite: 0
   clearStateOnDisable: 1
+--- !u!114 &1227363698
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1227363692}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43a11e1ef77c24848bf3d91fc6e845f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::iStick2War.StickmanBodypart
+  DamageMultiplier: 1
+  skeletonAnimation: {fileID: 569340909}
+  bodyPart: 1
+  damageMultiplier: 1
+  bodyPartBoneName: arm-upper-back
+  damageable: {fileID: 569340914}
+  model: {fileID: 1721460133}
 --- !u!1 &1228012590
 GameObject:
   m_ObjectHideFlags: 0
@@ -4049,7 +4198,8 @@ GameObject:
   - component: {fileID: 1228012594}
   - component: {fileID: 1228012593}
   - component: {fileID: 1228012592}
-  m_Layer: 10
+  - component: {fileID: 1228012596}
+  m_Layer: 13
   m_Name: Foot-Front-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4065,7 +4215,7 @@ Transform:
   m_GameObject: {fileID: 1228012590}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.02792164, w: 0.9996101}
-  m_LocalPosition: {x: 0.2998985, y: 0.14600945, z: 0}
+  m_LocalPosition: {x: 0.29989815, y: 0.14600945, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4192,6 +4342,25 @@ MonoBehaviour:
   usedByEffector: 0
   usedByComposite: 0
   clearStateOnDisable: 1
+--- !u!114 &1228012596
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1228012590}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43a11e1ef77c24848bf3d91fc6e845f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::iStick2War.StickmanBodypart
+  DamageMultiplier: 1
+  skeletonAnimation: {fileID: 569340909}
+  bodyPart: 3
+  damageMultiplier: 1
+  bodyPartBoneName: foot-front
+  damageable: {fileID: 569340914}
+  model: {fileID: 1721460133}
 --- !u!1 &1411841198
 GameObject:
   m_ObjectHideFlags: 0
@@ -4328,7 +4497,8 @@ GameObject:
   - component: {fileID: 1455711374}
   - component: {fileID: 1455711373}
   - component: {fileID: 1455711372}
-  m_Layer: 10
+  - component: {fileID: 1455711376}
+  m_Layer: 13
   m_Name: Torso-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4474,6 +4644,25 @@ MonoBehaviour:
   usedByEffector: 0
   usedByComposite: 0
   clearStateOnDisable: 1
+--- !u!114 &1455711376
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1455711370}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43a11e1ef77c24848bf3d91fc6e845f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::iStick2War.StickmanBodypart
+  DamageMultiplier: 1
+  skeletonAnimation: {fileID: 569340909}
+  bodyPart: 2
+  damageMultiplier: 1
+  bodyPartBoneName: torso
+  damageable: {fileID: 569340914}
+  model: {fileID: 1721460133}
 --- !u!1 &1492787000
 GameObject:
   m_ObjectHideFlags: 0
@@ -4487,7 +4676,8 @@ GameObject:
   - component: {fileID: 1492787004}
   - component: {fileID: 1492787003}
   - component: {fileID: 1492787002}
-  m_Layer: 10
+  - component: {fileID: 1492787006}
+  m_Layer: 13
   m_Name: Foot-Back-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4503,7 +4693,7 @@ Transform:
   m_GameObject: {fileID: 1492787000}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.029055638, w: 0.9995778}
-  m_LocalPosition: {x: 0.5160545, y: 0.20876026, z: 0}
+  m_LocalPosition: {x: 0.5160543, y: 0.20876026, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4631,6 +4821,25 @@ MonoBehaviour:
   usedByEffector: 0
   usedByComposite: 0
   clearStateOnDisable: 1
+--- !u!114 &1492787006
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1492787000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43a11e1ef77c24848bf3d91fc6e845f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::iStick2War.StickmanBodypart
+  DamageMultiplier: 1
+  skeletonAnimation: {fileID: 569340909}
+  bodyPart: 3
+  damageMultiplier: 1
+  bodyPartBoneName: foot-back
+  damageable: {fileID: 569340914}
+  model: {fileID: 1721460133}
 --- !u!1 &1616781456
 GameObject:
   m_ObjectHideFlags: 0
@@ -4644,7 +4853,8 @@ GameObject:
   - component: {fileID: 1616781460}
   - component: {fileID: 1616781459}
   - component: {fileID: 1616781458}
-  m_Layer: 10
+  - component: {fileID: 1616781462}
+  m_Layer: 13
   m_Name: Leg-Lower-Front-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4660,7 +4870,7 @@ Transform:
   m_GameObject: {fileID: 1616781456}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.7142838, w: 0.69985616}
-  m_LocalPosition: {x: 0.31337774, y: 0.8118708, z: 0}
+  m_LocalPosition: {x: 0.3133781, y: 0.8118708, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4787,6 +4997,25 @@ MonoBehaviour:
   usedByEffector: 0
   usedByComposite: 0
   clearStateOnDisable: 1
+--- !u!114 &1616781462
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1616781456}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43a11e1ef77c24848bf3d91fc6e845f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::iStick2War.StickmanBodypart
+  DamageMultiplier: 1
+  skeletonAnimation: {fileID: 569340909}
+  bodyPart: 3
+  damageMultiplier: 1
+  bodyPartBoneName: leg-lower-front
+  damageable: {fileID: 569340914}
+  model: {fileID: 1721460133}
 --- !u!1 &1721460132
 GameObject:
   m_ObjectHideFlags: 0
@@ -4831,6 +5060,7 @@ MonoBehaviour:
   isMagicSpelled: 0
   isElectrocuted: 0
   shouldRun: 0
+  isFacingRight: 1
   shootFlameThrower: 0
   shootTesla: 0
   currentSpeed: 0
@@ -4846,8 +5076,8 @@ Transform:
   m_GameObject: {fileID: 1721460132}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 5.19, y: 1.99, z: 0}
-  m_LocalScale: {x: -1, y: 1, z: 1}
+  m_LocalPosition: {x: -1.25, y: 2.1, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 569340908}
@@ -5081,7 +5311,8 @@ GameObject:
   - component: {fileID: 1845056575}
   - component: {fileID: 1845056574}
   - component: {fileID: 1845056576}
-  m_Layer: 10
+  - component: {fileID: 1845056577}
+  m_Layer: 13
   m_Name: Arm-Lower-Back-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5097,7 +5328,7 @@ Transform:
   m_GameObject: {fileID: 1845056571}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: 0.5130349, w: 0.85836774}
-  m_LocalPosition: {x: -0.09222758, y: 1.5747097, z: 0}
+  m_LocalPosition: {x: -0.09222782, y: 1.5747097, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5224,6 +5455,25 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
+--- !u!114 &1845056577
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1845056571}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43a11e1ef77c24848bf3d91fc6e845f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::iStick2War.StickmanBodypart
+  DamageMultiplier: 1
+  skeletonAnimation: {fileID: 569340909}
+  bodyPart: 1
+  damageMultiplier: 1
+  bodyPartBoneName: arm-lower-back
+  damageable: {fileID: 569340914}
+  model: {fileID: 1721460133}
 --- !u!1 &1985666074
 GameObject:
   m_ObjectHideFlags: 0
@@ -6067,6 +6317,7 @@ MonoBehaviour:
   DamageMultiplier: 1
   skeletonAnimation: {fileID: 569340909}
   bodyPart: 3
+  damageMultiplier: 1
   bodyPartBoneName: leg-upper-front
   damageable: {fileID: 569340914}
   model: {fileID: 1721460133}

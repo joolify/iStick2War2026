@@ -64,6 +64,78 @@ namespace iStick2War
         void OnCollisionEnter2D(Collision2D col)
         {
             Debug.Log("COLLISION with: " + col.gameObject.name);
+
+            if (col.gameObject.TryGetComponent<StickmanBodypart>(out var hitbox))
+            {
+                Debug.Log("Hit body part: " + hitbox.bodyPart);
+
+                //HandleHit(hitbox.bodyPart);
+            }
+
+            //switch (col.gameObject.name)
+            //{
+            //    case "Arm-Lower-Front-Hitbox":
+            //        model.LandDie();
+            //        break;
+            //    case "Arm-Lower-Back-Hitbox":
+            //        model.LandDie();
+            //        break;
+            //    case "Arm-Upper-Back-Hitbox":
+            //        model.LandDie();
+            //        break;
+            //    case "Arm-Upper-Front-Hitbox":
+            //        model.LandDie();
+            //        break;
+            //    case "Foot-Back-Hitbox":
+            //        model.LandDie();
+            //        break;
+            //    case "Foot-Front-Hitbox":
+            //        model.LandDie();
+            //        break;
+            //    case "Head-Hitbox":
+            //        model.LandDie();
+            //        break;
+            //    case "Leg-Lower-Back-Hitbox":
+            //        model.LandDie();
+            //        break;
+            //    case "Leg-Lower-Front-Hitbox":
+            //        model.LandDie();
+            //        break;
+            //    case "Leg-Upper-Back-Hitbox":
+            //        model.LandDie();
+            //        break;
+            //    case "Leg-Upper-Front-Hitbox":
+            //        model.LandDie();
+            //        break;
+            //    case "Torso-Hitbox":
+            //        model.LandDie();
+            //        break;
+            //    default:
+            //        break;
+            //}
+            //FIXME
+        }
+
+        void HandleHit(BodyPartType part)
+        {
+            switch (part)
+            {
+                case BodyPartType.Head:
+                    model.LandDie(); // maybe instant kill
+                    break;
+
+                case BodyPartType.Torso:
+                    model.LandDie();
+                    break;
+
+                case BodyPartType.Arms:
+                    model.LandDie();
+                    break;
+
+                case BodyPartType.Legs:
+                    model.LandDie();
+                    break;
+            }
         }
 
         void OnTriggerEnter2D(Collider2D other)

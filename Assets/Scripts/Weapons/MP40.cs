@@ -41,7 +41,7 @@ namespace iStick2War
             Debug.Log("MP40.Shoot");
             Debug.Log("skeletonAnimation: " + (skeletonAnimation == null));
             Debug.Log("aimPointBone: " + (aimPointBone == null));
-            Vector3 aimPos = skeletonAnimation.transform.TransformPoint( new Vector3(aimPointBone.WorldX, aimPointBone.WorldY, 0));
+            Vector3 aimPos = skeletonAnimation.transform.TransformPoint(new Vector3(aimPointBone.WorldX, aimPointBone.WorldY, 0));
             //Vector2 firePointPosition = new Vector2((skeletonAnimation.transform.position.x + aimPointBone.WorldX), (skeletonAnimation.transform.position.y + aimPointBone.WorldY) * skeletonAnimation.skeleton.ScaleY);
             Vector2 firePointPosition = aimPos;
             //Add randomness to AI bots
@@ -49,7 +49,8 @@ namespace iStick2War
             var shootingUp = UnityEngine.Random.value > 0.5f;
             Vector2 playerPosition = new Vector2(target.position.x, firePointPosition.y + (shootingUp ? shootingRangeY : -shootingRangeY));
 
-            var direction = playerPosition - firePointPosition;
+            //var direction = playerPosition - firePointPosition;
+            var direction = (playerPosition - firePointPosition).normalized;
 
             Muzzle(direction);
 
@@ -59,7 +60,7 @@ namespace iStick2War
             //Debug.DrawLine(firePointPosition, firePointPosition + direction * 100, Color.cyan);
 #if UNITY_EDITOR
             //Debug.DrawLine(firePointPosition, firePointPosition + direction.normalized * 100, Color.cyan);
-            Debug.DrawLine( aimPos, aimPos + (Vector3)(direction.normalized * 100f), Color.cyan
+            Debug.DrawLine(aimPos, aimPos + (Vector3)(direction.normalized * 100f), Color.cyan
 );
 #endif
             Debug.Log("StickmanAutoShoot: hit.collider:" + hit.collider);
@@ -70,9 +71,11 @@ namespace iStick2War
 
                 var bodyPart = hit.collider.GetComponent<StickmanBodypart>();
 
+                Debug.Log("StickmanAutoShoot: BodyPart: " + (bodyPart == null));
+
                 if (bodyPart != null)
                 {
-                    Debug.Log("StickmanAutoShoot: BodyPart");
+                    Debug.Log("StickmanAutoShoot: BodyPart != null");
                     bodyPart.TakeDamage(Damage);
                 }
 

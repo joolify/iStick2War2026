@@ -6,7 +6,7 @@ using Random = UnityEngine.Random;
 
 namespace iStick2War
 {
-    public enum BodyPart
+    public enum BodyPartType
     {
         Head,
         Arms,
@@ -26,7 +26,9 @@ namespace iStick2War
         public Spine.AnimationState spineAnimationState;
         public Spine.Skeleton skeleton;
 
-        public BodyPart bodyPart;
+        public BodyPartType bodyPart;
+
+        public float damageMultiplier = 1f;
 
         [SpineBone(dataField: "skeletonAnimation")]
         public string bodyPartBoneName;
@@ -45,6 +47,22 @@ namespace iStick2War
 
             if (damageable == null) damageable = transform.parent.GetComponent<Damageable>();
         }
+
+        void Update()
+        {
+            var rb = GetComponent<Rigidbody2D>();
+            var col = GetComponent<PolygonCollider2D>();
+
+            Debug.Log(
+                gameObject.name +
+                " | active: " + gameObject.activeInHierarchy +
+                " | simulated: " + (rb != null && rb.simulated) +
+                " | enabled: " + col.enabled +
+                " | points: " + col.points.Length +
+                " | scale: " + transform.lossyScale
+            );
+        }
+
         void Start()
         {
             if (skeletonAnimation == null) skeletonAnimation = GetComponent<SkeletonAnimation>();
@@ -80,26 +98,32 @@ namespace iStick2War
             Debug.Log("StickmanBodypart.damageable" + (damageable == null));
             Debug.Log("StickmanBodypart.damageable.stats" + (damageable.stats == null));
             damageable.stats.curHealth -= damage * DamageMultiplier;
-            Debug.Log("StickmanBodyPart.TakeDamage " + gameObject.name + " got hit " + damage * DamageMultiplier);
+            Debug.Log("StickmanBodyPart.TakeDamage " + gameObject.name + " got hit " + damage * DamageMultiplier  + ", curHealth: " + damageable.stats.curHealth);
+
+            Debug.Log("Simulated: " + GetComponent<Rigidbody2D>().simulated);
+            Debug.Log("Scale: " + transform.lossyScale);
+            var poly = GetComponent<PolygonCollider2D>();
+            Debug.Log("Points: " + poly.points.Length);
 
             if (damageable.stats.curHealth <= 0)
             {
+                Debug.Log("StickmanBodyPart.TakeDamage.isDead = true, " + bodyPart);
                 //TODO Move to Pool boss
                 model.isDead = true;
                 switch (bodyPart)
                 {
-                    case BodyPart.Head:
+                    case BodyPartType.Head:
                         model.ShootHead();
                         model.DropHelmet();
                         break;
-                    case BodyPart.Arms:
+                    case BodyPartType.Arms:
                         model.ShootArms();
                         break;
-                    case BodyPart.Torso:
+                    case BodyPartType.Torso:
                         model.ShootTorso();
                         model.DropHelmet();
                         break;
-                    case BodyPart.Legs:
+                    case BodyPartType.Legs:
                         model.ShootLegs();
                         break;
                     default:
@@ -118,8 +142,9 @@ namespace iStick2War
                 //    }
                 //}
 
-                int deadLayer = LayerMask.NameToLayer("EnemyDead");
-                SetLayerRecursively(model.gameObject, deadLayer);
+                Debug.Log("SETTING DEAD LAYER");
+                //int deadLayer = LayerMask.NameToLayer("EnemyDead");
+                //SetLayerRecursively(model.gameObject, deadLayer);
 
                 //FIXME Collider2D
             }
