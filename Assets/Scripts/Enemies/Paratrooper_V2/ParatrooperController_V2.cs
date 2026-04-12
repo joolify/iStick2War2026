@@ -80,10 +80,15 @@ public class ParatrooperController_V2 : MonoBehaviour
 
     internal void Tick(float deltaTime)
     {
-        throw new NotImplementedException();
+        //FIXME
     }
 
     internal void EnterInitialState()
+    {
+        throw new NotImplementedException();
+    }
+
+    internal void OnAnimationEvent(object reloadStarted)
     {
         throw new NotImplementedException();
     }

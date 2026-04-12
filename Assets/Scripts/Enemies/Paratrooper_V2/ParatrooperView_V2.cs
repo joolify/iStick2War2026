@@ -52,6 +52,8 @@ public class ParatrooperView_V2 : MonoBehaviour
 
     public void Initialize(ParatrooperStateMachine_V2 stateMachine)
     {
+        _skeletonAnimation = GetComponent<SkeletonAnimation>();
+
         _stateMachine = stateMachine;
 
         _stateMachine.OnStateChanged += HandleStateChanged;
@@ -94,7 +96,6 @@ public class ParatrooperView_V2 : MonoBehaviour
         Spine.Animation nextAnimation = null;
         int trackIndex = 0;
         bool loop = false;
-        Spine.AnimationState.TrackEntryDelegate @complete = null;
 
         // Map state → animation
 

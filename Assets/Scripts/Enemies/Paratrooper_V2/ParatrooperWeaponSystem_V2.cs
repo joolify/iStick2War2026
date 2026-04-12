@@ -24,7 +24,7 @@ using UnityEngine;
 /// - MUST NOT depend on animation logic directly
 /// - MUST remain deterministic
 /// </remarks>
-public class ParatrooperWeaponSystem_V2
+public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 {
     private ParatrooperModel_V2 model;
 
