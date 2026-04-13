@@ -125,6 +125,7 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
 
             _controller = new HeroController_V2(
                 _model,
+                _view,
                 _input,
                 _stateMachine,
                 _movementSystem,

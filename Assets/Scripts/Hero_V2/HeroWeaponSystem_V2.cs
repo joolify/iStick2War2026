@@ -110,5 +110,10 @@ namespace Assets.Scripts.Hero_V2
         {
             isDisabled = true;
         }
+
+        internal void Shoot()
+        {
+            //FIXME
+        }
     }
 }

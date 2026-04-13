@@ -41,6 +41,7 @@ namespace Assets.Scripts.Hero_V2
     internal class HeroController_V2 : MonoBehaviour
     {
         private readonly HeroModel_V2 _model;
+        private readonly HeroView_V2 _view;
 
         private readonly HeroInput_V2 _input;
         private readonly HeroStateMachine_V2 _stateMachine;
@@ -49,12 +50,14 @@ namespace Assets.Scripts.Hero_V2
 
         public HeroController_V2(
             HeroModel_V2 model,
+            HeroView_V2 view,
             HeroInput_V2 input,
             HeroStateMachine_V2 stateMachine,
             HeroMovementSystem_V2 movementSystem,
             HeroWeaponSystem_V2 weaponSystem)
         {
             _model = model;
+            _view = view;
             _input = input;
             _stateMachine = stateMachine;
             _movementSystem = movementSystem;
@@ -64,6 +67,7 @@ namespace Assets.Scripts.Hero_V2
         public void Tick(float deltaTime)
         {
             ReadInput();
+            HandleCombat();
             HandleStateTransitions();
             ExecuteActions(deltaTime);
         }
@@ -90,25 +94,53 @@ namespace Assets.Scripts.Hero_V2
                 return;
             }
 
-            // Reload
-            if (_model.isReloadPressed && _weaponSystem.CanReload())
-            {
-                _stateMachine.ChangeState(HeroState.Reloading);
-                return;
-            }
+            //// Reload
+            //if (_model.isReloadPressed && _weaponSystem.CanReload())
+            //{
+            //    _stateMachine.ChangeState(HeroState.Reloading);
+            //    return;
+            //}
 
-            // Shooting
-            if (_model.isShootingPressed && _weaponSystem.CanShoot())
-            {
-                _stateMachine.ChangeState(HeroState.Shooting);
-                return;
-            }
+            //// Shooting
+            //if (_model.isShootingPressed && _weaponSystem.CanShoot())
+            //{
+            //    _stateMachine.ChangeState(HeroState.Shooting);
+            //    return;
+            //}
 
             // Movement
             if (_model.moveInput != Vector2.zero)
             {
                 _stateMachine.ChangeState(HeroState.Moving);
                 return;
+            }
+
+            // Default
+            _stateMachine.ChangeState(HeroState.Idle);
+        }
+
+        private void HandleCombat()
+        {
+            Debug.Log("HandleCombat: " + _input.IsShootingReleased);
+            if (_input.IsShootingPressed && _weaponSystem.CanShoot())
+            {
+                _weaponSystem.Shoot();
+
+                _view.PlayShoot();
+            }
+
+            if (_input.IsShootingReleased)
+            {
+                _stateMachine.ChangeState(HeroState.Idle);
+
+                _view.StopShoot();
+            }
+
+            if (_model.isReloadPressed && _weaponSystem.CanReload())
+            {
+                _weaponSystem.Reload();
+
+                _view.PlayReload();
             }
         }
 

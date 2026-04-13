@@ -62,6 +62,7 @@ namespace Assets.Scripts.Hero_V2
         [Header("Animations")]
         public AnimationReferenceAsset _idleThompsonAnim;
         public AnimationReferenceAsset _shootingThompsonAnim;
+        public AnimationReferenceAsset _runThompsonAnim;
 
         // -------------------------
         // INIT
@@ -148,13 +149,17 @@ namespace Assets.Scripts.Hero_V2
                     PlayLoop(_shootingThompsonAnim);
                     break;
 
-                    //case HeroState.Reloading:
-                    //    PlayOneShot("reload");
-                    //    break;
+                //case HeroState.Reloading:
+                //    PlayOneShot("reload");
+                //    break;
 
-                    //case HeroState.Dead:
-                    //    PlayOneShot("dead");
-                    //    break;
+                //case HeroState.Dead:
+                //    PlayOneShot("dead");
+                //    break;
+
+                case HeroState.Moving:
+                    PlayLoop(_runThompsonAnim);
+                    break;
             }
         }
 
@@ -352,8 +357,24 @@ namespace Assets.Scripts.Hero_V2
             if (!_idleThompsonAnim.name.Equals("H_thompson_idle")) Debug.LogError(nameof(_idleThompsonAnim) + " has wrong animation");
             //if (!jumpThompsonAnim.name.Equals("H_thompson_jump")) Debug.LogError(nameof(jumpThompsonAnim) + " has wrong animation");
             //if (!reloadThompsonAnim.name.Equals("H_thompson_reload")) Debug.LogError(nameof(reloadThompsonAnim) + " has wrong animation");
-            //if (!runThompsonAnim.name.Equals("H_thompson_run")) Debug.LogError(nameof(runThompsonAnim) + " has wrong animation");
+            if (!_runThompsonAnim.name.Equals("H_thompson_run")) Debug.LogError(nameof(_runThompsonAnim) + " has wrong animation");
             if (!_shootingThompsonAnim.name.Equals("H_thompson_shoot")) Debug.LogError(nameof(_shootingThompsonAnim) + " has wrong animation");
+        }
+
+        internal void PlayShoot()
+        {
+            _skeletonAnimation.AnimationState.SetAnimation(1, _shootingThompsonAnim, true);
+        }
+
+        internal void StopShoot()
+        {
+            _skeletonAnimation.AnimationState.ClearTrack(1);
+        }
+
+        internal void PlayReload()
+        {
+            //throw new NotImplementedException();
+            //FIXME
         }
     }
 }
