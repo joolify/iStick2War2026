@@ -34,7 +34,7 @@ namespace Assets.Scripts.Hero_V2
  * This system owns the logic of "how weapons behave",
  * but does NOT decide when actions are triggered.
  */
-    internal class HeroWeaponSystem_V2 : MonoBehaviour
+    internal class HeroWeaponSystem_V2 
     {
         private HeroModel_V2 _model;
 

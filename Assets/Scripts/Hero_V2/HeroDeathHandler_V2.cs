@@ -56,7 +56,7 @@ namespace Assets.Scripts.Hero_V2
  *        ↓
  * View / GameManager reacts (animation, UI, restart, etc.)
  */
-    internal class HeroDeathHandler_V2 : MonoBehaviour
+    internal class HeroDeathHandler_V2 
     {
         private readonly HeroModel_V2 _model;
         private readonly HeroStateMachine_V2 _stateMachine;
@@ -77,6 +77,11 @@ namespace Assets.Scripts.Hero_V2
             _stateMachine = stateMachine;
             _movementSystem = movementSystem;
             _weaponSystem = weaponSystem;
+        }
+
+        internal void Initialize(HeroModel_V2 model, HeroStateMachine_V2 stateMachine, HeroView_V2 view)
+        {
+            throw new NotImplementedException();
         }
 
         // -------------------------

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Spine.Unity;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
@@ -47,24 +48,37 @@ namespace Assets.Scripts.Hero_V2
     public class Hero_V2 : MonoBehaviour
     {
         [Header("Core References")]
-        [SerializeField] private HeroModel_V2 model;
-        [SerializeField] private HeroView_V2 view;
+        [SerializeField] private HeroModel_V2 _model;
+        [SerializeField] private HeroView_V2 _view;
+        [SerializeField] private SkeletonAnimation _skeletonAnimation;
 
-        private HeroInput_V2 input;
-        private HeroController_V2 controller;
-        private HeroStateMachine_V2 stateMachine;
+        private HeroInput_V2 _input;
+        private HeroController_V2 _controller;
+        private HeroStateMachine_V2 _stateMachine;
 
-        private HeroMovementSystem_V2 movementSystem;
-        private HeroWeaponSystem_V2 weaponSystem;
+        private HeroMovementSystem_V2 _movementSystem;
+        private HeroWeaponSystem_V2 _weaponSystem;
 
-        private HeroDamageReceiver_V2 damageReceiver;
-        private HeroDeathHandler_V2 deathHandler;
+        private HeroDamageReceiver_V2 _damageReceiver;
+        private HeroDeathHandler_V2 _deathHandler;
 
         private void Awake()
         {
-            //BindComponents();
-            //CreateSystems();
-            //InitSystems();
+            BindComponents();
+            CreateSystems();
+            InitSystems();
+
+            // -------------------------
+            // EVENTS
+            // -------------------------
+
+            _damageReceiver.OnDamageTaken += _view.PlayHitEffect;
+
+            _damageReceiver.OnDeath += _deathHandler.HandleDeath;
+
+            _deathHandler.OnDeathHandled += _view.PlayDeathEffect;
+
+            _deathHandler.OnDeathHandled += OnGameOver;
         }
 
         /*
@@ -74,58 +88,54 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
         deathHandler.OnDeathHandled += () => Debug.Log("GAME OVER");
         */
 
-        //private void Update()
-        //{
-        //    float dt = Time.deltaTime;
+        private void Update()
+        {
+            float dt = Time.deltaTime;
 
-        //    input.Tick();
+            _input.Tick();
 
-        //    controller.Tick(dt);
-        //    stateMachine.Tick(dt);
+            _controller.Tick(dt);
+        }
 
-        //    movementSystem.Tick(dt);
-        //    weaponSystem.Tick(dt);
+        private void OnGameOver()
+        {
+            Debug.Log("GAME OVER");
+        }
 
-        //    view.Tick(dt);
-        //}
+        private void BindComponents()
+        {
+            if (_model == null)
+                _model = GetComponent<HeroModel_V2>();
 
-        //private void BindComponents()
-        //{
-        //    if (model == null)
-        //        model = GetComponent<HeroModel_V2>();
+            if (_view == null)
+                _view = GetComponentInChildren<HeroView_V2>();
 
-        //    if (view == null)
-        //        view = GetComponentInChildren<HeroView_V2>();
+            _input = GetComponent<HeroInput_V2>();
+            _damageReceiver = GetComponent<HeroDamageReceiver_V2>();
+            _deathHandler = GetComponent<HeroDeathHandler_V2>();
+        }
 
-        //    input = GetComponent<HeroInput_V2>();
-        //    damageReceiver = GetComponent<HeroDamageReceiver_V2>();
-        //    deathHandler = GetComponent<HeroDeathHandler_V2>();
-        //    animationForwarder = GetComponent<HeroAnimationForwarder_V2>();
-        //}
+        private void CreateSystems()
+        {
+            _stateMachine = new HeroStateMachine_V2();
+            _movementSystem = new HeroMovementSystem_V2(_model);
+            _weaponSystem = new HeroWeaponSystem_V2(_model);
 
-        //private void CreateSystems()
-        //{
-        //    stateMachine = new HeroStateMachine_V2(model);
+            _controller = new HeroController_V2(
+                _model,
+                _input,
+                _stateMachine,
+                _movementSystem,
+                _weaponSystem
+            );
+        }
 
-        //    movementSystem = new HeroMovementSystem_V2(model, stateMachine);
-        //    weaponSystem = new HeroWeaponSystem_V2(model, stateMachine, input);
+        private void InitSystems()
+        {
+            _damageReceiver.Initialize(_model, _stateMachine, _deathHandler);
+            _deathHandler.Initialize(_model, _stateMachine, _view);
 
-        //    controller = new HeroController_V2(
-        //        model,
-        //        input,
-        //        stateMachine,
-        //        movementSystem,
-        //        weaponSystem
-        //    );
-        //}
-
-        //private void InitSystems()
-        //{
-        //    damageReceiver.Init(model, stateMachine, deathHandler);
-        //    deathHandler.Init(model, stateMachine, view);
-
-        //    view.Init(model, stateMachine);
-        //    animationForwarder.Init(view, stateMachine);
-        //}
+            _view.Initialize(_stateMachine, _damageReceiver, _deathHandler, _skeletonAnimation);
+        }
     }
 }

@@ -6,34 +6,37 @@ using UnityEngine;
 namespace Assets.Scripts.Hero_V2
 {
     /*
-     * HeroController_V2 (extra viktigt)
-
-Den blir din “brain router”:
-
-input → actions
-state validation
-weapon triggers
-movement permission
-
-    CORE PRINCIPER (innan kod)
-
-Din controller ska:
-
-Läsa input (via HeroInput_V2)
-Fråga state machine: får vi göra detta?
-Skicka vidare till:
-MovementSystem
-WeaponSystem
-Uppdatera Model (inte View direkt)
-
-❌ INTE:
-
-Ingen fysik
-Ingen animation
-Ingen logik per feature
-
-    */
-    internal class HeroController_V2
+ * HeroController_V2 (Critical Component)
+ *
+ * This acts as the “brain router” of the Hero system.
+ *
+ * Responsibilities:
+ * - Translates input into gameplay actions
+ * - Validates actions against current state
+ * - Triggers weapon actions
+ * - Controls movement permissions
+ *
+ * ---------------------------------------------------------
+ * CORE PRINCIPLES (before implementation)
+ *
+ * The controller MUST:
+ * - Read input from HeroInput_V2
+ * - Query the state machine before executing actions
+ * - Forward validated actions to:
+ *     - MovementSystem
+ *     - WeaponSystem
+ * - Update the Model (not the View directly)
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT DO:
+ * - No physics handling
+ * - No animation logic
+ * - No feature-specific gameplay implementation
+ *
+ * The controller should remain a pure decision-making layer,
+ * not a simulation or rendering system.
+ */
+    internal class HeroController_V2 : MonoBehaviour
     {
         private readonly HeroModel_V2 _model;
 
