@@ -56,7 +56,7 @@ namespace Assets.Scripts.Hero_V2
  *        ↓
  * View / GameManager reacts (animation, UI, restart, etc.)
  */
-    internal class HeroDeathHandler_V2 
+    public class HeroDeathHandler_V2 
     {
         private readonly HeroModel_V2 _model;
         private readonly HeroStateMachine_V2 _stateMachine;
@@ -79,9 +79,9 @@ namespace Assets.Scripts.Hero_V2
             _weaponSystem = weaponSystem;
         }
 
-        internal void Initialize(HeroModel_V2 model, HeroStateMachine_V2 stateMachine, HeroView_V2 view)
+        internal void Init(HeroModel_V2 model, HeroStateMachine_V2 stateMachine, HeroView_V2 view)
         {
-            throw new NotImplementedException();
+            //FIXME: This is a bit of a code smell, but we need to subscribe to the View's death event to trigger our HandleDeath method.
         }
 
         // -------------------------

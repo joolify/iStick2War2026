@@ -46,7 +46,7 @@ namespace Assets.Scripts.Hero_V2
  * This component acts as a "gatekeeper" between raw damage input
  * and the internal game state.
  */
-    internal class HeroDamageReceiver_V2 
+    public class HeroDamageReceiver_V2 
     {
         private readonly HeroModel_V2 _model;
 
@@ -59,9 +59,9 @@ namespace Assets.Scripts.Hero_V2
             _model = model;
         }
 
-        internal void Initialize(HeroModel_V2 model, HeroStateMachine_V2 stateMachine, HeroDeathHandler_V2 deathHandler)
+        internal void Init(HeroModel_V2 model, HeroStateMachine_V2 stateMachine, HeroDeathHandler_V2 deathHandler)
         {
-            throw new NotImplementedException();
+            //FIXME
         }
 
         // -------------------------

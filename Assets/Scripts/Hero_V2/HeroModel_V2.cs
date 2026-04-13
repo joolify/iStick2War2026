@@ -36,7 +36,7 @@ namespace Assets.Scripts.Hero_V2
  * It is modified by systems (Controller, DamageReceiver, etc.)
  * and read by other systems (StateMachine, View, etc.).
  */
-    internal class HeroModel_V2 : MonoBehaviour
+    public class HeroModel_V2 : MonoBehaviour
     {
         // -------------------------
         // INPUT (read by controller)

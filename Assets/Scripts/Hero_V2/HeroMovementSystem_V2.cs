@@ -61,7 +61,7 @@ namespace Assets.Scripts.Hero_V2
  * - Dash + slow motion system (game feel / juice)
  * - Improved grounding, slope handling, ledge interaction
  */
-    internal class HeroMovementSystem_V2
+    public class HeroMovementSystem_V2
     {
         private HeroModel_V2 _model;
 

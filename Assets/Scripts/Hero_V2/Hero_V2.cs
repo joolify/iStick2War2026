@@ -64,6 +64,7 @@ namespace Assets.Scripts.Hero_V2
 
         private void Awake()
         {
+            Debug.Log("HERE AWAKE");
             BindComponents();
             CreateSystems();
             InitSystems();
@@ -102,17 +103,18 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
             Debug.Log("GAME OVER");
         }
 
+        public void Init(HeroModel_V2 model, HeroView_V2 view)
+        {
+            // This method can be called externally to re-initialize the Hero (e.g. on respawn)
+            _model = model;
+            _view = view;
+        }
+
         private void BindComponents()
         {
-            if (_model == null)
-                _model = GetComponent<HeroModel_V2>();
-
-            if (_view == null)
-                _view = GetComponentInChildren<HeroView_V2>();
-
             _input = GetComponent<HeroInput_V2>();
-            _damageReceiver = GetComponent<HeroDamageReceiver_V2>();
-            _deathHandler = GetComponent<HeroDeathHandler_V2>();
+            _damageReceiver = new HeroDamageReceiver_V2(_model)   ;
+            _deathHandler = new HeroDeathHandler_V2(_model, _stateMachine, _movementSystem, _weaponSystem);
         }
 
         private void CreateSystems()
@@ -132,10 +134,12 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
 
         private void InitSystems()
         {
-            _damageReceiver.Initialize(_model, _stateMachine, _deathHandler);
-            _deathHandler.Initialize(_model, _stateMachine, _view);
+            _damageReceiver.Init(_model, _stateMachine, _deathHandler);
+            _deathHandler.Init(_model, _stateMachine, _view);
 
-            _view.Initialize(_stateMachine, _damageReceiver, _deathHandler, _skeletonAnimation);
+            _view.Init(_stateMachine, _damageReceiver, _deathHandler, _skeletonAnimation);
+
+            Debug.Log("HERE2 SYSTEMS INITIALIZED");
         }
     }
 }

@@ -60,7 +60,7 @@ namespace Assets.Scripts.Hero_V2
  * Keep state logic deterministic, simple, and decoupled from all
  * gameplay execution systems.
  */
-    internal class HeroStateMachine_V2 : MonoBehaviour
+    public class HeroStateMachine_V2 : MonoBehaviour
     {
         public HeroState CurrentState { get; private set; } = HeroState.Idle;
 
