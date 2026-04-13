@@ -93,7 +93,7 @@ namespace Assets.Scripts.Hero_V2
             hasHandledDeath = true;
 
             // 1. Sätt state (source of truth)
-            _stateMachine.SetState(HeroState.Dead);
+            _stateMachine.ChangeState(HeroState.Dead);
 
             // 2. Stäng av gameplay systems
             _movementSystem.Disable();

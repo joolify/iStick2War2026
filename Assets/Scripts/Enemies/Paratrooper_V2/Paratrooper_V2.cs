@@ -184,7 +184,7 @@ public class Paratrooper : MonoBehaviour
         //FIXME
 
         // 8. Wire Spine Events → Controller
-        _spineEventForwarder.Initialize(_controller, _skeletonAnimation);
+        _spineEventForwarder.Init(_controller, _skeletonAnimation);
 
         // Init WeaponSystem
         //FIXME

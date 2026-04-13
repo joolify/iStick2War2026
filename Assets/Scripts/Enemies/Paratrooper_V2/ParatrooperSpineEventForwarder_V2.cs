@@ -77,7 +77,7 @@ namespace Assets.Scripts.Enemies.Paratrooper_V2
 
         private bool _initialized;
 
-        public void Initialize(ParatrooperController_V2 controller, SkeletonAnimation skeletonAnimation)
+        public void Init(ParatrooperController_V2 controller, SkeletonAnimation skeletonAnimation)
         {
             _controller = controller;
             _skeletonAnimation = skeletonAnimation;
@@ -116,7 +116,7 @@ namespace Assets.Scripts.Enemies.Paratrooper_V2
             if (_controller == null)
                 return;
 
-            Debug.Log($"SpineEventForwarder: Received event '{e.Data.Name}' at time {e.Time} (int: {e.Int}, float: {e.Float}, string: '{e.String}')");
+            Debug.Log($"ParatrooperSpineEventForwarder: Received event '{e.Data.Name}' at time {e.Time} (int: {e.Int}, float: {e.Float}, string: '{e.String}')");
 
             // ✅ Use EventData instead of string compare (faster & safer)
             if (e.Data == _deployStartedEventData)

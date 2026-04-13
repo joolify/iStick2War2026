@@ -61,6 +61,7 @@ namespace Assets.Scripts.Hero_V2
 
         [Header("Animations")]
         public AnimationReferenceAsset _idleThompsonAnim;
+        public AnimationReferenceAsset _shootingThompsonAnim;
 
         // -------------------------
         // INIT
@@ -131,6 +132,8 @@ namespace Assets.Scripts.Hero_V2
         // -------------------------
         private void HandleStateChanged(HeroState from, HeroState to)
         {
+            Debug.Log("HandleStateChanged: Hero state changed from " + from + " to " + to);
+
             switch (to)
             {
                 case HeroState.Idle:
@@ -141,17 +144,17 @@ namespace Assets.Scripts.Hero_V2
                 //    PlayLoop("run");
                 //    break;
 
-                //case HeroState.Shooting:
-                //    PlayOneShot("shoot");
-                //    break;
+                case HeroState.Shooting:
+                    PlayLoop(_shootingThompsonAnim);
+                    break;
 
-                //case HeroState.Reloading:
-                //    PlayOneShot("reload");
-                //    break;
+                    //case HeroState.Reloading:
+                    //    PlayOneShot("reload");
+                    //    break;
 
-                //case HeroState.Dead:
-                //    PlayOneShot("dead");
-                //    break;
+                    //case HeroState.Dead:
+                    //    PlayOneShot("dead");
+                    //    break;
             }
         }
 
@@ -350,7 +353,7 @@ namespace Assets.Scripts.Hero_V2
             //if (!jumpThompsonAnim.name.Equals("H_thompson_jump")) Debug.LogError(nameof(jumpThompsonAnim) + " has wrong animation");
             //if (!reloadThompsonAnim.name.Equals("H_thompson_reload")) Debug.LogError(nameof(reloadThompsonAnim) + " has wrong animation");
             //if (!runThompsonAnim.name.Equals("H_thompson_run")) Debug.LogError(nameof(runThompsonAnim) + " has wrong animation");
-            //if (!shootingThompsonAnim.name.Equals("H_thompson_shoot")) Debug.LogError(nameof(shootingThompsonAnim) + " has wrong animation");
+            if (!_shootingThompsonAnim.name.Equals("H_thompson_shoot")) Debug.LogError(nameof(_shootingThompsonAnim) + " has wrong animation");
         }
     }
 }

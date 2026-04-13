@@ -251,7 +251,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 88701066}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: HERO BodyParts_V2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -421,7 +421,9 @@ GameObject:
   - component: {fileID: 150875443}
   - component: {fileID: 150875442}
   - component: {fileID: 150875441}
-  m_Layer: 0
+  - component: {fileID: 150875448}
+  - component: {fileID: 150875447}
+  m_Layer: 6
   m_Name: HERO Model_V2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -510,6 +512,79 @@ Transform:
   - {fileID: 512775537}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!50 &150875447
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 150875440}
+  m_BodyType: 0
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0
+--- !u!61 &150875448
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 150875440}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 2.3586164, y: -1.6886327}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 0.9042883, y: 1.6152912}
+  m_EdgeRadius: 0
 --- !u!1 &258693047
 GameObject:
   m_ObjectHideFlags: 0
@@ -1972,6 +2047,7 @@ GameObject:
   - component: {fileID: 512775539}
   - component: {fileID: 512775538}
   - component: {fileID: 512775541}
+  - component: {fileID: 512775542}
   m_Layer: 6
   m_Name: HERO View_V2
   m_TagString: Untagged
@@ -2111,6 +2187,21 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Hero_V2.HeroView_V2
   _cam: {fileID: 330585545}
   _idleThompsonAnim: {fileID: 11400000, guid: 4c2f987a9570dab428c02fc531fe18c4, type: 2}
+  _shootingThompsonAnim: {fileID: 11400000, guid: fb6fb5cb46ef0d14db66ebc39196da69, type: 2}
+--- !u!114 &512775542
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 512775536}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1e12b698c34cc649bbd93d3d1ec9fde, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Hero_V2.HeroSpineEventForwarder_V2
+  shootStartedEventName: start_shoot
+  shootFinishedEventName: stop_shoot
 --- !u!1 &547993896
 GameObject:
   m_ObjectHideFlags: 0
@@ -7096,7 +7187,7 @@ MonoBehaviour:
   _damageReceiver: {fileID: 2115464551}
   _deathHandler: {fileID: 2115464550}
   _weaponSystem: {fileID: 0}
-  _spineEventForwarder: {fileID: 0}
+  _spineEventForwarder: {fileID: 1882248634}
   _skeletonAnimation: {fileID: 1882248630}
   _view: {fileID: 1882248633}
   _bodyParts: []

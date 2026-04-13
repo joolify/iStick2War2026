@@ -69,7 +69,7 @@ namespace Assets.Scripts.Hero_V2
         // -------------------------
         // MAIN ENTRY
         // -------------------------
-        public void SetState(HeroState newState)
+        public void ChangeState(HeroState newState)
         {
             if (newState == CurrentState)
                 return;

@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Assets.Scripts.Components;
+using iStick2War;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
@@ -84,33 +86,30 @@ namespace Assets.Scripts.Hero_V2
             // Death override (highest priority)
             if (_model.isDead)
             {
-                _stateMachine.SetState(HeroState.Dead);
+                _stateMachine.ChangeState(HeroState.Dead);
                 return;
             }
 
             // Reload
             if (_model.isReloadPressed && _weaponSystem.CanReload())
             {
-                _stateMachine.SetState(HeroState.Reloading);
+                _stateMachine.ChangeState(HeroState.Reloading);
                 return;
             }
 
             // Shooting
             if (_model.isShootingPressed && _weaponSystem.CanShoot())
             {
-                _stateMachine.SetState(HeroState.Shooting);
+                _stateMachine.ChangeState(HeroState.Shooting);
                 return;
             }
 
             // Movement
             if (_model.moveInput != Vector2.zero)
             {
-                _stateMachine.SetState(HeroState.Moving);
+                _stateMachine.ChangeState(HeroState.Moving);
                 return;
             }
-
-            // Default
-            _stateMachine.SetState(HeroState.Idle);
         }
 
         // -------------------------
@@ -144,6 +143,16 @@ namespace Assets.Scripts.Hero_V2
                 case HeroState.Dead:
                     _movementSystem.Disable();
                     _weaponSystem.Disable();
+                    break;
+            }
+        }
+
+        public void OnAnimationEvent(AnimationEventType eventName)
+        {
+            switch (eventName)
+            {
+                case AnimationEventType.ShootFinished:
+                    _stateMachine.ChangeState(HeroState.Idle);
                     break;
             }
         }
