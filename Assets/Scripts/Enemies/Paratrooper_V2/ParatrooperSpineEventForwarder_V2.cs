@@ -11,7 +11,7 @@ using UnityEngine.InputSystem;
 namespace Assets.Scripts.Enemies.Paratrooper_V2
 {
     /// <summary>
-    /// SpineEventForwarder (Animation Event Bridge)
+    /// ParatrooperSpineEventForwarder (Animation Event Bridge)
     /// </summary>
     /// <remarks>
     /// Acts as a bridge between Spine animation events and the gameplay systems.
@@ -19,7 +19,7 @@ namespace Assets.Scripts.Enemies.Paratrooper_V2
     /// without interpreting their meaning.
     ///
     /// Event Flow:
-    /// Spine → SpineEventForwarder → Controller → Gameplay Systems
+    /// Spine → ParatrooperSpineEventForwarder → Controller → Gameplay Systems
     ///
     /// Responsibilities:
     /// - Listens to Spine animation events
@@ -46,7 +46,7 @@ namespace Assets.Scripts.Enemies.Paratrooper_V2
     /// Gameplay systems
     /// 
     /// </remarks>
-    public class SpineEventForwarder : MonoBehaviour
+    public class ParatrooperSpineEventForwarder_V2 : MonoBehaviour
     {
         private ParatrooperController_V2 _controller;
         private SkeletonAnimation _skeletonAnimation;

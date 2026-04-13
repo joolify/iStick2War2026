@@ -58,6 +58,15 @@ namespace iStick2War
             currentAmmo = maxAmmo;
         }
 
+        /*
+         * RaycastHit2D
+         * → BodyPart (V2)
+         * → DamageReceiver
+         * → Model state change
+         * → StateMachine reacts
+         * → DeathHandler (om HP <= 0)
+         * → View listens (animation)
+        */
         public override void StartShoot(Vector2 touchPos)
         {
             if (currentAmmo <= 0)

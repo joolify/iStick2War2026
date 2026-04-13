@@ -103,7 +103,7 @@ public class Paratrooper : MonoBehaviour
     [SerializeField] private ParatrooperDamageReceiver_V2 _damageReceiver;
     [SerializeField] private ParatrooperDeathHandler_V2 _deathHandler;
     [SerializeField] private ParatrooperWeaponSystem_V2 _weaponSystem;
-    [SerializeField] private SpineEventForwarder _spineEventForwarder;
+    [SerializeField] private ParatrooperSpineEventForwarder_V2 _spineEventForwarder;
     [SerializeField] private SkeletonAnimation _skeletonAnimation;
 
     [Header("View")]
@@ -138,7 +138,7 @@ public class Paratrooper : MonoBehaviour
         if (_damageReceiver == null) _damageReceiver = GetComponent<ParatrooperDamageReceiver_V2>();
         if (_stateMachine == null) _stateMachine = GetComponent<ParatrooperStateMachine_V2>();
         if (_deathHandler == null) _deathHandler = GetComponent<ParatrooperDeathHandler_V2>();
-        if (_spineEventForwarder == null) _spineEventForwarder = GetComponent<SpineEventForwarder>();
+        if (_spineEventForwarder == null) _spineEventForwarder = GetComponent<ParatrooperSpineEventForwarder_V2>();
         if (_weaponSystem == null) _weaponSystem = GetComponent<ParatrooperWeaponSystem_V2>();
     }
 
