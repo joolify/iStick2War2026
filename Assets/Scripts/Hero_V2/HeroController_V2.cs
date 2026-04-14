@@ -38,7 +38,7 @@ namespace Assets.Scripts.Hero_V2
  * The controller should remain a pure decision-making layer,
  * not a simulation or rendering system.
  */
-    internal class HeroController_V2 : MonoBehaviour
+    internal class HeroController_V2
     {
         private readonly HeroModel_V2 _model;
         private readonly HeroView_V2 _view;
@@ -47,6 +47,8 @@ namespace Assets.Scripts.Hero_V2
         private readonly HeroStateMachine_V2 _stateMachine;
         private readonly HeroMovementSystem_V2 _movementSystem;
         private readonly HeroWeaponSystem_V2 _weaponSystem;
+        private bool _isShootLoopActive;
+        private bool _outOfAmmoLatched;
 
         public HeroController_V2(
             HeroModel_V2 model,
@@ -78,7 +80,7 @@ namespace Assets.Scripts.Hero_V2
         private void ReadInput()
         {
             _model.moveInput = _input.MoveInput;
-            _model.isShootingPressed = _input.IsShootingPressed;
+            _model.isShootingPressed = _input.IsShootingHeld;
             _model.isReloadPressed = _input.IsReloadPressed;
         }
 
@@ -91,6 +93,13 @@ namespace Assets.Scripts.Hero_V2
             if (_model.isDead)
             {
                 _stateMachine.ChangeState(HeroState.Dead);
+                return;
+            }
+
+            // Keep shooting state while shoot loop is active and button is still held.
+            if (_isShootLoopActive && _input.IsShootingHeld)
+            {
+                _stateMachine.ChangeState(HeroState.Shooting);
                 return;
             }
 
@@ -121,39 +130,35 @@ namespace Assets.Scripts.Hero_V2
 
         private void HandleCombat()
         {
-            Debug.Log("HandleCombat: " + _input.IsShootingReleased);
-            if (_input.IsShootingPressed && _weaponSystem.CanShoot())
+            // Require release before re-entering shooting after dry fire.
+            if (!_input.IsShootingHeld && _outOfAmmoLatched)
             {
-                if (!_view.TryGetAimData(out var aimPos, out var direction))
-                {
-                    return;
-                }
-
-                var shotContext = new HeroShotContext_V2
-                {
-                    Origin = aimPos,
-                    Direction = direction,
-                    Range = 100f,
-                    WhatToHit = LayerMask.GetMask("EnemyBodyPart"),
-                    BaseDamage = 10f
-                };
-
-                if (_weaponSystem.Shoot(shotContext, out var shotResult))
-                {
-                    _view.PlayShoot();
-                }
+                _outOfAmmoLatched = false;
             }
 
-            if (_input.IsShootingReleased)
+            if (_input.IsShootingHeld && !_isShootLoopActive && _model.currentAmmo > 0 && !_outOfAmmoLatched)
             {
-                _stateMachine.ChangeState(HeroState.Idle);
+                _isShootLoopActive = true;
+                _stateMachine.ChangeState(HeroState.Shooting);
+                _view.PlayShoot();
+            }
+            else if (_input.IsShootingHeld && !_isShootLoopActive && _model.currentAmmo <= 0 && !_outOfAmmoLatched)
+            {
+                _outOfAmmoLatched = true;
+                _view.PlayOutOfAmmo();
+            }
 
+            if (!_input.IsShootingHeld && _isShootLoopActive)
+            {
+                _isShootLoopActive = false;
+                _stateMachine.ChangeState(HeroState.Idle);
                 _view.StopShoot();
             }
 
             if (_model.isReloadPressed && _weaponSystem.CanReload())
             {
                 _weaponSystem.Reload();
+                _outOfAmmoLatched = false;
 
                 _view.PlayReload();
             }
@@ -179,7 +184,6 @@ namespace Assets.Scripts.Hero_V2
 
                 case HeroState.Shooting:
                     _movementSystem.Stop(); // optional design choice
-                    _weaponSystem.TryShoot();
                     break;
 
                 case HeroState.Reloading:
@@ -198,8 +202,57 @@ namespace Assets.Scripts.Hero_V2
         {
             switch (eventName)
             {
+                case AnimationEventType.ShootStarted:
+                    Debug.Log("OnAnimationEvent.ShootStarted");
+                    if (!_isShootLoopActive)
+                    {
+                        Debug.Log("[HeroController_V2] ShootStarted ignored: shoot loop inactive.");
+                        return;
+                    }
+
+                    if (_model.currentAmmo <= 0)
+                    {
+                        Debug.Log("[HeroController_V2] ShootStarted cancelled: out of ammo.");
+                        _isShootLoopActive = false;
+                        _outOfAmmoLatched = true;
+                        _stateMachine.ChangeState(HeroState.Idle);
+                        _view.StopShoot();
+                        _view.PlayOutOfAmmo();
+                        return;
+                    }
+
+                    if (!_view.TryGetAimData(out var aimPos, out var direction))
+                    {
+                        Debug.LogWarning("[HeroController_V2] ShootStarted: TryGetAimData failed.");
+                        return;
+                    }
+
+                    var shotContext = new HeroShotContext_V2
+                    {
+                        Origin = aimPos,
+                        Direction = direction,
+                        Range = 100f,
+                        WhatToHit = LayerMask.GetMask("EnemyBodyPart"),
+                        BaseDamage = 10f
+                    };
+
+                    if (_weaponSystem.Shoot(shotContext, out var shotResult))
+                    {
+                        Debug.Log($"[HeroController_V2] ShootStarted: shot resolved. didHit={shotResult.DidHit}, finalPos={shotResult.FinalPos}");
+                        _view.PlayShotTrail(aimPos, shotResult.FinalPos);
+                    }
+                    else
+                    {
+                        Debug.Log("[HeroController_V2] ShootStarted: weapon system rejected shot.");
+                    }
+                    break;
+
                 case AnimationEventType.ShootFinished:
-                    _stateMachine.ChangeState(HeroState.Idle);
+                    if (!_input.IsShootingHeld)
+                    {
+                        _isShootLoopActive = false;
+                        _stateMachine.ChangeState(HeroState.Idle);
+                    }
                     break;
             }
         }

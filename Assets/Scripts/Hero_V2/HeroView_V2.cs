@@ -69,6 +69,10 @@ namespace Assets.Scripts.Hero_V2
         public AnimationReferenceAsset _idleThompsonAnim;
         public AnimationReferenceAsset _shootingThompsonAnim;
         public AnimationReferenceAsset _runThompsonAnim;
+        public AnimationReferenceAsset _dryFireThompsonAnim;
+        
+        [Header("VFX")]
+        [SerializeField] private Transform _trailPrefab;
 
         // -------------------------
         // INIT
@@ -270,6 +274,7 @@ namespace Assets.Scripts.Hero_V2
 
             if (_skeletonAnimation == null || _aimPointBone == null || _crossHairBone == null)
             {
+                Debug.LogWarning($"[HeroView_V2] TryGetAimData failed. skeleton={_skeletonAnimation != null}, aimBone={_aimPointBone != null}, crossHairBone={_crossHairBone != null}");
                 return false;
             }
 
@@ -283,6 +288,7 @@ namespace Assets.Scripts.Hero_V2
             Vector2 shotDirection = crossPos - aimPos;
             if (shotDirection.sqrMagnitude <= 0.0001f)
             {
+                Debug.LogWarning($"[HeroView_V2] TryGetAimData failed. Direction too small. aimPos={aimPos}, crossPos={crossPos}");
                 return false;
             }
 
@@ -420,6 +426,35 @@ namespace Assets.Scripts.Hero_V2
             _skeletonAnimation.AnimationState.SetAnimation(1, _shootingThompsonAnim, true);
         }
 
+        internal void PlayShotTrail(Vector2 origin, Vector2 finalPos)
+        {
+            if (_trailPrefab == null)
+            {
+                Debug.LogWarning("[HeroView_V2] PlayShotTrail skipped: trail prefab is not assigned.");
+                return;
+            }
+
+            Transform trail = Instantiate(_trailPrefab, origin, Quaternion.identity);
+            LineRenderer lr = trail.GetComponent<LineRenderer>();
+
+            if (lr != null)
+            {
+                lr.positionCount = 0; // clear prefab state
+                lr.positionCount = 2;
+                lr.useWorldSpace = true;
+                lr.SetPosition(0, origin);
+                lr.SetPosition(1, finalPos);
+                Debug.Log($"[HeroView_V2] PlayShotTrail OK. origin={origin}, finalPos={finalPos}");
+            }
+            else
+            {
+                Debug.LogWarning($"[HeroView_V2] PlayShotTrail: LineRenderer missing on prefab '{_trailPrefab.name}'.");
+            }
+
+            // Keep same lifetime as legacy GunBase effect.
+            Destroy(trail.gameObject, 0.04f);
+        }
+
         internal void StopShoot()
         {
             _skeletonAnimation.AnimationState.ClearTrack(1);
@@ -429,6 +464,17 @@ namespace Assets.Scripts.Hero_V2
         {
             //throw new NotImplementedException();
             //FIXME
+        }
+
+        internal void PlayOutOfAmmo()
+        {
+            if (_dryFireThompsonAnim != null)
+            {
+                _skeletonAnimation.AnimationState.SetAnimation(1, _dryFireThompsonAnim, false);
+                return;
+            }
+
+            Debug.Log("[HeroView_V2] Out of ammo.");
         }
     }
 }

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using UnityEngine;
 
 namespace Assets.Scripts.Hero_V2
 {
@@ -60,7 +59,7 @@ namespace Assets.Scripts.Hero_V2
  * Keep state logic deterministic, simple, and decoupled from all
  * gameplay execution systems.
  */
-    public class HeroStateMachine_V2 : MonoBehaviour
+    public class HeroStateMachine_V2
     {
         public HeroState CurrentState { get; private set; } = HeroState.Idle;
 

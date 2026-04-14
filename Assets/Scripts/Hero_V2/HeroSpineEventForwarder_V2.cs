@@ -76,6 +76,15 @@ namespace Assets.Scripts.Hero_V2
             _shootStartedEventData = _skeletonAnimation.Skeleton.Data.FindEvent(shootStartedEventName);
             _shootFinishedEventData = _skeletonAnimation.Skeleton.Data.FindEvent(shootFinishedEventName);
 
+            if (_shootStartedEventData == null)
+            {
+                Debug.LogWarning($"Shoot started Spine event not found: '{shootStartedEventName}'");
+            }
+            if (_shootFinishedEventData == null)
+            {
+                Debug.LogWarning($"Shoot finished Spine event not found: '{shootFinishedEventName}'");
+            }
+
             _skeletonAnimation.AnimationState.Event += OnSpineEvent;
 
             _initialized = true;
@@ -100,19 +109,14 @@ namespace Assets.Scripts.Hero_V2
 
             Debug.Log($"HeroSpineEventForwarder: Received event '{e.Data.Name}' at time {e.Time} (int: {e.Int}, float: {e.Float}, string: '{e.String}')");
 
-            // ✅ Use EventData instead of string compare (faster & safer)
-            if (e.Data == _shootStartedEventData)
+            // Prefer EventData reference compare, but fallback to event name to avoid setup mismatches.
+            if ((e.Data == _shootStartedEventData) || e.Data.Name == shootStartedEventName)
             {
                 _controller.OnAnimationEvent(AnimationEventType.ShootStarted);
             }
-            else if (e.Data == _shootFinishedEventData)
+            else if ((e.Data == _shootFinishedEventData) || e.Data.Name == shootFinishedEventName)
             {
                 _controller.OnAnimationEvent(AnimationEventType.ShootFinished);
-            }
-            else
-            {
-                // fallback (optional) FIXME
-                _controller.OnAnimationEvent(AnimationEventType.None);
             }
         }
     }

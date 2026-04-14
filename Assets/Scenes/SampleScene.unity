@@ -418,11 +418,10 @@ GameObject:
   - component: {fileID: 150875446}
   - component: {fileID: 150875445}
   - component: {fileID: 150875444}
-  - component: {fileID: 150875443}
   - component: {fileID: 150875442}
-  - component: {fileID: 150875441}
   - component: {fileID: 150875448}
   - component: {fileID: 150875447}
+  - component: {fileID: 150875449}
   m_Layer: 6
   m_Name: HERO Model_V2
   m_TagString: Untagged
@@ -430,18 +429,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &150875441
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 150875440}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d2b6809b3542fd9489e1189a50ca9f7c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Hero_V2.HeroStateMachine_V2
 --- !u!114 &150875442
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -456,18 +443,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Hero_V2.HeroInput_V2
   shootBufferTime: 0
   ShootBuffered: 0
---- !u!114 &150875443
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 150875440}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a9e31311d8d90c142a59552836583cb2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Hero_V2.HeroController_V2
 --- !u!114 &150875444
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -585,6 +560,20 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 0.9042883, y: 1.6152912}
   m_EdgeRadius: 0
+--- !u!114 &150875449
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 150875440}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1e12b698c34cc649bbd93d3d1ec9fde, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Hero_V2.HeroSpineEventForwarder_V2
+  shootStartedEventName: start_shoot
+  shootFinishedEventName: stop_shoot
 --- !u!1 &258693047
 GameObject:
   m_ObjectHideFlags: 0
@@ -2047,7 +2036,6 @@ GameObject:
   - component: {fileID: 512775539}
   - component: {fileID: 512775538}
   - component: {fileID: 512775541}
-  - component: {fileID: 512775542}
   m_Layer: 6
   m_Name: HERO View_V2
   m_TagString: Untagged
@@ -2192,20 +2180,7 @@ MonoBehaviour:
   _idleThompsonAnim: {fileID: 11400000, guid: 4c2f987a9570dab428c02fc531fe18c4, type: 2}
   _shootingThompsonAnim: {fileID: 11400000, guid: fb6fb5cb46ef0d14db66ebc39196da69, type: 2}
   _runThompsonAnim: {fileID: 11400000, guid: f1a380394138ae94c9a0c5aea417af02, type: 2}
---- !u!114 &512775542
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 512775536}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b1e12b698c34cc649bbd93d3d1ec9fde, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Hero_V2.HeroSpineEventForwarder_V2
-  shootStartedEventName: start_shoot
-  shootFinishedEventName: stop_shoot
+  _trailPrefab: {fileID: 1070164800395407800, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
 --- !u!1 &547993896
 GameObject:
   m_ObjectHideFlags: 0
@@ -2748,7 +2723,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &635239654
 MonoBehaviour:
   m_ObjectHideFlags: 0

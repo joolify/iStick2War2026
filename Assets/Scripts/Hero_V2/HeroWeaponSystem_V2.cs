@@ -91,6 +91,7 @@ namespace Assets.Scripts.Hero_V2
 
             if (!CanShoot())
             {
+                Debug.Log($"[HeroWeaponSystem_V2] Shoot blocked. disabled={isDisabled}, dead={_model.isDead}, ammo={_model.currentAmmo}/{_model.maxAmmo}, fireRate={_model.fireRate}, sinceLastShot={Time.time - lastShootTime:0.000}");
                 return false;
             }
 
@@ -98,6 +99,7 @@ namespace Assets.Scripts.Hero_V2
             _model.ConsumeAmmo(1);
 
             shotResult = _shotResolver.ResolveShot(shotContext);
+            Debug.Log($"[HeroWeaponSystem_V2] Shoot OK. didHit={shotResult.DidHit}, finalPos={shotResult.FinalPos}, ammoLeft={_model.currentAmmo}");
             return true;
         }
 

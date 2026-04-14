@@ -55,6 +55,7 @@ namespace Assets.Scripts.Hero_V2
         private HeroInput_V2 _input;
         private HeroController_V2 _controller;
         private HeroStateMachine_V2 _stateMachine;
+        private HeroSpineEventForwarder_V2 _spineEventForwarder;
 
         private HeroMovementSystem_V2 _movementSystem;
         private HeroWeaponSystem_V2 _weaponSystem;
@@ -113,6 +114,7 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
         private void BindComponents()
         {
             _input = GetComponent<HeroInput_V2>();
+            _spineEventForwarder = GetComponent<HeroSpineEventForwarder_V2>();
             _damageReceiver = new HeroDamageReceiver_V2(_model)   ;
             _deathHandler = new HeroDeathHandler_V2(_model, _stateMachine, _movementSystem, _weaponSystem);
         }
@@ -139,6 +141,15 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
             _deathHandler.Init(_model, _stateMachine, _view);
 
             _view.Init(_stateMachine, _damageReceiver, _deathHandler, _skeletonAnimation);
+
+            if (_spineEventForwarder != null)
+            {
+                _spineEventForwarder.Init(_controller, _skeletonAnimation);
+            }
+            else
+            {
+                Debug.LogWarning($"{nameof(HeroSpineEventForwarder_V2)} missing on Hero_V2 object.");
+            }
 
             Debug.Log("HERE2 SYSTEMS INITIALIZED");
         }
