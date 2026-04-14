@@ -33,6 +33,7 @@ public class ParatrooperDeathHandler_V2 : MonoBehaviour
     public int scoreValue;
 
     private ParatrooperStateMachine_V2 _stateMachine;
+    private bool _isDying;
 
     public void Initialize(ParatrooperStateMachine_V2 stateMachine)
     {
@@ -56,7 +57,13 @@ public class ParatrooperDeathHandler_V2 : MonoBehaviour
     /// </summary>
     public void Die()
     {
-        DeathRoutine();
+        if (_isDying)
+        {
+            return;
+        }
+
+        _isDying = true;
+        StartCoroutine(DeathRoutine());
     }
 
     IEnumerator DeathRoutine()
@@ -89,6 +96,7 @@ public class ParatrooperDeathHandler_V2 : MonoBehaviour
     private void Cleanup()
     {
         // Disable components, unsubscribe events, return to pool, etc.
+        gameObject.SetActive(false);
     }
 
 }

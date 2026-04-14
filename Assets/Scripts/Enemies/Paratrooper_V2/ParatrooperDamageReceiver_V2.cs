@@ -39,6 +39,7 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
 {
     private ParatrooperModel_V2 _model;
     private ParatrooperStateMachine_V2 _stateMachine;
+    private bool _deathStateSent;
 
     void Awake()
     {
@@ -63,24 +64,61 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
     /// </summary>
     public void TakeDamage(DamageInfo info)
     {
-        Debug.Log($"Hit {info.BodyPart} for {info.BaseDamage}");
+        if (_model == null || _stateMachine == null)
+        {
+            Debug.LogWarning("[ParatrooperDamageReceiver_V2] TakeDamage skipped: missing model or state machine.");
+            return;
+        }
+
+        if (_model.IsDead())
+        {
+            return;
+        }
+
+        float hpBefore = _model.health;
 
         float multiplier = _model.GetMultiplier(info.BodyPart);
 
         float finalDamage = info.BaseDamage * multiplier * _model.armorMultiplier;
 
         float remainingHealth = _model.ApplyDamage(finalDamage);
+        bool isDead = _model.IsDead();
 
-        if (_model.IsDead())
+        if (isDead)
         {
-            _stateMachine.ChangeState(StickmanBodyState.Die);
+            if (!_deathStateSent)
+            {
+                _deathStateSent = true;
+                _stateMachine.ChangeState(StickmanBodyState.Die);
+            }
         }
         else
         {
             _stateMachine.ChangeState(StickmanBodyState.Land);
         }
 
-        Debug.Log($"Final damage: {finalDamage}, HP left: {remainingHealth}");
+        Debug.Log(
+            $"[ParatrooperDamageReceiver_V2] Hit part={info.BodyPart}, base={info.BaseDamage:0.##}, " +
+            $"mult={multiplier:0.##}, armor={_model.armorMultiplier:0.##}, final={finalDamage:0.##}, " +
+            $"hp={hpBefore:0.##}->{remainingHealth:0.##}, dead={isDead}, hitPoint={info.HitPoint}"
+        );
+
+        if (isDead)
+        {
+            Debug.LogWarning($"[ParatrooperDamageReceiver_V2] LETHAL HIT on {info.BodyPart}.");
+            return;
+        }
+
+        if (info.BodyPart == BodyPartType.Head)
+        {
+            Debug.LogWarning("[ParatrooperDamageReceiver_V2] HEADSHOT!");
+            return;
+        }
+
+        if (multiplier <= 0.8f)
+        {
+            Debug.Log($"[ParatrooperDamageReceiver_V2] Low-damage limb hit ({info.BodyPart}).");
+        }
     }
 
     private float GetBodyPartMultiplier(BodyPartType bodyPart)

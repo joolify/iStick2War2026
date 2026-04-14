@@ -23,8 +23,8 @@ using UnityEngine;
 /// </remarks>
 public class ParatrooperModel_V2 : MonoBehaviour
 {
-    public float health;
-    public float armorMultiplier;
+    public float health = 55f;
+    public float armorMultiplier = 1f;
 
     public StickmanBodyState currentState;
 
@@ -32,6 +32,16 @@ public class ParatrooperModel_V2 : MonoBehaviour
 
     void Awake()
     {
+        if (health <= 0f)
+        {
+            health = 55f;
+        }
+
+        if (armorMultiplier <= 0f)
+        {
+            armorMultiplier = 1f;
+        }
+
         SetDamageMultipliers();
     }
 
@@ -39,18 +49,18 @@ public class ParatrooperModel_V2 : MonoBehaviour
     {
         damageMultipliers = new Dictionary<BodyPartType, float>
     {
-        { BodyPartType.Head, 2f },
+        { BodyPartType.Head, 5f },
         { BodyPartType.Torso, 1f },
-        { BodyPartType.ArmUpperFront, 0.5f },
-        { BodyPartType.ArmUpperBack, 0.5f },
-        { BodyPartType.ArmLowerBack, 0.5f },
-        { BodyPartType.ArmLowerFront, 0.5f },
-        { BodyPartType.LegLowerBack, 0.7f },
-        { BodyPartType.LegLowerFront, 0.7f },
-        { BodyPartType.LegUpperBack, 0.8f },
-        { BodyPartType.LegUpperFront, 0.8f },
-        { BodyPartType.FootBack, 0.5f },
-        { BodyPartType.FootFront, 0.5f }
+        { BodyPartType.ArmUpperFront, 0.85f },
+        { BodyPartType.ArmUpperBack, 0.85f },
+        { BodyPartType.ArmLowerBack, 0.8f },
+        { BodyPartType.ArmLowerFront, 0.8f },
+        { BodyPartType.LegLowerBack, 0.8f },
+        { BodyPartType.LegLowerFront, 0.8f },
+        { BodyPartType.LegUpperBack, 0.9f },
+        { BodyPartType.LegUpperFront, 0.9f },
+        { BodyPartType.FootBack, 0.7f },
+        { BodyPartType.FootFront, 0.7f }
     };
     }
 

@@ -41,6 +41,12 @@ public class ParatrooperBodyPart_V2 : MonoBehaviour
         _damageReceiver = GetComponentInParent<ParatrooperDamageReceiver_V2>();
 
         gameObject.layer = LayerMask.NameToLayer("EnemyBodyPart");
+
+        var ownCollider = GetComponent<Collider2D>();
+        if (ownCollider == null)
+        {
+            Debug.LogWarning($"[ParatrooperBodyPart_V2] No Collider2D on '{gameObject.name}'. This body part cannot be hit by raycast.");
+        }
     }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -65,8 +71,8 @@ public class ParatrooperBodyPart_V2 : MonoBehaviour
     /// </summary>
     public void OnHit(DamageInfo info)
     {
-        Debug.Log("ParatrooperBodyPart_V2.OnHit: " + info.BaseDamage + "HP on " + info.BodyPart);
         info.BodyPart = bodyPart;
+        Debug.Log($"[ParatrooperBodyPart_V2] OnHit part={info.BodyPart}, base={info.BaseDamage}, collider={gameObject.name}");
         _damageReceiver.TakeDamage(info);
     }
 }

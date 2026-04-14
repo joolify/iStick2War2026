@@ -122,6 +122,27 @@ public class ParatrooperView_V2 : MonoBehaviour
                 loop = false;
                 trackIndex = 1;
                 break;
+            case StickmanBodyState.Land:
+            case StickmanBodyState.Idle:
+            case StickmanBodyState.Shoot:
+            case StickmanBodyState.Run:
+                // Temporary fallback while dedicated clips for these states are migrated.
+                nextAnimation = _glideAnim;
+                loop = true;
+                trackIndex = 1;
+                break;
+        }
+
+        if (_skeletonAnimation == null || _skeletonAnimation.AnimationState == null)
+        {
+            Debug.LogWarning("[ParatrooperView_V2] PlayAnimation skipped: SkeletonAnimation is not ready.");
+            return;
+        }
+
+        if (nextAnimation == null)
+        {
+            Debug.LogWarning($"[ParatrooperView_V2] PlayAnimation skipped: no animation mapped for state {state}.");
+            return;
         }
 
         _skeletonAnimation.AnimationState.SetAnimation(trackIndex, nextAnimation, loop);

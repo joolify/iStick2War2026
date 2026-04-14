@@ -70,7 +70,14 @@ namespace Assets.Scripts.Hero_V2
                 HitPoint = hit.point,
             };
 
-            bodyPart.OnHit(damageInfo);
+            try
+            {
+                bodyPart.OnHit(damageInfo);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[HeroShotResolver_V2] ApplyDamage failed on collider '{hit.collider.name}': {ex.Message}");
+            }
         }
     }
 }

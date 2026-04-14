@@ -124,6 +124,7 @@ public class Paratrooper : MonoBehaviour
     private void Awake()
     {
         InitializeDependencies();
+        ValidateBodyPartSetup();
 
         WireSystems();
 
@@ -133,6 +134,7 @@ public class Paratrooper : MonoBehaviour
     private void InitializeDependencies()
     {
         // Ensure references exist (safe setup pattern)
+        if (_model == null) _model = GetComponent<ParatrooperModel_V2>();
         if (_controller == null) _controller = GetComponent<ParatrooperController_V2>();
         if (_view == null) _view = GetComponent<ParatrooperView_V2>();
         if (_damageReceiver == null) _damageReceiver = GetComponent<ParatrooperDamageReceiver_V2>();
@@ -145,28 +147,11 @@ public class Paratrooper : MonoBehaviour
     private void WireSystems()
     {
         // Inject dependencies manually (clean + fast in Unity)
-
-        // 1. Create Model (pure data)
-        _model = new ParatrooperModel_V2
+        if (_model == null)
         {
-            health = 100f,
-            armorMultiplier = 1f,
-            damageMultipliers = new Dictionary<BodyPartType, float>
-            {
-                { BodyPartType.Head, 2f },
-                { BodyPartType.Torso, 1f },
-                { BodyPartType.ArmUpperFront, 0.5f },
-                { BodyPartType.ArmUpperBack, 0.5f },
-                { BodyPartType.ArmLowerBack, 0.5f },
-                { BodyPartType.ArmLowerFront, 0.5f },
-                { BodyPartType.LegLowerBack, 0.7f },
-                { BodyPartType.LegLowerFront, 0.7f },
-                { BodyPartType.LegUpperBack, 0.8f },
-                { BodyPartType.LegUpperFront, 0.8f },
-                { BodyPartType.FootBack, 0.5f },
-                { BodyPartType.FootFront, 0.5f }
-            }
-        };
+            Debug.LogError("[Paratrooper_V2] Missing ParatrooperModel_V2 component.");
+            return;
+        }
 
         // 2. Init StateMachine
         _stateMachine.Initialize(_model);
@@ -245,5 +230,48 @@ public class Paratrooper : MonoBehaviour
     void Update()
     {
         _controller.Tick(Time.deltaTime);
+    }
+
+    private void ValidateBodyPartSetup()
+    {
+        if (_bodyParts == null || _bodyParts.Length == 0)
+        {
+            _bodyParts = GetComponentsInChildren<ParatrooperBodyPart_V2>(true);
+        }
+
+        int total = _bodyParts != null ? _bodyParts.Length : 0;
+        int missingCollider = 0;
+        int missingReceiver = 0;
+        int wrongLayer = 0;
+
+        for (int i = 0; i < total; i++)
+        {
+            var part = _bodyParts[i];
+            if (part == null)
+            {
+                continue;
+            }
+
+            if (part.GetComponent<Collider2D>() == null)
+            {
+                missingCollider++;
+                Debug.LogWarning($"[Paratrooper_V2] Body part '{part.name}' has no Collider2D.");
+            }
+
+            if (part.GetComponentInParent<ParatrooperDamageReceiver_V2>() == null)
+            {
+                missingReceiver++;
+                Debug.LogWarning($"[Paratrooper_V2] Body part '{part.name}' cannot find ParatrooperDamageReceiver_V2 in parents.");
+            }
+
+            int expectedLayer = LayerMask.NameToLayer("EnemyBodyPart");
+            if (expectedLayer >= 0 && part.gameObject.layer != expectedLayer)
+            {
+                wrongLayer++;
+                Debug.LogWarning($"[Paratrooper_V2] Body part '{part.name}' layer is '{LayerMask.LayerToName(part.gameObject.layer)}', expected 'EnemyBodyPart'.");
+            }
+        }
+
+        Debug.Log($"[Paratrooper_V2] BodyPart setup: total={total}, missingCollider={missingCollider}, missingReceiver={missingReceiver}, wrongLayer={wrongLayer}");
     }
 }

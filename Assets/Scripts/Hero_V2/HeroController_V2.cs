@@ -302,7 +302,7 @@ namespace Assets.Scripts.Hero_V2
                 Direction = direction,
                 Range = 100f,
                 WhatToHit = LayerMask.GetMask("EnemyBodyPart"),
-                BaseDamage = 10f
+                BaseDamage = 30f
             };
 
             if (_weaponSystem.Shoot(shotContext, out var shotResult))
