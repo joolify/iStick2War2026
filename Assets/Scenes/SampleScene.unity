@@ -7893,8 +7893,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperView_V2
   _deployAnim: {fileID: 11400000, guid: 196580e9010fa3443931524c02d2dcfa, type: 2}
   _glideAnim: {fileID: 11400000, guid: 3f8ab6cec8df6454fae7be134fd750bd, type: 2}
+  _landAnim: {fileID: 11400000, guid: 2552f857adc14e34cb2c3c1f795e8bdd, type: 2}
   _glideDeathAnim: {fileID: 11400000, guid: 18a1461724624e24a8ce5f5856dda76e, type: 2}
   _landFallDownBackAnim: {fileID: 11400000, guid: 60b80e1da8a4f15449b9935da44a70d4, type: 2}
+  _landFallDownBack2Anim: {fileID: 11400000, guid: f0dcdae40f9ca6e46ae57a281c51aa5f, type: 2}
+  _landFallDownBack3Anim: {fileID: 11400000, guid: 71a254a9373ecf541beea850bacb8b26, type: 2}
+  _shootingMP40Anim: {fileID: 11400000, guid: 672b08387407ca147b3ae4fc3152da67, type: 2}
 --- !u!114 &1882248634
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9296,6 +9300,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   _groundCheckDistance: 0.08
+  _nearGroundRayDistance: 1.25
   _enableColliderSummaryLog: 1
   _colliderSummaryIntervalSeconds: 2
   _onlyLogWhenSummaryChanges: 1

@@ -61,6 +61,16 @@ public class ParatrooperController_V2 : MonoBehaviour
             case AnimationEventType.DeployFinished:
                 _stateMachine.ChangeState(StickmanBodyState.Glide);
                 break;
+            case AnimationEventType.LandFinished:
+                if (_stateMachine.CurrentState == StickmanBodyState.Land)
+                {
+                    _stateMachine.ChangeState(StickmanBodyState.Shoot);
+                }
+                else
+                {
+                    Debug.Log($"[ParatrooperController_V2] Ignored LandFinished in state {_stateMachine.CurrentState}.");
+                }
+                break;
         }
     }
 
@@ -76,7 +86,15 @@ public class ParatrooperController_V2 : MonoBehaviour
 
     internal void Tick(float deltaTime)
     {
-        //FIXME
+        if (_stateMachine == null || _weaponSystem == null)
+        {
+            return;
+        }
+
+        if (_stateMachine.CurrentState == StickmanBodyState.Shoot)
+        {
+            _weaponSystem.TryAutoShootAtHero();
+        }
     }
 
     internal void OnAnimationEvent(object reloadStarted)

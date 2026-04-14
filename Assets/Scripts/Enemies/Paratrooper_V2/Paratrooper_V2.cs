@@ -120,6 +120,7 @@ public class Paratrooper : MonoBehaviour
     [SerializeField] private float _glideHorizontalDrift = 0.15f;
     [SerializeField] private LayerMask _groundMask = 0;
     [SerializeField] private float _groundCheckDistance = 0.08f;
+    [SerializeField] private float _nearGroundRayDistance = 1.25f;
 
     [Header("Collider Debug")]
     [SerializeField] private bool _enableColliderSummaryLog = true;
@@ -205,8 +206,10 @@ public class Paratrooper : MonoBehaviour
         _spineEventForwarder.Init(_controller, _skeletonAnimation);
 
         // Init WeaponSystem
-        //FIXME
-        //_weaponSystem.Initialize(_controller, _stateMachine);
+        if (_weaponSystem != null)
+        {
+            _weaponSystem.Initialize(_model);
+        }
 
         // 9. Hook events (StateMachine → View & Death)
         _stateMachine.OnStateChanged += HandleStateChanged;
@@ -233,7 +236,18 @@ public class Paratrooper : MonoBehaviour
 
         // Safety: if death is requested while still in the air, force airborne death state first.
         // This guarantees GlideDeath animation before ground impact animation.
-        if (to == StickmanBodyState.Die && !IsGrounded())
+        // Important: when coming from ground-combat states, keep ground death even if IsGrounded()
+        // has a one-frame false negative.
+        bool wasGroundCombatState =
+            from == StickmanBodyState.Shoot ||
+            from == StickmanBodyState.Land ||
+            from == StickmanBodyState.Idle ||
+            from == StickmanBodyState.Run;
+        if (to == StickmanBodyState.Die && wasGroundCombatState)
+        {
+            Debug.Log($"[Paratrooper_V2] Keeping ground death from {from} (skip GlideDie conversion).");
+        }
+        if (to == StickmanBodyState.Die && !wasGroundCombatState && !IsGrounded())
         {
             Debug.Log("[Paratrooper_V2] Converted Die -> GlideDie (airborne).");
             _stateMachine.ChangeState(StickmanBodyState.GlideDie);
@@ -266,6 +280,7 @@ public class Paratrooper : MonoBehaviour
     {
         _controller.Tick(Time.deltaTime);
         ApplyGlideAirMovement();
+        HandleNearGroundLandingTransition();
         HandleGlideDeathLandingTransition();
 
         if (_enableColliderSummaryLog && Time.time >= _nextColliderSummaryTime)
@@ -319,6 +334,22 @@ public class Paratrooper : MonoBehaviour
         }
 
         _stateMachine.ChangeState(StickmanBodyState.Die);
+    }
+
+    private void HandleNearGroundLandingTransition()
+    {
+        if (_stateMachine == null || _stateMachine.CurrentState != StickmanBodyState.Glide)
+        {
+            return;
+        }
+
+        if (!IsNearGround())
+        {
+            return;
+        }
+
+        Debug.Log("[Paratrooper_V2] Near Ground detected by raycast -> switching Glide to Land.");
+        _stateMachine.ChangeState(StickmanBodyState.Land);
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
@@ -378,6 +409,42 @@ public class Paratrooper : MonoBehaviour
             }
 
             // Ignore this paratrooper's own colliders (root + all children body-part hitboxes).
+            if (hitCollider.transform.IsChildOf(transform))
+            {
+                continue;
+            }
+
+            if (!IsGroundLayer(hitCollider.gameObject.layer))
+            {
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool IsNearGround()
+    {
+        if (_mainCollider2D == null)
+        {
+            return false;
+        }
+
+        Bounds bounds = _mainCollider2D.bounds;
+        Vector2 origin = new Vector2(bounds.center.x, bounds.min.y + 0.01f);
+        float rayLength = Mathf.Max(_groundCheckDistance, _nearGroundRayDistance);
+        RaycastHit2D[] hits = Physics2D.RaycastAll(origin, Vector2.down, rayLength, _groundMask);
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Collider2D hitCollider = hits[i].collider;
+            if (hitCollider == null)
+            {
+                continue;
+            }
+
             if (hitCollider.transform.IsChildOf(transform))
             {
                 continue;

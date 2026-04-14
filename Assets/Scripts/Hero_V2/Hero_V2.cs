@@ -115,8 +115,6 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
         {
             _input = GetComponent<HeroInput_V2>();
             _spineEventForwarder = GetComponent<HeroSpineEventForwarder_V2>();
-            _damageReceiver = new HeroDamageReceiver_V2(_model)   ;
-            _deathHandler = new HeroDeathHandler_V2(_model, _stateMachine, _movementSystem, _weaponSystem);
         }
 
         private void CreateSystems()
@@ -124,6 +122,8 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
             _stateMachine = new HeroStateMachine_V2();
             _movementSystem = new HeroMovementSystem_V2(_model);
             _weaponSystem = new HeroWeaponSystem_V2(_model);
+            _damageReceiver = new HeroDamageReceiver_V2(_model);
+            _deathHandler = new HeroDeathHandler_V2(_model, _stateMachine, _movementSystem, _weaponSystem);
 
             _controller = new HeroController_V2(
                 _model,
@@ -152,6 +152,20 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
             }
 
             Debug.Log("HERE2 SYSTEMS INITIALIZED");
+        }
+
+        public void ReceiveDamage(int damage)
+        {
+            if (_damageReceiver != null)
+            {
+                _damageReceiver.ApplyDamage(damage);
+                return;
+            }
+
+            if (_model != null)
+            {
+                _model.TakeDamage(damage);
+            }
         }
     }
 }

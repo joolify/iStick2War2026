@@ -1,7 +1,7 @@
 ﻿using Assets.Scripts.Components;
+using Assets.Scripts.Hero_V2;
 using System;
-using System.Collections.Generic;
-using System.Text;
+using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -27,21 +27,49 @@ using UnityEngine;
 public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 {
     private ParatrooperModel_V2 _model;
+    private HeroModel_V2 _heroModel;
+    private Hero_V2 _heroRoot;
 
-    private float fireCooldown = 0.5f;
-    private float lastFireTime;
+    [Header("Shooting")]
+    [SerializeField] private float _fireCooldown = 0.14f;
+    [SerializeField] private float _range = 100f;
+    [SerializeField] private int _baseDamage = 9;
+    [SerializeField] private LayerMask _whatToHit = 0;
+    [SerializeField] private Transform _firePoint;
 
-    private Transform _firePoint;
-    private LayerMask _hitMask;
+    [Header("Line Renderer Effect")]
+    [SerializeField] private LineRenderer _shotLineRenderer;
+    [SerializeField] private float _lineVisibleDuration = 0.05f;
 
-    /// <summary>
-    /// Initialize weapon system.
-    /// </summary>
-    public void Initialize(ParatrooperModel_V2 model, Transform firePoint, LayerMask hitMask)
+    private float _lastFireTime = -999f;
+    private Coroutine _lineCoroutine;
+
+    public void Initialize(ParatrooperModel_V2 model)
     {
         _model = model;
-        _firePoint = firePoint;
-        _hitMask = hitMask;
+
+        if (_firePoint == null)
+        {
+            _firePoint = transform;
+        }
+
+        if (_whatToHit.value == 0)
+        {
+            int playerLayer = LayerMask.NameToLayer("Player");
+            if (playerLayer >= 0)
+            {
+                _whatToHit = 1 << playerLayer;
+            }
+        }
+
+        if (_shotLineRenderer != null)
+        {
+            _shotLineRenderer.enabled = false;
+            _shotLineRenderer.positionCount = 2;
+        }
+
+        _heroRoot = FindFirstObjectByType<Hero_V2>();
+        _heroModel = _heroRoot != null ? _heroRoot.GetComponent<HeroModel_V2>() : FindFirstObjectByType<HeroModel_V2>();
     }
 
     /// <summary>
@@ -49,67 +77,129 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
     /// </summary>
     public bool CanShoot()
     {
-        if (Time.time < lastFireTime + fireCooldown)
+        if (_model == null)
             return false;
 
-        if (_model.currentState == iStick2War.StickmanBodyState.Die)
+        if (Time.time < _lastFireTime + _fireCooldown)
+            return false;
+
+        if (_model.currentState == iStick2War.StickmanBodyState.Die || _model.currentState == iStick2War.StickmanBodyState.GlideDie)
             return false;
 
         return true;
     }
 
-    /// <summary>
-    /// Called by Spine event ("shoot") to actually fire.
-    /// </summary>
-    public void Fire()
+    public void TryAutoShootAtHero()
     {
         if (!CanShoot())
             return;
 
-        lastFireTime = Time.time;
-
-        ShootRaycast();
+        _lastFireTime = Time.time;
+        ShootRaycastAtHero();
     }
 
-    private void ShootRaycast()
+    private void ShootRaycastAtHero()
     {
-        Vector2 origin = _firePoint.position;
-        Vector2 direction = _firePoint.right; // assuming right = forward
+        if (_heroModel == null)
+        {
+            if (_heroRoot == null)
+            {
+                _heroRoot = FindFirstObjectByType<Hero_V2>();
+            }
 
-        RaycastHit2D hit = Physics2D.Raycast(origin, direction, 100f, _hitMask);
+            if (_heroRoot != null)
+            {
+                _heroModel = _heroRoot.GetComponent<HeroModel_V2>();
+            }
+        }
 
-        Debug.DrawLine(origin, origin + direction * 100f, Color.red, 0.5f);
+        if (_heroModel == null)
+        {
+            _heroModel = FindFirstObjectByType<HeroModel_V2>();
+        }
+
+        if (_heroModel == null || _heroModel.isDead)
+        {
+            return;
+        }
+
+        Vector2 origin = _firePoint != null ? _firePoint.position : transform.position;
+        Vector2 target = _heroModel.transform.position;
+        Vector2 direction = (target - origin).normalized;
+
+        RaycastHit2D hit = Physics2D.Raycast(origin, direction, _range, _whatToHit);
+        if (hit.collider == null)
+        {
+            // Fallback: still detect Hero even if Player layer/mask is misconfigured.
+            var allHits = Physics2D.RaycastAll(origin, direction, _range);
+            for (int i = 0; i < allHits.Length; i++)
+            {
+                var candidate = allHits[i];
+                if (candidate.collider == null)
+                {
+                    continue;
+                }
+
+                if (candidate.collider.GetComponentInParent<Hero_V2>() != null ||
+                    candidate.collider.GetComponentInParent<HeroModel_V2>() != null)
+                {
+                    hit = candidate;
+                    Debug.LogWarning("[ParatrooperWeaponSystem_V2] Hero hit outside Player mask. Verify hero layer/mask setup.");
+                    break;
+                }
+            }
+        }
+
+        Vector2 finalPos = hit.collider != null ? hit.point : origin + direction * _range;
+
+        Debug.DrawLine(origin, finalPos, Color.cyan, 0.5f);
+        PlayShotLine(origin, finalPos);
 
         if (hit.collider != null)
         {
-            var bodyPart = hit.collider.GetComponent<ParatrooperBodyPart_V2>();
-
-            if (bodyPart != null)
+            Hero_V2 heroRoot = hit.collider.GetComponentInParent<Hero_V2>();
+            if (heroRoot != null)
             {
-                DamageInfo info = new DamageInfo
-                {
-                    BaseDamage = 10f,
-                    BodyPart = bodyPart.bodyPart,
-                    HitPoint = hit.point
-                };
+                heroRoot.ReceiveDamage(_baseDamage);
+                return;
+            }
 
-                bodyPart.OnHit(info);
+            HeroModel_V2 hero = hit.collider.GetComponentInParent<HeroModel_V2>();
+            if (hero != null)
+            {
+                hero.TakeDamage(_baseDamage);
             }
         }
     }
 
-    internal void Shoot()
+    private void PlayShotLine(Vector2 from, Vector2 to)
     {
-        throw new NotImplementedException();
+        if (_shotLineRenderer == null)
+        {
+            return;
+        }
+
+        _shotLineRenderer.positionCount = 2;
+        _shotLineRenderer.SetPosition(0, from);
+        _shotLineRenderer.SetPosition(1, to);
+        _shotLineRenderer.enabled = true;
+
+        if (_lineCoroutine != null)
+        {
+            StopCoroutine(_lineCoroutine);
+        }
+
+        _lineCoroutine = StartCoroutine(HideShotLineAfterDelay());
     }
 
-    internal void Reload()
+    private IEnumerator HideShotLineAfterDelay()
     {
-        throw new NotImplementedException();
+        yield return new WaitForSeconds(Mathf.Max(0.01f, _lineVisibleDuration));
+        if (_shotLineRenderer != null)
+        {
+            _shotLineRenderer.enabled = false;
+        }
+        _lineCoroutine = null;
     }
 
-    internal void Grenade()
-    {
-        throw new NotImplementedException();
-    }
 }

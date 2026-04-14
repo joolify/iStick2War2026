@@ -96,9 +96,11 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
         else
         {
             // Keep air states when shot in the air so parachute glide movement is not interrupted.
+            // Also keep Shoot state while taking damage on the ground to avoid replaying land animation.
             var currentState = _stateMachine.CurrentState;
             bool isAirborne = currentState == StickmanBodyState.Glide || currentState == StickmanBodyState.Deploy;
-            if (!isAirborne)
+            bool isGroundCombat = currentState == StickmanBodyState.Shoot;
+            if (!isAirborne && !isGroundCombat)
             {
                 _stateMachine.ChangeState(StickmanBodyState.Land);
             }
