@@ -1,6 +1,5 @@
 using Assets.Scripts.Components;
 using iStick2War;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 /// <summary>
@@ -100,7 +99,7 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
         Debug.Log(
             $"[ParatrooperDamageReceiver_V2] Hit part={info.BodyPart}, base={info.BaseDamage:0.##}, " +
             $"mult={multiplier:0.##}, armor={_model.armorMultiplier:0.##}, final={finalDamage:0.##}, " +
-            $"hp={hpBefore:0.##}->{remainingHealth:0.##}, dead={isDead}, hitPoint={info.HitPoint}"
+            $"hp={hpBefore:0.##}->{remainingHealth:0.##}, dead={isDead}, profile={_model.GetDamageProfileMode()}, hitPoint={info.HitPoint}"
         );
 
         if (isDead)

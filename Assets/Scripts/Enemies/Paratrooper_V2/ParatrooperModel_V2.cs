@@ -23,6 +23,15 @@ using UnityEngine;
 /// </remarks>
 public class ParatrooperModel_V2 : MonoBehaviour
 {
+    public enum DamageProfileMode
+    {
+        CS16Mode,
+        TestMode
+    }
+
+    [Header("Damage profile")]
+    [SerializeField] private DamageProfileMode _damageProfileMode = DamageProfileMode.CS16Mode;
+
     public float health = 55f;
     public float armorMultiplier = 1f;
 
@@ -32,36 +41,64 @@ public class ParatrooperModel_V2 : MonoBehaviour
 
     void Awake()
     {
-        if (health <= 0f)
-        {
-            health = 55f;
-        }
-
-        if (armorMultiplier <= 0f)
-        {
-            armorMultiplier = 1f;
-        }
-
-        SetDamageMultipliers();
+        ApplyDamageProfile();
     }
 
-    private void SetDamageMultipliers()
+    private void OnValidate()
     {
-        damageMultipliers = new Dictionary<BodyPartType, float>
+        ApplyDamageProfile();
+    }
+
+    public DamageProfileMode GetDamageProfileMode()
     {
-        { BodyPartType.Head, 5f },
-        { BodyPartType.Torso, 1f },
-        { BodyPartType.ArmUpperFront, 0.85f },
-        { BodyPartType.ArmUpperBack, 0.85f },
-        { BodyPartType.ArmLowerBack, 0.8f },
-        { BodyPartType.ArmLowerFront, 0.8f },
-        { BodyPartType.LegLowerBack, 0.8f },
-        { BodyPartType.LegLowerFront, 0.8f },
-        { BodyPartType.LegUpperBack, 0.9f },
-        { BodyPartType.LegUpperFront, 0.9f },
-        { BodyPartType.FootBack, 0.7f },
-        { BodyPartType.FootFront, 0.7f }
-    };
+        return _damageProfileMode;
+    }
+
+    public void ApplyDamageProfile()
+    {
+        switch (_damageProfileMode)
+        {
+            case DamageProfileMode.TestMode:
+                health = 220f;
+                armorMultiplier = 0.7f;
+                damageMultipliers = new Dictionary<BodyPartType, float>
+                {
+                    { BodyPartType.Head, 2.2f },
+                    { BodyPartType.Torso, 0.8f },
+                    { BodyPartType.ArmUpperFront, 0.6f },
+                    { BodyPartType.ArmUpperBack, 0.6f },
+                    { BodyPartType.ArmLowerBack, 0.5f },
+                    { BodyPartType.ArmLowerFront, 0.5f },
+                    { BodyPartType.LegLowerBack, 0.58f },
+                    { BodyPartType.LegLowerFront, 0.58f },
+                    { BodyPartType.LegUpperBack, 0.64f },
+                    { BodyPartType.LegUpperFront, 0.64f },
+                    { BodyPartType.FootBack, 0.45f },
+                    { BodyPartType.FootFront, 0.45f }
+                };
+                break;
+
+            case DamageProfileMode.CS16Mode:
+            default:
+                health = 60f;
+                armorMultiplier = 1f;
+                damageMultipliers = new Dictionary<BodyPartType, float>
+                {
+                    { BodyPartType.Head, 4.5f },
+                    { BodyPartType.Torso, 1f },
+                    { BodyPartType.ArmUpperFront, 0.78f },
+                    { BodyPartType.ArmUpperBack, 0.78f },
+                    { BodyPartType.ArmLowerBack, 0.72f },
+                    { BodyPartType.ArmLowerFront, 0.72f },
+                    { BodyPartType.LegLowerBack, 0.74f },
+                    { BodyPartType.LegLowerFront, 0.74f },
+                    { BodyPartType.LegUpperBack, 0.82f },
+                    { BodyPartType.LegUpperFront, 0.82f },
+                    { BodyPartType.FootBack, 0.6f },
+                    { BodyPartType.FootFront, 0.6f }
+                };
+                break;
+        }
     }
 
     public float ApplyDamage(float damage)

@@ -283,7 +283,7 @@ Transform:
   m_GameObject: {fileID: 77065788}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.06525112, w: 0.9978689}
-  m_LocalPosition: {x: -1.634553, y: -0.9489856, z: 0}
+  m_LocalPosition: {x: -14.3245535, y: -1.4689856, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -305,9 +305,17 @@ MonoBehaviour:
   _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
   _targetBoneName: arm-upper-back
   _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
   _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
   _springStrength: 90
   _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
 --- !u!50 &77065791
 Rigidbody2D:
   serializedVersion: 5
@@ -2402,7 +2410,7 @@ Transform:
   m_GameObject: {fileID: 547377603}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: 0.7600658, w: 0.64984614}
-  m_LocalPosition: {x: -1.4946108, y: -1.565731, z: 0}
+  m_LocalPosition: {x: -14.184611, y: -2.085731, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2424,9 +2432,17 @@ MonoBehaviour:
   _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
   _targetBoneName: torso
   _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
   _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
   _springStrength: 90
   _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
 --- !u!50 &547377606
 Rigidbody2D:
   serializedVersion: 5
@@ -3499,7 +3515,7 @@ Transform:
   m_GameObject: {fileID: 713457410}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: 0.028961435, w: 0.99958056}
-  m_LocalPosition: {x: -1.2791395, y: -0.995162, z: 0}
+  m_LocalPosition: {x: -13.96914, y: -1.5151625, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3521,9 +3537,17 @@ MonoBehaviour:
   _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
   _targetBoneName: arm-lower-back
   _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
   _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
   _springStrength: 90
   _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
 --- !u!60 &713457413
 PolygonCollider2D:
   m_ObjectHideFlags: 8
@@ -4137,7 +4161,7 @@ Transform:
   m_GameObject: {fileID: 973469033}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.5879165, w: 0.80892164}
-  m_LocalPosition: {x: -1.4939127, y: -1.5627303, z: 0}
+  m_LocalPosition: {x: -14.183913, y: -2.0827303, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4159,9 +4183,17 @@ MonoBehaviour:
   _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
   _targetBoneName: leg-upper-front
   _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
   _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
   _springStrength: 90
   _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
 --- !u!50 &973469036
 Rigidbody2D:
   serializedVersion: 5
@@ -5036,7 +5068,7 @@ Transform:
   m_GameObject: {fileID: 1157819823}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.029055638, w: 0.9995778}
-  m_LocalPosition: {x: -1.853652, y: -2.7958817, z: 0}
+  m_LocalPosition: {x: -14.543653, y: -3.3158817, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5058,9 +5090,17 @@ MonoBehaviour:
   _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
   _targetBoneName: foot-back
   _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
   _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
   _springStrength: 90
   _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
 --- !u!50 &1157819826
 Rigidbody2D:
   serializedVersion: 5
@@ -5213,7 +5253,7 @@ Transform:
   m_GameObject: {fileID: 1190442248}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.81358105, w: 0.58145154}
-  m_LocalPosition: {x: -1.6270733, y: -2.1370163, z: 0}
+  m_LocalPosition: {x: -14.317073, y: -2.6570168, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5235,9 +5275,17 @@ MonoBehaviour:
   _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
   _targetBoneName: leg-lower-back
   _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
   _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
   _springStrength: 90
   _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
 --- !u!50 &1190442251
 Rigidbody2D:
   serializedVersion: 5
@@ -5741,7 +5789,7 @@ Transform:
   m_GameObject: {fileID: 1406123522}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.02792164, w: 0.9996101}
-  m_LocalPosition: {x: -1.1679516, y: -2.795403, z: 0}
+  m_LocalPosition: {x: -13.857952, y: -3.315403, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5763,9 +5811,17 @@ MonoBehaviour:
   _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
   _targetBoneName: foot-front
   _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
   _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
   _springStrength: 90
   _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
 --- !u!50 &1406123525
 Rigidbody2D:
   serializedVersion: 5
@@ -6396,7 +6452,7 @@ Transform:
   m_GameObject: {fileID: 1567593888}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: 0.6604605, w: 0.7508608}
-  m_LocalPosition: {x: -1.5970297, y: -0.9140296, z: 0}
+  m_LocalPosition: {x: -14.287029, y: -1.4340296, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -6418,9 +6474,17 @@ MonoBehaviour:
   _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
   _targetBoneName: head
   _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
   _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
   _springStrength: 90
   _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
 --- !u!50 &1567593891
 Rigidbody2D:
   serializedVersion: 5
@@ -6574,7 +6638,7 @@ Transform:
   m_GameObject: {fileID: 1598632534}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.78201073, w: 0.62326497}
-  m_LocalPosition: {x: -1.4937115, y: -1.5641303, z: 0}
+  m_LocalPosition: {x: -14.183712, y: -2.0841303, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -6596,9 +6660,17 @@ MonoBehaviour:
   _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
   _targetBoneName: leg-upper-back
   _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
   _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
   _springStrength: 90
   _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
 --- !u!50 &1598632537
 Rigidbody2D:
   serializedVersion: 5
@@ -6926,7 +6998,7 @@ Transform:
   m_GameObject: {fileID: 1694027293}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.6298539, w: 0.77671367}
-  m_LocalPosition: {x: -1.3055439, y: -2.1437588, z: 0}
+  m_LocalPosition: {x: -13.995544, y: -2.6637588, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -6948,9 +7020,17 @@ MonoBehaviour:
   _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
   _targetBoneName: leg-lower-front
   _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
   _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
   _springStrength: 90
   _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
 --- !u!50 &1694027296
 Rigidbody2D:
   serializedVersion: 5
@@ -7306,7 +7386,7 @@ Transform:
   m_GameObject: {fileID: 1739082548}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.6543839, w: 0.7561625}
-  m_LocalPosition: {x: -1.6194124, y: -0.9454899, z: 0}
+  m_LocalPosition: {x: -14.309413, y: -1.4654903, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -7328,9 +7408,17 @@ MonoBehaviour:
   _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
   _targetBoneName: arm-upper-front
   _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
   _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
   _springStrength: 90
   _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
 --- !u!50 &1739082551
 Rigidbody2D:
   serializedVersion: 5
@@ -7682,7 +7770,7 @@ Transform:
   m_GameObject: {fileID: 1882248627}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.45, y: -2.87, z: 0}
+  m_LocalPosition: {x: -14.14, y: -3.39, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -8602,7 +8690,7 @@ Transform:
   m_GameObject: {fileID: 2025554024}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: 0.21840598, w: 0.97585803}
-  m_LocalPosition: {x: -1.5704174, y: -1.3013425, z: 0}
+  m_LocalPosition: {x: -14.260418, y: -1.8213425, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -8624,9 +8712,17 @@ MonoBehaviour:
   _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
   _targetBoneName: arm-lower-front
   _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
   _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
   _springStrength: 90
   _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
 --- !u!60 &2025554027
 PolygonCollider2D:
   m_ObjectHideFlags: 8
@@ -9129,8 +9225,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b29133b0eeed5648819b943e2426c2e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperModel_V2
-  health: 0
-  armorMultiplier: 0
+  _damageProfileMode: 1
+  health: 220
+  armorMultiplier: 0.7
   currentState: 0
 --- !u!114 &2115464550
 MonoBehaviour:
@@ -9190,6 +9287,10 @@ MonoBehaviour:
   _skeletonAnimation: {fileID: 1882248630}
   _view: {fileID: 1882248633}
   _bodyParts: []
+  _enableColliderSummaryLog: 1
+  _colliderSummaryIntervalSeconds: 2
+  _onlyLogWhenSummaryChanges: 1
+  _warnWhenColliderSummaryIsNotFull: 1
 --- !u!4 &2115464554
 Transform:
   m_ObjectHideFlags: 0

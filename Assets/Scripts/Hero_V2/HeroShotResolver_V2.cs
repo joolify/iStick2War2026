@@ -25,6 +25,8 @@ namespace Assets.Scripts.Hero_V2
     /// </summary>
     public sealed class HeroShotResolver_V2
     {
+        private const float FallbackHitRadius = 0.12f;
+
         public HeroShotResult_V2 ResolveShot(HeroShotContext_V2 context)
         {
             var normalizedDirection = context.Direction.normalized;
@@ -34,18 +36,39 @@ namespace Assets.Scripts.Hero_V2
             Physics2D.SyncTransforms();
 
             RaycastHit2D hit = Physics2D.Raycast(context.Origin, normalizedDirection, range, context.WhatToHit);
+            bool usedFallbackCast = false;
+            if (hit.collider == null)
+            {
+                // Small forgiving cast to reduce visual "through body" misses on thin/animated hitboxes.
+                hit = Physics2D.CircleCast(context.Origin, FallbackHitRadius, normalizedDirection, range, context.WhatToHit);
+                usedFallbackCast = hit.collider != null;
+            }
             // Optional debug ray
             //Debug.DrawRay(context.Origin, normalizedDirection * range, Color.green, 1f);
             Debug.Log($"[HeroShotResolver_V2] Raycast origin={context.Origin}, dir={normalizedDirection}, range={range}, mask={context.WhatToHit.value}");
 
             if (hit.collider != null)
             {
-                Debug.Log($"[HeroShotResolver_V2] Hit collider={hit.collider.name} layer={LayerMask.LayerToName(hit.collider.gameObject.layer)}");
+                if (usedFallbackCast)
+                {
+                    Debug.Log($"[HeroShotResolver_V2] Hit by fallback CircleCast radius={FallbackHitRadius:0.###}, collider={hit.collider.name}");
+                }
+                else
+                {
+                    Debug.Log($"[HeroShotResolver_V2] Hit collider={hit.collider.name} layer={LayerMask.LayerToName(hit.collider.gameObject.layer)}");
+                }
                 ApplyDamage(hit, context.BaseDamage);
             }
             else
             {
                 Debug.Log("[HeroShotResolver_V2] Raycast miss.");
+                RaycastHit2D unmaskedHit = Physics2D.Raycast(context.Origin, normalizedDirection, range);
+                if (unmaskedHit.collider != null)
+                {
+                    Debug.LogWarning(
+                        $"[HeroShotResolver_V2] Unmasked hit detected on layer '{LayerMask.LayerToName(unmaskedHit.collider.gameObject.layer)}' " +
+                        $"(collider={unmaskedHit.collider.name}). Check layer assignment/mask for missed shot.");
+                }
             }
 
             return new HeroShotResult_V2

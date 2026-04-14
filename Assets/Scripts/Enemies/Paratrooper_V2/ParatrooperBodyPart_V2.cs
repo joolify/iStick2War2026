@@ -38,26 +38,38 @@ public class ParatrooperBodyPart_V2 : MonoBehaviour
     [SerializeField] private SkeletonDataAsset _skeletonDataAsset;
     [SpineBone(dataField: nameof(_skeletonDataAsset))]
     [SerializeField] private string _targetBoneName;
-    [SerializeField] private float _impulseScale = 0.125f;
-    [SerializeField] private float _maxOffset = 2f;
-    [SerializeField] private float _springStrength = 55f;
-    [SerializeField] private float _damping = 10f;
+    [SerializeField] private float _impulseScale = 0.035f;
+    [SerializeField] private float _minImpulse = 0.1f;
+    [SerializeField] private float _maxImpulse = 0.34f;
+    [SerializeField] private float _maxOffset = 0.12f;
+    [SerializeField] private float _instantKickFactor = 0.09f;
+    [SerializeField] private float _maxVelocityFromOffset = 4.1f;
+    [SerializeField] private float _springStrength = 180f;
+    [SerializeField] private float _damping = 42f;
     [SerializeField] private bool _debugHitReaction = false;
+    [SerializeField] private bool _freezeBoundingBoxFollowerAtStartup = true;
+    [SerializeField] private bool _enableColliderWatchdog = true;
+    [SerializeField] private float _watchdogIntervalSeconds = 1f;
 
     private ParatrooperDamageReceiver_V2 _damageReceiver;
     private SkeletonAnimation _skeletonAnimation;
+    private BoundingBoxFollower _boundingBoxFollower;
     private Bone _targetBone;
 
     private ParatrooperModel_V2 _model;
     private Vector2 _boneOffset;
     private Vector2 _boneVelocity;
+    private Vector2 _lastAppliedOffset;
     private bool _isSubscribedToUpdateComplete;
+    private float _nextWatchdogTime;
+    private bool _watchdogMissingLogged;
 
     void Awake()
     {
         _damageReceiver = GetComponentInParent<ParatrooperDamageReceiver_V2>();
         EnsureSkeletonAnimationReference();
         SyncSkeletonDataAsset();
+        StabilizeBoundingBoxFollowerCollider();
 
         gameObject.layer = LayerMask.NameToLayer("EnemyBodyPart");
 
@@ -77,6 +89,7 @@ public class ParatrooperBodyPart_V2 : MonoBehaviour
 
     private void OnDisable()
     {
+        RestoreLastAppliedOffset();
         UnsubscribeFromSkeletonUpdateComplete();
     }
 
@@ -101,7 +114,11 @@ public class ParatrooperBodyPart_V2 : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-
+        if (_enableColliderWatchdog && Time.time >= _nextWatchdogTime)
+        {
+            _nextWatchdogTime = Time.time + Mathf.Max(0.1f, _watchdogIntervalSeconds);
+            RunColliderWatchdog();
+        }
     }
 
     private void HandleSkeletonUpdateComplete(ISkeletonAnimation _)
@@ -110,6 +127,9 @@ public class ParatrooperBodyPart_V2 : MonoBehaviour
         {
             return;
         }
+
+        // Remove previous frame's additive offset first, so we never accumulate permanent drift.
+        RestoreLastAppliedOffset();
 
         float dt = Time.deltaTime;
         if (dt <= 0f)
@@ -121,6 +141,12 @@ public class ParatrooperBodyPart_V2 : MonoBehaviour
         _boneVelocity += (-_springStrength * _boneOffset - _damping * _boneVelocity) * dt;
         _boneOffset += _boneVelocity * dt;
 
+        if (_boneOffset.sqrMagnitude > _maxOffset * _maxOffset)
+        {
+            _boneOffset = _boneOffset.normalized * _maxOffset;
+            _boneVelocity *= 0.5f;
+        }
+
         if (_boneOffset.sqrMagnitude < 0.000001f && _boneVelocity.sqrMagnitude < 0.000001f)
         {
             _boneOffset = Vector2.zero;
@@ -130,6 +156,7 @@ public class ParatrooperBodyPart_V2 : MonoBehaviour
 
         _targetBone.X += _boneOffset.x;
         _targetBone.Y += _boneOffset.y;
+        _lastAppliedOffset = _boneOffset;
 
         if (_debugHitReaction)
         {
@@ -231,15 +258,24 @@ public class ParatrooperBodyPart_V2 : MonoBehaviour
         Vector2 localDirection = new Vector2(localDirection3.x, localDirection3.y).normalized;
 
         float bodyPartMultiplier = GetReactionMultiplier(info.BodyPart);
-        float impulse = info.BaseDamage * _impulseScale * bodyPartMultiplier;
+        float bodyPartMaxOffsetMultiplier = GetMaxOffsetMultiplier(info.BodyPart);
+        float bodyPartMaxOffset = _maxOffset * bodyPartMaxOffsetMultiplier;
+        float rawImpulse = info.BaseDamage * _impulseScale * bodyPartMultiplier;
+        float impulse = Mathf.Clamp(rawImpulse, _minImpulse, _maxImpulse);
 
         // Immediate visual kick so each hit is clearly visible this frame.
-        _boneOffset += localDirection * (impulse * 0.45f);
+        _boneOffset += localDirection * (impulse * _instantKickFactor);
         _boneVelocity += localDirection * impulse;
 
-        if (_boneOffset.sqrMagnitude > _maxOffset * _maxOffset)
+        if (_boneOffset.sqrMagnitude > bodyPartMaxOffset * bodyPartMaxOffset)
         {
-            _boneOffset = _boneOffset.normalized * _maxOffset;
+            _boneOffset = _boneOffset.normalized * bodyPartMaxOffset;
+        }
+
+        float maxVelocity = bodyPartMaxOffset * Mathf.Max(1f, _maxVelocityFromOffset);
+        if (_boneVelocity.sqrMagnitude > maxVelocity * maxVelocity)
+        {
+            _boneVelocity = _boneVelocity.normalized * maxVelocity;
         }
 
         if (_debugHitReaction)
@@ -279,6 +315,111 @@ public class ParatrooperBodyPart_V2 : MonoBehaviour
         }
     }
 
+    private void StabilizeBoundingBoxFollowerCollider()
+    {
+        if (!_freezeBoundingBoxFollowerAtStartup)
+        {
+            return;
+        }
+
+        _boundingBoxFollower = GetComponent<BoundingBoxFollower>();
+        if (_boundingBoxFollower == null)
+        {
+            return;
+        }
+
+        // BoundingBoxFollower can disable/destroy colliders when slot attachments change.
+        // We initialize once and then freeze its state to keep body-part hitboxes stable.
+        _boundingBoxFollower.Initialize(true);
+        _boundingBoxFollower.clearStateOnDisable = false;
+
+        var polygonColliders = GetComponents<PolygonCollider2D>();
+        for (int i = 0; i < polygonColliders.Length; i++)
+        {
+            if (polygonColliders[i] != null)
+            {
+                polygonColliders[i].enabled = true;
+            }
+        }
+
+        _boundingBoxFollower.enabled = false;
+
+        if (_debugHitReaction)
+        {
+            Debug.Log($"[ParatrooperBodyPart_V2] Frozen BoundingBoxFollower on '{name}', colliders={polygonColliders.Length}.");
+        }
+    }
+
+    private void RunColliderWatchdog()
+    {
+        if (!gameObject.activeInHierarchy)
+        {
+            return;
+        }
+
+        var anyEnabledCollider = false;
+        var polygonColliders = GetComponents<PolygonCollider2D>();
+        for (int i = 0; i < polygonColliders.Length; i++)
+        {
+            if (polygonColliders[i] != null && polygonColliders[i].enabled)
+            {
+                anyEnabledCollider = true;
+                break;
+            }
+        }
+
+        if (anyEnabledCollider)
+        {
+            _watchdogMissingLogged = false;
+            return;
+        }
+
+        if (!_watchdogMissingLogged)
+        {
+            _watchdogMissingLogged = true;
+            Debug.LogWarning($"[ParatrooperBodyPart_V2] Collider watchdog: '{name}' has no enabled PolygonCollider2D. Trying recovery.");
+        }
+
+        TryRecoverColliderFromBoundingBoxFollower();
+    }
+
+    private void TryRecoverColliderFromBoundingBoxFollower()
+    {
+        if (_boundingBoxFollower == null)
+        {
+            _boundingBoxFollower = GetComponent<BoundingBoxFollower>();
+        }
+
+        if (_boundingBoxFollower == null)
+        {
+            Debug.LogWarning($"[ParatrooperBodyPart_V2] Collider watchdog: no BoundingBoxFollower on '{name}', cannot rebuild collider.");
+            return;
+        }
+
+        bool wasEnabled = _boundingBoxFollower.enabled;
+        _boundingBoxFollower.enabled = true;
+        _boundingBoxFollower.Initialize(true);
+
+        var polygonColliders = GetComponents<PolygonCollider2D>();
+        for (int i = 0; i < polygonColliders.Length; i++)
+        {
+            if (polygonColliders[i] != null)
+            {
+                polygonColliders[i].enabled = true;
+            }
+        }
+
+        if (_freezeBoundingBoxFollowerAtStartup)
+        {
+            _boundingBoxFollower.clearStateOnDisable = false;
+            _boundingBoxFollower.enabled = false;
+        }
+        else
+        {
+            _boundingBoxFollower.enabled = wasEnabled;
+        }
+    }
+
     private void SubscribeToSkeletonUpdateComplete()
     {
         if (_skeletonAnimation == null || _isSubscribedToUpdateComplete)
@@ -302,21 +443,62 @@ public class ParatrooperBodyPart_V2 : MonoBehaviour
         _isSubscribedToUpdateComplete = false;
     }
 
+    private void RestoreLastAppliedOffset()
+    {
+        if (_targetBone == null)
+        {
+            _lastAppliedOffset = Vector2.zero;
+            return;
+        }
+
+        if (_lastAppliedOffset.sqrMagnitude <= 0f)
+        {
+            return;
+        }
+
+        _targetBone.X -= _lastAppliedOffset.x;
+        _targetBone.Y -= _lastAppliedOffset.y;
+        _lastAppliedOffset = Vector2.zero;
+    }
+
     private static float GetReactionMultiplier(BodyPartType part)
     {
         switch (part)
         {
             case BodyPartType.Head:
-                return 1.8f;
+                return 0.5f;
             case BodyPartType.Torso:
-                return 1.25f;
+                return 0.9f;
+            case BodyPartType.ArmUpperFront:
+            case BodyPartType.ArmUpperBack:
+                return 0.78f;
+            case BodyPartType.ArmLowerBack:
+            case BodyPartType.ArmLowerFront:
+                return 0.72f;
             case BodyPartType.LegUpperBack:
             case BodyPartType.LegUpperFront:
+                return 0.75f;
             case BodyPartType.LegLowerBack:
             case BodyPartType.LegLowerFront:
-                return 1.1f;
+                return 0.7f;
+            case BodyPartType.FootBack:
+            case BodyPartType.FootFront:
+                return 0.66f;
             default:
-                return 1f;
+                return 0.7f;
+        }
+    }
+
+    private static float GetMaxOffsetMultiplier(BodyPartType part)
+    {
+        switch (part)
+        {
+            case BodyPartType.Head:
+                return 0.5f;
+            case BodyPartType.Torso:
+                return 0.75f;
+            default:
+                return 0.8f;
         }
     }
 }

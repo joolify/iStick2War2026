@@ -112,6 +112,14 @@ public class Paratrooper : MonoBehaviour
     [Header("Body Parts")]
     [SerializeField] private ParatrooperBodyPart_V2[] _bodyParts;
 
+    [Header("Collider Debug")]
+    [SerializeField] private bool _enableColliderSummaryLog = true;
+    [SerializeField] private float _colliderSummaryIntervalSeconds = 2f;
+    [SerializeField] private bool _onlyLogWhenSummaryChanges = true;
+    [SerializeField] private bool _warnWhenColliderSummaryIsNotFull = true;
+
+    private float _nextColliderSummaryTime;
+    private string _lastColliderSummary;
 
 
     /*
@@ -230,6 +238,12 @@ public class Paratrooper : MonoBehaviour
     void Update()
     {
         _controller.Tick(Time.deltaTime);
+
+        if (_enableColliderSummaryLog && Time.time >= _nextColliderSummaryTime)
+        {
+            _nextColliderSummaryTime = Time.time + Mathf.Max(0.2f, _colliderSummaryIntervalSeconds);
+            LogColliderSummary();
+        }
     }
 
     private void ValidateBodyPartSetup()
@@ -273,5 +287,69 @@ public class Paratrooper : MonoBehaviour
         }
 
         Debug.Log($"[Paratrooper_V2] BodyPart setup: total={total}, missingCollider={missingCollider}, missingReceiver={missingReceiver}, wrongLayer={wrongLayer}");
+    }
+
+    private void LogColliderSummary()
+    {
+        if (_bodyParts == null || _bodyParts.Length == 0)
+        {
+            _bodyParts = GetComponentsInChildren<ParatrooperBodyPart_V2>(true);
+        }
+
+        int totalBodyParts = _bodyParts != null ? _bodyParts.Length : 0;
+        int activeBodyPartColliders = 0;
+        int totalPolygonColliders = 0;
+        int enabledPolygonColliders = 0;
+
+        for (int i = 0; i < totalBodyParts; i++)
+        {
+            var part = _bodyParts[i];
+            if (part == null)
+            {
+                continue;
+            }
+
+            var polygonColliders = part.GetComponents<PolygonCollider2D>();
+            bool bodyPartHasEnabledCollider = false;
+
+            for (int c = 0; c < polygonColliders.Length; c++)
+            {
+                var polygonCollider = polygonColliders[c];
+                if (polygonCollider == null)
+                {
+                    continue;
+                }
+
+                totalPolygonColliders++;
+                if (polygonCollider.enabled)
+                {
+                    enabledPolygonColliders++;
+                    bodyPartHasEnabledCollider = true;
+                }
+            }
+
+            if (bodyPartHasEnabledCollider)
+            {
+                activeBodyPartColliders++;
+            }
+        }
+
+        string summary =
+            $"[Paratrooper_V2] Collider summary: active bodypart colliders={activeBodyPartColliders}/{totalBodyParts}, " +
+            $"enabled polygon colliders={enabledPolygonColliders}/{totalPolygonColliders}";
+
+        if (_onlyLogWhenSummaryChanges && summary == _lastColliderSummary)
+        {
+            return;
+        }
+
+        _lastColliderSummary = summary;
+        Debug.Log(summary);
+
+        if (_warnWhenColliderSummaryIsNotFull && activeBodyPartColliders < totalBodyParts)
+        {
+            Debug.LogWarning(
+                $"[Paratrooper_V2] Collider warning: active bodypart colliders dropped to {activeBodyPartColliders}/{totalBodyParts}.");
+        }
     }
 }
