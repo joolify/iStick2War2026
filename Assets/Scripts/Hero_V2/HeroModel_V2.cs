@@ -75,7 +75,7 @@ namespace Assets.Scripts.Hero_V2
         // TIMERS (for gameplay feel)
         // -------------------------
         public float lastShootTime { get; internal set; }
-        public float reloadDuration { get; private set; } = 1.5f;
+        public float reloadDuration { get; private set; } = 0.5f;
         public float reloadTimer { get; internal set; }
 
         // -------------------------

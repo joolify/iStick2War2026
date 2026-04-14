@@ -46,7 +46,8 @@ namespace Assets.Scripts.Hero_V2
 
         // Timing
         private float lastShootTime;
-        private float reloadTime = 1.5f;
+        private float _reloadEndTime;
+        private bool _isReloading;
         private readonly HeroShotResolver_V2 _shotResolver = new HeroShotResolver_V2();
 
         public HeroWeaponSystem_V2(HeroModel_V2 model)
@@ -61,6 +62,7 @@ namespace Assets.Scripts.Hero_V2
         {
             if (isDisabled) return false;
             if (_model.isDead) return false;
+            if (_isReloading) return false;
             if (_model.currentAmmo <= 0) return false;
 
             float timeSinceLastShot = Time.time - lastShootTime;
@@ -110,6 +112,7 @@ namespace Assets.Scripts.Hero_V2
         {
             if (isDisabled) return false;
             if (_model.isDead) return false;
+            if (_isReloading) return false;
             if (_model.currentAmmo == _model.maxAmmo) return false;
 
             return true;
@@ -118,12 +121,35 @@ namespace Assets.Scripts.Hero_V2
         // -------------------------
         // RELOAD EXECUTION
         // -------------------------
-        public void Reload()
+        public bool StartReload()
         {
-            if (!CanReload()) return;
+            if (!CanReload()) return false;
 
-            // senare: animation timing + delay system
+            _isReloading = true;
+            _reloadEndTime = Time.time + _model.reloadDuration;
+            return true;
+        }
+
+        public void Tick()
+        {
+            if (!_isReloading)
+            {
+                return;
+            }
+
+            if (Time.time < _reloadEndTime)
+            {
+                return;
+            }
+
+            _isReloading = false;
             _model.RefillAmmo();
+            Debug.Log($"[HeroWeaponSystem_V2] Reload complete. ammo={_model.currentAmmo}/{_model.maxAmmo}");
+        }
+
+        public bool IsReloading()
+        {
+            return _isReloading;
         }
 
         // -------------------------
@@ -132,6 +158,7 @@ namespace Assets.Scripts.Hero_V2
         public void Disable()
         {
             isDisabled = true;
+            _isReloading = false;
         }
 
         internal void Shoot()

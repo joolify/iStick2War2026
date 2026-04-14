@@ -69,6 +69,7 @@ namespace Assets.Scripts.Hero_V2
         public void Tick(float deltaTime)
         {
             ReadInput();
+            _weaponSystem.Tick();
             HandleCombat();
             HandleStateTransitions();
             ExecuteActions(deltaTime);
@@ -116,6 +117,12 @@ namespace Assets.Scripts.Hero_V2
                 return;
             }
 
+            if (_weaponSystem.IsReloading())
+            {
+                _stateMachine.ChangeState(HeroState.Reloading);
+                return;
+            }
+
             // Keep shooting state while shoot loop is active and button is still held.
             if (_isShootLoopActive && _input.IsShootingHeld)
             {
@@ -150,6 +157,19 @@ namespace Assets.Scripts.Hero_V2
 
         private void HandleCombat()
         {
+            if (_model.isReloadPressed && _weaponSystem.CanReload())
+            {
+                _isShootLoopActive = false;
+                if (_weaponSystem.StartReload())
+                {
+                    _outOfAmmoLatched = false;
+                    _view.StopShoot();
+                    _view.PlayReload();
+                    _stateMachine.ChangeState(HeroState.Reloading);
+                    return;
+                }
+            }
+
             // Require release before re-entering shooting after dry fire.
             if (!_input.IsShootingHeld && _outOfAmmoLatched)
             {
@@ -175,13 +195,6 @@ namespace Assets.Scripts.Hero_V2
                 _view.StopShoot();
             }
 
-            if (_model.isReloadPressed && _weaponSystem.CanReload())
-            {
-                _weaponSystem.Reload();
-                _outOfAmmoLatched = false;
-
-                _view.PlayReload();
-            }
         }
 
         // -------------------------
@@ -219,7 +232,6 @@ namespace Assets.Scripts.Hero_V2
 
                 case HeroState.Reloading:
                     _movementSystem.Stop();
-                    _weaponSystem.Reload();
                     break;
 
                 case HeroState.Dead:

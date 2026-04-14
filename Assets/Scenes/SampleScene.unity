@@ -513,7 +513,7 @@ Rigidbody2D:
   m_Interpolate: 0
   m_SleepingMode: 1
   m_CollisionDetection: 0
-  m_Constraints: 0
+  m_Constraints: 4
 --- !u!61 &150875448
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -2181,6 +2181,8 @@ MonoBehaviour:
   _aimThompsonAnim: {fileID: 11400000, guid: eae03bb901684b346935184c77036d38, type: 2}
   _shootingThompsonAnim: {fileID: 11400000, guid: fb6fb5cb46ef0d14db66ebc39196da69, type: 2}
   _runThompsonAnim: {fileID: 11400000, guid: f1a380394138ae94c9a0c5aea417af02, type: 2}
+  _jumpThompsonAnim: {fileID: 11400000, guid: ad6fda488e6b8bd419701143b3cb3445, type: 2}
+  _reloadThompsonAnim: {fileID: 11400000, guid: 217373273e5255f43b1f48d6d67c8e46, type: 2}
   _dryFireThompsonAnim: {fileID: 0}
   _trailPrefab: {fileID: 1070164800395407800, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
 --- !u!1 &547993896

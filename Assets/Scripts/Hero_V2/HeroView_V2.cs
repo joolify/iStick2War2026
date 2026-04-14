@@ -77,6 +77,7 @@ namespace Assets.Scripts.Hero_V2
         public AnimationReferenceAsset _shootingThompsonAnim;
         public AnimationReferenceAsset _runThompsonAnim;
         public AnimationReferenceAsset _jumpThompsonAnim;
+        public AnimationReferenceAsset _reloadThompsonAnim;
         public AnimationReferenceAsset _dryFireThompsonAnim;
         
         [Header("VFX")]
@@ -550,8 +551,19 @@ namespace Assets.Scripts.Hero_V2
 
         internal void PlayReload()
         {
-            //throw new NotImplementedException();
-            //FIXME
+            if (_reloadThompsonAnim == null)
+            {
+                Debug.LogWarning("[HeroView_V2] PlayReload skipped: reload animation is not assigned.");
+                PlayAimLoop();
+                return;
+            }
+
+            // Keep locomotion on track 0, play reload on weapon/upper-body track.
+            _skeletonAnimation.AnimationState.SetAnimation(1, _reloadThompsonAnim, false);
+            if (_aimThompsonAnim != null)
+            {
+                _skeletonAnimation.AnimationState.AddAnimation(1, _aimThompsonAnim, true, 0f);
+            }
         }
 
         internal void PlayOutOfAmmo()
