@@ -153,10 +153,18 @@ public class Paratrooper : MonoBehaviour
             armorMultiplier = 1f,
             damageMultipliers = new Dictionary<BodyPartType, float>
             {
-                { BodyPartType.Head, 2.0f },
-                { BodyPartType.Torso, 1.0f },
-                { BodyPartType.Arms, 0.7f },
-                { BodyPartType.Legs, 0.7f }
+                { BodyPartType.Head, 2f },
+                { BodyPartType.Torso, 1f },
+                { BodyPartType.ArmUpperFront, 0.5f },
+                { BodyPartType.ArmUpperBack, 0.5f },
+                { BodyPartType.ArmLowerBack, 0.5f },
+                { BodyPartType.ArmLowerFront, 0.5f },
+                { BodyPartType.LegLowerBack, 0.7f },
+                { BodyPartType.LegLowerFront, 0.7f },
+                { BodyPartType.LegUpperBack, 0.8f },
+                { BodyPartType.LegUpperFront, 0.8f },
+                { BodyPartType.FootBack, 0.5f },
+                { BodyPartType.FootFront, 0.5f }
             }
         };
 

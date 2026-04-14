@@ -128,11 +128,21 @@ namespace iStick2War
                     model.LandDie();
                     break;
 
-                case BodyPartType.Arms:
+                case BodyPartType.ArmUpperFront:
+                case BodyPartType.ArmLowerFront:
+                case BodyPartType.ArmUpperBack:
+                case BodyPartType.ArmLowerBack:
                     model.LandDie();
                     break;
 
-                case BodyPartType.Legs:
+                case BodyPartType.LegUpperFront:
+                case BodyPartType.LegLowerFront:
+                case BodyPartType.LegUpperBack:
+                case BodyPartType.LegLowerBack:
+                    model.LandDie();
+                    break;
+                case BodyPartType.FootFront:
+                case BodyPartType.FootBack:
                     model.LandDie();
                     break;
             }

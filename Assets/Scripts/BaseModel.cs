@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -294,6 +295,11 @@ namespace iStick2War
             {
                 currentBodyState = (speed == 0) ? StickmanBodyState.CrouchIdle : StickmanBodyState.CrouchWalk;
             }
+        }
+
+        internal void ShootFeet()
+        {
+            //FIXME
         }
     }
 }

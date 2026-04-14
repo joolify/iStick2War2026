@@ -9,9 +9,17 @@ namespace iStick2War
     public enum BodyPartType
     {
         Head,
-        Arms,
+        ArmLowerFront,
+        ArmLowerBack,
+        ArmUpperFront,
+        ArmUpperBack,
         Torso,
-        Legs,
+        LegLowerFront,
+        LegLowerBack,
+        LegUpperFront,
+        LegUpperBack,
+        FootFront,
+        FootBack
     }
 
     public class StickmanBodypart : MonoBehaviour
@@ -116,15 +124,25 @@ namespace iStick2War
                         model.ShootHead();
                         model.DropHelmet();
                         break;
-                    case BodyPartType.Arms:
+                    case BodyPartType.ArmLowerBack:
+                    case BodyPartType.ArmLowerFront:
+                    case BodyPartType.ArmUpperBack:
+                    case BodyPartType.ArmUpperFront:
                         model.ShootArms();
                         break;
                     case BodyPartType.Torso:
                         model.ShootTorso();
                         model.DropHelmet();
                         break;
-                    case BodyPartType.Legs:
+                    case BodyPartType.LegLowerBack:
+                    case BodyPartType.LegLowerFront:
+                    case BodyPartType.LegUpperBack:
+                    case BodyPartType.LegUpperFront:
                         model.ShootLegs();
+                        break;
+                    case BodyPartType.FootBack:
+                    case BodyPartType.FootFront:
+                        model.ShootFeet();
                         break;
                     default:
                         Debug.LogError("Bodypart not set!");

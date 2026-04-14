@@ -41,8 +41,16 @@ public class ParatrooperModel_V2 : MonoBehaviour
     {
         { BodyPartType.Head, 2f },
         { BodyPartType.Torso, 1f },
-        { BodyPartType.Arms, 0.5f },
-        { BodyPartType.Legs, 0.7f }
+        { BodyPartType.ArmUpperFront, 0.5f },
+        { BodyPartType.ArmUpperBack, 0.5f },
+        { BodyPartType.ArmLowerBack, 0.5f },
+        { BodyPartType.ArmLowerFront, 0.5f },
+        { BodyPartType.LegLowerBack, 0.7f },
+        { BodyPartType.LegLowerFront, 0.7f },
+        { BodyPartType.LegUpperBack, 0.8f },
+        { BodyPartType.LegUpperFront, 0.8f },
+        { BodyPartType.FootBack, 0.5f },
+        { BodyPartType.FootFront, 0.5f }
     };
     }
 
