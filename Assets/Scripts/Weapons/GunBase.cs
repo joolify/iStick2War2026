@@ -108,6 +108,7 @@ namespace iStick2War
 
             //int mask = LayerMask.GetMask("EnemyBodyPart") & ~LayerMask.GetMask("Player");
 
+            // We use Physics2D.SyncTransforms() before raycasts because Spine/bone transforms can lag behind if updated late
             Physics2D.SyncTransforms();
 
             RaycastHit2D hit = Physics2D.Raycast(aimPos, direction, 100f, whatToHit);

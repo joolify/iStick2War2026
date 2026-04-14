@@ -124,9 +124,24 @@ namespace Assets.Scripts.Hero_V2
             Debug.Log("HandleCombat: " + _input.IsShootingReleased);
             if (_input.IsShootingPressed && _weaponSystem.CanShoot())
             {
-                _weaponSystem.Shoot();
+                if (!_view.TryGetAimData(out var aimPos, out var direction))
+                {
+                    return;
+                }
 
-                _view.PlayShoot();
+                var shotContext = new HeroShotContext_V2
+                {
+                    Origin = aimPos,
+                    Direction = direction,
+                    Range = 100f,
+                    WhatToHit = LayerMask.GetMask("EnemyBodyPart"),
+                    BaseDamage = 10f
+                };
+
+                if (_weaponSystem.Shoot(shotContext, out var shotResult))
+                {
+                    _view.PlayShoot();
+                }
             }
 
             if (_input.IsShootingReleased)

@@ -2185,9 +2185,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 583491fc54b4fca4c8cd20d03e57e28c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Hero_V2.HeroView_V2
+  _skeletonAnimation: {fileID: 512775538}
+  aimPointBoneName: thompson-aim
+  crossHairBoneName: crosshair
   _cam: {fileID: 330585545}
   _idleThompsonAnim: {fileID: 11400000, guid: 4c2f987a9570dab428c02fc531fe18c4, type: 2}
   _shootingThompsonAnim: {fileID: 11400000, guid: fb6fb5cb46ef0d14db66ebc39196da69, type: 2}
+  _runThompsonAnim: {fileID: 11400000, guid: f1a380394138ae94c9a0c5aea417af02, type: 2}
 --- !u!114 &512775542
 MonoBehaviour:
   m_ObjectHideFlags: 0

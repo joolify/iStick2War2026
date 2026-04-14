@@ -6,33 +6,37 @@ using UnityEngine;
 namespace Assets.Scripts.Hero_V2
 {
     /*
- * HeroWeaponSystem_V2 (Combat Execution System)
+ * HeroWeaponSystem_V2 (Combat Rules, Not Presentation)
  *
- * PURPOSE:
- * HeroWeaponSystem_V2 is responsible for handling all weapon-related gameplay logic
- * such as shooting, reloading, and ammunition management.
+ * PURPOSE
+ * - Owns weapon behavior rules: fire gating, ammo, reload, and hit evaluation.
+ * - Executes weapon actions when requested by the controller.
  *
- * ---------------------------------------------------------
- * ❌ MUST NOT DO:
+ * DOES NOT
+ * - Read input directly.
+ * - Play animations or VFX.
+ * - Change locomotion or state-machine decisions directly.
  *
- * - Read input directly
- * - Modify or set gameplay state
- * - Play animations
- * - Spawn VFX directly (future event-based system may handle this)
+ * INPUTS
+ * - HeroModel_V2 (ammo, fire rate, dead flag).
+ * - Aim/shoot context from caller (origin, direction, layer mask, damage).
  *
- * ---------------------------------------------------------
- * ✅ RESPONSIBILITIES:
+ * OUTPUTS
+ * - Applies ammo/time changes to model.
+ * - Produces shot result data (hit/miss, hit point, target) for visual/audio layers.
  *
- * - Manage ammo and weapon state
- * - Handle fire rate and cooldowns
- * - Determine if shooting or reloading is allowed
- * - Execute shoot and reload logic
+ * INVARIANTS
+ * - No shooting when disabled, dead, out of ammo, or on cooldown.
+ * - Reload never exceeds max ammo.
+ * - Shooting path should have a single entry point (avoid Shoot/TryShoot divergence).
  *
- * ---------------------------------------------------------
- * DESIGN PRINCIPLE:
+ * UNITY/SCENE REQUIREMENTS
+ * - Raycast LayerMask must include EnemyBodyPart.
+ * - Target hitboxes need Collider2D + ParatrooperBodyPart_V2.
  *
- * This system owns the logic of "how weapons behave",
- * but does NOT decide when actions are triggered.
+ * STATUS (WIP MIGRATION)
+ * - TODO(hero-v2): implement Shoot() raycast flow and unify with TryShoot().
+ * - TODO(hero-v2): expose shot result event/data for line renderer and muzzle VFX.
  */
     public class HeroWeaponSystem_V2 
     {
@@ -43,6 +47,7 @@ namespace Assets.Scripts.Hero_V2
         // Timing
         private float lastShootTime;
         private float reloadTime = 1.5f;
+        private readonly HeroShotResolver_V2 _shotResolver = new HeroShotResolver_V2();
 
         public HeroWeaponSystem_V2(HeroModel_V2 model)
         {
@@ -80,6 +85,22 @@ namespace Assets.Scripts.Hero_V2
             // - hit detection
         }
 
+        public bool Shoot(HeroShotContext_V2 shotContext, out HeroShotResult_V2 shotResult)
+        {
+            shotResult = default;
+
+            if (!CanShoot())
+            {
+                return false;
+            }
+
+            lastShootTime = Time.time;
+            _model.ConsumeAmmo(1);
+
+            shotResult = _shotResolver.ResolveShot(shotContext);
+            return true;
+        }
+
         // -------------------------
         // RELOAD CHECK
         // -------------------------
@@ -113,7 +134,8 @@ namespace Assets.Scripts.Hero_V2
 
         internal void Shoot()
         {
-            //FIXME
+            // Backwards-compatible entry point while caller migration is in progress.
+            TryShoot();
         }
     }
 }

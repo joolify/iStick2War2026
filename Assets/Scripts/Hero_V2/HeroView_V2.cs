@@ -47,12 +47,18 @@ namespace Assets.Scripts.Hero_V2
   */
     public class HeroView_V2 : MonoBehaviour
     {
-        private SkeletonAnimation _skeletonAnimation;
+        public SkeletonAnimation _skeletonAnimation;
 
         private HeroStateMachine_V2 _stateMachine;
         private HeroDamageReceiver_V2 _damageReceiver;
         private HeroDeathHandler_V2 _deathHandler;
-        [SerializeField] private Bone _crossHairBone;
+        public Bone _crossHairBone;
+        public Bone _aimPointBone;
+
+        [SpineBone(dataField: "skeletonAnimation")] public string aimPointBoneName;
+
+        [SpineBone(dataField: "skeletonAnimation")] public string crossHairBoneName;
+
         private Vector2 _touchPos;
 
         [SerializeField] private Camera _cam;
@@ -97,6 +103,26 @@ namespace Assets.Scripts.Hero_V2
         {
             if (_cam == null)
                 Debug.LogError("Cam not found!");
+
+            if (!string.IsNullOrEmpty(aimPointBoneName))
+            {
+                _aimPointBone = _skeletonAnimation.Skeleton.FindBone(aimPointBoneName);
+            }
+
+            if (_aimPointBone == null)
+            {
+                Debug.LogError("Aim bone not found!");
+            }
+
+            if (!string.IsNullOrEmpty(crossHairBoneName))
+            {
+                _crossHairBone = _skeletonAnimation.Skeleton.FindBone(crossHairBoneName);
+            }
+
+            if (_crossHairBone == null)
+            {
+                Debug.LogError("Cross hair bone not found!");
+            }
         }
 
         void Update()
@@ -235,6 +261,34 @@ namespace Assets.Scripts.Hero_V2
             {
                 _skeletonAnimation.Skeleton.ScaleX *= -1;
             }
+        }
+
+        public bool TryGetAimData(out Vector2 origin, out Vector2 direction)
+        {
+            origin = default;
+            direction = default;
+
+            if (_skeletonAnimation == null || _aimPointBone == null || _crossHairBone == null)
+            {
+                return false;
+            }
+
+            Vector2 aimPos = _skeletonAnimation.transform.TransformPoint(
+                new Vector3(_aimPointBone.WorldX, _aimPointBone.WorldY, 0f)
+            );
+            Vector2 crossPos = _skeletonAnimation.transform.TransformPoint(
+                new Vector3(_crossHairBone.WorldX, _crossHairBone.WorldY, 0f)
+            );
+
+            Vector2 shotDirection = crossPos - aimPos;
+            if (shotDirection.sqrMagnitude <= 0.0001f)
+            {
+                return false;
+            }
+
+            origin = aimPos;
+            direction = shotDirection.normalized;
+            return true;
         }
 
         internal void PlayHitEffect(int obj)
