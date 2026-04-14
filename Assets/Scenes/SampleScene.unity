@@ -302,6 +302,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
   bodyPart: 4
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: arm-upper-back
+  _impulseScale: 0.025
+  _maxOffset: 1.2
+  _springStrength: 90
+  _damping: 16
 --- !u!50 &77065791
 Rigidbody2D:
   serializedVersion: 5
@@ -2415,6 +2421,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
   bodyPart: 5
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: torso
+  _impulseScale: 0.025
+  _maxOffset: 1.2
+  _springStrength: 90
+  _damping: 16
 --- !u!50 &547377606
 Rigidbody2D:
   serializedVersion: 5
@@ -3506,6 +3518,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
   bodyPart: 2
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: arm-lower-back
+  _impulseScale: 0.025
+  _maxOffset: 1.2
+  _springStrength: 90
+  _damping: 16
 --- !u!60 &713457413
 PolygonCollider2D:
   m_ObjectHideFlags: 8
@@ -4138,6 +4156,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
   bodyPart: 8
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: leg-upper-front
+  _impulseScale: 0.025
+  _maxOffset: 1.2
+  _springStrength: 90
+  _damping: 16
 --- !u!50 &973469036
 Rigidbody2D:
   serializedVersion: 5
@@ -5031,6 +5055,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
   bodyPart: 11
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: foot-back
+  _impulseScale: 0.025
+  _maxOffset: 1.2
+  _springStrength: 90
+  _damping: 16
 --- !u!50 &1157819826
 Rigidbody2D:
   serializedVersion: 5
@@ -5202,6 +5232,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
   bodyPart: 7
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: leg-lower-back
+  _impulseScale: 0.025
+  _maxOffset: 1.2
+  _springStrength: 90
+  _damping: 16
 --- !u!50 &1190442251
 Rigidbody2D:
   serializedVersion: 5
@@ -5724,6 +5760,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
   bodyPart: 10
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: foot-front
+  _impulseScale: 0.025
+  _maxOffset: 1.2
+  _springStrength: 90
+  _damping: 16
 --- !u!50 &1406123525
 Rigidbody2D:
   serializedVersion: 5
@@ -6373,6 +6415,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
   bodyPart: 0
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: head
+  _impulseScale: 0.025
+  _maxOffset: 1.2
+  _springStrength: 90
+  _damping: 16
 --- !u!50 &1567593891
 Rigidbody2D:
   serializedVersion: 5
@@ -6545,6 +6593,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
   bodyPart: 9
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: leg-upper-back
+  _impulseScale: 0.025
+  _maxOffset: 1.2
+  _springStrength: 90
+  _damping: 16
 --- !u!50 &1598632537
 Rigidbody2D:
   serializedVersion: 5
@@ -6891,6 +6945,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
   bodyPart: 6
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: leg-lower-front
+  _impulseScale: 0.025
+  _maxOffset: 1.2
+  _springStrength: 90
+  _damping: 16
 --- !u!50 &1694027296
 Rigidbody2D:
   serializedVersion: 5
@@ -7265,6 +7325,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
   bodyPart: 3
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: arm-upper-front
+  _impulseScale: 0.025
+  _maxOffset: 1.2
+  _springStrength: 90
+  _damping: 16
 --- !u!50 &1739082551
 Rigidbody2D:
   serializedVersion: 5
@@ -8555,6 +8621,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
   bodyPart: 1
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: arm-lower-front
+  _impulseScale: 0.025
+  _maxOffset: 1.2
+  _springStrength: 90
+  _damping: 16
 --- !u!60 &2025554027
 PolygonCollider2D:
   m_ObjectHideFlags: 8
