@@ -88,12 +88,20 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
             if (!_deathStateSent)
             {
                 _deathStateSent = true;
-                _stateMachine.ChangeState(StickmanBodyState.Die);
+                var currentState = _stateMachine.CurrentState;
+                bool isAirborne = currentState == StickmanBodyState.Glide || currentState == StickmanBodyState.Deploy;
+                _stateMachine.ChangeState(isAirborne ? StickmanBodyState.GlideDie : StickmanBodyState.Die);
             }
         }
         else
         {
-            _stateMachine.ChangeState(StickmanBodyState.Land);
+            // Keep air states when shot in the air so parachute glide movement is not interrupted.
+            var currentState = _stateMachine.CurrentState;
+            bool isAirborne = currentState == StickmanBodyState.Glide || currentState == StickmanBodyState.Deploy;
+            if (!isAirborne)
+            {
+                _stateMachine.ChangeState(StickmanBodyState.Land);
+            }
         }
 
         Debug.Log(

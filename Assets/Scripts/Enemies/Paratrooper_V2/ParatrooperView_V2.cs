@@ -89,8 +89,7 @@ public class ParatrooperView_V2 : MonoBehaviour
         if (!_deployAnim.name.Equals("E_deploy")) Debug.LogError(nameof(_deployAnim) + " has wrong animation");
         if (!_glideAnim.name.Equals("E_glide")) Debug.LogError(nameof(_glideAnim) + " has wrong animation");
         if (!_glideDeathAnim.name.Equals("E_glide_death")) Debug.LogError(nameof(_glideDeathAnim) + " has wrong animation");
-        Debug.Log("ParatrooperView_V2.Name: " + _landFallDownBackAnim.name);
-        //if (!_landFallDownBackAnim.name.Equals("E_glide_death")) Debug.LogError(nameof(_glideDeathAnim) + " has wrong animation");
+        if (!_landFallDownBackAnim.name.Equals("E_glide_death")) Debug.LogError(nameof(_landFallDownBackAnim) + " has wrong animation");
     }
 
     /// <summary>
@@ -119,6 +118,11 @@ public class ParatrooperView_V2 : MonoBehaviour
                 break;
             case StickmanBodyState.Die:
                 nextAnimation = _landFallDownBackAnim;
+                loop = false;
+                trackIndex = 1;
+                break;
+            case StickmanBodyState.GlideDie:
+                nextAnimation = _glideDeathAnim;
                 loop = false;
                 trackIndex = 1;
                 break;

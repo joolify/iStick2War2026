@@ -48,6 +48,7 @@ public class ParatrooperStateMachine_V2 : MonoBehaviour
     /// (fromState, toState)
     /// </summary>
     public event Action<StickmanBodyState, StickmanBodyState> OnStateChanged;
+    public StickmanBodyState CurrentState => _currentState;
 
     public void Initialize(ParatrooperModel_V2 model)
     {

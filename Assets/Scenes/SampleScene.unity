@@ -9225,9 +9225,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b29133b0eeed5648819b943e2426c2e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperModel_V2
-  _damageProfileMode: 1
-  health: 220
-  armorMultiplier: 0.7
+  _damageProfileMode: 0
+  health: 60
+  armorMultiplier: 1
   currentState: 0
 --- !u!114 &2115464550
 MonoBehaviour:
@@ -9287,6 +9287,15 @@ MonoBehaviour:
   _skeletonAnimation: {fileID: 1882248630}
   _view: {fileID: 1882248633}
   _bodyParts: []
+  _rigidbody2D: {fileID: 0}
+  _mainCollider2D: {fileID: 0}
+  _glideMaxFallSpeed: 1.35
+  _glideDeathMaxFallSpeed: 4.75
+  _glideHorizontalDrift: 0.15
+  _groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  _groundCheckDistance: 0.08
   _enableColliderSummaryLog: 1
   _colliderSummaryIntervalSeconds: 2
   _onlyLogWhenSummaryChanges: 1

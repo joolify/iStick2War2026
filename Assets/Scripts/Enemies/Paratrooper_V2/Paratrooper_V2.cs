@@ -112,6 +112,15 @@ public class Paratrooper : MonoBehaviour
     [Header("Body Parts")]
     [SerializeField] private ParatrooperBodyPart_V2[] _bodyParts;
 
+    [Header("Air Movement")]
+    [SerializeField] private Rigidbody2D _rigidbody2D;
+    [SerializeField] private Collider2D _mainCollider2D;
+    [SerializeField] private float _glideMaxFallSpeed = 1.35f;
+    [SerializeField] private float _glideDeathMaxFallSpeed = 4.75f;
+    [SerializeField] private float _glideHorizontalDrift = 0.15f;
+    [SerializeField] private LayerMask _groundMask = 0;
+    [SerializeField] private float _groundCheckDistance = 0.08f;
+
     [Header("Collider Debug")]
     [SerializeField] private bool _enableColliderSummaryLog = true;
     [SerializeField] private float _colliderSummaryIntervalSeconds = 2f;
@@ -120,6 +129,7 @@ public class Paratrooper : MonoBehaviour
 
     private float _nextColliderSummaryTime;
     private string _lastColliderSummary;
+    private int _groundLayer = -1;
 
 
     /*
@@ -132,6 +142,11 @@ public class Paratrooper : MonoBehaviour
     private void Awake()
     {
         InitializeDependencies();
+        _groundLayer = LayerMask.NameToLayer("Ground");
+        if (_groundMask.value == 0 && _groundLayer >= 0)
+        {
+            _groundMask = 1 << _groundLayer;
+        }
         ValidateBodyPartSetup();
 
         WireSystems();
@@ -150,6 +165,8 @@ public class Paratrooper : MonoBehaviour
         if (_deathHandler == null) _deathHandler = GetComponent<ParatrooperDeathHandler_V2>();
         if (_spineEventForwarder == null) _spineEventForwarder = GetComponent<ParatrooperSpineEventForwarder_V2>();
         if (_weaponSystem == null) _weaponSystem = GetComponent<ParatrooperWeaponSystem_V2>();
+        if (_rigidbody2D == null) _rigidbody2D = GetComponent<Rigidbody2D>();
+        if (_mainCollider2D == null) _mainCollider2D = GetComponent<Collider2D>();
     }
 
     private void WireSystems()
@@ -213,8 +230,18 @@ public class Paratrooper : MonoBehaviour
     private void HandleStateChanged(StickmanBodyState from, StickmanBodyState to)
     {
         Debug.Log($"HandleStateChanged: State changed: {from} → {to}");
+
+        // Safety: if death is requested while still in the air, force airborne death state first.
+        // This guarantees GlideDeath animation before ground impact animation.
+        if (to == StickmanBodyState.Die && !IsGrounded())
+        {
+            Debug.Log("[Paratrooper_V2] Converted Die -> GlideDie (airborne).");
+            _stateMachine.ChangeState(StickmanBodyState.GlideDie);
+            return;
+        }
+
         // Death handling
-        if (to == StickmanBodyState.Die)
+        if (to == StickmanBodyState.Die || to == StickmanBodyState.GlideDie)
         {
             _deathHandler.Die();
         }
@@ -238,12 +265,143 @@ public class Paratrooper : MonoBehaviour
     void Update()
     {
         _controller.Tick(Time.deltaTime);
+        ApplyGlideAirMovement();
+        HandleGlideDeathLandingTransition();
 
         if (_enableColliderSummaryLog && Time.time >= _nextColliderSummaryTime)
         {
             _nextColliderSummaryTime = Time.time + Mathf.Max(0.2f, _colliderSummaryIntervalSeconds);
             LogColliderSummary();
         }
+    }
+
+    private void ApplyGlideAirMovement()
+    {
+        if (_rigidbody2D == null || _stateMachine == null)
+        {
+            return;
+        }
+
+        var currentState = _stateMachine.CurrentState;
+        bool isGlide = currentState == StickmanBodyState.Glide || currentState == StickmanBodyState.Deploy;
+        bool isGlideDeath = currentState == StickmanBodyState.GlideDie;
+        if (!isGlide && !isGlideDeath)
+        {
+            return;
+        }
+
+        Vector2 velocity = _rigidbody2D.linearVelocity;
+        float maxFallSpeed = isGlideDeath ? _glideDeathMaxFallSpeed : _glideMaxFallSpeed;
+        if (velocity.y < -maxFallSpeed)
+        {
+            velocity.y = -maxFallSpeed;
+        }
+
+        if (isGlide && Mathf.Abs(velocity.x) < _glideHorizontalDrift)
+        {
+            float driftSign = transform.position.x >= 0f ? -1f : 1f;
+            velocity.x = driftSign * _glideHorizontalDrift;
+        }
+
+        _rigidbody2D.linearVelocity = velocity;
+    }
+
+    private void HandleGlideDeathLandingTransition()
+    {
+        if (_stateMachine == null || _stateMachine.CurrentState != StickmanBodyState.GlideDie)
+        {
+            return;
+        }
+
+        if (!IsGrounded())
+        {
+            return;
+        }
+
+        _stateMachine.ChangeState(StickmanBodyState.Die);
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision == null)
+        {
+            return;
+        }
+
+        TryTransitionGlideDeathOnGroundContact(collision.collider);
+    }
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        TryTransitionGlideDeathOnGroundContact(other);
+    }
+
+    private void TryTransitionGlideDeathOnGroundContact(Collider2D collider)
+    {
+        if (collider == null || _stateMachine == null)
+        {
+            return;
+        }
+
+        if (_stateMachine.CurrentState != StickmanBodyState.GlideDie)
+        {
+            return;
+        }
+
+        if (!IsGroundLayer(collider.gameObject.layer))
+        {
+            return;
+        }
+
+        Debug.Log("[Paratrooper_V2] GlideDie hit Ground layer -> switching to Die.");
+        _stateMachine.ChangeState(StickmanBodyState.Die);
+    }
+
+    private bool IsGrounded()
+    {
+        if (_mainCollider2D == null)
+        {
+            return false;
+        }
+
+        Bounds bounds = _mainCollider2D.bounds;
+        Vector2 origin = new Vector2(bounds.center.x, bounds.min.y + 0.01f);
+        float rayLength = Mathf.Max(0.01f, _groundCheckDistance);
+        RaycastHit2D[] hits = Physics2D.RaycastAll(origin, Vector2.down, rayLength, _groundMask);
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Collider2D hitCollider = hits[i].collider;
+            if (hitCollider == null)
+            {
+                continue;
+            }
+
+            // Ignore this paratrooper's own colliders (root + all children body-part hitboxes).
+            if (hitCollider.transform.IsChildOf(transform))
+            {
+                continue;
+            }
+
+            if (!IsGroundLayer(hitCollider.gameObject.layer))
+            {
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool IsGroundLayer(int layer)
+    {
+        if (_groundLayer < 0)
+        {
+            _groundLayer = LayerMask.NameToLayer("Ground");
+        }
+
+        return layer == _groundLayer;
     }
 
     private void ValidateBodyPartSetup()
