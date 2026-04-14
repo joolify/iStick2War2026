@@ -3,6 +3,7 @@ using Spine.Unity;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using TMPro;
 using UnityEngine;
 
 namespace Assets.Scripts.Hero_V2
@@ -54,6 +55,7 @@ namespace Assets.Scripts.Hero_V2
         private HeroDeathHandler_V2 _deathHandler;
         public Bone _crossHairBone;
         public Bone _aimPointBone;
+        private bool _facingRight;
 
         [SpineBone(dataField: "skeletonAnimation")] public string aimPointBoneName;
 
@@ -67,6 +69,7 @@ namespace Assets.Scripts.Hero_V2
 
         [Header("Animations")]
         public AnimationReferenceAsset _idleThompsonAnim;
+        public AnimationReferenceAsset _aimThompsonAnim;
         public AnimationReferenceAsset _shootingThompsonAnim;
         public AnimationReferenceAsset _runThompsonAnim;
         public AnimationReferenceAsset _dryFireThompsonAnim;
@@ -89,6 +92,7 @@ namespace Assets.Scripts.Hero_V2
             _skeletonAnimation = skeletonAnimation;
 
             _crossHairBone = _skeletonAnimation.Skeleton.FindBone("crosshair");
+            _facingRight = _skeletonAnimation.Skeleton.ScaleX >= 0f;
 
             if (_crossHairBone == null)
                 Debug.LogError("Crosshair bone not found in skeleton!");
@@ -127,6 +131,13 @@ namespace Assets.Scripts.Hero_V2
             {
                 Debug.LogError("Cross hair bone not found!");
             }
+
+            // Ensure desktop aim is active from frame 1, even before first input/state transition.
+            if (_idleThompsonAnim != null)
+            {
+                PlayLoop(_idleThompsonAnim);
+            }
+            PlayAimLoop();
         }
 
         void Update()
@@ -169,6 +180,7 @@ namespace Assets.Scripts.Hero_V2
             {
                 case HeroState.Idle:
                     PlayLoop(_idleThompsonAnim);
+                    PlayAimLoop();
                     break;
 
                 //case HeroState.Moving:
@@ -189,6 +201,7 @@ namespace Assets.Scripts.Hero_V2
 
                 case HeroState.Moving:
                     PlayLoop(_runThompsonAnim);
+                    PlayAimLoop();
                     break;
             }
         }
@@ -235,6 +248,16 @@ namespace Assets.Scripts.Hero_V2
             _skeletonAnimation.AnimationState.AddAnimation(0, "idle", true, 0f);
         }
 
+        private void PlayAimLoop()
+        {
+            if (_aimThompsonAnim == null)
+            {
+                return;
+            }
+
+            _skeletonAnimation.AnimationState.SetAnimation(1, _aimThompsonAnim, true);
+        }
+
         private void SetCrosshair(Vector2 localTouchPos)
         {
             if (_skeletonAnimation == null)
@@ -248,23 +271,23 @@ namespace Assets.Scripts.Hero_V2
 
         void FaceMouse()
         {
+            // Desktop-only cursor flip. Mobile/touch uses different aim handling.
+#if (UNITY_IPHONE || UNITY_ANDROID) && !UNITY_EDITOR
+            return;
+#else
+            Vector3 delta = _cam.ScreenToWorldPoint(Input.mousePosition) - transform.position;
 
-            int i = 0;
-
-            Vector3 delta = Vector3.zero;
-
-            delta = _cam.ScreenToWorldPoint(Input.mousePosition) - transform.position;
-
-            var facingRight = IsFacingRight(_cam.ScreenToWorldPoint(Input.mousePosition));
-
-            if (delta.x > 0 && !facingRight)
+            if (delta.x > 0f && !_facingRight)
             {
-                _skeletonAnimation.Skeleton.ScaleX *= -1;
+                _skeletonAnimation.Skeleton.ScaleX *= -1f;
+                _facingRight = true;
             }
-            else if (delta.x < 0 && facingRight)
+            else if (delta.x < 0f && _facingRight)
             {
-                _skeletonAnimation.Skeleton.ScaleX *= -1;
+                _skeletonAnimation.Skeleton.ScaleX *= -1f;
+                _facingRight = false;
             }
+#endif
         }
 
         public bool TryGetAimData(out Vector2 origin, out Vector2 direction)
@@ -407,7 +430,7 @@ namespace Assets.Scripts.Hero_V2
             //if (!runTeslaAnim.name.Equals("H_tesla_run")) Debug.LogError(nameof(runTeslaAnim) + " has wrong animation");
             //if (!shootingTeslaAnim.name.Equals("H_tesla_shoot")) Debug.LogError(nameof(shootingTeslaAnim) + " has wrong animation");
 
-            //if (!aimThompsonAnim.name.Equals("H_thompson_aim")) Debug.LogError(nameof(aimThompsonAnim) + " has wrong animation");
+            if (!_aimThompsonAnim.name.Equals("H_thompson_aim")) Debug.LogError(nameof(_aimThompsonAnim) + " has wrong animation");
             //if (!crouchGrenadeThompsonAnim.name.Equals("H_thompson_crouch_grenade")) Debug.LogError(nameof(crouchGrenadeThompsonAnim) + " has wrong animation");
             //if (!crouchIdleThompsonAnim.name.Equals("H_thompson_crouch_idle")) Debug.LogError(nameof(crouchIdleThompsonAnim) + " has wrong animation");
             //if (!crouchReloadThompsonAnim.name.Equals("H_thompson_crouch_reload")) Debug.LogError(nameof(crouchReloadThompsonAnim) + " has wrong animation");
@@ -457,7 +480,14 @@ namespace Assets.Scripts.Hero_V2
 
         internal void StopShoot()
         {
-            _skeletonAnimation.AnimationState.ClearTrack(1);
+            if (_aimThompsonAnim != null)
+            {
+                _skeletonAnimation.AnimationState.SetAnimation(1, _aimThompsonAnim, true);
+            }
+            else
+            {
+                _skeletonAnimation.AnimationState.ClearTrack(1);
+            }
         }
 
         internal void PlayReload()
@@ -471,6 +501,10 @@ namespace Assets.Scripts.Hero_V2
             if (_dryFireThompsonAnim != null)
             {
                 _skeletonAnimation.AnimationState.SetAnimation(1, _dryFireThompsonAnim, false);
+                if (_aimThompsonAnim != null)
+                {
+                    _skeletonAnimation.AnimationState.AddAnimation(1, _aimThompsonAnim, true, 0f);
+                }
                 return;
             }
 

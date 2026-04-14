@@ -2178,8 +2178,10 @@ MonoBehaviour:
   crossHairBoneName: crosshair
   _cam: {fileID: 330585545}
   _idleThompsonAnim: {fileID: 11400000, guid: 4c2f987a9570dab428c02fc531fe18c4, type: 2}
+  _aimThompsonAnim: {fileID: 11400000, guid: eae03bb901684b346935184c77036d38, type: 2}
   _shootingThompsonAnim: {fileID: 11400000, guid: fb6fb5cb46ef0d14db66ebc39196da69, type: 2}
   _runThompsonAnim: {fileID: 11400000, guid: f1a380394138ae94c9a0c5aea417af02, type: 2}
+  _dryFireThompsonAnim: {fileID: 0}
   _trailPrefab: {fileID: 1070164800395407800, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
 --- !u!1 &547993896
 GameObject:
