@@ -79,6 +79,9 @@ namespace Assets.Scripts.Hero_V2
 
         private bool isGrounded;
         private const float GroundCheckDistance = 0.2f;
+        private float _jumpGracePeriodTimer;
+        public float JumpGracePeriod = 0.12f;
+        public float FallThresholdVelocity = -0.1f;
 
         public HeroMovementSystem_V2(HeroModel_V2 model)
         {
@@ -94,6 +97,11 @@ namespace Assets.Scripts.Hero_V2
         public void Move(Vector2 moveInput, float deltaTime)
         {
             if (isDisabled) return;
+
+            if (_jumpGracePeriodTimer > 0f)
+            {
+                _jumpGracePeriodTimer = Mathf.Max(0f, _jumpGracePeriodTimer - deltaTime);
+            }
 
             RefreshGroundedState();
             if (_rigidbody2D != null)
@@ -138,6 +146,7 @@ namespace Assets.Scripts.Hero_V2
             Debug.Log($"[HeroMovementSystem_V2] Jump triggered. jumpForce={jumpForce}");
             velocity.y = jumpForce;
             isGrounded = false;
+            _jumpGracePeriodTimer = JumpGracePeriod;
 
             if (_rigidbody2D != null)
             {
@@ -146,6 +155,8 @@ namespace Assets.Scripts.Hero_V2
                 _rigidbody2D.linearVelocity = rbVelocity;
                 velocity = rbVelocity;
             }
+
+            _model.velocity = velocity;
         }
 
         // -------------------------
@@ -253,13 +264,31 @@ namespace Assets.Scripts.Hero_V2
             bool centerGrounded = centerHit.collider != null;
             bool leftGrounded = leftHit.collider != null;
             bool rightGrounded = rightHit.collider != null;
+            bool potentiallyGrounded = centerGrounded || leftGrounded || rightGrounded;
 
-            isGrounded = centerGrounded || leftGrounded || rightGrounded;
+            if (_jumpGracePeriodTimer > 0f)
+            {
+                bool isFalling = velocity.y <= FallThresholdVelocity;
+                if (isFalling && potentiallyGrounded)
+                {
+                    isGrounded = true;
+                    _jumpGracePeriodTimer = 0f;
+                    Debug.Log("[HeroMovementSystem_V2] Early landing detected during jump grace period.");
+                }
+                else
+                {
+                    isGrounded = false;
+                }
+            }
+            else
+            {
+                isGrounded = potentiallyGrounded;
+            }
 
             string centerName = centerHit.collider != null ? centerHit.collider.name : "null";
             string leftName = leftHit.collider != null ? leftHit.collider.name : "null";
             string rightName = rightHit.collider != null ? rightHit.collider.name : "null";
-            Debug.Log($"[HeroMovementSystem_V2] GroundCheck => grounded={isGrounded}, left={leftGrounded}({leftName}), center={centerGrounded}({centerName}), right={rightGrounded}({rightName})");
+            Debug.Log($"[HeroMovementSystem_V2] GroundCheck => grounded={isGrounded}, left={leftGrounded}({leftName}), center={centerGrounded}({centerName}), right={rightGrounded}({rightName}), grace={_jumpGracePeriodTimer:0.000}, vy={velocity.y:0.000}");
         }
 
         private RaycastHit2D GetFirstValidGroundHit(Vector2 origin)
