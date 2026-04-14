@@ -64,20 +64,28 @@ namespace Assets.Scripts.Hero_V2
     public class HeroMovementSystem_V2
     {
         private HeroModel_V2 _model;
+        private readonly Transform _transform;
+        private readonly Rigidbody2D _rigidbody2D;
+        private readonly Collider2D _collider2D;
 
         private Vector2 velocity;
         private bool isDisabled;
 
         // Movement tuning
         private float moveSpeed = 6f;
+        private float jumpForce = 5.5f;
         private float gravity = -25f;
         private float groundFriction = 12f;
 
         private bool isGrounded;
+        private const float GroundCheckDistance = 0.2f;
 
         public HeroMovementSystem_V2(HeroModel_V2 model)
         {
             _model = model;
+            _transform = model.transform;
+            _rigidbody2D = model.GetComponent<Rigidbody2D>();
+            _collider2D = model.GetComponent<Collider2D>();
         }
 
         // -------------------------
@@ -87,6 +95,12 @@ namespace Assets.Scripts.Hero_V2
         {
             if (isDisabled) return;
 
+            RefreshGroundedState();
+            if (_rigidbody2D != null)
+            {
+                // Keep local velocity in sync with physics so gravity/falling are preserved.
+                velocity = _rigidbody2D.linearVelocity;
+            }
             HandleHorizontalMovement(moveInput, deltaTime);
             HandleGravity(deltaTime);
             ApplyVelocity(deltaTime);
@@ -105,11 +119,45 @@ namespace Assets.Scripts.Hero_V2
             _model.velocity = velocity;
         }
 
+        public bool CanJump()
+        {
+            RefreshGroundedState();
+            bool canJump = !isDisabled && isGrounded;
+            Debug.Log($"[HeroMovementSystem_V2] CanJump? {canJump} (isDisabled={isDisabled}, isGrounded={isGrounded})");
+            return canJump;
+        }
+
+        public void Jump()
+        {
+            if (!CanJump())
+            {
+                Debug.Log("[HeroMovementSystem_V2] Jump blocked by CanJump().");
+                return;
+            }
+
+            Debug.Log($"[HeroMovementSystem_V2] Jump triggered. jumpForce={jumpForce}");
+            velocity.y = jumpForce;
+            isGrounded = false;
+
+            if (_rigidbody2D != null)
+            {
+                Vector2 rbVelocity = _rigidbody2D.linearVelocity;
+                rbVelocity.y = jumpForce;
+                _rigidbody2D.linearVelocity = rbVelocity;
+                velocity = rbVelocity;
+            }
+        }
+
         // -------------------------
         // GRAVITY
         // -------------------------
         private void HandleGravity(float deltaTime)
         {
+            if (_rigidbody2D != null)
+            {
+                return;
+            }
+
             if (isGrounded && velocity.y < 0)
             {
                 velocity.y = -2f; // keep grounded "stick feel"
@@ -125,11 +173,18 @@ namespace Assets.Scripts.Hero_V2
         // -------------------------
         private void ApplyVelocity(float deltaTime)
         {
-            _model.velocity = velocity;
+            if (_rigidbody2D != null)
+            {
+                Vector2 rbVelocity = _rigidbody2D.linearVelocity;
+                rbVelocity.x = velocity.x;
+                _rigidbody2D.linearVelocity = rbVelocity;
+                velocity = rbVelocity;
+                _model.velocity = _rigidbody2D.linearVelocity;
+                return;
+            }
 
-            // IMPORTANT:
-            // här kopplar du senare till Rigidbody2D eller CharacterController
-            // just nu bara data-layer
+            _transform.position += (Vector3)(velocity * deltaTime);
+            _model.velocity = velocity;
         }
 
         // -------------------------
@@ -137,7 +192,17 @@ namespace Assets.Scripts.Hero_V2
         // -------------------------
         public void Stop()
         {
-            velocity.x = Mathf.Lerp(velocity.x, 0, groundFriction * Time.deltaTime);
+            if (_rigidbody2D != null)
+            {
+                Vector2 rbVelocity = _rigidbody2D.linearVelocity;
+                rbVelocity.x = Mathf.Lerp(rbVelocity.x, 0f, groundFriction * Time.deltaTime);
+                _rigidbody2D.linearVelocity = rbVelocity;
+                velocity = rbVelocity;
+                _model.velocity = rbVelocity;
+                return;
+            }
+
+            velocity.x = Mathf.Lerp(velocity.x, 0f, groundFriction * Time.deltaTime);
             _model.velocity = velocity;
         }
 
@@ -157,6 +222,61 @@ namespace Assets.Scripts.Hero_V2
         public void SetGrounded(bool grounded)
         {
             isGrounded = grounded;
+        }
+
+        public bool IsGrounded()
+        {
+            RefreshGroundedState();
+            return isGrounded;
+        }
+
+        private void RefreshGroundedState()
+        {
+            if (_collider2D == null)
+            {
+                Debug.LogWarning("[HeroMovementSystem_V2] RefreshGroundedState: Collider2D missing.");
+                return;
+            }
+
+            Bounds bounds = _collider2D.bounds;
+            float halfWidth = bounds.extents.x * 0.9f;
+            float rayStartY = bounds.min.y + 0.02f;
+
+            Vector2 centerOrigin = new Vector2(bounds.center.x, rayStartY);
+            Vector2 leftOrigin = new Vector2(bounds.center.x - halfWidth, rayStartY);
+            Vector2 rightOrigin = new Vector2(bounds.center.x + halfWidth, rayStartY);
+
+            RaycastHit2D centerHit = GetFirstValidGroundHit(centerOrigin);
+            RaycastHit2D leftHit = GetFirstValidGroundHit(leftOrigin);
+            RaycastHit2D rightHit = GetFirstValidGroundHit(rightOrigin);
+
+            bool centerGrounded = centerHit.collider != null;
+            bool leftGrounded = leftHit.collider != null;
+            bool rightGrounded = rightHit.collider != null;
+
+            isGrounded = centerGrounded || leftGrounded || rightGrounded;
+
+            string centerName = centerHit.collider != null ? centerHit.collider.name : "null";
+            string leftName = leftHit.collider != null ? leftHit.collider.name : "null";
+            string rightName = rightHit.collider != null ? rightHit.collider.name : "null";
+            Debug.Log($"[HeroMovementSystem_V2] GroundCheck => grounded={isGrounded}, left={leftGrounded}({leftName}), center={centerGrounded}({centerName}), right={rightGrounded}({rightName})");
+        }
+
+        private RaycastHit2D GetFirstValidGroundHit(Vector2 origin)
+        {
+            RaycastHit2D[] hits = Physics2D.RaycastAll(origin, Vector2.down, GroundCheckDistance);
+            for (int i = 0; i < hits.Length; i++)
+            {
+                Collider2D hitCollider = hits[i].collider;
+                if (hitCollider == null || hitCollider == _collider2D || hitCollider.isTrigger)
+                {
+                    continue;
+                }
+
+                return hits[i];
+            }
+
+            return default;
         }
     }
 }

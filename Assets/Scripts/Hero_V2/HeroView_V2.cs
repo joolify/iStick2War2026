@@ -66,12 +66,17 @@ namespace Assets.Scripts.Hero_V2
         [SerializeField] private Camera _cam;
 
         private bool _isInitialized;
+        private bool _shootLocomotionIsMoving;
+        private bool _shootLocomotionInitialized;
+        private bool _jumpCombatIsShooting;
+        private bool _jumpCombatInitialized;
 
         [Header("Animations")]
         public AnimationReferenceAsset _idleThompsonAnim;
         public AnimationReferenceAsset _aimThompsonAnim;
         public AnimationReferenceAsset _shootingThompsonAnim;
         public AnimationReferenceAsset _runThompsonAnim;
+        public AnimationReferenceAsset _jumpThompsonAnim;
         public AnimationReferenceAsset _dryFireThompsonAnim;
         
         [Header("VFX")]
@@ -181,6 +186,7 @@ namespace Assets.Scripts.Hero_V2
                 case HeroState.Idle:
                     PlayLoop(_idleThompsonAnim);
                     PlayAimLoop();
+                    _jumpCombatInitialized = false;
                     break;
 
                 //case HeroState.Moving:
@@ -188,7 +194,10 @@ namespace Assets.Scripts.Hero_V2
                 //    break;
 
                 case HeroState.Shooting:
-                    PlayLoop(_shootingThompsonAnim);
+                    // Base locomotion while shooting is controlled live by controller.
+                    PlayLoop(_idleThompsonAnim);
+                    _shootLocomotionInitialized = false;
+                    _jumpCombatInitialized = false;
                     break;
 
                 //case HeroState.Reloading:
@@ -202,6 +211,19 @@ namespace Assets.Scripts.Hero_V2
                 case HeroState.Moving:
                     PlayLoop(_runThompsonAnim);
                     PlayAimLoop();
+                    _jumpCombatInitialized = false;
+                    break;
+
+                case HeroState.Jumping:
+                    if (_jumpThompsonAnim != null)
+                    {
+                        PlayLoop(_jumpThompsonAnim);
+                    }
+                    else
+                    {
+                        PlayLoop(_runThompsonAnim);
+                    }
+                    _jumpCombatInitialized = false;
                     break;
             }
         }
@@ -438,7 +460,7 @@ namespace Assets.Scripts.Hero_V2
             //if (!crouchWalkThompsonAnim.name.Equals("H_thompson_crouch_walk")) Debug.LogError(nameof(crouchWalkThompsonAnim) + " has wrong animation");
             //if (!grenadeThompsonAnim.name.Equals("H_thompson_grenade")) Debug.LogError(nameof(grenadeThompsonAnim) + " has wrong animation");
             if (!_idleThompsonAnim.name.Equals("H_thompson_idle")) Debug.LogError(nameof(_idleThompsonAnim) + " has wrong animation");
-            //if (!jumpThompsonAnim.name.Equals("H_thompson_jump")) Debug.LogError(nameof(jumpThompsonAnim) + " has wrong animation");
+            if (!_jumpThompsonAnim.name.Equals("H_thompson_jump")) Debug.LogError(nameof(_jumpThompsonAnim) + " has wrong animation");
             //if (!reloadThompsonAnim.name.Equals("H_thompson_reload")) Debug.LogError(nameof(reloadThompsonAnim) + " has wrong animation");
             if (!_runThompsonAnim.name.Equals("H_thompson_run")) Debug.LogError(nameof(_runThompsonAnim) + " has wrong animation");
             if (!_shootingThompsonAnim.name.Equals("H_thompson_shoot")) Debug.LogError(nameof(_shootingThompsonAnim) + " has wrong animation");
@@ -447,6 +469,42 @@ namespace Assets.Scripts.Hero_V2
         internal void PlayShoot()
         {
             _skeletonAnimation.AnimationState.SetAnimation(1, _shootingThompsonAnim, true);
+        }
+
+        internal void UpdateShootLocomotion(bool isMoving)
+        {
+            if (_stateMachine == null || _stateMachine.CurrentState != HeroState.Shooting)
+            {
+                return;
+            }
+
+            if (_shootLocomotionInitialized && _shootLocomotionIsMoving == isMoving)
+            {
+                return;
+            }
+
+            _shootLocomotionIsMoving = isMoving;
+            _shootLocomotionInitialized = true;
+            PlayLoop(isMoving ? _runThompsonAnim : _idleThompsonAnim);
+        }
+
+        internal void UpdateJumpCombatOverlay(bool isShooting)
+        {
+            if (_stateMachine == null || _stateMachine.CurrentState != HeroState.Jumping)
+            {
+                return;
+            }
+
+            if (_jumpCombatInitialized && _jumpCombatIsShooting == isShooting)
+            {
+                return;
+            }
+
+            _jumpCombatIsShooting = isShooting;
+            _jumpCombatInitialized = true;
+
+            // Keep jump visible on base track while still allowing air aiming.
+            PlayAimLoop();
         }
 
         internal void PlayShotTrail(Vector2 origin, Vector2 finalPos)

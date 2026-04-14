@@ -44,6 +44,7 @@ namespace Assets.Scripts.Hero_V2
         public Vector2 moveInput { get; internal set; }
         public bool isShootingPressed { get; internal set; }
         public bool isReloadPressed { get; internal set; }
+        public bool isJumpPressed { get; internal set; }
 
         // -------------------------
         // STATE

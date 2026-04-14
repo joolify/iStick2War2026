@@ -31,6 +31,7 @@ namespace Assets.Scripts.Hero_V2
     {
         Idle,
         Moving,
+        Jumping,
         Shooting,
         Reloading,
         Dead

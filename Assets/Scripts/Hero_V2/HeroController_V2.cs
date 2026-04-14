@@ -82,6 +82,12 @@ namespace Assets.Scripts.Hero_V2
             _model.moveInput = _input.MoveInput;
             _model.isShootingPressed = _input.IsShootingHeld;
             _model.isReloadPressed = _input.IsReloadPressed;
+            _model.isJumpPressed = _input.IsJumpPressed;
+
+            if (_model.isJumpPressed)
+            {
+                Debug.Log($"[HeroController_V2] Jump input detected. moveInput={_model.moveInput}");
+            }
         }
 
         // -------------------------
@@ -93,6 +99,20 @@ namespace Assets.Scripts.Hero_V2
             if (_model.isDead)
             {
                 _stateMachine.ChangeState(HeroState.Dead);
+                return;
+            }
+
+            if (_model.isJumpPressed && _movementSystem.CanJump())
+            {
+                Debug.Log("[HeroController_V2] Jump transition accepted.");
+                _movementSystem.Jump();
+                _stateMachine.ChangeState(HeroState.Jumping);
+                return;
+            }
+
+            if (_stateMachine.CurrentState == HeroState.Jumping && !_movementSystem.IsGrounded())
+            {
+                _stateMachine.ChangeState(HeroState.Jumping);
                 return;
             }
 
@@ -182,8 +202,19 @@ namespace Assets.Scripts.Hero_V2
                     _movementSystem.Move(_model.moveInput, deltaTime);
                     break;
 
+                case HeroState.Jumping:
+                    _movementSystem.Move(_model.moveInput, deltaTime);
+                    _view.UpdateJumpCombatOverlay(_isShootLoopActive && _input.IsShootingHeld);
+                    if (_isShootLoopActive && _input.IsShootingHeld)
+                    {
+                        TryShootNow();
+                    }
+                    break;
+
                 case HeroState.Shooting:
-                    _movementSystem.Stop(); // optional design choice
+                    // Allow strafe/run while the shoot loop is active.
+                    _movementSystem.Move(_model.moveInput, deltaTime);
+                    _view.UpdateShootLocomotion(_model.moveInput != Vector2.zero);
                     break;
 
                 case HeroState.Reloading:
@@ -210,6 +241,12 @@ namespace Assets.Scripts.Hero_V2
                         return;
                     }
 
+                    // While jumping we resolve fire directly in Tick to keep jump animation on base track.
+                    if (_stateMachine.CurrentState == HeroState.Jumping)
+                    {
+                        return;
+                    }
+
                     if (_model.currentAmmo <= 0)
                     {
                         Debug.Log("[HeroController_V2] ShootStarted cancelled: out of ammo.");
@@ -221,30 +258,7 @@ namespace Assets.Scripts.Hero_V2
                         return;
                     }
 
-                    if (!_view.TryGetAimData(out var aimPos, out var direction))
-                    {
-                        Debug.LogWarning("[HeroController_V2] ShootStarted: TryGetAimData failed.");
-                        return;
-                    }
-
-                    var shotContext = new HeroShotContext_V2
-                    {
-                        Origin = aimPos,
-                        Direction = direction,
-                        Range = 100f,
-                        WhatToHit = LayerMask.GetMask("EnemyBodyPart"),
-                        BaseDamage = 10f
-                    };
-
-                    if (_weaponSystem.Shoot(shotContext, out var shotResult))
-                    {
-                        Debug.Log($"[HeroController_V2] ShootStarted: shot resolved. didHit={shotResult.DidHit}, finalPos={shotResult.FinalPos}");
-                        _view.PlayShotTrail(aimPos, shotResult.FinalPos);
-                    }
-                    else
-                    {
-                        Debug.Log("[HeroController_V2] ShootStarted: weapon system rejected shot.");
-                    }
+                    TryShootNow();
                     break;
 
                 case AnimationEventType.ShootFinished:
@@ -254,6 +268,34 @@ namespace Assets.Scripts.Hero_V2
                         _stateMachine.ChangeState(HeroState.Idle);
                     }
                     break;
+            }
+        }
+
+        private void TryShootNow()
+        {
+            if (_model.currentAmmo <= 0)
+            {
+                return;
+            }
+
+            if (!_view.TryGetAimData(out var aimPos, out var direction))
+            {
+                Debug.LogWarning("[HeroController_V2] TryShootNow: TryGetAimData failed.");
+                return;
+            }
+
+            var shotContext = new HeroShotContext_V2
+            {
+                Origin = aimPos,
+                Direction = direction,
+                Range = 100f,
+                WhatToHit = LayerMask.GetMask("EnemyBodyPart"),
+                BaseDamage = 10f
+            };
+
+            if (_weaponSystem.Shoot(shotContext, out var shotResult))
+            {
+                _view.PlayShotTrail(aimPos, shotResult.FinalPos);
             }
         }
     }

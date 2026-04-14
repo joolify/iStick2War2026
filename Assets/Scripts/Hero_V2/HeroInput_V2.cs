@@ -50,6 +50,7 @@ namespace Assets.Scripts.Hero_V2
         public bool IsShootingReleased { get; private set; }
 
         public bool IsReloadPressed { get; private set; }
+        public bool IsJumpPressed { get; private set; }
 
         //FIXME ChatGPT:a detta:
         public float shootBufferTime; // Hur länge vi ska buffra shoot-input efter att ammo tagit, gör att shooting känns “responsive”
@@ -70,9 +71,7 @@ namespace Assets.Scripts.Hero_V2
         private void ReadMovement()
         {
             float x = Input.GetAxisRaw("Horizontal");
-            float y = Input.GetAxisRaw("Vertical");
-
-            MoveInput = new Vector2(x, y).normalized;
+            MoveInput = new Vector2(x, 0f).normalized;
         }
 
         // -------------------------
@@ -85,6 +84,11 @@ namespace Assets.Scripts.Hero_V2
             IsShootingReleased = Input.GetButtonUp("Fire1");
 
             IsReloadPressed = Input.GetKeyDown(KeyCode.R);
+            IsJumpPressed =
+                Input.GetButtonDown("Jump") ||
+                Input.GetKeyDown(KeyCode.Space) ||
+                Input.GetKeyDown(KeyCode.UpArrow) ||
+                Input.GetKeyDown(KeyCode.W);
         }
     }
 }
