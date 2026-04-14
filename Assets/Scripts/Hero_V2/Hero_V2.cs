@@ -156,6 +156,7 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
 
         public void ReceiveDamage(int damage)
         {
+            Debug.Log($"[Hero_V2] ReceiveDamage called. damage={damage}");
             if (_damageReceiver != null)
             {
                 _damageReceiver.ApplyDamage(damage);

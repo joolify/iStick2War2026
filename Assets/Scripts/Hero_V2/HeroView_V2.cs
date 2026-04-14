@@ -79,9 +79,15 @@ namespace Assets.Scripts.Hero_V2
         public AnimationReferenceAsset _jumpThompsonAnim;
         public AnimationReferenceAsset _reloadThompsonAnim;
         public AnimationReferenceAsset _dryFireThompsonAnim;
+        public AnimationReferenceAsset _landFallDownBackAnim;
         
         [Header("VFX")]
         [SerializeField] private Transform _trailPrefab;
+        [SerializeField] private float _trailWidth = 0.06f;
+        [SerializeField] private float _trailVisibleDuration = 0.12f;
+        [SerializeField] private bool _overrideTrailColor = false;
+        [SerializeField] private Color _trailColor = Color.white;
+        [SerializeField] private int _trailSortingOrder = 350;
 
         // -------------------------
         // INIT
@@ -226,6 +232,10 @@ namespace Assets.Scripts.Hero_V2
                     }
                     _jumpCombatInitialized = false;
                     break;
+
+                case HeroState.Dead:
+                    PlayDeathAnimation();
+                    break;
             }
         }
 
@@ -254,7 +264,30 @@ namespace Assets.Scripts.Hero_V2
         private void HandleDeath()
         {
             // extra VFX layer (camera shake, particles, sound trigger)
+            PlayDeathAnimation();
             Debug.Log("Hero death visuals triggered");
+        }
+
+        private void PlayDeathAnimation()
+        {
+            if (_skeletonAnimation == null)
+            {
+                return;
+            }
+
+            _skeletonAnimation.AnimationState.ClearTrack(1);
+
+            if (_landFallDownBackAnim != null)
+            {
+                _skeletonAnimation.AnimationState.SetAnimation(0, _landFallDownBackAnim, false);
+                return;
+            }
+
+            // Fallback so Hero does not snap to an unrelated loop if death clip is not assigned yet.
+            if (_idleThompsonAnim != null)
+            {
+                _skeletonAnimation.AnimationState.SetAnimation(0, _idleThompsonAnim, true);
+            }
         }
 
         // -------------------------
@@ -345,12 +378,12 @@ namespace Assets.Scripts.Hero_V2
 
         internal void PlayHitEffect(int obj)
         {
-            throw new NotImplementedException();
+            HandleDamageTaken(obj);
         }
 
         internal void PlayDeathEffect()
         {
-            throw new NotImplementedException();
+            HandleDeath();
         }
 
         private void CheckAnimationNames()
@@ -465,6 +498,7 @@ namespace Assets.Scripts.Hero_V2
             //if (!reloadThompsonAnim.name.Equals("H_thompson_reload")) Debug.LogError(nameof(reloadThompsonAnim) + " has wrong animation");
             if (!_runThompsonAnim.name.Equals("H_thompson_run")) Debug.LogError(nameof(_runThompsonAnim) + " has wrong animation");
             if (!_shootingThompsonAnim.name.Equals("H_thompson_shoot")) Debug.LogError(nameof(_shootingThompsonAnim) + " has wrong animation");
+            if (!_landFallDownBackAnim.name.Equals("E_land_fall_down_back")) Debug.LogError(nameof(_landFallDownBackAnim) + " has wrong animation");
         }
 
         internal void PlayShoot()
@@ -524,6 +558,24 @@ namespace Assets.Scripts.Hero_V2
                 lr.positionCount = 0; // clear prefab state
                 lr.positionCount = 2;
                 lr.useWorldSpace = true;
+                lr.widthMultiplier = Mathf.Max(0.01f, _trailWidth);
+                lr.startWidth = lr.widthMultiplier;
+                lr.endWidth = lr.widthMultiplier;
+                if (_overrideTrailColor)
+                {
+                    lr.startColor = _trailColor;
+                    lr.endColor = _trailColor;
+                }
+                lr.sortingOrder = _trailSortingOrder;
+                lr.enabled = true;
+                if (lr.sharedMaterial == null)
+                {
+                    Shader spriteShader = Shader.Find("Sprites/Default");
+                    if (spriteShader != null)
+                    {
+                        lr.sharedMaterial = new Material(spriteShader);
+                    }
+                }
                 lr.SetPosition(0, origin);
                 lr.SetPosition(1, finalPos);
                 Debug.Log($"[HeroView_V2] PlayShotTrail OK. origin={origin}, finalPos={finalPos}");
@@ -534,7 +586,7 @@ namespace Assets.Scripts.Hero_V2
             }
 
             // Keep same lifetime as legacy GunBase effect.
-            Destroy(trail.gameObject, 0.04f);
+            Destroy(trail.gameObject, Mathf.Max(0.05f, _trailVisibleDuration));
         }
 
         internal void StopShoot()

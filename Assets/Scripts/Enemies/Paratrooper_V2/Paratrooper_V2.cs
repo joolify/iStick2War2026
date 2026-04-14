@@ -165,7 +165,15 @@ public class Paratrooper : MonoBehaviour
         if (_stateMachine == null) _stateMachine = GetComponent<ParatrooperStateMachine_V2>();
         if (_deathHandler == null) _deathHandler = GetComponent<ParatrooperDeathHandler_V2>();
         if (_spineEventForwarder == null) _spineEventForwarder = GetComponent<ParatrooperSpineEventForwarder_V2>();
-        if (_weaponSystem == null) _weaponSystem = GetComponent<ParatrooperWeaponSystem_V2>();
+        if (_weaponSystem == null)
+        {
+            _weaponSystem = GetComponent<ParatrooperWeaponSystem_V2>();
+            if (_weaponSystem == null)
+            {
+                _weaponSystem = gameObject.AddComponent<ParatrooperWeaponSystem_V2>();
+                Debug.LogWarning("[Paratrooper_V2] ParatrooperWeaponSystem_V2 was missing and has been auto-added to root.");
+            }
+        }
         if (_rigidbody2D == null) _rigidbody2D = GetComponent<Rigidbody2D>();
         if (_mainCollider2D == null) _mainCollider2D = GetComponent<Collider2D>();
     }

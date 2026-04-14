@@ -76,6 +76,7 @@ namespace Assets.Scripts.Hero_V2
             _model.TakeDamage(damage);
 
             int actualDamage = previousHealth - _model.currentHealth;
+            Debug.Log($"[HeroDamageReceiver_V2] Damage applied. in={damage}, actual={actualDamage}, hp={previousHealth}->{_model.currentHealth}, dead={_model.isDead}");
 
             if (actualDamage > 0)
             {
@@ -84,6 +85,7 @@ namespace Assets.Scripts.Hero_V2
 
             if (_model.isDead)
             {
+                Debug.Log("[HeroDamageReceiver_V2] OnDeath emitted.");
                 OnDeath?.Invoke();
             }
         }

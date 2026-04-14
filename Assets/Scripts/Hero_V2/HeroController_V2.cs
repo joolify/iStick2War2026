@@ -47,6 +47,7 @@ namespace Assets.Scripts.Hero_V2
         private readonly HeroStateMachine_V2 _stateMachine;
         private readonly HeroMovementSystem_V2 _movementSystem;
         private readonly HeroWeaponSystem_V2 _weaponSystem;
+        private const bool DebugDrawShotRay = true;
         private bool _isShootLoopActive;
         private bool _outOfAmmoLatched;
 
@@ -302,7 +303,8 @@ namespace Assets.Scripts.Hero_V2
                 Direction = direction,
                 Range = 100f,
                 WhatToHit = LayerMask.GetMask("EnemyBodyPart"),
-                BaseDamage = 30f
+                BaseDamage = 30f,
+                DebugDrawShotRay = DebugDrawShotRay
             };
 
             if (_weaponSystem.Shoot(shotContext, out var shotResult))

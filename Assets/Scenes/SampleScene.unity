@@ -2379,7 +2379,13 @@ MonoBehaviour:
   _jumpThompsonAnim: {fileID: 11400000, guid: ad6fda488e6b8bd419701143b3cb3445, type: 2}
   _reloadThompsonAnim: {fileID: 11400000, guid: 217373273e5255f43b1f48d6d67c8e46, type: 2}
   _dryFireThompsonAnim: {fileID: 0}
+  _landFallDownBackAnim: {fileID: 11400000, guid: 60b80e1da8a4f15449b9935da44a70d4, type: 2}
   _trailPrefab: {fileID: 1070164800395407800, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
+  _trailWidth: 0.06
+  _trailVisibleDuration: 0.12
+  _overrideTrailColor: 0
+  _trailColor: {r: 1, g: 0.95, b: 0.5, a: 1}
+  _trailSortingOrder: 350
 --- !u!1 &547377603
 GameObject:
   m_ObjectHideFlags: 0
@@ -9152,6 +9158,7 @@ GameObject:
   - component: {fileID: 2115464548}
   - component: {fileID: 2115464547}
   - component: {fileID: 2115464555}
+  - component: {fileID: 2115464556}
   m_Layer: 0
   m_Name: PARATROOPER Model_V2
   m_TagString: Untagged
@@ -9349,6 +9356,33 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 4
+--- !u!114 &2115464556
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2115464546}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ee946eeac13ebe441bbfa79172b2ed0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParatrooperWeaponSystem_V2
+  _fireCooldown: 0.14
+  _range: 100
+  _baseDamage: 9
+  _whatToHit:
+    serializedVersion: 2
+    m_Bits: 64
+  _firePoint: {fileID: 0}
+  _shotLineRenderer: {fileID: 2565440054647899737, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
+  _shotTrailPrefab: {fileID: 1070164800395407800, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
+  _lineVisibleDuration: 0.1
+  _debugDrawShotRay: 1
+  _debugShotLineLogs: 1
+  _lineWidth: 0.035
+  _lineColor: {r: 1, g: 0.95, b: 0.5, a: 1}
+  _lineSortingOrder: 300
 --- !u!1001 &2147091497
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -24,6 +24,7 @@ public class ParatrooperController_V2 : MonoBehaviour
     ParatrooperStateMachine_V2 _stateMachine;
     ParatrooperDamageReceiver_V2 _damageReceiver;
     ParatrooperWeaponSystem_V2 _weaponSystem;
+    private bool _isShootWindowOpen;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
 
     public void Initialize(
@@ -71,6 +72,16 @@ public class ParatrooperController_V2 : MonoBehaviour
                     Debug.Log($"[ParatrooperController_V2] Ignored LandFinished in state {_stateMachine.CurrentState}.");
                 }
                 break;
+            case AnimationEventType.ShootStarted:
+                if (_stateMachine.CurrentState == StickmanBodyState.Shoot && _weaponSystem != null)
+                {
+                    _isShootWindowOpen = true;
+                    _weaponSystem.TryAutoShootAtHero();
+                }
+                break;
+            case AnimationEventType.ShootFinished:
+                _isShootWindowOpen = false;
+                break;
         }
     }
 
@@ -91,9 +102,11 @@ public class ParatrooperController_V2 : MonoBehaviour
             return;
         }
 
-        if (_stateMachine.CurrentState == StickmanBodyState.Shoot)
+        // Shooting is event-driven by Spine shoot events.
+        // Keep Tick free from fire calls to avoid double-triggering.
+        if (_stateMachine.CurrentState != StickmanBodyState.Shoot)
         {
-            _weaponSystem.TryAutoShootAtHero();
+            _isShootWindowOpen = false;
         }
     }
 

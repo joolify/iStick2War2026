@@ -94,6 +94,15 @@ namespace Assets.Scripts.Enemies.Paratrooper_V2
             _shootStartedEventData = _skeletonAnimation.Skeleton.Data.FindEvent(shootStartedEventName);
             _shootFinishedEventData = _skeletonAnimation.Skeleton.Data.FindEvent(shootFinishedEventName);
 
+            if (_shootStartedEventData == null)
+            {
+                Debug.LogWarning("[ParatrooperSpineEventForwarder_V2] shootStartedEventName is not mapped in SkeletonData. Fallback name matching will be used.");
+            }
+            if (_shootFinishedEventData == null)
+            {
+                Debug.LogWarning("[ParatrooperSpineEventForwarder_V2] shootFinishedEventName is not mapped in SkeletonData. Fallback name matching will be used.");
+            }
+
             _skeletonAnimation.AnimationState.Event += OnSpineEvent;
 
             _initialized = true;
@@ -117,6 +126,8 @@ namespace Assets.Scripts.Enemies.Paratrooper_V2
                 return;
 
             Debug.Log($"ParatrooperSpineEventForwarder: Received event '{e.Data.Name}' at time {e.Time} (int: {e.Int}, float: {e.Float}, string: '{e.String}')");
+            string eventName = e.Data != null ? e.Data.Name : string.Empty;
+            string normalized = string.IsNullOrEmpty(eventName) ? string.Empty : eventName.Trim().ToLowerInvariant();
 
             // ✅ Use EventData instead of string compare (faster & safer)
             if (e.Data == _deployStartedEventData)
@@ -147,10 +158,6 @@ namespace Assets.Scripts.Enemies.Paratrooper_V2
             {
                 _controller.OnAnimationEvent(AnimationEventType.LandFinished);
             }
-            else if (e.Data == _landFinishedEventData)
-            {
-                _controller.OnAnimationEvent(AnimationEventType.LandFinished);
-            }
             else if (e.Data == _reloadStartedEventData)
             {
                 _controller.OnAnimationEvent(AnimationEventType.ReloadStarted);
@@ -164,6 +171,14 @@ namespace Assets.Scripts.Enemies.Paratrooper_V2
                 _controller.OnAnimationEvent(AnimationEventType.ShootStarted);
             }
             else if (e.Data == _shootFinishedEventData)
+            {
+                _controller.OnAnimationEvent(AnimationEventType.ShootFinished);
+            }
+            else if (normalized == "start_shoot" || normalized == "shoot_started")
+            {
+                _controller.OnAnimationEvent(AnimationEventType.ShootStarted);
+            }
+            else if (normalized == "stop_shoot" || normalized == "shoot_finished")
             {
                 _controller.OnAnimationEvent(AnimationEventType.ShootFinished);
             }

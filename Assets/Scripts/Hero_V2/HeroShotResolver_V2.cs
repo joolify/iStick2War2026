@@ -10,6 +10,7 @@ namespace Assets.Scripts.Hero_V2
         public float Range;
         public LayerMask WhatToHit;
         public float BaseDamage;
+        public bool DebugDrawShotRay;
     }
 
     public struct HeroShotResult_V2
@@ -43,8 +44,10 @@ namespace Assets.Scripts.Hero_V2
                 hit = Physics2D.CircleCast(context.Origin, FallbackHitRadius, normalizedDirection, range, context.WhatToHit);
                 usedFallbackCast = hit.collider != null;
             }
-            // Optional debug ray
-            //Debug.DrawRay(context.Origin, normalizedDirection * range, Color.green, 1f);
+            if (context.DebugDrawShotRay)
+            {
+                Debug.DrawRay(context.Origin, normalizedDirection * range, Color.green, 0.75f);
+            }
             Debug.Log($"[HeroShotResolver_V2] Raycast origin={context.Origin}, dir={normalizedDirection}, range={range}, mask={context.WhatToHit.value}");
 
             if (hit.collider != null)
