@@ -1,0 +1,404 @@
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace iStick2War_V2
+{
+    public sealed class ShopPanel_V2 : MonoBehaviour
+    {
+        [Header("UI (optional)")]
+        [SerializeField] private Text _waveText;
+        [SerializeField] private Text _currencyText;
+        [SerializeField] private Text _bunkerText;
+        [SerializeField] private Text _healthCostText;
+        [SerializeField] private Text _bazookaCostText;
+        [SerializeField] private Text _bunkerCostText;
+        [Header("Visibility")]
+        [SerializeField] private bool _toggleVisualComponentsOnShowHide = true;
+        [SerializeField] private Transform _visualRoot;
+        [SerializeField] private bool _toggleCanvases = false;
+        [SerializeField] private bool _toggleGraphics = false;
+        [SerializeField] private bool _lockVisualRootTransformOnShow = true;
+        [SerializeField] private bool _detachFromScaledParentOnInitialize = true;
+        [SerializeField] private bool _lockToCameraWhileVisible = true;
+        [SerializeField] private Camera _lockCamera;
+        [SerializeField] private bool _parentToCameraWhileVisible = true;
+        [SerializeField] private bool _useFixedCameraLocalPlacement = true;
+        [SerializeField] private Vector3 _fixedCameraLocalPosition = new Vector3(0f, 0f, 10f);
+        [SerializeField] private Vector3 _fixedCameraLocalScale = Vector3.one;
+        [SerializeField] private bool _useCachedVisualScaleWhenParentedToCamera = true;
+        [SerializeField] private bool _debugShopPanelLogs = false;
+        [SerializeField] private bool _debugShopPanelTransformTrace = true;
+        [SerializeField] private int _debugTransformTraceEveryNFrames = 15;
+
+        private WaveManager_V2 _waveManager;
+        private bool _hasCachedVisualRootTransform;
+        private Vector3 _cachedVisualRootLocalPosition;
+        private Quaternion _cachedVisualRootLocalRotation;
+        private Vector3 _cachedVisualRootLocalScale;
+        private Vector3 _cachedVisualRootWorldPosition;
+        private Quaternion _cachedVisualRootWorldRotation;
+        private Vector3 _cameraLockedViewportPoint;
+        private bool _hasCameraLockPoint;
+        private Transform _originalParent;
+        private int _originalSiblingIndex;
+        private bool _isParentedToCamera;
+
+        public void Initialize(WaveManager_V2 waveManager)
+        {
+            _waveManager = waveManager;
+            if (_waveManager != null)
+            {
+                _waveManager.OnMetaChanged -= HandleMetaChanged;
+                _waveManager.OnMetaChanged += HandleMetaChanged;
+            }
+
+            MaybeDetachFromScaledParent();
+            CacheVisualRootTransform();
+            LogTransformSnapshot("Initialize");
+            Refresh();
+        }
+
+        private void OnDestroy()
+        {
+            if (_waveManager != null)
+            {
+                _waveManager.OnMetaChanged -= HandleMetaChanged;
+            }
+        }
+
+        public void Show()
+        {
+            gameObject.SetActive(true);
+            RestoreVisualRootTransformIfNeeded();
+            AttachToCameraIfNeeded();
+            CaptureCameraLockPoint();
+            SetVisualComponentsVisible(true);
+            LogTransformSnapshot("Show");
+            Refresh();
+        }
+
+        public void Hide()
+        {
+            LogTransformSnapshot("Hide-Before");
+            DetachFromCameraIfNeeded();
+            SetVisualComponentsVisible(false);
+            _hasCameraLockPoint = false;
+            gameObject.SetActive(false);
+        }
+
+        private void LateUpdate()
+        {
+            if (!gameObject.activeInHierarchy || !_lockToCameraWhileVisible)
+            {
+                return;
+            }
+
+            Transform root = _visualRoot != null ? _visualRoot : transform;
+            Camera cam = ResolveCamera();
+            if (root == null || cam == null)
+            {
+                return;
+            }
+
+            if (!_hasCameraLockPoint)
+            {
+                _cameraLockedViewportPoint = cam.WorldToViewportPoint(root.position);
+                _hasCameraLockPoint = true;
+            }
+
+            Vector3 worldPoint = cam.ViewportToWorldPoint(_cameraLockedViewportPoint);
+            root.position = new Vector3(worldPoint.x, worldPoint.y, root.position.z);
+
+            if (_debugShopPanelTransformTrace)
+            {
+                int every = Mathf.Max(1, _debugTransformTraceEveryNFrames);
+                if ((Time.frameCount % every) == 0)
+                {
+                    LogTransformSnapshot("LateUpdate");
+                }
+            }
+        }
+
+        public void Refresh()
+        {
+            if (_waveManager == null)
+            {
+                return;
+            }
+
+            SetText(_waveText, $"Wave: {_waveManager.CurrentWaveNumber}");
+            SetText(_currencyText, $"Currency: {_waveManager.Currency}");
+            SetText(_bunkerText, $"Bunker HP: {_waveManager.BunkerHealth}");
+            SetText(_healthCostText, $"Heal cost: {_waveManager.GetHealthPurchaseCost()}");
+            SetText(
+                _bazookaCostText,
+                _waveManager.IsBazookaUnlocked()
+                    ? "Bazooka: Unlocked"
+                    : $"Bazooka cost: {_waveManager.GetBazookaUnlockCost()}");
+            SetText(_bunkerCostText, $"Repair cost: {_waveManager.GetBunkerRepairCost()}");
+        }
+
+        public void OnBuyHealthClicked()
+        {
+            _waveManager?.PurchaseHealth();
+            Refresh();
+        }
+
+        public void OnBuyBazookaClicked()
+        {
+            _waveManager?.PurchaseBazookaUnlock();
+            Refresh();
+        }
+
+        public void OnRepairBunkerClicked()
+        {
+            _waveManager?.PurchaseBunkerRepair();
+            Refresh();
+        }
+
+        public void OnStartNextWaveClicked()
+        {
+            _waveManager?.StartNextWaveFromShop();
+        }
+
+        private void HandleMetaChanged(int wave, int currency, int bunkerHp)
+        {
+            Refresh();
+        }
+
+        private static void SetText(Text textField, string value)
+        {
+            if (textField != null)
+            {
+                textField.text = value;
+            }
+        }
+
+        private void SetVisualComponentsVisible(bool visible)
+        {
+            if (!_toggleVisualComponentsOnShowHide)
+            {
+                return;
+            }
+
+            Transform root = _visualRoot != null ? _visualRoot : transform;
+            SpriteRenderer[] spriteRenderers = root.GetComponentsInChildren<SpriteRenderer>(true);
+            for (int i = 0; i < spriteRenderers.Length; i++)
+            {
+                if (spriteRenderers[i] != null)
+                {
+                    spriteRenderers[i].enabled = visible;
+                }
+            }
+
+            if (_toggleCanvases)
+            {
+                Canvas[] canvases = root.GetComponentsInChildren<Canvas>(true);
+                for (int i = 0; i < canvases.Length; i++)
+                {
+                    if (canvases[i] != null)
+                    {
+                        canvases[i].enabled = visible;
+                    }
+                }
+            }
+
+            if (_toggleGraphics)
+            {
+                Graphic[] graphics = root.GetComponentsInChildren<Graphic>(true);
+                for (int i = 0; i < graphics.Length; i++)
+                {
+                    if (graphics[i] != null)
+                    {
+                        graphics[i].enabled = visible;
+                    }
+                }
+            }
+
+            if (_debugShopPanelLogs)
+            {
+                Debug.Log($"[ShopPanel_V2] SetVisualComponentsVisible={visible}");
+            }
+        }
+
+        private void CacheVisualRootTransform()
+        {
+            Transform root = _visualRoot != null ? _visualRoot : transform;
+            _cachedVisualRootLocalPosition = root.localPosition;
+            _cachedVisualRootLocalRotation = root.localRotation;
+            _cachedVisualRootLocalScale = root.localScale;
+            _cachedVisualRootWorldPosition = root.position;
+            _cachedVisualRootWorldRotation = root.rotation;
+            _hasCachedVisualRootTransform = true;
+        }
+
+        private void CaptureCameraLockPoint()
+        {
+            if (!_lockToCameraWhileVisible)
+            {
+                return;
+            }
+
+            Transform root = _visualRoot != null ? _visualRoot : transform;
+            Camera cam = ResolveCamera();
+            if (root == null || cam == null)
+            {
+                return;
+            }
+
+            _cameraLockedViewportPoint = cam.WorldToViewportPoint(root.position);
+            _hasCameraLockPoint = true;
+            LogTransformSnapshot("CaptureCameraLockPoint");
+        }
+
+        private void RestoreVisualRootTransformIfNeeded()
+        {
+            if (!_lockVisualRootTransformOnShow)
+            {
+                return;
+            }
+
+            Transform root = _visualRoot != null ? _visualRoot : transform;
+            if (!_hasCachedVisualRootTransform)
+            {
+                CacheVisualRootTransform();
+            }
+
+            root.SetPositionAndRotation(_cachedVisualRootWorldPosition, _cachedVisualRootWorldRotation);
+            root.localPosition = _cachedVisualRootLocalPosition;
+            root.localRotation = _cachedVisualRootLocalRotation;
+            root.localScale = _cachedVisualRootLocalScale;
+
+            if (_debugShopPanelLogs)
+            {
+                Debug.Log($"[ShopPanel_V2] Restored visual root transform. localPos={root.localPosition}");
+            }
+        }
+
+        private void MaybeDetachFromScaledParent()
+        {
+            if (!_detachFromScaledParentOnInitialize)
+            {
+                return;
+            }
+
+            Transform root = _visualRoot != null ? _visualRoot : transform;
+            Transform parent = root.parent;
+            if (parent == null)
+            {
+                return;
+            }
+
+            Vector3 s = parent.lossyScale;
+            bool parentScaleIsNormal =
+                Mathf.Approximately(s.x, 1f) &&
+                Mathf.Approximately(s.y, 1f) &&
+                Mathf.Approximately(s.z, 1f);
+            if (parentScaleIsNormal)
+            {
+                return;
+            }
+
+            root.SetParent(null, true);
+            if (_debugShopPanelLogs)
+            {
+                Debug.Log($"[ShopPanel_V2] Detached visual root from scaled parent '{parent.name}' (lossyScale={s}).");
+            }
+        }
+
+        private Camera ResolveCamera()
+        {
+            if (_lockCamera != null)
+            {
+                return _lockCamera;
+            }
+
+            return Camera.main;
+        }
+
+        private void AttachToCameraIfNeeded()
+        {
+            if (!_parentToCameraWhileVisible || _isParentedToCamera)
+            {
+                return;
+            }
+
+            Transform root = _visualRoot != null ? _visualRoot : transform;
+            Camera cam = ResolveCamera();
+            if (root == null || cam == null)
+            {
+                return;
+            }
+
+            _originalParent = root.parent;
+            _originalSiblingIndex = root.GetSiblingIndex();
+            root.SetParent(cam.transform, true);
+
+            if (_useFixedCameraLocalPlacement)
+            {
+                // Force deterministic on-screen placement instead of inheriting stale scene transforms.
+                root.localPosition = _fixedCameraLocalPosition;
+                root.localRotation = Quaternion.identity;
+                bool canUseCachedScale = _useCachedVisualScaleWhenParentedToCamera && _hasCachedVisualRootTransform;
+                root.localScale = canUseCachedScale ? _cachedVisualRootLocalScale : _fixedCameraLocalScale;
+            }
+
+            _isParentedToCamera = true;
+
+            if (_debugShopPanelLogs)
+            {
+                Debug.Log(
+                    $"[ShopPanel_V2] Parented visual root to camera '{cam.name}'. " +
+                    $"localPos={root.localPosition}, localScale={root.localScale}, fixedPlacement={_useFixedCameraLocalPlacement}");
+            }
+        }
+
+        private void DetachFromCameraIfNeeded()
+        {
+            if (!_isParentedToCamera)
+            {
+                return;
+            }
+
+            Transform root = _visualRoot != null ? _visualRoot : transform;
+            if (root == null)
+            {
+                _isParentedToCamera = false;
+                return;
+            }
+
+            root.SetParent(_originalParent, true);
+            if (_originalParent != null)
+            {
+                int clampedIndex = Mathf.Clamp(_originalSiblingIndex, 0, _originalParent.childCount - 1);
+                root.SetSiblingIndex(clampedIndex);
+            }
+
+            _isParentedToCamera = false;
+            if (_debugShopPanelLogs)
+            {
+                Debug.Log("[ShopPanel_V2] Restored visual root parent after hide.");
+            }
+        }
+
+        private void LogTransformSnapshot(string reason)
+        {
+            if (!_debugShopPanelTransformTrace)
+            {
+                return;
+            }
+
+            Transform root = _visualRoot != null ? _visualRoot : transform;
+            Camera cam = ResolveCamera();
+            Vector3 camPos = cam != null ? cam.transform.position : Vector3.zero;
+            Vector3 viewportPos = cam != null ? cam.WorldToViewportPoint(root.position) : Vector3.zero;
+            string parentName = root.parent != null ? root.parent.name : "<null>";
+
+            Debug.Log(
+                $"[ShopPanel_V2][{reason}] root={root.name}, parent={parentName}, " +
+                $"localPos={root.localPosition}, worldPos={root.position}, localScale={root.localScale}, " +
+                $"viewport={viewportPos}, camPos={camPos}, isParentedToCamera={_isParentedToCamera}, " +
+                $"lockToCamera={_lockToCameraWhileVisible}, parentToCamera={_parentToCameraWhileVisible}");
+        }
+    }
+}

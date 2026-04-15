@@ -1,0 +1,2767 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &14335406216185171
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4388141878789528119}
+  - component: {fileID: 182853471816531420}
+  - component: {fileID: 1953199649443728269}
+  - component: {fileID: 6901461204001243295}
+  - component: {fileID: 414021243090934713}
+  - component: {fileID: 7717978413602490173}
+  m_Layer: 10
+  m_Name: Leg-Upper-Front-Hitbox
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4388141878789528119
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 14335406216185171}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0.5879165, w: 0.80892164}
+  m_LocalPosition: {x: -14.183913, y: -2.0827303, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7624897141787648253}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &182853471816531420
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 14335406216185171}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0317ee9ba6e1b1e49a030268e026d372, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoundingBoxFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  slotName: leg-upper-front-bb
+  isTrigger: 0
+  usedByEffector: 0
+  usedByComposite: 0
+  clearStateOnDisable: 1
+--- !u!60 &1953199649443728269
+PolygonCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 14335406216185171}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Points:
+    m_Paths:
+    - - {x: -0.0569, y: 0.0011}
+      - {x: -0.0109, y: -0.08409999}
+      - {x: 0.6616, y: -0.0897}
+      - {x: 0.71779996, y: 0.0008}
+      - {x: 0.67069995, y: 0.093100004}
+      - {x: -0.019299999, y: 0.0809}
+  m_UseDelaunayMesh: 1
+--- !u!114 &6901461204001243295
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 14335406216185171}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1fd8daaed7b64148a34acb96ba14ce1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoneFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  boneName: leg-upper-front
+  followXYPosition: 1
+  followZPosition: 1
+  followAttachmentZSpacing: 0
+  followBoneRotation: 1
+  followSkeletonFlip: 1
+  followLocalScale: 0
+  followParentWorldScale: 0
+  maintainedAxisOrientation: 1
+  initializeOnAwake: 1
+--- !u!50 &414021243090934713
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 14335406216185171}
+  m_BodyType: 0
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0
+--- !u!114 &7717978413602490173
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 14335406216185171}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07e2b3e891e670c419ebe923918076a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
+  bodyPart: 8
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: leg-upper-front
+  _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
+  _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
+  _springStrength: 90
+  _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
+--- !u!1 &290865280016780074
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2726403106381483746}
+  - component: {fileID: 5820633602489050629}
+  - component: {fileID: 3514053435367399647}
+  - component: {fileID: 6351291268219317005}
+  - component: {fileID: 1220682390369939635}
+  - component: {fileID: 6864558417942220708}
+  m_Layer: 10
+  m_Name: Leg-Lower-Back-Hitbox
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2726403106381483746
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 290865280016780074}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0.81358105, w: 0.58145154}
+  m_LocalPosition: {x: -14.317073, y: -2.6570168, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7624897141787648253}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5820633602489050629
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 290865280016780074}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0317ee9ba6e1b1e49a030268e026d372, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoundingBoxFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  slotName: leg-lower-back-bb
+  isTrigger: 0
+  usedByEffector: 0
+  usedByComposite: 0
+  clearStateOnDisable: 1
+--- !u!60 &3514053435367399647
+PolygonCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 290865280016780074}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Points:
+    m_Paths:
+    - - {x: -0.0928, y: 0.0058}
+      - {x: -0.0544, y: -0.077}
+      - {x: 0.7836, y: -0.067899995}
+      - {x: 0.7812, y: 0.0523}
+      - {x: 0.74160004, y: 0.0943}
+      - {x: -0.0688, y: 0.088}
+  m_UseDelaunayMesh: 1
+--- !u!114 &6351291268219317005
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 290865280016780074}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1fd8daaed7b64148a34acb96ba14ce1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoneFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  boneName: leg-lower-back
+  followXYPosition: 1
+  followZPosition: 1
+  followAttachmentZSpacing: 0
+  followBoneRotation: 1
+  followSkeletonFlip: 1
+  followLocalScale: 0
+  followParentWorldScale: 0
+  maintainedAxisOrientation: 1
+  initializeOnAwake: 1
+--- !u!50 &1220682390369939635
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 290865280016780074}
+  m_BodyType: 0
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0
+--- !u!114 &6864558417942220708
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 290865280016780074}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07e2b3e891e670c419ebe923918076a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
+  bodyPart: 7
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: leg-lower-back
+  _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
+  _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
+  _springStrength: 90
+  _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
+--- !u!1 &1425890025568105950
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6008574131695582798}
+  - component: {fileID: 6593194328115272059}
+  - component: {fileID: 6969535851954692921}
+  - component: {fileID: 5122995855953606031}
+  - component: {fileID: 3884552245145279488}
+  - component: {fileID: 577552315399567751}
+  - component: {fileID: 2782605750978404735}
+  - component: {fileID: 2203435948091714374}
+  - component: {fileID: 4857575653447999322}
+  - component: {fileID: 4799644363124035344}
+  m_Layer: 10
+  m_Name: PARATROOPER V2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6008574131695582798
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1425890025568105950}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 6.96, y: 3.67, z: 0}
+  m_LocalScale: {x: 0.5, y: 0.5, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 6511203771371252545}
+  - {fileID: 7624897141787648253}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6593194328115272059
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1425890025568105950}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f6277600b1b3a5241b2b467113a8683f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Paratrooper
+  _controller: {fileID: 6969535851954692921}
+  _stateMachine: {fileID: 2782605750978404735}
+  _damageReceiver: {fileID: 5122995855953606031}
+  _deathHandler: {fileID: 3884552245145279488}
+  _weaponSystem: {fileID: 0}
+  _spineEventForwarder: {fileID: 357004263934065529}
+  _skeletonAnimation: {fileID: 2010201899228407644}
+  _view: {fileID: 6511529744997581474}
+  _bodyParts: []
+  _rigidbody2D: {fileID: 0}
+  _mainCollider2D: {fileID: 0}
+  _glideMaxFallSpeed: 1.35
+  _glideDeathMaxFallSpeed: 4.75
+  _glideHorizontalDrift: 0.15
+  _groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  _groundCheckDistance: 0.08
+  _nearGroundRayDistance: 1.25
+  _enableColliderSummaryLog: 1
+  _colliderSummaryIntervalSeconds: 2
+  _onlyLogWhenSummaryChanges: 1
+  _warnWhenColliderSummaryIsNotFull: 1
+--- !u!114 &6969535851954692921
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1425890025568105950}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9367c41fae11d584c85b13945bae7fd1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParatrooperController_V2
+--- !u!114 &5122995855953606031
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1425890025568105950}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0c71d3e8a4d36284b81c4bd5a7707784, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParatrooperDamageReceiver_V2
+  _enableExplosiveGibDeath: 1
+  _explodeOnAnyExplosiveHit: 1
+  _explosiveGibDamageThreshold: 40
+--- !u!114 &3884552245145279488
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1425890025568105950}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8ba2e7bcc9de16d49a2186e5abfd2d0e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParatrooperDeathHandler_V2
+  scoreValue: 0
+--- !u!114 &577552315399567751
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1425890025568105950}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b29133b0eeed5648819b943e2426c2e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParatrooperModel_V2
+  _damageProfileMode: 0
+  health: 60
+  armorMultiplier: 1
+  currentState: 0
+--- !u!114 &2782605750978404735
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1425890025568105950}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4090c76849fac94899f49a3e83a7e3a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParatrooperStateMachine_V2
+--- !u!61 &2203435948091714374
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1425890025568105950}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: -1.4389524, y: -2.941935}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Size: {x: 0.8021698, y: 0.09424853}
+  m_EdgeRadius: 0
+--- !u!50 &4857575653447999322
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1425890025568105950}
+  m_BodyType: 0
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 4
+--- !u!114 &4799644363124035344
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1425890025568105950}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ee946eeac13ebe441bbfa79172b2ed0c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParatrooperWeaponSystem_V2
+  _fireCooldown: 0.14
+  _range: 100
+  _baseDamage: 9
+  _whatToHit:
+    serializedVersion: 2
+    m_Bits: 64
+  _firePoint: {fileID: 0}
+  _aimPointBoneName: mp40-aim
+  _crossHairBoneName: crosshair
+  _shotLineRenderer: {fileID: 2565440054647899737, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
+  _shotTrailPrefab: {fileID: 1070164800395407800, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
+  _lineVisibleDuration: 0.1
+  _debugDrawShotRay: 1
+  _debugShotLineLogs: 1
+  _debugCombatLogs: 0
+  _lineWidth: 0.035
+  _lineColor: {r: 0.990566, g: 0.990566, b: 0.990566, a: 1}
+  _overrideLineColor: 1
+  _lineSortingOrder: 300
+  _shotLineSortingLayerName: Foreground
+  _preferUrpUnlitLineMaterial: 1
+--- !u!1 &2321445442868420986
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 648171236496739033}
+  - component: {fileID: 3052604246233671587}
+  - component: {fileID: 448389956453340950}
+  - component: {fileID: 7630622801239519202}
+  - component: {fileID: 294367457736360855}
+  - component: {fileID: 7327445753668861436}
+  m_Layer: 10
+  m_Name: Leg-Upper-Back-Hitbox
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &648171236496739033
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2321445442868420986}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0.78201073, w: 0.62326497}
+  m_LocalPosition: {x: -14.183712, y: -2.0841303, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7624897141787648253}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3052604246233671587
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2321445442868420986}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0317ee9ba6e1b1e49a030268e026d372, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoundingBoxFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  slotName: leg-upper-back-bb
+  isTrigger: 0
+  usedByEffector: 0
+  usedByComposite: 0
+  clearStateOnDisable: 1
+--- !u!60 &448389956453340950
+PolygonCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2321445442868420986}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Points:
+    m_Paths:
+    - - {x: 0.0075, y: 0.1021}
+      - {x: -0.0855, y: 0.0661}
+      - {x: -0.0317, y: -0.08319999}
+      - {x: 0.6324, y: -0.0814}
+      - {x: 0.684, y: -0.014099999}
+      - {x: 0.6555, y: 0.0888}
+  m_UseDelaunayMesh: 1
+--- !u!114 &7630622801239519202
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2321445442868420986}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1fd8daaed7b64148a34acb96ba14ce1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoneFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  boneName: leg-upper-back
+  followXYPosition: 1
+  followZPosition: 1
+  followAttachmentZSpacing: 0
+  followBoneRotation: 1
+  followSkeletonFlip: 1
+  followLocalScale: 0
+  followParentWorldScale: 0
+  maintainedAxisOrientation: 1
+  initializeOnAwake: 1
+--- !u!50 &294367457736360855
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2321445442868420986}
+  m_BodyType: 0
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0
+--- !u!114 &7327445753668861436
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2321445442868420986}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07e2b3e891e670c419ebe923918076a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
+  bodyPart: 9
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: leg-upper-back
+  _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
+  _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
+  _springStrength: 90
+  _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
+--- !u!1 &2558519598089176756
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2918648581522797332}
+  - component: {fileID: 8895374779460542279}
+  - component: {fileID: 5867324302710612215}
+  - component: {fileID: 236700727635035591}
+  - component: {fileID: 8249282826649588518}
+  - component: {fileID: 8237492134087945603}
+  m_Layer: 10
+  m_Name: Foot-Front-Hitbox
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2918648581522797332
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2558519598089176756}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0.02792164, w: 0.9996101}
+  m_LocalPosition: {x: -13.857952, y: -3.315403, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7624897141787648253}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8895374779460542279
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2558519598089176756}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0317ee9ba6e1b1e49a030268e026d372, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoundingBoxFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  slotName: foot-front-bb
+  isTrigger: 0
+  usedByEffector: 0
+  usedByComposite: 0
+  clearStateOnDisable: 1
+--- !u!60 &5867324302710612215
+PolygonCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2558519598089176756}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Points:
+    m_Paths:
+    - - {x: 0.109, y: 0.07619999}
+      - {x: -0.0721, y: 0.058099996}
+      - {x: -0.0796, y: -0.0134}
+      - {x: -0.0216, y: -0.088}
+      - {x: 0.1439, y: -0.0776}
+      - {x: 0.18409999, y: 0.0243}
+  m_UseDelaunayMesh: 1
+--- !u!114 &236700727635035591
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2558519598089176756}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1fd8daaed7b64148a34acb96ba14ce1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoneFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  boneName: foot-front
+  followXYPosition: 1
+  followZPosition: 1
+  followAttachmentZSpacing: 0
+  followBoneRotation: 1
+  followSkeletonFlip: 1
+  followLocalScale: 0
+  followParentWorldScale: 0
+  maintainedAxisOrientation: 1
+  initializeOnAwake: 1
+--- !u!50 &8249282826649588518
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2558519598089176756}
+  m_BodyType: 0
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0
+--- !u!114 &8237492134087945603
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2558519598089176756}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07e2b3e891e670c419ebe923918076a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
+  bodyPart: 10
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: foot-front
+  _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
+  _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
+  _springStrength: 90
+  _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
+--- !u!1 &2919523997494451103
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6362881810472479211}
+  - component: {fileID: 7264340505260285525}
+  - component: {fileID: 4323983175327905619}
+  - component: {fileID: 4063023540502287565}
+  - component: {fileID: 3457989517184553062}
+  - component: {fileID: 2742959144907164924}
+  m_Layer: 10
+  m_Name: Arm-Upper-Back-Hitbox
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6362881810472479211
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2919523997494451103}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0.06525112, w: 0.9978689}
+  m_LocalPosition: {x: -14.3245535, y: -1.4689856, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7624897141787648253}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7264340505260285525
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2919523997494451103}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0317ee9ba6e1b1e49a030268e026d372, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoundingBoxFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  slotName: arm-upper-back-bb
+  isTrigger: 0
+  usedByEffector: 0
+  usedByComposite: 0
+  clearStateOnDisable: 1
+--- !u!60 &4323983175327905619
+PolygonCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2919523997494451103}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Points:
+    m_Paths:
+    - - {x: -0.08439999, y: -0.0021}
+      - {x: -0.0201, y: -0.0901}
+      - {x: 0.4094, y: -0.0773}
+      - {x: 0.45839998, y: 0.0073}
+      - {x: 0.4051, y: 0.0804}
+      - {x: 0.0149, y: 0.0728}
+  m_UseDelaunayMesh: 1
+--- !u!114 &4063023540502287565
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2919523997494451103}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1fd8daaed7b64148a34acb96ba14ce1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoneFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  boneName: arm-upper-back
+  followXYPosition: 1
+  followZPosition: 1
+  followAttachmentZSpacing: 0
+  followBoneRotation: 1
+  followSkeletonFlip: 1
+  followLocalScale: 0
+  followParentWorldScale: 0
+  maintainedAxisOrientation: 1
+  initializeOnAwake: 1
+--- !u!50 &3457989517184553062
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2919523997494451103}
+  m_BodyType: 0
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0
+--- !u!114 &2742959144907164924
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2919523997494451103}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07e2b3e891e670c419ebe923918076a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
+  bodyPart: 4
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: arm-upper-back
+  _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
+  _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
+  _springStrength: 90
+  _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
+--- !u!1 &3218899603473570638
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4505108236970261686}
+  - component: {fileID: 8769813841515556138}
+  - component: {fileID: 7324835201201627904}
+  - component: {fileID: 5879366775366024203}
+  - component: {fileID: 5206272230484402537}
+  - component: {fileID: 1935452191064236151}
+  m_Layer: 10
+  m_Name: Foot-Back-Hitbox
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4505108236970261686
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3218899603473570638}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0.029055638, w: 0.9995778}
+  m_LocalPosition: {x: -14.543653, y: -3.3158817, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7624897141787648253}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8769813841515556138
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3218899603473570638}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0317ee9ba6e1b1e49a030268e026d372, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoundingBoxFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  slotName: foot-back-bb
+  isTrigger: 0
+  usedByEffector: 0
+  usedByComposite: 0
+  clearStateOnDisable: 1
+--- !u!60 &7324835201201627904
+PolygonCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3218899603473570638}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Points:
+    m_Paths:
+    - - {x: 0.12689999, y: 0.070999995}
+      - {x: -0.067099996, y: 0.057499997}
+      - {x: -0.082499996, y: -0.0122}
+      - {x: -0.054299995, y: -0.0632}
+      - {x: 0.0095, y: -0.0962}
+      - {x: 0.1477, y: -0.070999995}
+      - {x: 0.18049999, y: -0.0037999998}
+  m_UseDelaunayMesh: 1
+--- !u!114 &5879366775366024203
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3218899603473570638}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1fd8daaed7b64148a34acb96ba14ce1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoneFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  boneName: foot-back
+  followXYPosition: 1
+  followZPosition: 1
+  followAttachmentZSpacing: 0
+  followBoneRotation: 1
+  followSkeletonFlip: 1
+  followLocalScale: 0
+  followParentWorldScale: 0
+  maintainedAxisOrientation: 1
+  initializeOnAwake: 1
+--- !u!50 &5206272230484402537
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3218899603473570638}
+  m_BodyType: 0
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0
+--- !u!114 &1935452191064236151
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3218899603473570638}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07e2b3e891e670c419ebe923918076a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
+  bodyPart: 11
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: foot-back
+  _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
+  _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
+  _springStrength: 90
+  _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
+--- !u!1 &3670587808647388623
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7232292644426571423}
+  - component: {fileID: 5192681977825153175}
+  - component: {fileID: 4143855099342883912}
+  - component: {fileID: 3835662478159495019}
+  - component: {fileID: 1601239482513851408}
+  - component: {fileID: 3914256223659740173}
+  m_Layer: 10
+  m_Name: Arm-Lower-Back-Hitbox
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7232292644426571423
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3670587808647388623}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: 0.028961435, w: 0.99958056}
+  m_LocalPosition: {x: -13.96914, y: -1.5151625, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7624897141787648253}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5192681977825153175
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3670587808647388623}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0317ee9ba6e1b1e49a030268e026d372, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoundingBoxFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  slotName: arm-lower-back-bb
+  isTrigger: 0
+  usedByEffector: 0
+  usedByComposite: 0
+  clearStateOnDisable: 1
+--- !u!114 &4143855099342883912
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3670587808647388623}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1fd8daaed7b64148a34acb96ba14ce1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoneFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  boneName: arm-lower-back
+  followXYPosition: 1
+  followZPosition: 1
+  followAttachmentZSpacing: 0
+  followBoneRotation: 1
+  followSkeletonFlip: 1
+  followLocalScale: 0
+  followParentWorldScale: 0
+  maintainedAxisOrientation: 1
+  initializeOnAwake: 1
+--- !u!50 &3835662478159495019
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3670587808647388623}
+  m_BodyType: 0
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0
+--- !u!60 &1601239482513851408
+PolygonCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3670587808647388623}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Points:
+    m_Paths:
+    - - {x: -0.073699996, y: -0.0074}
+      - {x: -0.0052999994, y: 0.0808}
+      - {x: 0.6308, y: 0.0818}
+      - {x: 0.6962, y: -0.0050999997}
+      - {x: 0.6356, y: -0.082899995}
+      - {x: -0.020399999, y: -0.0846}
+  m_UseDelaunayMesh: 1
+--- !u!114 &3914256223659740173
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3670587808647388623}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07e2b3e891e670c419ebe923918076a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
+  bodyPart: 2
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: arm-lower-back
+  _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
+  _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
+  _springStrength: 90
+  _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
+--- !u!1 &4157817135309578401
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7624897141787648253}
+  m_Layer: 10
+  m_Name: PARATROOPER BodyParts_V2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7624897141787648253
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4157817135309578401}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 2161251068689475119}
+  - {fileID: 2671531515461572361}
+  - {fileID: 7232292644426571423}
+  - {fileID: 6362881810472479211}
+  - {fileID: 3189383039118156193}
+  - {fileID: 4505108236970261686}
+  - {fileID: 2918648581522797332}
+  - {fileID: 2726403106381483746}
+  - {fileID: 3534675391457044768}
+  - {fileID: 648171236496739033}
+  - {fileID: 4388141878789528119}
+  - {fileID: 5626389325965759640}
+  m_Father: {fileID: 6008574131695582798}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &5518520495485081694
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5626389325965759640}
+  - component: {fileID: 6305259315723644534}
+  - component: {fileID: 831212924974289917}
+  - component: {fileID: 333444437863445135}
+  - component: {fileID: 6060376863659538528}
+  - component: {fileID: 8233337437877587530}
+  m_Layer: 10
+  m_Name: Torso-Hitbox
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5626389325965759640
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5518520495485081694}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: 0.7600658, w: 0.64984614}
+  m_LocalPosition: {x: -14.184611, y: -2.085731, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7624897141787648253}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6305259315723644534
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5518520495485081694}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0317ee9ba6e1b1e49a030268e026d372, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoundingBoxFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  slotName: torso-bb
+  isTrigger: 0
+  usedByEffector: 0
+  usedByComposite: 0
+  clearStateOnDisable: 1
+--- !u!60 &831212924974289917
+PolygonCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5518520495485081694}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Points:
+    m_Paths:
+    - - {x: 0.72129995, y: 0.0092}
+      - {x: 0.63659996, y: 0.1191}
+      - {x: 0.3679, y: 0.1487}
+      - {x: 0.0168, y: 0.0946}
+      - {x: -0.1258, y: 0.0223}
+      - {x: -0.1039, y: -0.0704}
+      - {x: 0.0044, y: -0.100200005}
+      - {x: 0.2754, y: -0.0336}
+      - {x: 0.66139996, y: -0.047}
+  m_UseDelaunayMesh: 1
+--- !u!114 &333444437863445135
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5518520495485081694}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1fd8daaed7b64148a34acb96ba14ce1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoneFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  boneName: torso
+  followXYPosition: 1
+  followZPosition: 1
+  followAttachmentZSpacing: 0
+  followBoneRotation: 1
+  followSkeletonFlip: 1
+  followLocalScale: 0
+  followParentWorldScale: 0
+  maintainedAxisOrientation: 1
+  initializeOnAwake: 1
+--- !u!50 &6060376863659538528
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5518520495485081694}
+  m_BodyType: 0
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0
+--- !u!114 &8233337437877587530
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5518520495485081694}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07e2b3e891e670c419ebe923918076a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
+  bodyPart: 5
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: torso
+  _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
+  _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
+  _springStrength: 90
+  _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
+--- !u!1 &5537713718465617609
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3534675391457044768}
+  - component: {fileID: 219704189752940661}
+  - component: {fileID: 3870540566190495260}
+  - component: {fileID: 4013724405403650983}
+  - component: {fileID: 4626235014527678672}
+  - component: {fileID: 834602947619357587}
+  m_Layer: 10
+  m_Name: Leg-Lower-Front-Hitbox
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3534675391457044768
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5537713718465617609}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0.6298539, w: 0.77671367}
+  m_LocalPosition: {x: -13.995544, y: -2.6637588, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7624897141787648253}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &219704189752940661
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5537713718465617609}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0317ee9ba6e1b1e49a030268e026d372, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoundingBoxFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  slotName: leg-lower-front-bb
+  isTrigger: 0
+  usedByEffector: 0
+  usedByComposite: 0
+  clearStateOnDisable: 1
+--- !u!60 &3870540566190495260
+PolygonCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5537713718465617609}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Points:
+    m_Paths:
+    - - {x: -0.1134, y: -0.0030999999}
+      - {x: -0.018, y: -0.0753}
+      - {x: 0.73389995, y: -0.0586}
+      - {x: 0.76019996, y: 0.0042}
+      - {x: 0.7043, y: 0.0941}
+      - {x: -0.020399999, y: 0.083}
+  m_UseDelaunayMesh: 1
+--- !u!114 &4013724405403650983
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5537713718465617609}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1fd8daaed7b64148a34acb96ba14ce1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoneFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  boneName: leg-lower-front
+  followXYPosition: 1
+  followZPosition: 1
+  followAttachmentZSpacing: 0
+  followBoneRotation: 1
+  followSkeletonFlip: 1
+  followLocalScale: 0
+  followParentWorldScale: 0
+  maintainedAxisOrientation: 1
+  initializeOnAwake: 1
+--- !u!50 &4626235014527678672
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5537713718465617609}
+  m_BodyType: 0
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0
+--- !u!114 &834602947619357587
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5537713718465617609}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07e2b3e891e670c419ebe923918076a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
+  bodyPart: 6
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: leg-lower-front
+  _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
+  _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
+  _springStrength: 90
+  _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
+--- !u!1 &5721318589490420545
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2671531515461572361}
+  - component: {fileID: 4028016248758044289}
+  - component: {fileID: 7235260863681691056}
+  - component: {fileID: 7057570963044997204}
+  - component: {fileID: 6294064176622600355}
+  - component: {fileID: 2070929372145449649}
+  m_Layer: 10
+  m_Name: Arm-Lower-Front-Hitbox
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2671531515461572361
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5721318589490420545}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: 0.21840598, w: 0.97585803}
+  m_LocalPosition: {x: -14.260418, y: -1.8213425, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7624897141787648253}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4028016248758044289
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5721318589490420545}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0317ee9ba6e1b1e49a030268e026d372, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoundingBoxFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  slotName: arm-lower-front-bb
+  isTrigger: 0
+  usedByEffector: 0
+  usedByComposite: 0
+  clearStateOnDisable: 1
+--- !u!114 &7235260863681691056
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5721318589490420545}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1fd8daaed7b64148a34acb96ba14ce1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoneFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  boneName: arm-lower-front
+  followXYPosition: 1
+  followZPosition: 1
+  followAttachmentZSpacing: 0
+  followBoneRotation: 1
+  followSkeletonFlip: 1
+  followLocalScale: 0
+  followParentWorldScale: 0
+  maintainedAxisOrientation: 1
+  initializeOnAwake: 1
+--- !u!50 &7057570963044997204
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5721318589490420545}
+  m_BodyType: 0
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0
+--- !u!60 &6294064176622600355
+PolygonCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5721318589490420545}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Points:
+    m_Paths:
+    - - {x: -0.0827, y: -0.014299999}
+      - {x: -0.005, y: 0.0787}
+      - {x: 0.60749996, y: 0.0792}
+      - {x: 0.6754, y: 0.0033}
+      - {x: 0.6066, y: -0.09189999}
+      - {x: -0.0043, y: -0.0892}
+  m_UseDelaunayMesh: 1
+--- !u!114 &2070929372145449649
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5721318589490420545}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07e2b3e891e670c419ebe923918076a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
+  bodyPart: 1
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: arm-lower-front
+  _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
+  _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
+  _springStrength: 90
+  _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
+--- !u!1 &8019269763958299040
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6511203771371252545}
+  - component: {fileID: 3632910999784026234}
+  - component: {fileID: 6004268766125524457}
+  - component: {fileID: 2010201899228407644}
+  - component: {fileID: 6511529744997581474}
+  - component: {fileID: 357004263934065529}
+  m_Layer: 10
+  m_Name: PARATROOPER VIew_V2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6511203771371252545
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8019269763958299040}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -14.14, y: -3.39, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6008574131695582798}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!33 &3632910999784026234
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8019269763958299040}
+  m_Mesh: {fileID: 0}
+--- !u!23 &6004268766125524457
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8019269763958299040}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 4f7f09270b298e34ea2a22e21c5fad4c, type: 2}
+  - {fileID: 2100000, guid: e050c904119847043afec7d5b6ed2746, type: 2}
+  - {fileID: 2100000, guid: 4f7f09270b298e34ea2a22e21c5fad4c, type: 2}
+  - {fileID: 2100000, guid: e050c904119847043afec7d5b6ed2746, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 2062274835
+  m_SortingLayer: 6
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!114 &2010201899228407644
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8019269763958299040}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d247ba06193faa74d9335f5481b2b56c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.SkeletonAnimation
+  skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  initialSkinName: Black
+  fixPrefabOverrideViaMeshFilter: 2
+  initialFlipX: 0
+  initialFlipY: 0
+  updateWhenInvisible: 3
+  separatorSlotNames: []
+  zSpacing: 0
+  useClipping: 1
+  immutableTriangles: 0
+  pmaVertexColors: 1
+  clearStateOnDisable: 0
+  tintBlack: 0
+  singleSubmesh: 0
+  fixDrawOrder: 0
+  addNormals: 0
+  calculateTangents: 0
+  maskInteraction: 0
+  maskMaterials:
+    materialsMaskDisabled: []
+    materialsInsideMask: []
+    materialsOutsideMask: []
+  disableRenderingOnOverride: 1
+  physicsPositionInheritanceFactor: {x: 1, y: 1}
+  physicsRotationInheritanceFactor: 1
+  physicsMovementRelativeTo: {fileID: 0}
+  updateTiming: 1
+  unscaledTime: 0
+  _animationName: 
+  loop: 1
+  timeScale: 1
+--- !u!114 &6511529744997581474
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8019269763958299040}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f2ed24876275c34aa07df5741b744e1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParatrooperView_V2
+  aimPointBoneName: mp40-aim
+  crossHairBoneName: crosshair
+  _deployAnim: {fileID: 11400000, guid: 196580e9010fa3443931524c02d2dcfa, type: 2}
+  _glideAnim: {fileID: 11400000, guid: 3f8ab6cec8df6454fae7be134fd750bd, type: 2}
+  _landAnim: {fileID: 11400000, guid: 2552f857adc14e34cb2c3c1f795e8bdd, type: 2}
+  _glideDeathAnim: {fileID: 11400000, guid: 18a1461724624e24a8ce5f5856dda76e, type: 2}
+  _landFallDownBackAnim: {fileID: 11400000, guid: 60b80e1da8a4f15449b9935da44a70d4, type: 2}
+  _landFallDownBack2Anim: {fileID: 11400000, guid: f0dcdae40f9ca6e46ae57a281c51aa5f, type: 2}
+  _landFallDownBack3Anim: {fileID: 11400000, guid: 71a254a9373ecf541beea850bacb8b26, type: 2}
+  _shootingMP40Anim: {fileID: 11400000, guid: 672b08387407ca147b3ae4fc3152da67, type: 2}
+  _debugAnimationLogs: 0
+  _debugParachuteLogs: 0
+  _gibForce: 9.5
+  _gibTorque: 220
+  _gibLifetime: 4
+  _gibForceMultiplier: 0.25
+  _gibPartPrefabs:
+  - Label: arm-lower-back
+    BoneName: arm-lower-back
+    Prefab: {fileID: 4814301688894732289, guid: 0c3522049a593e744a916b9acdff0efa, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: arm-lower-front
+    BoneName: arm-lower-front
+    Prefab: {fileID: 4814301688894732289, guid: 3a768d5d302fefd43ac4b984595d3f93, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: arm-upper-back
+    BoneName: arm-upper-back
+    Prefab: {fileID: 1892457919128648999, guid: 13d69234c25018242abc0278f670b633, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: arm-upper-front
+    BoneName: arm-upper-front
+    Prefab: {fileID: 1892457919128648999, guid: ed9650f582572a24f833ac71379f18cb, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: foot-back
+    BoneName: foot-back
+    Prefab: {fileID: 3968867486674436386, guid: a90501538885da54fb9f62ea3057197c, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: foot-front
+    BoneName: foot-front
+    Prefab: {fileID: 3968867486674436386, guid: 63a92c61e3e794049b9502ca1b65c901, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: head
+    BoneName: head
+    Prefab: {fileID: 6546289085495751949, guid: f322ca8a791cfab4880dabc6fc9f8649, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: leg-lower-back
+    BoneName: leg-lower-back
+    Prefab: {fileID: 1773542526803259241, guid: c65bacb76aa459f42aecbc4ef4eda650, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: leg-lower-front
+    BoneName: leg-lower-front
+    Prefab: {fileID: 1773542526803259241, guid: 35b5876fcb3b19d44a6605183934d163, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: leg-upper-back
+    BoneName: leg-upper-back
+    Prefab: {fileID: 6450952924678674276, guid: 0f342a69c2288b347a23bd32d0f48c27, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: leg-upper-front
+    BoneName: leg-upper-front
+    Prefab: {fileID: 6450952924678674276, guid: fde0d018ba426d54eae0e0699d9c8090, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: torso
+    BoneName: torso
+    Prefab: {fileID: 190346352245208972, guid: 23fbb25417c78c04c8e4968dc7ccee76, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  _debugGibLogs: 1
+  _gibSortingLayerName: Foreground
+  _gibSortingOrder: 6000
+  _gibWorldZ: 0
+  _gibPhysicsLayerName: Enemy
+--- !u!114 &357004263934065529
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8019269763958299040}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fa1f0aaab63afdd4a817a68971d0b3d8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Enemies.Paratrooper_V2.ParatrooperSpineEventForwarder_V2
+  deployStartedEventName: deploy_started
+  deployFinishedEventName: deploy_finished
+  grenadeStartedEventName: grenade_started
+  grenadeFinishedEventName: grenade_finished
+  grenadeThrowEventName: grenade_throw
+  landStartedEventName: land_started
+  landFinishedEventName: land_finished
+  reloadStartedEventName: reload_started
+  reloadFinishedEventName: reload_finished
+  shootStartedEventName: start_shoot
+  shootFinishedEventName: stop_shoot
+  _debugEventLogs: 0
+--- !u!1 &8428395232643671833
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2161251068689475119}
+  - component: {fileID: 2518398710765254560}
+  - component: {fileID: 2491622116261004670}
+  - component: {fileID: 3009565735555275128}
+  - component: {fileID: 5894018900088633540}
+  - component: {fileID: 4608557550293844595}
+  m_Layer: 10
+  m_Name: Head-Hitbox
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2161251068689475119
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8428395232643671833}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: 0.6604605, w: 0.7508608}
+  m_LocalPosition: {x: -14.287029, y: -1.4340296, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7624897141787648253}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2518398710765254560
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8428395232643671833}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0317ee9ba6e1b1e49a030268e026d372, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoundingBoxFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  slotName: head-bb
+  isTrigger: 0
+  usedByEffector: 0
+  usedByComposite: 0
+  clearStateOnDisable: 1
+--- !u!60 &2491622116261004670
+PolygonCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8428395232643671833}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Points:
+    m_Paths:
+    - - {x: 0.47919998, y: 0.044}
+      - {x: 0.3797, y: 0.21459998}
+      - {x: 0.1563, y: 0.25169998}
+      - {x: -0.0161, y: 0.0932}
+      - {x: -0.020799998, y: -0.126}
+      - {x: 0.16860001, y: -0.2827}
+      - {x: 0.3818, y: -0.2411}
+      - {x: 0.4679, y: -0.1243}
+  m_UseDelaunayMesh: 1
+--- !u!114 &3009565735555275128
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8428395232643671833}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1fd8daaed7b64148a34acb96ba14ce1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoneFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  boneName: head
+  followXYPosition: 1
+  followZPosition: 1
+  followAttachmentZSpacing: 0
+  followBoneRotation: 1
+  followSkeletonFlip: 1
+  followLocalScale: 0
+  followParentWorldScale: 0
+  maintainedAxisOrientation: 1
+  initializeOnAwake: 1
+--- !u!50 &5894018900088633540
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8428395232643671833}
+  m_BodyType: 0
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0
+--- !u!114 &4608557550293844595
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8428395232643671833}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07e2b3e891e670c419ebe923918076a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
+  bodyPart: 0
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: head
+  _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
+  _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
+  _springStrength: 90
+  _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1
+--- !u!1 &9213196044087982848
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3189383039118156193}
+  - component: {fileID: 8860293529120399264}
+  - component: {fileID: 7144713946482834582}
+  - component: {fileID: 3129747278125717123}
+  - component: {fileID: 7415953710013416732}
+  - component: {fileID: 5759872611977077551}
+  m_Layer: 10
+  m_Name: Arm-Upper-Front-Hitbox
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3189383039118156193
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9213196044087982848}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0.6543839, w: 0.7561625}
+  m_LocalPosition: {x: -14.309413, y: -1.4654903, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7624897141787648253}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8860293529120399264
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9213196044087982848}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0317ee9ba6e1b1e49a030268e026d372, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoundingBoxFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  slotName: arm-upper-front-bb
+  isTrigger: 0
+  usedByEffector: 0
+  usedByComposite: 0
+  clearStateOnDisable: 1
+--- !u!60 &7144713946482834582
+PolygonCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9213196044087982848}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Points:
+    m_Paths:
+    - - {x: -0.079299994, y: 0.0061}
+      - {x: -0.0095999995, y: -0.0787}
+      - {x: 0.4055, y: -0.0696}
+      - {x: 0.4674, y: 0.0052999994}
+      - {x: 0.40279996, y: 0.0875}
+      - {x: -0.0238, y: 0.074599996}
+  m_UseDelaunayMesh: 1
+--- !u!114 &3129747278125717123
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9213196044087982848}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1fd8daaed7b64148a34acb96ba14ce1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: spine-unity::Spine.Unity.BoneFollower
+  skeletonRenderer: {fileID: 2010201899228407644}
+  boneName: arm-upper-front
+  followXYPosition: 1
+  followZPosition: 1
+  followAttachmentZSpacing: 0
+  followBoneRotation: 1
+  followSkeletonFlip: 1
+  followLocalScale: 0
+  followParentWorldScale: 0
+  maintainedAxisOrientation: 1
+  initializeOnAwake: 1
+--- !u!50 &7415953710013416732
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9213196044087982848}
+  m_BodyType: 0
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0
+--- !u!114 &5759872611977077551
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9213196044087982848}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07e2b3e891e670c419ebe923918076a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ParatrooperBodyPart_V2
+  bodyPart: 3
+  _skeletonDataAsset: {fileID: 11400000, guid: 80f10ac0b5070074d9eb18a36a46f679, type: 2}
+  _targetBoneName: arm-upper-front
+  _impulseScale: 0.025
+  _minImpulse: 0.1
+  _maxImpulse: 0.34
+  _maxOffset: 1.2
+  _instantKickFactor: 0.09
+  _maxVelocityFromOffset: 4.1
+  _springStrength: 90
+  _damping: 16
+  _debugHitReaction: 0
+  _freezeBoundingBoxFollowerAtStartup: 1
+  _enableColliderWatchdog: 1
+  _watchdogIntervalSeconds: 1

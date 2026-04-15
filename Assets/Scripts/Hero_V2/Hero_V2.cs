@@ -188,5 +188,30 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
                 _model.TakeDamage(damage);
             }
         }
+
+        public bool UnlockWeapon(HeroWeaponDefinition_V2 definition, bool autoEquip)
+        {
+            if (_weaponSystem == null || definition == null)
+            {
+                return false;
+            }
+
+            return _weaponSystem.UnlockWeapon(definition, autoEquip);
+        }
+
+        public void Heal(int amount)
+        {
+            if (_model == null || amount <= 0)
+            {
+                return;
+            }
+
+            _model.Heal(amount);
+        }
+
+        public bool IsDead()
+        {
+            return _model != null && _model.isDead;
+        }
     }
 }

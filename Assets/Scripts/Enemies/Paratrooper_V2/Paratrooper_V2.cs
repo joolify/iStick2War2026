@@ -128,6 +128,7 @@ public class Paratrooper : MonoBehaviour
     [SerializeField] private float _colliderSummaryIntervalSeconds = 2f;
     [SerializeField] private bool _onlyLogWhenSummaryChanges = true;
     [SerializeField] private bool _warnWhenColliderSummaryIsNotFull = true;
+    [SerializeField] private bool _autoFixBodyPartLayerToEnemyBodyPart = true;
 
     private float _nextColliderSummaryTime;
     private string _lastColliderSummary;
@@ -499,6 +500,8 @@ public class Paratrooper : MonoBehaviour
         int missingCollider = 0;
         int missingReceiver = 0;
         int wrongLayer = 0;
+        int autoFixedLayer = 0;
+        int expectedLayer = LayerMask.NameToLayer("EnemyBodyPart");
 
         for (int i = 0; i < total; i++)
         {
@@ -520,15 +523,23 @@ public class Paratrooper : MonoBehaviour
                 Debug.LogWarning($"[Paratrooper_V2] Body part '{part.name}' cannot find ParatrooperDamageReceiver_V2 in parents.");
             }
 
-            int expectedLayer = LayerMask.NameToLayer("EnemyBodyPart");
             if (expectedLayer >= 0 && part.gameObject.layer != expectedLayer)
             {
                 wrongLayer++;
-                Debug.LogWarning($"[Paratrooper_V2] Body part '{part.name}' layer is '{LayerMask.LayerToName(part.gameObject.layer)}', expected 'EnemyBodyPart'.");
+                if (_autoFixBodyPartLayerToEnemyBodyPart)
+                {
+                    part.gameObject.layer = expectedLayer;
+                    autoFixedLayer++;
+                }
+                else
+                {
+                    Debug.LogWarning($"[Paratrooper_V2] Body part '{part.name}' layer is '{LayerMask.LayerToName(part.gameObject.layer)}', expected 'EnemyBodyPart'.");
+                }
             }
         }
 
-        Debug.Log($"[Paratrooper_V2] BodyPart setup: total={total}, missingCollider={missingCollider}, missingReceiver={missingReceiver}, wrongLayer={wrongLayer}");
+        string autoFixSuffix = _autoFixBodyPartLayerToEnemyBodyPart ? $", autoFixedLayer={autoFixedLayer}" : string.Empty;
+        Debug.Log($"[Paratrooper_V2] BodyPart setup: total={total}, missingCollider={missingCollider}, missingReceiver={missingReceiver}, wrongLayer={wrongLayer}{autoFixSuffix}");
     }
 
     private void LogColliderSummary()

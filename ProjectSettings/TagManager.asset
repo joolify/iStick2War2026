@@ -21,7 +21,7 @@ TagManager:
   - LandingPoint
   - EnemyDead
   - EnemyBodyPart
-  - 
+  - Shop
   - 
   - 
   - 
@@ -63,6 +63,9 @@ TagManager:
     locked: 0
   - name: LandingPoint
     uniqueID: 4263339047
+    locked: 0
+  - name: Shop
+    uniqueID: 2029628213
     locked: 0
   m_RenderingLayers:
   - Default

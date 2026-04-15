@@ -36,6 +36,7 @@ public class ParatrooperDeathHandler_V2 : MonoBehaviour
 
     private ParatrooperStateMachine_V2 _stateMachine;
     private bool _isDying;
+    public event System.Action<ParatrooperDeathHandler_V2> OnDeathStarted;
 
     public void Initialize(ParatrooperStateMachine_V2 stateMachine)
     {
@@ -65,6 +66,7 @@ public class ParatrooperDeathHandler_V2 : MonoBehaviour
         }
 
         _isDying = true;
+        OnDeathStarted?.Invoke(this);
         StartCoroutine(DeathRoutine());
     }
 

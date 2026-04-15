@@ -173,6 +173,9 @@ namespace iStick2War_V2
             if (!_isInitialized)
                 return;
 
+            if (IsDead())
+                return;
+
             FaceMouse();
 
             _touchPos = new Vector2(Camera.main.ScreenToWorldPoint(Input.mousePosition).x, Camera.main.ScreenToWorldPoint(Input.mousePosition).y);
@@ -331,6 +334,11 @@ namespace iStick2War_V2
 
         private void PlayAimLoop()
         {
+            if (IsDead())
+            {
+                return;
+            }
+
             AnimationReferenceAsset aimAnim = GetAimAnimationForCurrentWeapon();
             if (aimAnim == null)
             {
@@ -342,6 +350,11 @@ namespace iStick2War_V2
 
         private void SetCrosshair(Vector2 localTouchPos)
         {
+            if (IsDead())
+            {
+                return;
+            }
+
             if (_skeletonAnimation == null)
                 Debug.LogError("SkeletonAnimation not found!");
 
@@ -353,6 +366,11 @@ namespace iStick2War_V2
 
         void FaceMouse()
         {
+            if (IsDead())
+            {
+                return;
+            }
+
             // Desktop-only cursor flip. Mobile/touch uses different aim handling.
 #if (UNITY_IPHONE || UNITY_ANDROID) && !UNITY_EDITOR
             return;
@@ -370,6 +388,16 @@ namespace iStick2War_V2
                 _facingRight = false;
             }
 #endif
+        }
+
+        private bool IsDead()
+        {
+            if (_model != null && _model.isDead)
+            {
+                return true;
+            }
+
+            return _stateMachine != null && _stateMachine.CurrentState == HeroState.Dead;
         }
 
         public bool TryGetAimData(out Vector2 origin, out Vector2 direction)
