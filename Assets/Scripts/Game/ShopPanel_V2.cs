@@ -1,17 +1,21 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 namespace iStick2War_V2
 {
     public sealed class ShopPanel_V2 : MonoBehaviour
     {
         [Header("UI (optional)")]
-        [SerializeField] private Text _waveText;
-        [SerializeField] private Text _currencyText;
-        [SerializeField] private Text _bunkerText;
-        [SerializeField] private Text _healthCostText;
-        [SerializeField] private Text _bazookaCostText;
-        [SerializeField] private Text _bunkerCostText;
+        [SerializeField] private TMP_Text _waveText;
+        [SerializeField] private TMP_Text _currencyText;
+        [SerializeField] private TMP_Text _bunkerText;
+        [SerializeField] private TMP_Text _healthCostText;
+        [SerializeField] private TMP_Text _bazookaCostText;
+        [SerializeField] private TMP_Text _bunkerCostText;
+        [Header("Button Labels")]
+        [SerializeField] private TMP_Text _buyButtonText;
+        [SerializeField] private string _buyButtonDefaultLabel = "BUY";
         [Header("Visibility")]
         [SerializeField] private bool _toggleVisualComponentsOnShowHide = true;
         [SerializeField] private Transform _visualRoot;
@@ -19,7 +23,6 @@ namespace iStick2War_V2
         [SerializeField] private bool _toggleGraphics = false;
         [SerializeField] private bool _lockVisualRootTransformOnShow = true;
         [SerializeField] private bool _detachFromScaledParentOnInitialize = true;
-        [SerializeField] private bool _lockToCameraWhileVisible = true;
         [SerializeField] private Camera _lockCamera;
         [SerializeField] private bool _parentToCameraWhileVisible = true;
         [SerializeField] private bool _useFixedCameraLocalPlacement = true;
@@ -27,8 +30,6 @@ namespace iStick2War_V2
         [SerializeField] private Vector3 _fixedCameraLocalScale = Vector3.one;
         [SerializeField] private bool _useCachedVisualScaleWhenParentedToCamera = true;
         [SerializeField] private bool _debugShopPanelLogs = false;
-        [SerializeField] private bool _debugShopPanelTransformTrace = true;
-        [SerializeField] private int _debugTransformTraceEveryNFrames = 15;
 
         private WaveManager_V2 _waveManager;
         private bool _hasCachedVisualRootTransform;
@@ -37,8 +38,6 @@ namespace iStick2War_V2
         private Vector3 _cachedVisualRootLocalScale;
         private Vector3 _cachedVisualRootWorldPosition;
         private Quaternion _cachedVisualRootWorldRotation;
-        private Vector3 _cameraLockedViewportPoint;
-        private bool _hasCameraLockPoint;
         private Transform _originalParent;
         private int _originalSiblingIndex;
         private bool _isParentedToCamera;
@@ -54,7 +53,6 @@ namespace iStick2War_V2
 
             MaybeDetachFromScaledParent();
             CacheVisualRootTransform();
-            LogTransformSnapshot("Initialize");
             Refresh();
         }
 
@@ -71,52 +69,15 @@ namespace iStick2War_V2
             gameObject.SetActive(true);
             RestoreVisualRootTransformIfNeeded();
             AttachToCameraIfNeeded();
-            CaptureCameraLockPoint();
             SetVisualComponentsVisible(true);
-            LogTransformSnapshot("Show");
             Refresh();
         }
 
         public void Hide()
         {
-            LogTransformSnapshot("Hide-Before");
             DetachFromCameraIfNeeded();
             SetVisualComponentsVisible(false);
-            _hasCameraLockPoint = false;
             gameObject.SetActive(false);
-        }
-
-        private void LateUpdate()
-        {
-            if (!gameObject.activeInHierarchy || !_lockToCameraWhileVisible)
-            {
-                return;
-            }
-
-            Transform root = _visualRoot != null ? _visualRoot : transform;
-            Camera cam = ResolveCamera();
-            if (root == null || cam == null)
-            {
-                return;
-            }
-
-            if (!_hasCameraLockPoint)
-            {
-                _cameraLockedViewportPoint = cam.WorldToViewportPoint(root.position);
-                _hasCameraLockPoint = true;
-            }
-
-            Vector3 worldPoint = cam.ViewportToWorldPoint(_cameraLockedViewportPoint);
-            root.position = new Vector3(worldPoint.x, worldPoint.y, root.position.z);
-
-            if (_debugShopPanelTransformTrace)
-            {
-                int every = Mathf.Max(1, _debugTransformTraceEveryNFrames);
-                if ((Time.frameCount % every) == 0)
-                {
-                    LogTransformSnapshot("LateUpdate");
-                }
-            }
         }
 
         public void Refresh()
@@ -129,6 +90,7 @@ namespace iStick2War_V2
             SetText(_waveText, $"Wave: {_waveManager.CurrentWaveNumber}");
             SetText(_currencyText, $"Currency: {_waveManager.Currency}");
             SetText(_bunkerText, $"Bunker HP: {_waveManager.BunkerHealth}");
+            SetText(_buyButtonText, _buyButtonDefaultLabel);
             SetText(_healthCostText, $"Heal cost: {_waveManager.GetHealthPurchaseCost()}");
             SetText(
                 _bazookaCostText,
@@ -161,12 +123,18 @@ namespace iStick2War_V2
             _waveManager?.StartNextWaveFromShop();
         }
 
+        public void SetBuyButtonLabel(string label)
+        {
+            string nextLabel = string.IsNullOrWhiteSpace(label) ? _buyButtonDefaultLabel : label;
+            SetText(_buyButtonText, nextLabel);
+        }
+
         private void HandleMetaChanged(int wave, int currency, int bunkerHp)
         {
             Refresh();
         }
 
-        private static void SetText(Text textField, string value)
+        private static void SetText(TMP_Text textField, string value)
         {
             if (textField != null)
             {
@@ -230,25 +198,6 @@ namespace iStick2War_V2
             _cachedVisualRootWorldPosition = root.position;
             _cachedVisualRootWorldRotation = root.rotation;
             _hasCachedVisualRootTransform = true;
-        }
-
-        private void CaptureCameraLockPoint()
-        {
-            if (!_lockToCameraWhileVisible)
-            {
-                return;
-            }
-
-            Transform root = _visualRoot != null ? _visualRoot : transform;
-            Camera cam = ResolveCamera();
-            if (root == null || cam == null)
-            {
-                return;
-            }
-
-            _cameraLockedViewportPoint = cam.WorldToViewportPoint(root.position);
-            _hasCameraLockPoint = true;
-            LogTransformSnapshot("CaptureCameraLockPoint");
         }
 
         private void RestoreVisualRootTransformIfNeeded()
@@ -379,26 +328,6 @@ namespace iStick2War_V2
             {
                 Debug.Log("[ShopPanel_V2] Restored visual root parent after hide.");
             }
-        }
-
-        private void LogTransformSnapshot(string reason)
-        {
-            if (!_debugShopPanelTransformTrace)
-            {
-                return;
-            }
-
-            Transform root = _visualRoot != null ? _visualRoot : transform;
-            Camera cam = ResolveCamera();
-            Vector3 camPos = cam != null ? cam.transform.position : Vector3.zero;
-            Vector3 viewportPos = cam != null ? cam.WorldToViewportPoint(root.position) : Vector3.zero;
-            string parentName = root.parent != null ? root.parent.name : "<null>";
-
-            Debug.Log(
-                $"[ShopPanel_V2][{reason}] root={root.name}, parent={parentName}, " +
-                $"localPos={root.localPosition}, worldPos={root.position}, localScale={root.localScale}, " +
-                $"viewport={viewportPos}, camPos={camPos}, isParentedToCamera={_isParentedToCamera}, " +
-                $"lockToCamera={_lockToCameraWhileVisible}, parentToCamera={_parentToCameraWhileVisible}");
         }
     }
 }

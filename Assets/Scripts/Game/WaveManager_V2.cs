@@ -38,7 +38,7 @@ namespace iStick2War_V2
 
         [Header("Debug")]
         [SerializeField] private bool _debugWaveLogs = false;
-        [SerializeField] private bool _debugCameraFollowLogs = true;
+        [SerializeField] private bool _debugCameraFollowLogs = false;
         [SerializeField] private KeyCode _nextWaveDebugKey = KeyCode.Return;
 
         private WaveLoopState_V2 _state = WaveLoopState_V2.Preparing;
