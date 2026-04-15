@@ -47,7 +47,6 @@ namespace iStick2War_V2
         private int _currency;
         private int _bunkerHealth;
         private int _enemiesKilledThisWave;
-        private bool _bazookaUnlocked;
 
         public event Action<WaveLoopState_V2> OnStateChanged;
         public event Action<int, int, int> OnMetaChanged;
@@ -56,6 +55,7 @@ namespace iStick2War_V2
         public int CurrentWaveNumber => _waveIndex + 1;
         public int Currency => _currency;
         public int BunkerHealth => _bunkerHealth;
+        public int BunkerMaxHealth => _bunkerMaxHealth;
 
         private void Awake()
         {
@@ -144,7 +144,7 @@ namespace iStick2War_V2
                 return false;
             }
 
-            if (_bazookaUnlocked)
+            if (_hero.HasWeaponUnlocked(_bazookaWeaponDefinition))
             {
                 return false;
             }
@@ -154,12 +154,148 @@ namespace iStick2War_V2
                 return false;
             }
 
-            _bazookaUnlocked = _hero.UnlockWeapon(_bazookaWeaponDefinition, true);
-            Log(_bazookaUnlocked
+            bool unlocked = _hero.UnlockWeapon(_bazookaWeaponDefinition, true);
+            Log(unlocked
                 ? $"Bazooka unlocked for {_bazookaUnlockCost}."
                 : "Bazooka unlock attempt failed.");
             EmitMetaChanged();
-            return _bazookaUnlocked;
+            return unlocked;
+        }
+
+        /// <summary>
+        /// Unified purchase for the shop carousel (configured on ShopPanel_V2).
+        /// </summary>
+        public bool TryPurchaseOffer(ShopOfferConfig_V2 offer)
+        {
+            if (_state != WaveLoopState_V2.Shop || offer == null)
+            {
+                return false;
+            }
+
+            int cost = offer.Cost;
+            switch (offer.Kind)
+            {
+                case ShopOfferKind_V2.HealthPack:
+                    if (_hero == null || _hero.IsHealthFull())
+                    {
+                        return false;
+                    }
+
+                    if (!TrySpend(cost))
+                    {
+                        return false;
+                    }
+
+                    int heal = offer.HealthAmount > 0 ? offer.HealthAmount : _healthPurchaseAmount;
+                    _hero.Heal(heal);
+                    Log($"Health purchased (+{heal}) for {cost}.");
+                    EmitMetaChanged();
+                    return true;
+
+                case ShopOfferKind_V2.BunkerRepair:
+                    if (_bunkerHealth >= _bunkerMaxHealth)
+                    {
+                        return false;
+                    }
+
+                    if (!TrySpend(cost))
+                    {
+                        return false;
+                    }
+
+                    int repair = offer.BunkerRepairAmount > 0 ? offer.BunkerRepairAmount : _bunkerRepairAmount;
+                    _bunkerHealth = Mathf.Min(_bunkerMaxHealth, _bunkerHealth + repair);
+                    Log($"Bunker repaired (+{repair}) for {cost}. hp={_bunkerHealth}/{_bunkerMaxHealth}");
+                    EmitMetaChanged();
+                    return true;
+
+                case ShopOfferKind_V2.WeaponUnlock:
+                    if (_hero == null || offer.Weapon == null)
+                    {
+                        return false;
+                    }
+
+                    if (_hero.HasWeaponUnlocked(offer.Weapon))
+                    {
+                        return false;
+                    }
+
+                    if (!TrySpend(cost))
+                    {
+                        return false;
+                    }
+
+                    bool added = _hero.UnlockWeapon(offer.Weapon, true);
+                    if (!added)
+                    {
+                        _currency += cost;
+                        return false;
+                    }
+
+                    Log($"Weapon unlocked: {offer.Weapon.DisplayName} for {cost}.");
+                    EmitMetaChanged();
+                    return true;
+
+                case ShopOfferKind_V2.AmmoRefill:
+                    if (_hero == null || offer.Weapon == null)
+                    {
+                        return false;
+                    }
+
+                    if (!_hero.HasWeaponUnlocked(offer.Weapon))
+                    {
+                        return false;
+                    }
+
+                    if (_hero.IsWeaponMagazineFull(offer.Weapon))
+                    {
+                        return false;
+                    }
+
+                    if (!TrySpend(cost))
+                    {
+                        return false;
+                    }
+
+                    bool refilled = _hero.TryRefillWeaponMagazine(offer.Weapon);
+                    if (!refilled)
+                    {
+                        _currency += cost;
+                        return false;
+                    }
+
+                    Log($"Ammo refilled: {offer.Weapon.DisplayName} for {cost}.");
+                    EmitMetaChanged();
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+
+        public bool IsWeaponOwned(HeroWeaponDefinition_V2 definition)
+        {
+            return definition != null && _hero != null && _hero.HasWeaponUnlocked(definition);
+        }
+
+        public bool IsWeaponAmmoFull(HeroWeaponDefinition_V2 definition)
+        {
+            return definition != null && _hero != null && _hero.IsWeaponMagazineFull(definition);
+        }
+
+        public bool IsBunkerFullHealth()
+        {
+            return _bunkerHealth >= _bunkerMaxHealth;
+        }
+
+        public bool IsHeroHealthFull()
+        {
+            return _hero != null && _hero.IsHealthFull();
+        }
+
+        public bool CanAfford(int cost)
+        {
+            return _currency >= Mathf.Max(0, cost);
         }
 
         public bool PurchaseBunkerRepair()
@@ -206,7 +342,12 @@ namespace iStick2War_V2
         public int GetHealthPurchaseCost() => Mathf.Max(0, _healthPurchaseCost);
         public int GetBazookaUnlockCost() => Mathf.Max(0, _bazookaUnlockCost);
         public int GetBunkerRepairCost() => Mathf.Max(0, _bunkerRepairCost);
-        public bool IsBazookaUnlocked() => _bazookaUnlocked;
+        public bool IsBazookaUnlocked()
+        {
+            return _bazookaWeaponDefinition != null &&
+                   _hero != null &&
+                   _hero.HasWeaponUnlocked(_bazookaWeaponDefinition);
+        }
 
         private void TickInWaveState()
         {

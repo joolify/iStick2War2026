@@ -199,6 +199,26 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
             return _weaponSystem.UnlockWeapon(definition, autoEquip);
         }
 
+        public bool HasWeaponUnlocked(HeroWeaponDefinition_V2 definition)
+        {
+            return _weaponSystem != null && definition != null && _weaponSystem.HasWeaponUnlocked(definition);
+        }
+
+        public bool TryRefillWeaponMagazine(HeroWeaponDefinition_V2 definition)
+        {
+            return _weaponSystem != null && _weaponSystem.TryRefillMagazineForWeapon(definition);
+        }
+
+        public bool IsWeaponMagazineFull(HeroWeaponDefinition_V2 definition)
+        {
+            return _weaponSystem == null || definition == null || _weaponSystem.IsMagazineFullForWeapon(definition);
+        }
+
+        public bool IsHealthFull()
+        {
+            return _model != null && _model.currentHealth >= _model.maxHealth;
+        }
+
         public void Heal(int amount)
         {
             if (_model == null || amount <= 0)

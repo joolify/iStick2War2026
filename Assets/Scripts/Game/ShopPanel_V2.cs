@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -13,6 +14,11 @@ namespace iStick2War_V2
         [SerializeField] private TMP_Text _healthCostText;
         [SerializeField] private TMP_Text _bazookaCostText;
         [SerializeField] private TMP_Text _bunkerCostText;
+        [Header("Shop carousel")]
+        [Tooltip("Ordered list: use arrow buttons to cycle. Wire BUY to OnPurchaseSelectedOfferClicked.")]
+        [SerializeField] private List<ShopOfferConfig_V2> _shopOffers = new List<ShopOfferConfig_V2>();
+        [SerializeField] private TMP_Text _offerTitleText;
+        [SerializeField] private TMP_Text _offerSubtitleText;
         [Header("Button Labels")]
         [SerializeField] private TMP_Text _buyButtonText;
         [SerializeField] private string _buyButtonDefaultLabel = "BUY";
@@ -30,6 +36,7 @@ namespace iStick2War_V2
         [SerializeField] private Vector3 _fixedCameraLocalScale = Vector3.one;
         [SerializeField] private bool _useCachedVisualScaleWhenParentedToCamera = true;
         [SerializeField] private bool _debugShopPanelLogs = false;
+        [SerializeField] private bool _debugShopNavigationLogs = true;
 
         private WaveManager_V2 _waveManager;
         private bool _hasCachedVisualRootTransform;
@@ -41,6 +48,7 @@ namespace iStick2War_V2
         private Transform _originalParent;
         private int _originalSiblingIndex;
         private bool _isParentedToCamera;
+        private int _offerIndex;
 
         public void Initialize(WaveManager_V2 waveManager)
         {
@@ -67,6 +75,7 @@ namespace iStick2War_V2
         public void Show()
         {
             gameObject.SetActive(true);
+            _offerIndex = 0;
             RestoreVisualRootTransformIfNeeded();
             AttachToCameraIfNeeded();
             SetVisualComponentsVisible(true);
@@ -98,6 +107,93 @@ namespace iStick2War_V2
                     ? "Bazooka: Unlocked"
                     : $"Bazooka cost: {_waveManager.GetBazookaUnlockCost()}");
             SetText(_bunkerCostText, $"Repair cost: {_waveManager.GetBunkerRepairCost()}");
+            RefreshOfferSelection();
+        }
+
+        /// <summary>
+        /// Wire left arrow (e.g. btn_shop_arrow_left OnClick).
+        /// </summary>
+        public void OnShopArrowPreviousClicked()
+        {
+            if (_shopOffers == null || _shopOffers.Count == 0)
+            {
+                if (_debugShopNavigationLogs)
+                {
+                    Debug.Log("[ShopPanel_V2] OnShopArrowPrevious: no shop offers configured.");
+                }
+
+                return;
+            }
+
+            int before = _offerIndex;
+            _offerIndex = (_offerIndex - 1 + _shopOffers.Count) % _shopOffers.Count;
+            if (_debugShopNavigationLogs)
+            {
+                Debug.Log(
+                    $"[ShopPanel_V2] Shop arrow PREVIOUS: index {before} -> {_offerIndex} / {_shopOffers.Count} " +
+                    $"(current='{_shopOffers[_offerIndex].DisplayName}')");
+            }
+
+            RefreshOfferSelection();
+        }
+
+        /// <summary>
+        /// Wire right arrow (e.g. btn_shop_arrow_right OnClick).
+        /// </summary>
+        public void OnShopArrowNextClicked()
+        {
+            if (_shopOffers == null || _shopOffers.Count == 0)
+            {
+                if (_debugShopNavigationLogs)
+                {
+                    Debug.Log("[ShopPanel_V2] OnShopArrowNext: no shop offers configured.");
+                }
+
+                return;
+            }
+
+            int before = _offerIndex;
+            _offerIndex = (_offerIndex + 1) % _shopOffers.Count;
+            if (_debugShopNavigationLogs)
+            {
+                Debug.Log(
+                    $"[ShopPanel_V2] Shop arrow NEXT: index {before} -> {_offerIndex} / {_shopOffers.Count} " +
+                    $"(current='{_shopOffers[_offerIndex].DisplayName}')");
+            }
+
+            RefreshOfferSelection();
+        }
+
+        /// <summary>
+        /// Wire main BUY button to purchase the currently selected carousel offer.
+        /// </summary>
+        public void OnPurchaseSelectedOfferClicked()
+        {
+            if (_waveManager == null || _shopOffers == null || _shopOffers.Count == 0)
+            {
+                if (_debugShopNavigationLogs)
+                {
+                    Debug.Log("[ShopPanel_V2] OnPurchaseSelectedOffer: missing manager or offers.");
+                }
+
+                return;
+            }
+
+            _offerIndex = Mathf.Clamp(_offerIndex, 0, _shopOffers.Count - 1);
+            ShopOfferConfig_V2 offer = _shopOffers[_offerIndex];
+            if (_debugShopNavigationLogs)
+            {
+                Debug.Log(
+                    $"[ShopPanel_V2] BUY clicked: offer='{offer.DisplayName}', kind={offer.Kind}, cost={offer.Cost}");
+            }
+
+            bool ok = _waveManager.TryPurchaseOffer(offer);
+            if (_debugShopNavigationLogs)
+            {
+                Debug.Log($"[ShopPanel_V2] TryPurchaseOffer -> {ok}");
+            }
+
+            Refresh();
         }
 
         public void OnBuyHealthClicked()
@@ -127,6 +223,137 @@ namespace iStick2War_V2
         {
             string nextLabel = string.IsNullOrWhiteSpace(label) ? _buyButtonDefaultLabel : label;
             SetText(_buyButtonText, nextLabel);
+        }
+
+        private void RefreshOfferSelection()
+        {
+            if (_waveManager == null || _shopOffers == null || _shopOffers.Count == 0)
+            {
+                return;
+            }
+
+            _offerIndex = Mathf.Clamp(_offerIndex, 0, _shopOffers.Count - 1);
+            ShopOfferConfig_V2 offer = _shopOffers[_offerIndex];
+
+            SetText(_offerTitleText, offer.DisplayName);
+            SetText(_offerSubtitleText, BuildOfferSubtitle(offer));
+
+            for (int i = 0; i < _shopOffers.Count; i++)
+            {
+                GameObject preview = _shopOffers[i].PreviewObject;
+                if (preview != null)
+                {
+                    preview.SetActive(i == _offerIndex);
+                }
+            }
+
+            SetBuyButtonLabel(ResolveBuyButtonLabel(offer));
+        }
+
+        private string BuildOfferSubtitle(ShopOfferConfig_V2 offer)
+        {
+            if (_waveManager == null)
+            {
+                return string.Empty;
+            }
+
+            switch (offer.Kind)
+            {
+                case ShopOfferKind_V2.HealthPack:
+                    return _waveManager.IsHeroHealthFull()
+                        ? "HP full"
+                        : $"Cost: {offer.Cost}";
+
+                case ShopOfferKind_V2.BunkerRepair:
+                    return _waveManager.IsBunkerFullHealth()
+                        ? "Bunker full"
+                        : $"Cost: {offer.Cost}";
+
+                case ShopOfferKind_V2.WeaponUnlock:
+                    return _waveManager.IsWeaponOwned(offer.Weapon)
+                        ? "Owned"
+                        : $"Cost: {offer.Cost}";
+
+                case ShopOfferKind_V2.AmmoRefill:
+                    if (offer.Weapon == null)
+                    {
+                        return "No weapon set";
+                    }
+
+                    if (!_waveManager.IsWeaponOwned(offer.Weapon))
+                    {
+                        return "Unlock weapon first";
+                    }
+
+                    return _waveManager.IsWeaponAmmoFull(offer.Weapon)
+                        ? "Ammo full"
+                        : $"Cost: {offer.Cost}";
+
+                default:
+                    return $"Cost: {offer.Cost}";
+            }
+        }
+
+        private string ResolveBuyButtonLabel(ShopOfferConfig_V2 offer)
+        {
+            if (_waveManager == null)
+            {
+                return _buyButtonDefaultLabel;
+            }
+
+            bool canAfford = _waveManager.CanAfford(offer.Cost);
+            switch (offer.Kind)
+            {
+                case ShopOfferKind_V2.HealthPack:
+                    if (_waveManager.IsHeroHealthFull())
+                    {
+                        return "FULL";
+                    }
+
+                    return canAfford ? _buyButtonDefaultLabel : "NO CASH";
+
+                case ShopOfferKind_V2.BunkerRepair:
+                    if (_waveManager.IsBunkerFullHealth())
+                    {
+                        return "FULL";
+                    }
+
+                    return canAfford ? _buyButtonDefaultLabel : "NO CASH";
+
+                case ShopOfferKind_V2.WeaponUnlock:
+                    if (offer.Weapon == null)
+                    {
+                        return "-";
+                    }
+
+                    if (_waveManager.IsWeaponOwned(offer.Weapon))
+                    {
+                        return "OWNED";
+                    }
+
+                    return canAfford ? _buyButtonDefaultLabel : "NO CASH";
+
+                case ShopOfferKind_V2.AmmoRefill:
+                    if (offer.Weapon == null)
+                    {
+                        return "-";
+                    }
+
+                    if (!_waveManager.IsWeaponOwned(offer.Weapon))
+                    {
+                        return "LOCKED";
+                    }
+
+                    if (_waveManager.IsWeaponAmmoFull(offer.Weapon))
+                    {
+                        return "FULL";
+                    }
+
+                    return canAfford ? _buyButtonDefaultLabel : "NO CASH";
+
+                default:
+                    return _buyButtonDefaultLabel;
+            }
         }
 
         private void HandleMetaChanged(int wave, int currency, int bunkerHp)

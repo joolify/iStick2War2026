@@ -322,6 +322,52 @@ namespace iStick2War_V2
             return added;
         }
 
+        public bool HasWeaponUnlocked(HeroWeaponDefinition_V2 definition)
+        {
+            return definition != null && _inventory.HasWeapon(definition);
+        }
+
+        public bool IsMagazineFullForWeapon(HeroWeaponDefinition_V2 definition)
+        {
+            if (definition == null || !_inventory.TryGetWeaponState(definition, out HeroWeaponRuntimeState_V2 state))
+            {
+                return false;
+            }
+
+            return state.Definition != null && state.CurrentAmmo >= state.Definition.MaxAmmo;
+        }
+
+        public bool TryRefillMagazineForWeapon(HeroWeaponDefinition_V2 definition)
+        {
+            if (definition == null || isDisabled || _model.isDead)
+            {
+                return false;
+            }
+
+            if (!_inventory.TryGetWeaponState(definition, out HeroWeaponRuntimeState_V2 state))
+            {
+                return false;
+            }
+
+            if (state.Definition == null || state.CurrentAmmo >= state.Definition.MaxAmmo)
+            {
+                return false;
+            }
+
+            state.CurrentAmmo = state.Definition.MaxAmmo;
+
+            HeroWeaponRuntimeState_V2 active = _inventory.ActiveWeapon;
+            if (active != null &&
+                active.Definition != null &&
+                active.Definition.WeaponType == definition.WeaponType)
+            {
+                _isReloading = false;
+                ApplyActiveWeaponToModel();
+            }
+
+            return true;
+        }
+
         private void InitializeInventory(IEnumerable<HeroWeaponDefinition_V2> initialLoadout, WeaponType startingWeapon)
         {
             if (initialLoadout != null)

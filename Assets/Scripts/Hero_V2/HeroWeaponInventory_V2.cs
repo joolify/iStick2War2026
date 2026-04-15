@@ -89,6 +89,34 @@ namespace iStick2War_V2
             return true;
         }
 
+        public bool HasWeapon(HeroWeaponDefinition_V2 definition)
+        {
+            if (definition == null)
+            {
+                return false;
+            }
+
+            return FindIndexByType(definition.WeaponType) >= 0;
+        }
+
+        public bool TryGetWeaponState(HeroWeaponDefinition_V2 definition, out HeroWeaponRuntimeState_V2 state)
+        {
+            state = null;
+            if (definition == null)
+            {
+                return false;
+            }
+
+            int idx = FindIndexByType(definition.WeaponType);
+            if (idx < 0)
+            {
+                return false;
+            }
+
+            state = _weapons[idx];
+            return true;
+        }
+
         private int FindIndexByType(WeaponType weaponType)
         {
             for (int i = 0; i < _weapons.Count; i++)
