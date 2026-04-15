@@ -51,6 +51,9 @@ namespace Assets.Scripts.Hero_V2
 
         public bool IsReloadPressed { get; private set; }
         public bool IsJumpPressed { get; private set; }
+        public bool IsSwitchNextWeaponPressed { get; private set; }
+        public bool IsSwitchPreviousWeaponPressed { get; private set; }
+        public int DirectWeaponSlot { get; private set; } = -1;
 
         //FIXME ChatGPT:a detta:
         public float shootBufferTime; // Hur länge vi ska buffra shoot-input efter att ammo tagit, gör att shooting känns “responsive”
@@ -84,11 +87,28 @@ namespace Assets.Scripts.Hero_V2
             IsShootingReleased = Input.GetButtonUp("Fire1");
 
             IsReloadPressed = Input.GetKeyDown(KeyCode.R);
+            IsSwitchPreviousWeaponPressed = Input.GetKeyDown(KeyCode.Q);
+            IsSwitchNextWeaponPressed = Input.GetKeyDown(KeyCode.E);
+            DirectWeaponSlot = ReadDirectWeaponSlot();
             IsJumpPressed =
                 Input.GetButtonDown("Jump") ||
                 Input.GetKeyDown(KeyCode.Space) ||
                 Input.GetKeyDown(KeyCode.UpArrow) ||
                 Input.GetKeyDown(KeyCode.W);
+        }
+
+        private static int ReadDirectWeaponSlot()
+        {
+            if (Input.GetKeyDown(KeyCode.Alpha1)) return 0;
+            if (Input.GetKeyDown(KeyCode.Alpha2)) return 1;
+            if (Input.GetKeyDown(KeyCode.Alpha3)) return 2;
+            if (Input.GetKeyDown(KeyCode.Alpha4)) return 3;
+            if (Input.GetKeyDown(KeyCode.Alpha5)) return 4;
+            if (Input.GetKeyDown(KeyCode.Alpha6)) return 5;
+            if (Input.GetKeyDown(KeyCode.Alpha7)) return 6;
+            if (Input.GetKeyDown(KeyCode.Alpha8)) return 7;
+            if (Input.GetKeyDown(KeyCode.Alpha9)) return 8;
+            return -1;
         }
     }
 }

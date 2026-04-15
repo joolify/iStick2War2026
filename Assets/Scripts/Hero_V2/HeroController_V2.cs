@@ -71,6 +71,7 @@ namespace Assets.Scripts.Hero_V2
         public void Tick(float deltaTime)
         {
             ReadInput();
+            HandleWeaponSwitchInput();
             _weaponSystem.Tick();
             HandleCombat();
             HandleStateTransitions();
@@ -199,6 +200,33 @@ namespace Assets.Scripts.Hero_V2
 
         }
 
+        private void HandleWeaponSwitchInput()
+        {
+            bool switched = false;
+            if (_input.DirectWeaponSlot >= 0)
+            {
+                switched = _weaponSystem.TrySwitchToSlot(_input.DirectWeaponSlot);
+            }
+            else if (_input.IsSwitchNextWeaponPressed)
+            {
+                switched = _weaponSystem.TrySwitchToNextWeapon();
+            }
+            else if (_input.IsSwitchPreviousWeaponPressed)
+            {
+                switched = _weaponSystem.TrySwitchToPreviousWeapon();
+            }
+
+            if (!switched)
+            {
+                return;
+            }
+
+            _isShootLoopActive = false;
+            _outOfAmmoLatched = false;
+            _view.StopShoot();
+            _view.RefreshWeaponVisualsForCurrentState();
+        }
+
         // -------------------------
         // EXECUTION
         // -------------------------
@@ -298,15 +326,7 @@ namespace Assets.Scripts.Hero_V2
                 return;
             }
 
-            var shotContext = new HeroShotContext_V2
-            {
-                Origin = aimPos,
-                Direction = direction,
-                Range = 100f,
-                WhatToHit = LayerMask.GetMask("EnemyBodyPart"),
-                BaseDamage = 30f,
-                DebugDrawShotRay = DebugDrawShotRay
-            };
+            HeroShotContext_V2 shotContext = _weaponSystem.CreateShotContext(aimPos, direction, DebugDrawShotRay);
 
             if (_weaponSystem.Shoot(shotContext, out var shotResult))
             {

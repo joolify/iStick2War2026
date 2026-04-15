@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
+using iStick2War;
 
 namespace Assets.Scripts.Hero_V2
 {
@@ -55,6 +56,9 @@ namespace Assets.Scripts.Hero_V2
         [SerializeField] private HeroModel_V2 _model;
         [SerializeField] private HeroView_V2 _view;
         [SerializeField] private SkeletonAnimation _skeletonAnimation;
+        [Header("Weapons")]
+        [SerializeField] private List<HeroWeaponDefinition_V2> _initialWeapons = new List<HeroWeaponDefinition_V2>();
+        [SerializeField] private WeaponType _startingWeapon = WeaponType.Thompson;
 
         private HeroInput_V2 _input;
         private HeroController_V2 _controller;
@@ -131,7 +135,7 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
         {
             _stateMachine = new HeroStateMachine_V2();
             _movementSystem = new HeroMovementSystem_V2(_model);
-            _weaponSystem = new HeroWeaponSystem_V2(_model);
+            _weaponSystem = new HeroWeaponSystem_V2(_model, _initialWeapons, _startingWeapon);
             _damageReceiver = new HeroDamageReceiver_V2(_model);
             _deathHandler = new HeroDeathHandler_V2(_model, _stateMachine, _movementSystem, _weaponSystem);
 
@@ -150,7 +154,7 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
             _damageReceiver.Init(_model, _stateMachine, _deathHandler);
             _deathHandler.Init(_model, _stateMachine, _view);
 
-            _view.Init(_stateMachine, _damageReceiver, _deathHandler, _skeletonAnimation);
+            _view.Init(_model, _stateMachine, _damageReceiver, _deathHandler, _skeletonAnimation);
 
             if (_spineEventForwarder != null)
             {

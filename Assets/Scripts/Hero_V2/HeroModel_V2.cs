@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
+using iStick2War;
 
 namespace Assets.Scripts.Hero_V2
 {
@@ -77,6 +78,7 @@ namespace Assets.Scripts.Hero_V2
         public float lastShootTime { get; internal set; }
         public float reloadDuration { get; private set; } = 0.5f;
         public float reloadTimer { get; internal set; }
+        public WeaponType currentWeaponType { get; private set; } = WeaponType.Thompson;
 
         // -------------------------
         // STATE SETTERS (controlled)
@@ -131,6 +133,20 @@ namespace Assets.Scripts.Hero_V2
         public void RefillAmmo()
         {
             currentAmmo = maxAmmo;
+        }
+
+        public void ConfigureWeaponState(
+            WeaponType weaponType,
+            int weaponMaxAmmo,
+            int weaponCurrentAmmo,
+            float weaponFireRate,
+            float weaponReloadDuration)
+        {
+            currentWeaponType = weaponType;
+            maxAmmo = Mathf.Max(1, weaponMaxAmmo);
+            currentAmmo = Mathf.Clamp(weaponCurrentAmmo, 0, maxAmmo);
+            fireRate = Mathf.Max(0.01f, weaponFireRate);
+            reloadDuration = Mathf.Max(0.01f, weaponReloadDuration);
         }
     }
 }

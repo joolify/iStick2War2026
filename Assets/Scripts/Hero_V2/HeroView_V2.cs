@@ -1,6 +1,7 @@
 ﻿using Spine;
 using Spine.Unity;
 using UnityEngine;
+using iStick2War;
 
 namespace Assets.Scripts.Hero_V2
 {
@@ -47,6 +48,7 @@ namespace Assets.Scripts.Hero_V2
         public SkeletonAnimation _skeletonAnimation;
 
         private HeroStateMachine_V2 _stateMachine;
+        private HeroModel_V2 _model;
         private HeroDamageReceiver_V2 _damageReceiver;
         private HeroDeathHandler_V2 _deathHandler;
         public Bone _crossHairBone;
@@ -76,7 +78,9 @@ namespace Assets.Scripts.Hero_V2
         public AnimationReferenceAsset _reloadThompsonAnim;
         public AnimationReferenceAsset _dryFireThompsonAnim;
         public AnimationReferenceAsset _landFallDownBackAnim;
-        
+
+        public AnimationReferenceAsset _idleBazookaAnim;
+
         [Header("VFX")]
         [SerializeField] private Transform _trailPrefab;
         [SerializeField] private float _trailWidth = 0.06f;
@@ -93,11 +97,13 @@ namespace Assets.Scripts.Hero_V2
         // INIT
         // -------------------------
         public void Init(
+            HeroModel_V2 model,
             HeroStateMachine_V2 stateMachine,
             HeroDamageReceiver_V2 damageReceiver,
             HeroDeathHandler_V2 deathHandler,
             SkeletonAnimation skeletonAnimation)
         {
+            _model = model;
             _stateMachine = stateMachine;
             _damageReceiver = damageReceiver;
             _deathHandler = deathHandler;
@@ -148,9 +154,10 @@ namespace Assets.Scripts.Hero_V2
             }
 
             // Ensure desktop aim is active from frame 1, even before first input/state transition.
-            if (_idleThompsonAnim != null)
+            AnimationReferenceAsset idle = GetIdleAnimationForCurrentWeapon();
+            if (idle != null)
             {
-                PlayLoop(_idleThompsonAnim);
+                PlayLoop(idle);
             }
             PlayAimLoop();
         }
@@ -192,7 +199,7 @@ namespace Assets.Scripts.Hero_V2
             switch (to)
             {
                 case HeroState.Idle:
-                    PlayLoop(_idleThompsonAnim);
+                    PlayLoop(GetIdleAnimationForCurrentWeapon());
                     PlayAimLoop();
                     _jumpCombatInitialized = false;
                     break;
@@ -203,7 +210,7 @@ namespace Assets.Scripts.Hero_V2
 
                 case HeroState.Shooting:
                     // Base locomotion while shooting is controlled live by controller.
-                    PlayLoop(_idleThompsonAnim);
+                    PlayLoop(GetIdleAnimationForCurrentWeapon());
                     _shootLocomotionInitialized = false;
                     _jumpCombatInitialized = false;
                     break;
@@ -302,6 +309,10 @@ namespace Assets.Scripts.Hero_V2
         // -------------------------
         private void PlayLoop(AnimationReferenceAsset anim)
         {
+            if (anim == null || _skeletonAnimation == null)
+            {
+                return;
+            }
             _skeletonAnimation.AnimationState.SetAnimation(0, anim, true);
         }
 
@@ -402,7 +413,7 @@ namespace Assets.Scripts.Hero_V2
             //if (!crouchShootBazookaAnim.name.Equals("H_bazooka_crouch_shoot")) Debug.LogError(nameof(crouchShootBazookaAnim) + " has wrong animation");
             //if (!crouchWalkBazookaAnim.name.Equals("H_bazooka_crouch_walk")) Debug.LogError(nameof(crouchWalkBazookaAnim) + " has wrong animation");
             //if (!grenadeBazookaAnim.name.Equals("H_bazooka_grenade")) Debug.LogError(nameof(grenadeBazookaAnim) + " has wrong animation");
-            //if (!idleBazookaAnim.name.Equals("H_bazooka_idle")) Debug.LogError(nameof(idleBazookaAnim) + " has wrong animation");
+            if (!_idleBazookaAnim.name.Equals("H_bazooka_idle")) Debug.LogError(nameof(_idleBazookaAnim) + " has wrong animation");
             //if (!jumpBazookaAnim.name.Equals("H_bazooka_jump")) Debug.LogError(nameof(jumpBazookaAnim) + " has wrong animation");
             //if (!reloadBazookaAnim.name.Equals("H_bazooka_reload")) Debug.LogError(nameof(reloadBazookaAnim) + " has wrong animation");
             //if (!runBazookaAnim.name.Equals("H_bazooka_run")) Debug.LogError(nameof(runBazookaAnim) + " has wrong animation");
@@ -527,7 +538,7 @@ namespace Assets.Scripts.Hero_V2
 
             _shootLocomotionIsMoving = isMoving;
             _shootLocomotionInitialized = true;
-            PlayLoop(isMoving ? _runThompsonAnim : _idleThompsonAnim);
+            PlayLoop(isMoving ? _runThompsonAnim : GetIdleAnimationForCurrentWeapon());
         }
 
         internal void UpdateJumpCombatOverlay(bool isShooting)
@@ -758,6 +769,31 @@ namespace Assets.Scripts.Hero_V2
             {
                 Debug.Log("[HeroView_V2] Out of ammo.");
             }
+        }
+
+        internal void RefreshWeaponVisualsForCurrentState()
+        {
+            if (_stateMachine == null)
+            {
+                return;
+            }
+
+            HeroState current = _stateMachine.CurrentState;
+            if (current == HeroState.Idle || current == HeroState.Shooting)
+            {
+                PlayLoop(GetIdleAnimationForCurrentWeapon());
+                PlayAimLoop();
+            }
+        }
+
+        private AnimationReferenceAsset GetIdleAnimationForCurrentWeapon()
+        {
+            if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _idleBazookaAnim != null)
+            {
+                return _idleBazookaAnim;
+            }
+
+            return _idleThompsonAnim;
         }
     }
 }
