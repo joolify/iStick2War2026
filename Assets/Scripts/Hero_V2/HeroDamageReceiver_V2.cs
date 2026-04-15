@@ -48,6 +48,7 @@ namespace Assets.Scripts.Hero_V2
  */
     public class HeroDamageReceiver_V2 
     {
+        private const bool DebugDamageLogs = false;
         private readonly HeroModel_V2 _model;
 
         // Events (extremt viktigt för clean architecture)
@@ -76,7 +77,10 @@ namespace Assets.Scripts.Hero_V2
             _model.TakeDamage(damage);
 
             int actualDamage = previousHealth - _model.currentHealth;
-            Debug.Log($"[HeroDamageReceiver_V2] Damage applied. in={damage}, actual={actualDamage}, hp={previousHealth}->{_model.currentHealth}, dead={_model.isDead}");
+            if (DebugDamageLogs)
+            {
+                Debug.Log($"[HeroDamageReceiver_V2] Damage applied. in={damage}, actual={actualDamage}, hp={previousHealth}->{_model.currentHealth}, dead={_model.isDead}");
+            }
 
             if (actualDamage > 0)
             {
@@ -85,7 +89,10 @@ namespace Assets.Scripts.Hero_V2
 
             if (_model.isDead)
             {
-                Debug.Log("[HeroDamageReceiver_V2] OnDeath emitted.");
+                if (DebugDamageLogs)
+                {
+                    Debug.Log("[HeroDamageReceiver_V2] OnDeath emitted.");
+                }
                 OnDeath?.Invoke();
             }
         }

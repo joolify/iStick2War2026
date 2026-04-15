@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using UnityEngine;
 
 namespace Assets.Scripts.Hero_V2
@@ -63,6 +61,8 @@ namespace Assets.Scripts.Hero_V2
  */
     public class HeroMovementSystem_V2
     {
+        private const bool DebugMovementLogs = false;
+
         private HeroModel_V2 _model;
         private readonly Transform _transform;
         private readonly Rigidbody2D _rigidbody2D;
@@ -131,7 +131,7 @@ namespace Assets.Scripts.Hero_V2
         {
             RefreshGroundedState();
             bool canJump = !isDisabled && isGrounded;
-            Debug.Log($"[HeroMovementSystem_V2] CanJump? {canJump} (isDisabled={isDisabled}, isGrounded={isGrounded})");
+            LogMovement($"[HeroMovementSystem_V2] CanJump? {canJump} (isDisabled={isDisabled}, isGrounded={isGrounded})");
             return canJump;
         }
 
@@ -139,11 +139,11 @@ namespace Assets.Scripts.Hero_V2
         {
             if (!CanJump())
             {
-                Debug.Log("[HeroMovementSystem_V2] Jump blocked by CanJump().");
+                LogMovement("[HeroMovementSystem_V2] Jump blocked by CanJump().");
                 return;
             }
 
-            Debug.Log($"[HeroMovementSystem_V2] Jump triggered. jumpForce={jumpForce}");
+            LogMovement($"[HeroMovementSystem_V2] Jump triggered. jumpForce={jumpForce}");
             velocity.y = jumpForce;
             isGrounded = false;
             _jumpGracePeriodTimer = JumpGracePeriod;
@@ -273,7 +273,7 @@ namespace Assets.Scripts.Hero_V2
                 {
                     isGrounded = true;
                     _jumpGracePeriodTimer = 0f;
-                    Debug.Log("[HeroMovementSystem_V2] Early landing detected during jump grace period.");
+                    LogMovement("[HeroMovementSystem_V2] Early landing detected during jump grace period.");
                 }
                 else
                 {
@@ -288,7 +288,7 @@ namespace Assets.Scripts.Hero_V2
             string centerName = centerHit.collider != null ? centerHit.collider.name : "null";
             string leftName = leftHit.collider != null ? leftHit.collider.name : "null";
             string rightName = rightHit.collider != null ? rightHit.collider.name : "null";
-            Debug.Log($"[HeroMovementSystem_V2] GroundCheck => grounded={isGrounded}, left={leftGrounded}({leftName}), center={centerGrounded}({centerName}), right={rightGrounded}({rightName}), grace={_jumpGracePeriodTimer:0.000}, vy={velocity.y:0.000}");
+            LogMovement($"[HeroMovementSystem_V2] GroundCheck => grounded={isGrounded}, left={leftGrounded}({leftName}), center={centerGrounded}({centerName}), right={rightGrounded}({rightName}), grace={_jumpGracePeriodTimer:0.000}, vy={velocity.y:0.000}");
         }
 
         private RaycastHit2D GetFirstValidGroundHit(Vector2 origin)
@@ -306,6 +306,14 @@ namespace Assets.Scripts.Hero_V2
             }
 
             return default;
+        }
+
+        private static void LogMovement(string message)
+        {
+            if (DebugMovementLogs)
+            {
+                Debug.Log(message);
+            }
         }
     }
 }

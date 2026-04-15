@@ -1,9 +1,5 @@
 ﻿using Spine;
 using Spine.Unity;
-using System;
-using System.Collections.Generic;
-using System.Text;
-using TMPro;
 using UnityEngine;
 
 namespace Assets.Scripts.Hero_V2
@@ -90,6 +86,8 @@ namespace Assets.Scripts.Hero_V2
         [SerializeField] private int _trailSortingOrder = 5000;
         [Tooltip("If set, trail uses this sorting layer. Empty = highest sorting layer in project.")]
         [SerializeField] private string _trailSortingLayerName = "";
+        [SerializeField] private bool _debugTrailLogs = false;
+        [SerializeField] private bool _debugViewLogs = false;
 
         // -------------------------
         // INIT
@@ -118,7 +116,10 @@ namespace Assets.Scripts.Hero_V2
 
             _isInitialized = true;
 
-            Debug.Log("HeroView_V2 initialized successfully");
+            if (_debugViewLogs)
+            {
+                Debug.Log("HeroView_V2 initialized successfully");
+            }
         }
 
         void Start()
@@ -178,17 +179,15 @@ namespace Assets.Scripts.Hero_V2
                 _deathHandler.OnDeathHandled -= HandleDeath;
         }
 
-        bool IsFacingRight(Vector2 aimWorldPos)
-        {
-            return aimWorldPos.x > transform.position.x;
-        }
-
         // -------------------------
         // STATE → ANIMATION
         // -------------------------
         private void HandleStateChanged(HeroState from, HeroState to)
         {
-            Debug.Log("HandleStateChanged: Hero state changed from " + from + " to " + to);
+            if (_debugViewLogs)
+            {
+                Debug.Log("HandleStateChanged: Hero state changed from " + from + " to " + to);
+            }
 
             switch (to)
             {
@@ -247,7 +246,10 @@ namespace Assets.Scripts.Hero_V2
         private void HandleDamageTaken(int damage)
         {
             // hit flash / recoil animation / vignette trigger etc
-            Debug.Log($"Hero took {damage} damage");
+            if (_debugViewLogs)
+            {
+                Debug.Log($"Hero took {damage} damage");
+            }
         }
 
         // -------------------------
@@ -267,7 +269,10 @@ namespace Assets.Scripts.Hero_V2
         {
             // extra VFX layer (camera shake, particles, sound trigger)
             PlayDeathAnimation();
-            Debug.Log("Hero death visuals triggered");
+            if (_debugViewLogs)
+            {
+                Debug.Log("Hero death visuals triggered");
+            }
         }
 
         private void PlayDeathAnimation()
@@ -600,7 +605,10 @@ namespace Assets.Scripts.Hero_V2
                 }
                 lr.SetPosition(0, origin);
                 lr.SetPosition(1, finalPos);
-                Debug.Log($"[HeroView_V2] PlayShotTrail OK. origin={origin}, finalPos={finalPos}, startColor={lr.startColor}, endColor={lr.endColor}, overrideTrailColor={_overrideTrailColor}, trailColor={_trailColor}");
+                if (_debugTrailLogs)
+                {
+                    Debug.Log($"[HeroView_V2] PlayShotTrail OK. origin={origin}, finalPos={finalPos}, startColor={lr.startColor}, endColor={lr.endColor}, overrideTrailColor={_overrideTrailColor}, trailColor={_trailColor}");
+                }
             }
             else
             {
@@ -746,7 +754,10 @@ namespace Assets.Scripts.Hero_V2
                 return;
             }
 
-            Debug.Log("[HeroView_V2] Out of ammo.");
+            if (_debugViewLogs)
+            {
+                Debug.Log("[HeroView_V2] Out of ammo.");
+            }
         }
     }
 }

@@ -47,6 +47,10 @@ namespace Assets.Scripts.Hero_V2
  */
     public class Hero_V2 : MonoBehaviour
     {
+        [Header("Debug")]
+        [SerializeField] private bool _debugLifecycleLogs = false;
+        [SerializeField] private bool _debugDamageLogs = false;
+
         [Header("Core References")]
         [SerializeField] private HeroModel_V2 _model;
         [SerializeField] private HeroView_V2 _view;
@@ -65,7 +69,10 @@ namespace Assets.Scripts.Hero_V2
 
         private void Awake()
         {
-            Debug.Log("HERE AWAKE");
+            if (_debugLifecycleLogs)
+            {
+                Debug.Log("HERE AWAKE");
+            }
             BindComponents();
             CreateSystems();
             InitSystems();
@@ -101,7 +108,10 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
 
         private void OnGameOver()
         {
-            Debug.Log("GAME OVER");
+            if (_debugLifecycleLogs)
+            {
+                Debug.Log("GAME OVER");
+            }
         }
 
         public void Init(HeroModel_V2 model, HeroView_V2 view)
@@ -151,12 +161,18 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
                 Debug.LogWarning($"{nameof(HeroSpineEventForwarder_V2)} missing on Hero_V2 object.");
             }
 
-            Debug.Log("HERE2 SYSTEMS INITIALIZED");
+            if (_debugLifecycleLogs)
+            {
+                Debug.Log("HERE2 SYSTEMS INITIALIZED");
+            }
         }
 
         public void ReceiveDamage(int damage)
         {
-            Debug.Log($"[Hero_V2] ReceiveDamage called. damage={damage}");
+            if (_debugDamageLogs)
+            {
+                Debug.Log($"[Hero_V2] ReceiveDamage called. damage={damage}");
+            }
             if (_damageReceiver != null)
             {
                 _damageReceiver.ApplyDamage(damage);

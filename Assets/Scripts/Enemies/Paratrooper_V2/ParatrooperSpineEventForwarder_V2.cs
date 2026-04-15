@@ -1,12 +1,7 @@
 ﻿using Assets.Scripts.Components;
-using iStick2War;
 using Spine;
 using Spine.Unity;
-using System;
-using System.Collections.Generic;
-using System.Text;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace Assets.Scripts.Enemies.Paratrooper_V2
 {
@@ -62,6 +57,7 @@ namespace Assets.Scripts.Enemies.Paratrooper_V2
         [SpineEvent] public string reloadFinishedEventName;
         [SpineEvent] public string shootStartedEventName;
         [SpineEvent] public string shootFinishedEventName;
+        [SerializeField] private bool _debugEventLogs = false;
 
         private EventData _deployStartedEventData;
         private EventData _deployFinishedEventData;
@@ -125,7 +121,10 @@ namespace Assets.Scripts.Enemies.Paratrooper_V2
             if (_controller == null)
                 return;
 
-            Debug.Log($"ParatrooperSpineEventForwarder: Received event '{e.Data.Name}' at time {e.Time} (int: {e.Int}, float: {e.Float}, string: '{e.String}')");
+            if (_debugEventLogs)
+            {
+                Debug.Log($"ParatrooperSpineEventForwarder: Received event '{e.Data.Name}' at time {e.Time} (int: {e.Int}, float: {e.Float}, string: '{e.String}')");
+            }
             string eventName = e.Data != null ? e.Data.Name : string.Empty;
             string normalized = string.IsNullOrEmpty(eventName) ? string.Empty : eventName.Trim().ToLowerInvariant();
 

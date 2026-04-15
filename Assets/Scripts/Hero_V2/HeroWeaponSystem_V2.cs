@@ -40,6 +40,7 @@ namespace Assets.Scripts.Hero_V2
  */
     public class HeroWeaponSystem_V2 
     {
+        private const bool DebugWeaponLogs = false;
         private HeroModel_V2 _model;
 
         private bool isDisabled;
@@ -93,7 +94,7 @@ namespace Assets.Scripts.Hero_V2
 
             if (!CanShoot())
             {
-                Debug.Log($"[HeroWeaponSystem_V2] Shoot blocked. disabled={isDisabled}, dead={_model.isDead}, ammo={_model.currentAmmo}/{_model.maxAmmo}, fireRate={_model.fireRate}, sinceLastShot={Time.time - lastShootTime:0.000}");
+                LogWeapon($"[HeroWeaponSystem_V2] Shoot blocked. disabled={isDisabled}, dead={_model.isDead}, ammo={_model.currentAmmo}/{_model.maxAmmo}, fireRate={_model.fireRate}, sinceLastShot={Time.time - lastShootTime:0.000}");
                 return false;
             }
 
@@ -101,7 +102,7 @@ namespace Assets.Scripts.Hero_V2
             _model.ConsumeAmmo(1);
 
             shotResult = _shotResolver.ResolveShot(shotContext);
-            Debug.Log($"[HeroWeaponSystem_V2] Shoot OK. didHit={shotResult.DidHit}, finalPos={shotResult.FinalPos}, ammoLeft={_model.currentAmmo}");
+            LogWeapon($"[HeroWeaponSystem_V2] Shoot OK. didHit={shotResult.DidHit}, finalPos={shotResult.FinalPos}, ammoLeft={_model.currentAmmo}");
             return true;
         }
 
@@ -144,7 +145,7 @@ namespace Assets.Scripts.Hero_V2
 
             _isReloading = false;
             _model.RefillAmmo();
-            Debug.Log($"[HeroWeaponSystem_V2] Reload complete. ammo={_model.currentAmmo}/{_model.maxAmmo}");
+            LogWeapon($"[HeroWeaponSystem_V2] Reload complete. ammo={_model.currentAmmo}/{_model.maxAmmo}");
         }
 
         public bool IsReloading()
@@ -165,6 +166,14 @@ namespace Assets.Scripts.Hero_V2
         {
             // Backwards-compatible entry point while caller migration is in progress.
             TryShoot();
+        }
+
+        private static void LogWeapon(string message)
+        {
+            if (DebugWeaponLogs)
+            {
+                Debug.Log(message);
+            }
         }
     }
 }

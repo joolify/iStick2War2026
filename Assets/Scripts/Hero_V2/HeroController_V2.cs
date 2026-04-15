@@ -48,6 +48,7 @@ namespace Assets.Scripts.Hero_V2
         private readonly HeroMovementSystem_V2 _movementSystem;
         private readonly HeroWeaponSystem_V2 _weaponSystem;
         private const bool DebugDrawShotRay = true;
+        private const bool DebugCombatLogs = false;
         private bool _isShootLoopActive;
         private bool _outOfAmmoLatched;
 
@@ -88,7 +89,7 @@ namespace Assets.Scripts.Hero_V2
 
             if (_model.isJumpPressed)
             {
-                Debug.Log($"[HeroController_V2] Jump input detected. moveInput={_model.moveInput}");
+                LogCombat($"[HeroController_V2] Jump input detected. moveInput={_model.moveInput}");
             }
         }
 
@@ -106,7 +107,7 @@ namespace Assets.Scripts.Hero_V2
 
             if (_model.isJumpPressed && _movementSystem.CanJump())
             {
-                Debug.Log("[HeroController_V2] Jump transition accepted.");
+                LogCombat("[HeroController_V2] Jump transition accepted.");
                 _movementSystem.Jump();
                 _stateMachine.ChangeState(HeroState.Jumping);
                 return;
@@ -247,10 +248,10 @@ namespace Assets.Scripts.Hero_V2
             switch (eventName)
             {
                 case AnimationEventType.ShootStarted:
-                    Debug.Log("OnAnimationEvent.ShootStarted");
+                    LogCombat("OnAnimationEvent.ShootStarted");
                     if (!_isShootLoopActive)
                     {
-                        Debug.Log("[HeroController_V2] ShootStarted ignored: shoot loop inactive.");
+                        LogCombat("[HeroController_V2] ShootStarted ignored: shoot loop inactive.");
                         return;
                     }
 
@@ -262,7 +263,7 @@ namespace Assets.Scripts.Hero_V2
 
                     if (_model.currentAmmo <= 0)
                     {
-                        Debug.Log("[HeroController_V2] ShootStarted cancelled: out of ammo.");
+                        LogCombat("[HeroController_V2] ShootStarted cancelled: out of ammo.");
                         _isShootLoopActive = false;
                         _outOfAmmoLatched = true;
                         _stateMachine.ChangeState(HeroState.Idle);
@@ -310,6 +311,14 @@ namespace Assets.Scripts.Hero_V2
             if (_weaponSystem.Shoot(shotContext, out var shotResult))
             {
                 _view.PlayShotTrail(aimPos, shotResult.FinalPos);
+            }
+        }
+
+        private static void LogCombat(string message)
+        {
+            if (DebugCombatLogs)
+            {
+                Debug.Log(message);
             }
         }
     }

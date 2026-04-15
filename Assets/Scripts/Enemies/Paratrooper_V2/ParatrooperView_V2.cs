@@ -45,6 +45,7 @@ public class ParatrooperView_V2 : MonoBehaviour
     private StickmanBodyState _lastStateBeforeChange;
     private bool _deathAnimationLocked;
     private bool _suppressParachuteVisuals;
+    private bool _groundDeathParachuteLogPrinted;
 
     //Add animation mapping (cleaner than switch)
     private Dictionary<StickmanBodyState, string> animationMap;
@@ -66,6 +67,8 @@ public class ParatrooperView_V2 : MonoBehaviour
     public AnimationReferenceAsset _landFallDownBack3Anim;
 
     public AnimationReferenceAsset _shootingMP40Anim;
+    [SerializeField] private bool _debugAnimationLogs = false;
+    [SerializeField] private bool _debugParachuteLogs = false;
 
     public void Initialize(ParatrooperStateMachine_V2 stateMachine)
     {
@@ -119,7 +122,7 @@ public class ParatrooperView_V2 : MonoBehaviour
     /// </summary>
     public void PlayAnimation(StickmanBodyState state)
     {
-        Debug.Log("PlayAnimation() - State: " + state);
+        LogAnimation("PlayAnimation() - State: " + state);
         Spine.Animation nextAnimation = null;
         int trackIndex = 0;
         bool loop = false;
@@ -131,7 +134,7 @@ public class ParatrooperView_V2 : MonoBehaviour
 
         if (_deathAnimationLocked && !isDeathState)
         {
-            Debug.Log($"[ParatrooperView_V2] Ignored animation state {state} because death animation is locked.");
+            LogAnimation($"[ParatrooperView_V2] Ignored animation state {state} because death animation is locked.");
             return;
         }
 
@@ -224,7 +227,7 @@ public class ParatrooperView_V2 : MonoBehaviour
                 _skeletonAnimation.LateUpdate();
             }
         }
-        Debug.Log($"[ParatrooperView_V2] SetAnimation track={trackIndex}, state={state}, clip={nextAnimation.Name}, loop={loop}");
+        LogAnimation($"[ParatrooperView_V2] SetAnimation track={trackIndex}, state={state}, clip={nextAnimation.Name}, loop={loop}");
         LogActiveTracks($"after SetAnimation ({state})");
     }
 
@@ -243,7 +246,7 @@ public class ParatrooperView_V2 : MonoBehaviour
 
         int randomIndex = Random.Range(0, options.Count);
         var selected = options[randomIndex];
-        Debug.Log($"[ParatrooperView_V2] Selected ground death animation: {selected.name}");
+        LogAnimation($"[ParatrooperView_V2] Selected ground death animation: {selected.name}");
         return selected;
     }
 
@@ -281,13 +284,13 @@ public class ParatrooperView_V2 : MonoBehaviour
 
     private void PlayDeploy_Complete(Spine.TrackEntry trackEntry)
     {
-        Debug.Log("PlayDeploy_Complete()");
+        LogAnimation("PlayDeploy_Complete()");
         PlayGlide();
     }
 
     public void PlayGlide()
     {
-        Debug.Log("PlayGlide()");
+        LogAnimation("PlayGlide()");
         // Play the shoot animation on track 1.
         var track = _skeletonAnimation.AnimationState.SetAnimation(1, _glideAnim, true);
         //track.AttachmentThreshold = 1f;
@@ -306,7 +309,7 @@ public class ParatrooperView_V2 : MonoBehaviour
         var tracks = _skeletonAnimation.AnimationState.Tracks;
         string track0 = DescribeTrack(tracks, 0);
         string track1 = DescribeTrack(tracks, 1);
-        Debug.Log($"[ParatrooperView_V2] Track dump {context}: t0={track0} | t1={track1}");
+        LogAnimation($"[ParatrooperView_V2] Track dump {context}: t0={track0} | t1={track1}");
     }
 
     private string DescribeTrack(Spine.ExposedList<Spine.TrackEntry> tracks, int index)
@@ -387,7 +390,11 @@ public class ParatrooperView_V2 : MonoBehaviour
 
         if (hiddenCount > 0)
         {
-            Debug.Log($"[ParatrooperView_V2] Ground death: cleared parachute attachments on {hiddenCount} slot(s).");
+            if (_debugParachuteLogs && !_groundDeathParachuteLogPrinted)
+            {
+                Debug.Log($"[ParatrooperView_V2] Ground death: cleared parachute attachments on {hiddenCount} slot(s).");
+                _groundDeathParachuteLogPrinted = true;
+            }
         }
     }
 
@@ -395,6 +402,7 @@ public class ParatrooperView_V2 : MonoBehaviour
     {
         if (!_suppressParachuteVisuals)
         {
+            _groundDeathParachuteLogPrinted = false;
             return;
         }
 
@@ -479,6 +487,14 @@ public class ParatrooperView_V2 : MonoBehaviour
         origin = aimPos;
         direction = dir.normalized;
         return true;
+    }
+
+    private void LogAnimation(string message)
+    {
+        if (_debugAnimationLogs)
+        {
+            Debug.Log(message);
+        }
     }
 
 }

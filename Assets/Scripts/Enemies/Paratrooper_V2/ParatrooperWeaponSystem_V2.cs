@@ -2,7 +2,6 @@
 using Assets.Scripts.Hero_V2;
 using Spine;
 using Spine.Unity;
-using System;
 using System.Collections;
 using UnityEngine;
 
@@ -29,7 +28,6 @@ using UnityEngine;
 public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 {
     private ParatrooperModel_V2 _model;
-    private ParatrooperView_V2 _view;
     private SkeletonAnimation _skeletonAnimation;
     private Bone _aimPointBone;
     private Bone _crossHairBone;
@@ -51,7 +49,8 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
     [Tooltip("URP: too short + wrong sorting layer often looks like 'no trail'.")]
     [SerializeField] private float _lineVisibleDuration = 0.2f;
     [SerializeField] private bool _debugDrawShotRay = true;
-    [SerializeField] private bool _debugShotLineLogs = true;
+    [SerializeField] private bool _debugShotLineLogs = false;
+    [SerializeField] private bool _debugCombatLogs = false;
     [SerializeField] private float _lineWidth = 0.06f;
     [SerializeField] private Color _lineColor = new Color(1f, 0.95f, 0.5f, 1f);
     [Tooltip("When false, force neutral white trail color at runtime.")]
@@ -70,7 +69,6 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
     public void Initialize(ParatrooperModel_V2 model)
     {
         _model = model;
-        _view = GetComponent<ParatrooperView_V2>();
         _skeletonAnimation = GetComponent<SkeletonAnimation>();
         if (_skeletonAnimation == null)
         {
@@ -135,7 +133,10 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             return;
 
         _lastFireTime = Time.time;
-        Debug.Log("[ParatrooperWeaponSystem_V2] Auto-shoot triggered.");
+        if (_debugCombatLogs)
+        {
+            Debug.Log("[ParatrooperWeaponSystem_V2] Auto-shoot triggered.");
+        }
         ShootRaycastAtHero();
     }
 
@@ -225,7 +226,10 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             Hero_V2 heroRoot = hit.collider.GetComponentInParent<Hero_V2>();
             if (heroRoot != null)
             {
-                Debug.Log($"[ParatrooperWeaponSystem_V2] Hit Hero_V2 for {_baseDamage} damage.");
+                if (_debugCombatLogs)
+                {
+                    Debug.Log($"[ParatrooperWeaponSystem_V2] Hit Hero_V2 for {_baseDamage} damage.");
+                }
                 heroRoot.ReceiveDamage(_baseDamage);
                 didApplyDamage = true;
             }
@@ -234,7 +238,10 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
                 HeroModel_V2 hero = hit.collider.GetComponentInParent<HeroModel_V2>();
                 if (hero != null)
                 {
-                    Debug.Log($"[ParatrooperWeaponSystem_V2] Hit HeroModel_V2 for {_baseDamage} damage.");
+                    if (_debugCombatLogs)
+                    {
+                        Debug.Log($"[ParatrooperWeaponSystem_V2] Hit HeroModel_V2 for {_baseDamage} damage.");
+                    }
                     hero.TakeDamage(_baseDamage);
                     didApplyDamage = true;
                 }
@@ -445,8 +452,6 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         line.useWorldSpace = true;
         line.positionCount = 2;
         Color tint = _overrideLineColor ? _lineColor : Color.white;
-        line.startColor = tint;
-        line.endColor = tint;
         float runtimeWidth = Mathf.Max(0.08f, _lineWidth);
         line.widthMultiplier = runtimeWidth;
         line.startWidth = line.widthMultiplier;

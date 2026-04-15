@@ -27,6 +27,7 @@ namespace Assets.Scripts.Hero_V2
     public sealed class HeroShotResolver_V2
     {
         private const float FallbackHitRadius = 0.12f;
+        private const bool DebugShotLogs = false;
 
         public HeroShotResult_V2 ResolveShot(HeroShotContext_V2 context)
         {
@@ -48,27 +49,27 @@ namespace Assets.Scripts.Hero_V2
             {
                 Debug.DrawRay(context.Origin, normalizedDirection * range, Color.green, 0.75f);
             }
-            Debug.Log($"[HeroShotResolver_V2] Raycast origin={context.Origin}, dir={normalizedDirection}, range={range}, mask={context.WhatToHit.value}");
+            LogShot($"[HeroShotResolver_V2] Raycast origin={context.Origin}, dir={normalizedDirection}, range={range}, mask={context.WhatToHit.value}");
 
             if (hit.collider != null)
             {
                 if (usedFallbackCast)
                 {
-                    Debug.Log($"[HeroShotResolver_V2] Hit by fallback CircleCast radius={FallbackHitRadius:0.###}, collider={hit.collider.name}");
+                    LogShot($"[HeroShotResolver_V2] Hit by fallback CircleCast radius={FallbackHitRadius:0.###}, collider={hit.collider.name}");
                 }
                 else
                 {
-                    Debug.Log($"[HeroShotResolver_V2] Hit collider={hit.collider.name} layer={LayerMask.LayerToName(hit.collider.gameObject.layer)}");
+                    LogShot($"[HeroShotResolver_V2] Hit collider={hit.collider.name} layer={LayerMask.LayerToName(hit.collider.gameObject.layer)}");
                 }
                 ApplyDamage(hit, context.BaseDamage);
             }
             else
             {
-                Debug.Log("[HeroShotResolver_V2] Raycast miss.");
+                LogShot("[HeroShotResolver_V2] Raycast miss.");
                 RaycastHit2D unmaskedHit = Physics2D.Raycast(context.Origin, normalizedDirection, range);
                 if (unmaskedHit.collider != null)
                 {
-                    Debug.LogWarning(
+                    LogShotWarning(
                         $"[HeroShotResolver_V2] Unmasked hit detected on layer '{LayerMask.LayerToName(unmaskedHit.collider.gameObject.layer)}' " +
                         $"(collider={unmaskedHit.collider.name}). Check layer assignment/mask for missed shot.");
                 }
@@ -103,6 +104,22 @@ namespace Assets.Scripts.Hero_V2
             catch (System.Exception ex)
             {
                 Debug.LogError($"[HeroShotResolver_V2] ApplyDamage failed on collider '{hit.collider.name}': {ex.Message}");
+            }
+        }
+
+        private static void LogShot(string message)
+        {
+            if (DebugShotLogs)
+            {
+                Debug.Log(message);
+            }
+        }
+
+        private static void LogShotWarning(string message)
+        {
+            if (DebugShotLogs)
+            {
+                Debug.LogWarning(message);
             }
         }
     }
