@@ -39,6 +39,33 @@ using UnityEngine;
 /// </remarks>
 public class ParatrooperView_V2 : MonoBehaviour
 {
+    private static readonly string[] DefaultGibBoneNames =
+    {
+        "foot-back",
+        "foot-front",
+        "gunBone",
+        "leg-upper-back",
+        "leg-lower-back",
+        "leg-upper-front",
+        "leg-lower-front",
+        "arm-upper-back",
+        "arm-lower-back",
+        "arm-upper-front",
+        "arm-lower-front",
+        "chest",
+        "head"
+    };
+
+    [System.Serializable]
+    private class GibPartPrefabEntry
+    {
+        public string Label;
+        public string BoneName;
+        public GameObject Prefab;
+        public Vector3 LocalOffset = Vector3.zero;
+        public float Scale = 1f;
+    }
+
     private static readonly string[] ParachuteKeywords = { "parach", "chute", "canopy", "glide" };
     private SkeletonAnimation _skeletonAnimation;
     private ParticleSystem hitEffect;
@@ -46,6 +73,7 @@ public class ParatrooperView_V2 : MonoBehaviour
     private bool _deathAnimationLocked;
     private bool _suppressParachuteVisuals;
     private bool _groundDeathParachuteLogPrinted;
+    private bool _isExploded;
 
     //Add animation mapping (cleaner than switch)
     private Dictionary<StickmanBodyState, string> animationMap;
@@ -69,6 +97,17 @@ public class ParatrooperView_V2 : MonoBehaviour
     public AnimationReferenceAsset _shootingMP40Anim;
     [SerializeField] private bool _debugAnimationLogs = false;
     [SerializeField] private bool _debugParachuteLogs = false;
+    [Header("Explosive Death")]
+    [SerializeField] private float _gibForce = 9.5f;
+    [SerializeField] private float _gibTorque = 220f;
+    [SerializeField] private float _gibLifetime = 4f;
+    [SerializeField] [Range(0f, 1f)] private float _gibForceMultiplier = 0.25f;
+    [SerializeField] private List<GibPartPrefabEntry> _gibPartPrefabs = new List<GibPartPrefabEntry>();
+    [SerializeField] private bool _debugGibLogs = true;
+    [SerializeField] private string _gibSortingLayerName = "Default";
+    [SerializeField] private int _gibSortingOrder = 6000;
+    [SerializeField] private float _gibWorldZ = 0f;
+    [SerializeField] private string _gibPhysicsLayerName = "";
 
     public void Initialize(ParatrooperStateMachine_V2 stateMachine)
     {
@@ -122,6 +161,11 @@ public class ParatrooperView_V2 : MonoBehaviour
     /// </summary>
     public void PlayAnimation(StickmanBodyState state)
     {
+        if (_isExploded)
+        {
+            return;
+        }
+
         LogAnimation("PlayAnimation() - State: " + state);
         Spine.Animation nextAnimation = null;
         int trackIndex = 0;
@@ -400,6 +444,11 @@ public class ParatrooperView_V2 : MonoBehaviour
 
     private void LateUpdate()
     {
+        if (_isExploded)
+        {
+            return;
+        }
+
         if (!_suppressParachuteVisuals)
         {
             _groundDeathParachuteLogPrinted = false;
@@ -454,6 +503,24 @@ public class ParatrooperView_V2 : MonoBehaviour
         }
     }
 
+    private void Reset()
+    {
+        if (_gibPartPrefabs != null && _gibPartPrefabs.Count > 0)
+        {
+            return;
+        }
+
+        _gibPartPrefabs = new List<GibPartPrefabEntry>(DefaultGibBoneNames.Length);
+        for (int i = 0; i < DefaultGibBoneNames.Length; i++)
+        {
+            _gibPartPrefabs.Add(new GibPartPrefabEntry
+            {
+                Label = DefaultGibBoneNames[i],
+                BoneName = DefaultGibBoneNames[i]
+            });
+        }
+    }
+
     public bool TryGetAimData(out Vector2 origin, out Vector2 direction)
     {
         origin = default;
@@ -497,4 +564,348 @@ public class ParatrooperView_V2 : MonoBehaviour
         }
     }
 
+    public void ExplodeIntoPieces(Vector2 explosionOrigin, float forceMultiplier)
+    {
+        if (_isExploded)
+        {
+            return;
+        }
+
+        _isExploded = true;
+        _deathAnimationLocked = true;
+        _suppressParachuteVisuals = true;
+
+        if (_skeletonAnimation != null)
+        {
+            if (_skeletonAnimation.AnimationState != null)
+            {
+                _skeletonAnimation.AnimationState.ClearTracks();
+            }
+
+            SkeletonRenderer renderer = _skeletonAnimation.GetComponent<SkeletonRenderer>();
+            if (renderer != null)
+            {
+                renderer.enabled = false;
+            }
+
+            _skeletonAnimation.enabled = false;
+        }
+
+        DisableOriginalCharacterRenderers();
+
+        float launchForce = Mathf.Max(0.1f, _gibForce * Mathf.Max(0.3f, forceMultiplier) * Mathf.Clamp01(_gibForceMultiplier));
+        float life = Mathf.Max(0.25f, _gibLifetime);
+        bool spawnedVisualGibs = SpawnConfiguredGibPrefabs(explosionOrigin, launchForce, life);
+
+        if (spawnedVisualGibs)
+        {
+            DisableBodyPartCollidersOnly();
+            return;
+        }
+
+        ParatrooperBodyPart_V2[] parts = GetComponentsInChildren<ParatrooperBodyPart_V2>(true);
+        for (int i = 0; i < parts.Length; i++)
+        {
+            ParatrooperBodyPart_V2 part = parts[i];
+            if (part == null)
+            {
+                continue;
+            }
+
+            Transform partTransform = part.transform;
+            Vector2 partPosition = partTransform.position;
+            Vector2 away = partPosition - explosionOrigin;
+            if (away.sqrMagnitude < 0.0001f)
+            {
+                away = Random.insideUnitCircle;
+            }
+            away.Normalize();
+            away.y = Mathf.Max(0.12f, away.y);
+
+            part.enabled = false;
+            partTransform.SetParent(null, true);
+
+            Rigidbody2D rb = part.GetComponent<Rigidbody2D>();
+            if (rb == null)
+            {
+                rb = part.gameObject.AddComponent<Rigidbody2D>();
+            }
+
+            rb.bodyType = RigidbodyType2D.Dynamic;
+            rb.simulated = true;
+            rb.gravityScale = 1f;
+            rb.linearDamping = 0.2f;
+            rb.angularDamping = 0.12f;
+            rb.freezeRotation = false;
+            rb.linearVelocity = Vector2.zero;
+            rb.angularVelocity = 0f;
+            rb.AddForce(away * launchForce, ForceMode2D.Impulse);
+            rb.AddTorque(Random.Range(-_gibTorque, _gibTorque), ForceMode2D.Impulse);
+
+            Destroy(part.gameObject, life);
+        }
+    }
+
+    private bool SpawnConfiguredGibPrefabs(Vector2 explosionOrigin, float launchForce, float life)
+    {
+        if (_gibPartPrefabs == null || _gibPartPrefabs.Count == 0 || _skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
+        {
+            return false;
+        }
+
+        bool spawnedAny = false;
+        int spawnedCount = 0;
+        for (int i = 0; i < _gibPartPrefabs.Count; i++)
+        {
+            GibPartPrefabEntry entry = _gibPartPrefabs[i];
+            if (entry == null || entry.Prefab == null || string.IsNullOrWhiteSpace(entry.BoneName))
+            {
+                continue;
+            }
+
+            Bone bone = _skeletonAnimation.Skeleton.FindBone(entry.BoneName);
+            if (bone == null)
+            {
+                continue;
+            }
+
+            Vector3 boneWorld = _skeletonAnimation.transform.TransformPoint(new Vector3(bone.WorldX, bone.WorldY, 0f));
+            Vector3 spawnPos = boneWorld + entry.LocalOffset;
+            spawnPos.z = _gibWorldZ;
+            Vector2 away = ((Vector2)spawnPos - explosionOrigin);
+            if (away.sqrMagnitude < 0.0001f)
+            {
+                away = Random.insideUnitCircle;
+            }
+            away.Normalize();
+            away.y = Mathf.Max(0.12f, away.y);
+
+            float angle = Mathf.Atan2(away.y, away.x) * Mathf.Rad2Deg + Random.Range(-20f, 20f);
+            GameObject gib = Instantiate(entry.Prefab, spawnPos, Quaternion.Euler(0f, 0f, angle));
+            float scaleMultiplier = entry.Scale > 0.001f ? entry.Scale : 1f;
+            if (_debugGibLogs && entry.Scale <= 0.001f)
+            {
+                Debug.LogWarning($"[ParatrooperView_V2] Gib '{entry.Label}' had Scale={entry.Scale}. Using fallback 1.0 so it remains visible.");
+            }
+            if (gib.transform.localScale.sqrMagnitude <= 0.000001f)
+            {
+                gib.transform.localScale = Vector3.one;
+            }
+            gib.transform.localScale *= scaleMultiplier;
+            ForceGibVisible(gib);
+
+            Rigidbody2D rb = gib.GetComponent<Rigidbody2D>();
+            if (rb == null)
+            {
+                rb = gib.AddComponent<Rigidbody2D>();
+            }
+
+            rb.bodyType = RigidbodyType2D.Dynamic;
+            rb.simulated = true;
+            rb.gravityScale = 1f;
+            rb.linearDamping = 0.2f;
+            rb.angularDamping = 0.12f;
+            rb.freezeRotation = false;
+            rb.linearVelocity = Vector2.zero;
+            rb.angularVelocity = 0f;
+            rb.AddForce(away * launchForce, ForceMode2D.Impulse);
+            rb.AddTorque(Random.Range(-_gibTorque, _gibTorque), ForceMode2D.Impulse);
+
+            Destroy(gib, life);
+            spawnedAny = true;
+            spawnedCount++;
+        }
+
+        if (_debugGibLogs)
+        {
+            Debug.Log($"[ParatrooperView_V2] Gib spawn result: spawned={spawnedCount}, configured={_gibPartPrefabs.Count}");
+        }
+
+        return spawnedAny;
+    }
+
+    private void ForceGibVisible(GameObject gib)
+    {
+        if (gib == null)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_gibPhysicsLayerName))
+        {
+            int physicsLayer = LayerMask.NameToLayer(_gibPhysicsLayerName);
+            if (physicsLayer >= 0)
+            {
+                SetLayerRecursively(gib, physicsLayer);
+            }
+            else if (_debugGibLogs)
+            {
+                Debug.LogWarning($"[ParatrooperView_V2] Gib physics layer '{_gibPhysicsLayerName}' was not found. Keeping prefab layer.");
+            }
+        }
+        ActivateHierarchy(gib.transform);
+        EnsureNonZeroScale(gib.transform);
+
+        int sortingLayerId = SortingLayer.NameToID(_gibSortingLayerName);
+        if (sortingLayerId == 0 && _gibSortingLayerName != "Default")
+        {
+            sortingLayerId = SortingLayer.NameToID("Default");
+        }
+
+        Renderer[] renderers = gib.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+            if (renderer == null)
+            {
+                continue;
+            }
+
+            renderer.enabled = true;
+            renderer.sortingLayerID = sortingLayerId;
+            renderer.sortingOrder = _gibSortingOrder;
+
+            Material material = renderer.material;
+            if (material == null)
+            {
+                continue;
+            }
+
+            if (material.HasProperty("_BaseColor"))
+            {
+                Color c = material.GetColor("_BaseColor");
+                c.a = 1f;
+                material.SetColor("_BaseColor", c);
+            }
+            if (material.HasProperty("_Color"))
+            {
+                Color c = material.GetColor("_Color");
+                c.a = 1f;
+                material.SetColor("_Color", c);
+            }
+
+            if (material.HasProperty("_BaseMap"))
+            {
+                material.SetTexture("_BaseMap", material.GetTexture("_BaseMap") ?? Texture2D.whiteTexture);
+            }
+            if (material.HasProperty("_MainTex"))
+            {
+                material.SetTexture("_MainTex", material.GetTexture("_MainTex") ?? Texture2D.whiteTexture);
+            }
+        }
+
+        SpriteRenderer[] sprites = gib.GetComponentsInChildren<SpriteRenderer>(true);
+        for (int i = 0; i < sprites.Length; i++)
+        {
+            SpriteRenderer sr = sprites[i];
+            if (sr == null)
+            {
+                continue;
+            }
+
+            sr.enabled = true;
+            sr.sortingLayerID = sortingLayerId;
+            sr.sortingOrder = _gibSortingOrder;
+            Color c = sr.color;
+            c.a = 1f;
+            sr.color = c;
+        }
+    }
+
+    private static void SetLayerRecursively(GameObject root, int layer)
+    {
+        if (root == null || layer < 0)
+        {
+            return;
+        }
+
+        Transform[] all = root.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < all.Length; i++)
+        {
+            if (all[i] != null)
+            {
+                all[i].gameObject.layer = layer;
+            }
+        }
+    }
+
+    private static void ActivateHierarchy(Transform root)
+    {
+        if (root == null)
+        {
+            return;
+        }
+
+        Transform[] all = root.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < all.Length; i++)
+        {
+            if (all[i] != null && !all[i].gameObject.activeSelf)
+            {
+                all[i].gameObject.SetActive(true);
+            }
+        }
+    }
+
+    private static void EnsureNonZeroScale(Transform root)
+    {
+        if (root == null)
+        {
+            return;
+        }
+
+        Transform[] all = root.GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < all.Length; i++)
+        {
+            Transform t = all[i];
+            if (t == null)
+            {
+                continue;
+            }
+
+            Vector3 s = t.localScale;
+            if (Mathf.Abs(s.x) <= 0.0001f) s.x = 1f;
+            if (Mathf.Abs(s.y) <= 0.0001f) s.y = 1f;
+            if (Mathf.Abs(s.z) <= 0.0001f) s.z = 1f;
+            t.localScale = s;
+        }
+    }
+
+    private void DisableOriginalCharacterRenderers()
+    {
+        Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+            if (renderer == null)
+            {
+                continue;
+            }
+
+            // Do not touch already spawned detached gibs (they are no longer children).
+            renderer.enabled = false;
+        }
+    }
+
+    private void DisableBodyPartCollidersOnly()
+    {
+        ParatrooperBodyPart_V2[] parts = GetComponentsInChildren<ParatrooperBodyPart_V2>(true);
+        for (int i = 0; i < parts.Length; i++)
+        {
+            ParatrooperBodyPart_V2 part = parts[i];
+            if (part == null)
+            {
+                continue;
+            }
+
+            part.enabled = false;
+            Collider2D[] colliders = part.GetComponents<Collider2D>();
+            for (int c = 0; c < colliders.Length; c++)
+            {
+                if (colliders[c] != null)
+                {
+                    colliders[c].enabled = false;
+                }
+            }
+        }
+    }
 }

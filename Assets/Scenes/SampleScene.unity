@@ -7958,6 +7958,76 @@ MonoBehaviour:
   _shootingMP40Anim: {fileID: 11400000, guid: 672b08387407ca147b3ae4fc3152da67, type: 2}
   _debugAnimationLogs: 0
   _debugParachuteLogs: 0
+  _gibForce: 9.5
+  _gibTorque: 220
+  _gibLifetime: 4
+  _gibForceMultiplier: 0.25
+  _gibPartPrefabs:
+  - Label: arm-lower-back
+    BoneName: arm-lower-back
+    Prefab: {fileID: 4814301688894732289, guid: 0c3522049a593e744a916b9acdff0efa, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: arm-lower-front
+    BoneName: arm-lower-front
+    Prefab: {fileID: 4814301688894732289, guid: 3a768d5d302fefd43ac4b984595d3f93, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: arm-upper-back
+    BoneName: arm-upper-back
+    Prefab: {fileID: 1892457919128648999, guid: 13d69234c25018242abc0278f670b633, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: arm-upper-front
+    BoneName: arm-upper-front
+    Prefab: {fileID: 1892457919128648999, guid: ed9650f582572a24f833ac71379f18cb, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: foot-back
+    BoneName: foot-back
+    Prefab: {fileID: 3968867486674436386, guid: a90501538885da54fb9f62ea3057197c, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: foot-front
+    BoneName: foot-front
+    Prefab: {fileID: 3968867486674436386, guid: 63a92c61e3e794049b9502ca1b65c901, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: head
+    BoneName: head
+    Prefab: {fileID: 6546289085495751949, guid: f322ca8a791cfab4880dabc6fc9f8649, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: leg-lower-back
+    BoneName: leg-lower-back
+    Prefab: {fileID: 1773542526803259241, guid: c65bacb76aa459f42aecbc4ef4eda650, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: leg-lower-front
+    BoneName: leg-lower-front
+    Prefab: {fileID: 1773542526803259241, guid: 35b5876fcb3b19d44a6605183934d163, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: leg-upper-back
+    BoneName: leg-upper-back
+    Prefab: {fileID: 6450952924678674276, guid: 0f342a69c2288b347a23bd32d0f48c27, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: leg-upper-front
+    BoneName: leg-upper-front
+    Prefab: {fileID: 6450952924678674276, guid: fde0d018ba426d54eae0e0699d9c8090, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  - Label: torso
+    BoneName: torso
+    Prefab: {fileID: 190346352245208972, guid: 23fbb25417c78c04c8e4968dc7ccee76, type: 3}
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 1
+  _debugGibLogs: 1
+  _gibSortingLayerName: Foreground
+  _gibSortingOrder: 6000
+  _gibWorldZ: 0
+  _gibPhysicsLayerName: Enemy
 --- !u!114 &1882248634
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9352,6 +9422,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0c71d3e8a4d36284b81c4bd5a7707784, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperDamageReceiver_V2
+  _enableExplosiveGibDeath: 1
+  _explodeOnAnyExplosiveHit: 1
+  _explosiveGibDamageThreshold: 40
 --- !u!114 &2115464552
 MonoBehaviour:
   m_ObjectHideFlags: 0

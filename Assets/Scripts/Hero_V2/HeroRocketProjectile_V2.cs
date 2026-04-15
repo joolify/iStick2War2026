@@ -165,7 +165,9 @@ namespace Assets.Scripts.Hero_V2
                     {
                         BaseDamage = finalDamage,
                         BodyPart = BodyPartType.Torso,
-                        HitPoint = explosionCenter
+                        HitPoint = explosionCenter,
+                        IsExplosive = true,
+                        ExplosionForce = Mathf.Lerp(3.5f, 9f, damageMultiplier)
                     };
                     receiver.TakeDamage(damageInfo);
                     continue;

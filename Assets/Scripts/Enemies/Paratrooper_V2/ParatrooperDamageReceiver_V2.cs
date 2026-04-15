@@ -36,9 +36,15 @@ using UnityEngine;
 /// </remarks>
 public class ParatrooperDamageReceiver_V2 : MonoBehaviour
 {
+    [Header("Explosive Death")]
+    [SerializeField] private bool _enableExplosiveGibDeath = true;
+    [SerializeField] private bool _explodeOnAnyExplosiveHit = true;
+    [SerializeField] private float _explosiveGibDamageThreshold = 40f;
+
     private ParatrooperModel_V2 _model;
     private ParatrooperStateMachine_V2 _stateMachine;
     private bool _deathStateSent;
+    public event System.Action<Vector2, float> OnExploded;
 
     void Awake()
     {
@@ -79,18 +85,44 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
         float multiplier = _model.GetMultiplier(info.BodyPart);
 
         float finalDamage = info.BaseDamage * multiplier * _model.armorMultiplier;
+        bool isExplosiveHit = _enableExplosiveGibDeath && info.IsExplosive;
+        bool passesExplosiveThreshold = finalDamage >= _explosiveGibDamageThreshold;
+        bool shouldExplode = isExplosiveHit && (_explodeOnAnyExplosiveHit || passesExplosiveThreshold);
 
         float remainingHealth = _model.ApplyDamage(finalDamage);
         bool isDead = _model.IsDead();
 
-        if (isDead)
+        if (shouldExplode && !isDead)
+        {
+            // Explosive gib kill should always finish the unit immediately.
+            remainingHealth = _model.ApplyDamage(_model.health + 1f);
+            isDead = _model.IsDead();
+        }
+
+        // Safety: if explosive hit already killed the target, still trigger gib path
+        // even when old serialized settings had _explodeOnAnyExplosiveHit=false.
+        if (isExplosiveHit && isDead)
+        {
+            shouldExplode = true;
+        }
+
+        if (isDead || shouldExplode)
         {
             if (!_deathStateSent)
             {
                 _deathStateSent = true;
-                var currentState = _stateMachine.CurrentState;
-                bool isAirborne = currentState == StickmanBodyState.Glide || currentState == StickmanBodyState.Deploy;
-                _stateMachine.ChangeState(isAirborne ? StickmanBodyState.GlideDie : StickmanBodyState.Die);
+                if (shouldExplode)
+                {
+                    float force = Mathf.Max(2f, info.ExplosionForce);
+                    OnExploded?.Invoke(info.HitPoint, force);
+                    _stateMachine.ChangeState(StickmanBodyState.Die);
+                }
+                else
+                {
+                    var currentState = _stateMachine.CurrentState;
+                    bool isAirborne = currentState == StickmanBodyState.Glide || currentState == StickmanBodyState.Deploy;
+                    _stateMachine.ChangeState(isAirborne ? StickmanBodyState.GlideDie : StickmanBodyState.Die);
+                }
             }
         }
         else

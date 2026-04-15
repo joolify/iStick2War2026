@@ -221,12 +221,20 @@ public class Paratrooper : MonoBehaviour
 
         // 9. Hook events (StateMachine → View & Death)
         _stateMachine.OnStateChanged += HandleStateChanged;
+        if (_damageReceiver != null && _view != null)
+        {
+            _damageReceiver.OnExploded += _view.ExplodeIntoPieces;
+        }
     }
 
     private void OnDestroy()
     {
         if (_stateMachine != null)
             _stateMachine.OnStateChanged -= HandleStateChanged;
+        if (_damageReceiver != null && _view != null)
+        {
+            _damageReceiver.OnExploded -= _view.ExplodeIntoPieces;
+        }
     }
 
     /*
