@@ -79,7 +79,13 @@ namespace Assets.Scripts.Hero_V2
         public AnimationReferenceAsset _dryFireThompsonAnim;
         public AnimationReferenceAsset _landFallDownBackAnim;
 
+        public AnimationReferenceAsset _aimBazookaAnim;
         public AnimationReferenceAsset _idleBazookaAnim;
+        public AnimationReferenceAsset _jumpBazookaAnim;
+        public AnimationReferenceAsset _reloadBazookaAnim;
+        public AnimationReferenceAsset _runBazookaAnim;
+        public AnimationReferenceAsset _shootingBazookaAnim;
+        public AnimationReferenceAsset _dryFireBazookaAnim;
 
         [Header("VFX")]
         [SerializeField] private Transform _trailPrefab;
@@ -224,19 +230,20 @@ namespace Assets.Scripts.Hero_V2
                 //    break;
 
                 case HeroState.Moving:
-                    PlayLoop(_runThompsonAnim);
+                    PlayLoop(GetRunAnimationForCurrentWeapon());
                     PlayAimLoop();
                     _jumpCombatInitialized = false;
                     break;
 
                 case HeroState.Jumping:
-                    if (_jumpThompsonAnim != null)
+                    AnimationReferenceAsset jumpAnim = GetJumpAnimationForCurrentWeapon();
+                    if (jumpAnim != null)
                     {
-                        PlayLoop(_jumpThompsonAnim);
+                        PlayLoop(jumpAnim);
                     }
                     else
                     {
-                        PlayLoop(_runThompsonAnim);
+                        PlayLoop(GetRunAnimationForCurrentWeapon());
                     }
                     _jumpCombatInitialized = false;
                     break;
@@ -324,12 +331,13 @@ namespace Assets.Scripts.Hero_V2
 
         private void PlayAimLoop()
         {
-            if (_aimThompsonAnim == null)
+            AnimationReferenceAsset aimAnim = GetAimAnimationForCurrentWeapon();
+            if (aimAnim == null)
             {
                 return;
             }
 
-            _skeletonAnimation.AnimationState.SetAnimation(1, _aimThompsonAnim, true);
+            _skeletonAnimation.AnimationState.SetAnimation(1, aimAnim, true);
         }
 
         private void SetCrosshair(Vector2 localTouchPos)
@@ -406,7 +414,7 @@ namespace Assets.Scripts.Hero_V2
 
         private void CheckAnimationNames()
         {
-            //if (!aimBazookaAnim.name.Equals("H_bazooka_aim")) Debug.LogError(nameof(aimBazookaAnim) + " has wrong animation");
+            if (!_aimBazookaAnim.name.Equals("H_bazooka_aim")) Debug.LogError(nameof(_aimBazookaAnim) + " has wrong animation");
             //if (!crouchGrenadeBazookaAnim.name.Equals("H_bazooka_crouch_grenade")) Debug.LogError(nameof(crouchGrenadeBazookaAnim) + " has wrong animation");
             //if (!crouchIdleBazookaAnim.name.Equals("H_bazooka_crouch_idle")) Debug.LogError(nameof(crouchIdleBazookaAnim) + " has wrong animation");
             //if (!crouchReloadBazookaAnim.name.Equals("H_bazooka_crouch_reload")) Debug.LogError(nameof(crouchReloadBazookaAnim) + " has wrong animation");
@@ -414,10 +422,10 @@ namespace Assets.Scripts.Hero_V2
             //if (!crouchWalkBazookaAnim.name.Equals("H_bazooka_crouch_walk")) Debug.LogError(nameof(crouchWalkBazookaAnim) + " has wrong animation");
             //if (!grenadeBazookaAnim.name.Equals("H_bazooka_grenade")) Debug.LogError(nameof(grenadeBazookaAnim) + " has wrong animation");
             if (!_idleBazookaAnim.name.Equals("H_bazooka_idle")) Debug.LogError(nameof(_idleBazookaAnim) + " has wrong animation");
-            //if (!jumpBazookaAnim.name.Equals("H_bazooka_jump")) Debug.LogError(nameof(jumpBazookaAnim) + " has wrong animation");
-            //if (!reloadBazookaAnim.name.Equals("H_bazooka_reload")) Debug.LogError(nameof(reloadBazookaAnim) + " has wrong animation");
-            //if (!runBazookaAnim.name.Equals("H_bazooka_run")) Debug.LogError(nameof(runBazookaAnim) + " has wrong animation");
-            //if (!shootingBazookaAnim.name.Equals("H_bazooka_shoot")) Debug.LogError(nameof(shootingBazookaAnim) + " has wrong animation");
+            if (!_jumpBazookaAnim.name.Equals("H_bazooka_jump")) Debug.LogError(nameof(_jumpBazookaAnim) + " has wrong animation");
+            if (!_reloadBazookaAnim.name.Equals("H_bazooka_reload")) Debug.LogError(nameof(_reloadBazookaAnim) + " has wrong animation");
+            if (!_runBazookaAnim.name.Equals("H_bazooka_run")) Debug.LogError(nameof(_runBazookaAnim) + " has wrong animation");
+            if (!_shootingBazookaAnim.name.Equals("H_bazooka_shoot")) Debug.LogError(nameof(_shootingBazookaAnim) + " has wrong animation");
 
             //if (!aimCarbineAnim.name.Equals("H_carbine_aim")) Debug.LogError(nameof(aimCarbineAnim) + " has wrong animation");
             //if (!crouchGrenadeCarbineAnim.name.Equals("H_carbine_crouch_grenade")) Debug.LogError(nameof(crouchGrenadeCarbineAnim) + " has wrong animation");
@@ -521,7 +529,13 @@ namespace Assets.Scripts.Hero_V2
 
         internal void PlayShoot()
         {
-            _skeletonAnimation.AnimationState.SetAnimation(1, _shootingThompsonAnim, true);
+            AnimationReferenceAsset shootAnim = GetShootAnimationForCurrentWeapon();
+            if (shootAnim == null)
+            {
+                return;
+            }
+
+            _skeletonAnimation.AnimationState.SetAnimation(1, shootAnim, true);
         }
 
         internal void UpdateShootLocomotion(bool isMoving)
@@ -538,7 +552,7 @@ namespace Assets.Scripts.Hero_V2
 
             _shootLocomotionIsMoving = isMoving;
             _shootLocomotionInitialized = true;
-            PlayLoop(isMoving ? _runThompsonAnim : GetIdleAnimationForCurrentWeapon());
+            PlayLoop(isMoving ? GetRunAnimationForCurrentWeapon() : GetIdleAnimationForCurrentWeapon());
         }
 
         internal void UpdateJumpCombatOverlay(bool isShooting)
@@ -726,9 +740,10 @@ namespace Assets.Scripts.Hero_V2
 
         internal void StopShoot()
         {
-            if (_aimThompsonAnim != null)
+            AnimationReferenceAsset aimAnim = GetAimAnimationForCurrentWeapon();
+            if (aimAnim != null)
             {
-                _skeletonAnimation.AnimationState.SetAnimation(1, _aimThompsonAnim, true);
+                _skeletonAnimation.AnimationState.SetAnimation(1, aimAnim, true);
             }
             else
             {
@@ -738,7 +753,8 @@ namespace Assets.Scripts.Hero_V2
 
         internal void PlayReload()
         {
-            if (_reloadThompsonAnim == null)
+            AnimationReferenceAsset reloadAnim = GetReloadAnimationForCurrentWeapon();
+            if (reloadAnim == null)
             {
                 Debug.LogWarning("[HeroView_V2] PlayReload skipped: reload animation is not assigned.");
                 PlayAimLoop();
@@ -746,21 +762,24 @@ namespace Assets.Scripts.Hero_V2
             }
 
             // Keep locomotion on track 0, play reload on weapon/upper-body track.
-            _skeletonAnimation.AnimationState.SetAnimation(1, _reloadThompsonAnim, false);
-            if (_aimThompsonAnim != null)
+            _skeletonAnimation.AnimationState.SetAnimation(1, reloadAnim, false);
+            AnimationReferenceAsset aimAnim = GetAimAnimationForCurrentWeapon();
+            if (aimAnim != null)
             {
-                _skeletonAnimation.AnimationState.AddAnimation(1, _aimThompsonAnim, true, 0f);
+                _skeletonAnimation.AnimationState.AddAnimation(1, aimAnim, true, 0f);
             }
         }
 
         internal void PlayOutOfAmmo()
         {
-            if (_dryFireThompsonAnim != null)
+            AnimationReferenceAsset dryFireAnim = GetDryFireAnimationForCurrentWeapon();
+            if (dryFireAnim != null)
             {
-                _skeletonAnimation.AnimationState.SetAnimation(1, _dryFireThompsonAnim, false);
-                if (_aimThompsonAnim != null)
+                _skeletonAnimation.AnimationState.SetAnimation(1, dryFireAnim, false);
+                AnimationReferenceAsset aimAnim = GetAimAnimationForCurrentWeapon();
+                if (aimAnim != null)
                 {
-                    _skeletonAnimation.AnimationState.AddAnimation(1, _aimThompsonAnim, true, 0f);
+                    _skeletonAnimation.AnimationState.AddAnimation(1, aimAnim, true, 0f);
                 }
                 return;
             }
@@ -794,6 +813,66 @@ namespace Assets.Scripts.Hero_V2
             }
 
             return _idleThompsonAnim;
+        }
+
+        private AnimationReferenceAsset GetAimAnimationForCurrentWeapon()
+        {
+            if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _aimBazookaAnim != null)
+            {
+                return _aimBazookaAnim;
+            }
+
+            return _aimThompsonAnim;
+        }
+
+        private AnimationReferenceAsset GetShootAnimationForCurrentWeapon()
+        {
+            if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _shootingBazookaAnim != null)
+            {
+                return _shootingBazookaAnim;
+            }
+
+            return _shootingThompsonAnim;
+        }
+
+        private AnimationReferenceAsset GetRunAnimationForCurrentWeapon()
+        {
+            if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _runBazookaAnim != null)
+            {
+                return _runBazookaAnim;
+            }
+
+            return _runThompsonAnim;
+        }
+
+        private AnimationReferenceAsset GetJumpAnimationForCurrentWeapon()
+        {
+            if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _jumpBazookaAnim != null)
+            {
+                return _jumpBazookaAnim;
+            }
+
+            return _jumpThompsonAnim;
+        }
+
+        private AnimationReferenceAsset GetReloadAnimationForCurrentWeapon()
+        {
+            if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _reloadBazookaAnim != null)
+            {
+                return _reloadBazookaAnim;
+            }
+
+            return _reloadThompsonAnim;
+        }
+
+        private AnimationReferenceAsset GetDryFireAnimationForCurrentWeapon()
+        {
+            if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _dryFireBazookaAnim != null)
+            {
+                return _dryFireBazookaAnim;
+            }
+
+            return _dryFireThompsonAnim;
         }
     }
 }

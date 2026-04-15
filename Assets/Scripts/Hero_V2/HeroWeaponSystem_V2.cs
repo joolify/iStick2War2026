@@ -192,6 +192,73 @@ namespace Assets.Scripts.Hero_V2
             };
         }
 
+        public bool ActiveWeaponUsesProjectile()
+        {
+            HeroWeaponRuntimeState_V2 activeWeapon = _inventory.ActiveWeapon;
+            if (activeWeapon == null || activeWeapon.Definition == null)
+            {
+                return false;
+            }
+
+            HeroWeaponDefinition_V2 definition = activeWeapon.Definition;
+            bool isProjectileWeaponType = definition.WeaponType == WeaponType.Bazooka;
+            return isProjectileWeaponType || definition.UseProjectile;
+        }
+
+        public bool ShootProjectile(Vector2 origin, Vector2 direction)
+        {
+            HeroWeaponRuntimeState_V2 activeWeapon = _inventory.ActiveWeapon;
+            if (activeWeapon == null || activeWeapon.Definition == null)
+            {
+                return false;
+            }
+
+            HeroWeaponDefinition_V2 definition = activeWeapon.Definition;
+            bool isProjectileWeaponType = definition.WeaponType == WeaponType.Bazooka;
+            bool shouldUseProjectile = isProjectileWeaponType || definition.UseProjectile;
+            if (!shouldUseProjectile)
+            {
+                return false;
+            }
+
+            if (definition.ProjectilePrefab == null)
+            {
+                Debug.LogWarning($"[HeroWeaponSystem_V2] Projectile shot blocked: weapon '{definition.WeaponType}' has no ProjectilePrefab assigned.");
+                return false;
+            }
+
+            if (!CanShoot())
+            {
+                return false;
+            }
+
+            lastShootTime = Time.time;
+            ConsumeAmmo(1);
+
+            GameObject projectileObject = Object.Instantiate(definition.ProjectilePrefab, origin, Quaternion.identity);
+            Vector2 dir = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector2.right;
+            float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
+            projectileObject.transform.rotation = Quaternion.Euler(0f, 0f, angle);
+
+            HeroRocketProjectile_V2 rocket = projectileObject.GetComponent<HeroRocketProjectile_V2>();
+            if (rocket != null)
+            {
+                rocket.Initialize(dir, definition.ProjectileSpeed, definition.ProjectileLifetime, definition.BaseDamage);
+            }
+            else
+            {
+                Rigidbody2D rb = projectileObject.GetComponent<Rigidbody2D>();
+                if (rb != null)
+                {
+                    rb.linearVelocity = dir * definition.ProjectileSpeed;
+                }
+                Object.Destroy(projectileObject, definition.ProjectileLifetime);
+            }
+
+            LogWeapon($"[HeroWeaponSystem_V2] Projectile shot. weapon={definition.WeaponType}, ammoLeft={_model.currentAmmo}");
+            return true;
+        }
+
         public bool TrySwitchToNextWeapon()
         {
             if (isDisabled || _model.isDead) return false;

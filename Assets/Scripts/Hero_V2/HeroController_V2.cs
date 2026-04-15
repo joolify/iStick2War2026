@@ -328,6 +328,12 @@ namespace Assets.Scripts.Hero_V2
 
             HeroShotContext_V2 shotContext = _weaponSystem.CreateShotContext(aimPos, direction, DebugDrawShotRay);
 
+            if (_weaponSystem.ActiveWeaponUsesProjectile())
+            {
+                _weaponSystem.ShootProjectile(aimPos, direction);
+                return;
+            }
+
             if (_weaponSystem.Shoot(shotContext, out var shotResult))
             {
                 _view.PlayShotTrail(aimPos, shotResult.FinalPos);

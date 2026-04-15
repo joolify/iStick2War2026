@@ -20,6 +20,12 @@ namespace Assets.Scripts.Hero_V2
         [SerializeField] private float _range = 100f;
         [SerializeField] private bool _debugDrawShotRay = true;
 
+        [Header("Projectile (optional)")]
+        [SerializeField] private bool _useProjectile = false;
+        [SerializeField] private GameObject _projectilePrefab;
+        [SerializeField] private float _projectileSpeed = 14f;
+        [SerializeField] private float _projectileLifetime = 5f;
+
         public WeaponType WeaponType => _weaponType;
         public string DisplayName => _displayName;
         public int MaxAmmo => Mathf.Max(1, _maxAmmo);
@@ -28,5 +34,9 @@ namespace Assets.Scripts.Hero_V2
         public float BaseDamage => Mathf.Max(0f, _baseDamage);
         public float Range => Mathf.Max(1f, _range);
         public bool DebugDrawShotRay => _debugDrawShotRay;
+        public bool UseProjectile => _useProjectile;
+        public GameObject ProjectilePrefab => _projectilePrefab;
+        public float ProjectileSpeed => Mathf.Max(0.1f, _projectileSpeed);
+        public float ProjectileLifetime => Mathf.Max(0.1f, _projectileLifetime);
     }
 }

@@ -19,4 +19,8 @@ MonoBehaviour:
   _reloadDuration: 0.5
   _baseDamage: 30
   _range: 100
-  _debugDrawShotRay: 1
+  _debugDrawShotRay: 0
+  _useProjectile: 1
+  _projectilePrefab: {fileID: 3126568485666285715, guid: fa7cf2837566a3244b50f6dfd91cef99, type: 3}
+  _projectileSpeed: 14
+  _projectileLifetime: 5
