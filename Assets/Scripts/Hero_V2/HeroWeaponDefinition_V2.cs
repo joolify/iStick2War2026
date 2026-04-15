@@ -1,7 +1,7 @@
 using iStick2War;
 using UnityEngine;
 
-namespace Assets.Scripts.Hero_V2
+namespace iStick2War_V2
 {
     [CreateAssetMenu(
         fileName = "HeroWeaponDefinition_V2",

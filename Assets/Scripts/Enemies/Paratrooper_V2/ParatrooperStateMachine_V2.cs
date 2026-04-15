@@ -34,6 +34,8 @@ using static UnityEngine.CullingGroup;
 ///};
 
 /// </remarks>
+namespace iStick2War_V2
+{
 public class ParatrooperStateMachine_V2 : MonoBehaviour
 {
     /// <summary>
@@ -138,4 +140,5 @@ public class ParatrooperStateMachine_V2 : MonoBehaviour
                 break;
         }
     }
+}
 }

@@ -34,6 +34,8 @@ using UnityEngine;
 /// StateMachine     reacts (Dead / HitReaction)
 /// View             shows it
 /// </remarks>
+namespace iStick2War_V2
+{
 public class ParatrooperDamageReceiver_V2 : MonoBehaviour
 {
     [Header("Explosive Death")]
@@ -169,4 +171,5 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
 
         return 1f;
     }
+}
 }

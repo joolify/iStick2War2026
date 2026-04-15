@@ -1,7 +1,7 @@
 using iStick2War;
 using System.Collections.Generic;
 
-namespace Assets.Scripts.Hero_V2
+namespace iStick2War_V2
 {
     internal sealed class HeroWeaponRuntimeState_V2
     {

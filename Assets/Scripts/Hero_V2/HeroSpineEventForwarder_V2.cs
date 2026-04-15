@@ -3,7 +3,7 @@ using Spine;
 using Spine.Unity;
 using UnityEngine;
 
-namespace Assets.Scripts.Hero_V2
+namespace iStick2War_V2
 {
     /// <summary>
     /// HeroSpineEventForwarder_V2 (Animation Event Bridge)

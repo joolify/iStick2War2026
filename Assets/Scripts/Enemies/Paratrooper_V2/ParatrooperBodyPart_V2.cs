@@ -29,6 +29,8 @@ using UnityEngine;
 /// - Typically attached to child GameObjects with colliders
 /// - Works with raycasts or collision-based hit detection
 /// </remarks>
+namespace iStick2War_V2
+{
 public class ParatrooperBodyPart_V2 : MonoBehaviour
 {
 
@@ -501,4 +503,5 @@ public class ParatrooperBodyPart_V2 : MonoBehaviour
                 return 0.8f;
         }
     }
+}
 }

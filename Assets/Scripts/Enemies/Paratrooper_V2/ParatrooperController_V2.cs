@@ -18,6 +18,8 @@ using UnityEngine;
 /// - MUST NOT directly control animations
 /// - Acts purely as a decision-making layer
 /// </remarks>
+namespace iStick2War_V2
+{
 public class ParatrooperController_V2 : MonoBehaviour
 {
     ParatrooperModel_V2 _model;
@@ -114,4 +116,5 @@ public class ParatrooperController_V2 : MonoBehaviour
     {
         throw new NotImplementedException();
     }
+}
 }

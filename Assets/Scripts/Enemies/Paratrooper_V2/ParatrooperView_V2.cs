@@ -37,6 +37,8 @@ using UnityEngine;
 /// damageReceiver.OnHit += view.PlayHitReaction;
 /// 
 /// </remarks>
+namespace iStick2War_V2
+{
 public class ParatrooperView_V2 : MonoBehaviour
 {
     private static readonly string[] DefaultGibBoneNames =
@@ -908,4 +910,5 @@ public class ParatrooperView_V2 : MonoBehaviour
             }
         }
     }
+}
 }

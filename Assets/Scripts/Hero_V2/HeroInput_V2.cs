@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 
-namespace Assets.Scripts.Hero_V2
+namespace iStick2War_V2
 {
     /*
  * INPUT SYSTEM PRINCIPLE (IMPORTANT)

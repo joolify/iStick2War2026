@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Assets.Scripts.Hero_V2
+namespace iStick2War_V2
 {
     /*
  * HeroStateMachine_V2 (State Transition Rules Engine)

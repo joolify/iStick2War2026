@@ -3,7 +3,7 @@ using Spine.Unity;
 using UnityEngine;
 using iStick2War;
 
-namespace Assets.Scripts.Hero_V2
+namespace iStick2War_V2
 {
     /*
  * HeroView_V2 (Presentation Layer)

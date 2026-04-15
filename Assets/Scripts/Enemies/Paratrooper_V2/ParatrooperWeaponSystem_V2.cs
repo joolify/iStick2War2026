@@ -1,5 +1,4 @@
 ﻿using Assets.Scripts.Components;
-using Assets.Scripts.Hero_V2;
 using Spine;
 using Spine.Unity;
 using System.Collections;
@@ -25,6 +24,8 @@ using UnityEngine;
 /// - MUST NOT depend on animation logic directly
 /// - MUST remain deterministic
 /// </remarks>
+namespace iStick2War_V2
+{
 public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 {
     private ParatrooperModel_V2 _model;
@@ -750,4 +751,5 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         _lineCoroutine = null;
     }
 
+}
 }

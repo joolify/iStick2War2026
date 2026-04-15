@@ -21,6 +21,8 @@ using UnityEngine;
 /// - MUST NOT reference Unity-specific classes (MonoBehaviour, Transform, etc.)
 /// - MUST remain a plain C# object (POCO)
 /// </remarks>
+namespace iStick2War_V2
+{
 public class ParatrooperModel_V2 : MonoBehaviour
 {
     public enum DamageProfileMode
@@ -126,4 +128,5 @@ public class ParatrooperModel_V2 : MonoBehaviour
 
         return 1f;
     }
+}
 }

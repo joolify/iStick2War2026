@@ -1,4 +1,3 @@
-using Assets.Scripts.Enemies.Paratrooper_V2;
 using iStick2War;
 using Spine.Unity;
 using System;
@@ -94,6 +93,8 @@ View reacts visually
 
 </remarks>
      */
+namespace iStick2War_V2
+{
 public class Paratrooper : MonoBehaviour
 {
     [Header("Core Systems")]
@@ -593,4 +594,5 @@ public class Paratrooper : MonoBehaviour
                 $"[Paratrooper_V2] Collider warning: active bodypart colliders dropped to {activeBodyPartColliders}/{totalBodyParts}.");
         }
     }
+}
 }

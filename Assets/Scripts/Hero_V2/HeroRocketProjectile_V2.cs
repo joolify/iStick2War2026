@@ -3,7 +3,7 @@ using iStick2War;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Assets.Scripts.Hero_V2
+namespace iStick2War_V2
 {
     [RequireComponent(typeof(Collider2D))]
     public class HeroRocketProjectile_V2 : MonoBehaviour

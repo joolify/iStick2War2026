@@ -27,6 +27,8 @@ using UnityEngine;
 /// - Designed to be the final step in the entity lifecycle
 /// - Can be extended with loot drops, sound, or slow-motion effects
 /// </remarks>
+namespace iStick2War_V2
+{
 public class ParatrooperDeathHandler_V2 : MonoBehaviour
 {
     bool useRagdoll;
@@ -99,4 +101,5 @@ public class ParatrooperDeathHandler_V2 : MonoBehaviour
         gameObject.SetActive(false);
     }
 
+}
 }

@@ -5,7 +5,7 @@ using System.Text;
 using UnityEngine;
 using iStick2War;
 
-namespace Assets.Scripts.Hero_V2
+namespace iStick2War_V2
 {
     /*
  * Hero_V2 Architecture Principle

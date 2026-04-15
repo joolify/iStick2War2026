@@ -3,7 +3,7 @@ using Spine;
 using Spine.Unity;
 using UnityEngine;
 
-namespace Assets.Scripts.Enemies.Paratrooper_V2
+namespace iStick2War_V2
 {
     /// <summary>
     /// ParatrooperSpineEventForwarder (Animation Event Bridge)
