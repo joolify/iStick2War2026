@@ -219,7 +219,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 48758052}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: PARATROOPER BodyParts_V2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -267,7 +267,7 @@ GameObject:
   - component: {fileID: 77065792}
   - component: {fileID: 77065791}
   - component: {fileID: 77065790}
-  m_Layer: 13
+  m_Layer: 10
   m_Name: Arm-Upper-Back-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2386,6 +2386,7 @@ MonoBehaviour:
   _overrideTrailColor: 0
   _trailColor: {r: 1, g: 0.95, b: 0.5, a: 1}
   _trailSortingOrder: 350
+  _trailSortingLayerName: 
 --- !u!1 &547377603
 GameObject:
   m_ObjectHideFlags: 0
@@ -2400,7 +2401,7 @@ GameObject:
   - component: {fileID: 547377607}
   - component: {fileID: 547377606}
   - component: {fileID: 547377605}
-  m_Layer: 13
+  m_Layer: 10
   m_Name: Torso-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3505,7 +3506,7 @@ GameObject:
   - component: {fileID: 713457414}
   - component: {fileID: 713457413}
   - component: {fileID: 713457412}
-  m_Layer: 13
+  m_Layer: 10
   m_Name: Arm-Lower-Back-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4151,7 +4152,7 @@ GameObject:
   - component: {fileID: 973469037}
   - component: {fileID: 973469036}
   - component: {fileID: 973469035}
-  m_Layer: 13
+  m_Layer: 10
   m_Name: Leg-Upper-Front-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5058,7 +5059,7 @@ GameObject:
   - component: {fileID: 1157819827}
   - component: {fileID: 1157819826}
   - component: {fileID: 1157819825}
-  m_Layer: 13
+  m_Layer: 10
   m_Name: Foot-Back-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5243,7 +5244,7 @@ GameObject:
   - component: {fileID: 1190442252}
   - component: {fileID: 1190442251}
   - component: {fileID: 1190442250}
-  m_Layer: 13
+  m_Layer: 10
   m_Name: Leg-Lower-Back-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5779,7 +5780,7 @@ GameObject:
   - component: {fileID: 1406123526}
   - component: {fileID: 1406123525}
   - component: {fileID: 1406123524}
-  m_Layer: 13
+  m_Layer: 10
   m_Name: Foot-Front-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6442,7 +6443,7 @@ GameObject:
   - component: {fileID: 1567593892}
   - component: {fileID: 1567593891}
   - component: {fileID: 1567593890}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: Head-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6628,7 +6629,7 @@ GameObject:
   - component: {fileID: 1598632538}
   - component: {fileID: 1598632537}
   - component: {fileID: 1598632536}
-  m_Layer: 13
+  m_Layer: 10
   m_Name: Leg-Upper-Back-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6988,7 +6989,7 @@ GameObject:
   - component: {fileID: 1694027297}
   - component: {fileID: 1694027296}
   - component: {fileID: 1694027295}
-  m_Layer: 13
+  m_Layer: 10
   m_Name: Leg-Lower-Front-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -7376,7 +7377,7 @@ GameObject:
   - component: {fileID: 1739082552}
   - component: {fileID: 1739082551}
   - component: {fileID: 1739082550}
-  m_Layer: 13
+  m_Layer: 10
   m_Name: Arm-Upper-Front-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -7760,7 +7761,7 @@ GameObject:
   - component: {fileID: 1882248630}
   - component: {fileID: 1882248633}
   - component: {fileID: 1882248634}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: PARATROOPER VIew_V2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -7897,6 +7898,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8f2ed24876275c34aa07df5741b744e1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperView_V2
+  aimPointBoneName: mp40-aim
+  crossHairBoneName: crosshair
   _deployAnim: {fileID: 11400000, guid: 196580e9010fa3443931524c02d2dcfa, type: 2}
   _glideAnim: {fileID: 11400000, guid: 3f8ab6cec8df6454fae7be134fd750bd, type: 2}
   _landAnim: {fileID: 11400000, guid: 2552f857adc14e34cb2c3c1f795e8bdd, type: 2}
@@ -8684,7 +8687,7 @@ GameObject:
   - component: {fileID: 2025554028}
   - component: {fileID: 2025554027}
   - component: {fileID: 2025554026}
-  m_Layer: 13
+  m_Layer: 10
   m_Name: Arm-Lower-Front-Hitbox
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -9159,7 +9162,7 @@ GameObject:
   - component: {fileID: 2115464547}
   - component: {fileID: 2115464555}
   - component: {fileID: 2115464556}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: PARATROOPER Model_V2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -9375,14 +9378,19 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   _firePoint: {fileID: 0}
+  _aimPointBoneName: mp40-aim
+  _crossHairBoneName: crosshair
   _shotLineRenderer: {fileID: 2565440054647899737, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
   _shotTrailPrefab: {fileID: 1070164800395407800, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
   _lineVisibleDuration: 0.1
   _debugDrawShotRay: 1
   _debugShotLineLogs: 1
   _lineWidth: 0.035
-  _lineColor: {r: 1, g: 0.95, b: 0.5, a: 1}
+  _lineColor: {r: 0.990566, g: 0.990566, b: 0.990566, a: 1}
+  _overrideLineColor: 1
   _lineSortingOrder: 300
+  _shotLineSortingLayerName: Foreground
+  _preferUrpUnlitLineMaterial: 1
 --- !u!1001 &2147091497
 PrefabInstance:
   m_ObjectHideFlags: 0

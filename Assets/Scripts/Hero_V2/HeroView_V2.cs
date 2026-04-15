@@ -87,7 +87,9 @@ namespace Assets.Scripts.Hero_V2
         [SerializeField] private float _trailVisibleDuration = 0.12f;
         [SerializeField] private bool _overrideTrailColor = false;
         [SerializeField] private Color _trailColor = Color.white;
-        [SerializeField] private int _trailSortingOrder = 350;
+        [SerializeField] private int _trailSortingOrder = 5000;
+        [Tooltip("If set, trail uses this sorting layer. Empty = highest sorting layer in project.")]
+        [SerializeField] private string _trailSortingLayerName = "";
 
         // -------------------------
         // INIT
@@ -555,30 +557,50 @@ namespace Assets.Scripts.Hero_V2
 
             if (lr != null)
             {
+                Color tint = _overrideTrailColor ? _trailColor : Color.white;
                 lr.positionCount = 0; // clear prefab state
                 lr.positionCount = 2;
                 lr.useWorldSpace = true;
                 lr.widthMultiplier = Mathf.Max(0.01f, _trailWidth);
                 lr.startWidth = lr.widthMultiplier;
                 lr.endWidth = lr.widthMultiplier;
-                if (_overrideTrailColor)
-                {
-                    lr.startColor = _trailColor;
-                    lr.endColor = _trailColor;
-                }
-                lr.sortingOrder = _trailSortingOrder;
-                lr.enabled = true;
-                if (lr.sharedMaterial == null)
-                {
-                    Shader spriteShader = Shader.Find("Sprites/Default");
-                    if (spriteShader != null)
+                lr.widthCurve = AnimationCurve.Constant(0f, 1f, 1f);
+                lr.textureMode = LineTextureMode.Stretch;
+                lr.alignment = LineAlignment.View;
+                lr.numCapVertices = 2;
+                lr.startColor = new Color(tint.r, tint.g, tint.b, 1f);
+                lr.endColor = new Color(tint.r, tint.g, tint.b, 1f);
+                Gradient gradient = new Gradient();
+                gradient.SetKeys(
+                    new GradientColorKey[]
                     {
-                        lr.sharedMaterial = new Material(spriteShader);
-                    }
+                        new GradientColorKey(tint, 0f),
+                        new GradientColorKey(tint, 1f)
+                    },
+                    new GradientAlphaKey[]
+                    {
+                        new GradientAlphaKey(1f, 0f),
+                        new GradientAlphaKey(1f, 1f)
+                    });
+                lr.colorGradient = gradient;
+                lr.sortingOrder = Mathf.Max(5000, _trailSortingOrder);
+                lr.sortingLayerID = ResolveTrailSortingLayerId();
+                lr.enabled = true;
+
+                Shader preferred = Shader.Find("Universal Render Pipeline/Unlit");
+                if (preferred == null)
+                {
+                    preferred = Shader.Find("Sprites/Default");
+                }
+                if (preferred != null)
+                {
+                    Material runtimeMat = new Material(preferred);
+                    ConfigureTrailMaterial(runtimeMat, tint);
+                    lr.material = runtimeMat;
                 }
                 lr.SetPosition(0, origin);
                 lr.SetPosition(1, finalPos);
-                Debug.Log($"[HeroView_V2] PlayShotTrail OK. origin={origin}, finalPos={finalPos}");
+                Debug.Log($"[HeroView_V2] PlayShotTrail OK. origin={origin}, finalPos={finalPos}, startColor={lr.startColor}, endColor={lr.endColor}, overrideTrailColor={_overrideTrailColor}, trailColor={_trailColor}");
             }
             else
             {
@@ -587,6 +609,100 @@ namespace Assets.Scripts.Hero_V2
 
             // Keep same lifetime as legacy GunBase effect.
             Destroy(trail.gameObject, Mathf.Max(0.05f, _trailVisibleDuration));
+        }
+
+        private int ResolveTrailSortingLayerId()
+        {
+            if (!string.IsNullOrWhiteSpace(_trailSortingLayerName))
+            {
+                SortingLayer[] layers = SortingLayer.layers;
+                for (int i = 0; i < layers.Length; i++)
+                {
+                    if (layers[i].name == _trailSortingLayerName)
+                    {
+                        return layers[i].id;
+                    }
+                }
+            }
+
+            return GetTopSortingLayerId();
+        }
+
+        private static int GetTopSortingLayerId()
+        {
+            SortingLayer[] layers = SortingLayer.layers;
+            if (layers == null || layers.Length == 0)
+            {
+                return SortingLayer.NameToID("Default");
+            }
+
+            int topId = layers[0].id;
+            int topValue = layers[0].value;
+            for (int i = 1; i < layers.Length; i++)
+            {
+                if (layers[i].value > topValue)
+                {
+                    topValue = layers[i].value;
+                    topId = layers[i].id;
+                }
+            }
+
+            return topId;
+        }
+
+        private static void ConfigureTrailMaterial(Material mat, Color tint)
+        {
+            if (mat == null)
+            {
+                return;
+            }
+
+            if (mat.HasProperty("_BaseMap"))
+            {
+                mat.SetTexture("_BaseMap", Texture2D.whiteTexture);
+            }
+            if (mat.HasProperty("_MainTex"))
+            {
+                mat.SetTexture("_MainTex", Texture2D.whiteTexture);
+            }
+
+            Color solidTint = new Color(tint.r, tint.g, tint.b, 1f);
+            if (mat.HasProperty("_BaseColor"))
+            {
+                mat.SetColor("_BaseColor", solidTint);
+            }
+            if (mat.HasProperty("_Color"))
+            {
+                mat.SetColor("_Color", solidTint);
+            }
+
+            // Force line to render as solid color to avoid scene color bleed-through.
+            if (mat.HasProperty("_Surface"))
+            {
+                mat.SetFloat("_Surface", 0f);
+            }
+            if (mat.HasProperty("_Blend"))
+            {
+                mat.SetFloat("_Blend", 0f);
+            }
+            if (mat.HasProperty("_SrcBlend"))
+            {
+                mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.One);
+            }
+            if (mat.HasProperty("_DstBlend"))
+            {
+                mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.Zero);
+            }
+            if (mat.HasProperty("_ZWrite"))
+            {
+                mat.SetFloat("_ZWrite", 1f);
+            }
+            if (mat.HasProperty("_ZTest"))
+            {
+                mat.SetFloat("_ZTest", (float)UnityEngine.Rendering.CompareFunction.Always);
+            }
+
+            mat.renderQueue = 5000;
         }
 
         internal void StopShoot()

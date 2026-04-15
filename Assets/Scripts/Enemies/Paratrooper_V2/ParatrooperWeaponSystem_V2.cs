@@ -54,9 +54,11 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
     [SerializeField] private bool _debugShotLineLogs = true;
     [SerializeField] private float _lineWidth = 0.06f;
     [SerializeField] private Color _lineColor = new Color(1f, 0.95f, 0.5f, 1f);
-    [SerializeField] private int _lineSortingOrder = 500;
-    [Tooltip("If set, trail uses this sorting layer so it is not drawn under Foreground characters. Empty = copy first SpriteRenderer on Paratrooper.")]
-    [SerializeField] private string _shotLineSortingLayerName = "Foreground";
+    [Tooltip("When false, force neutral white trail color at runtime.")]
+    [SerializeField] private bool _overrideLineColor = false;
+    [SerializeField] private int _lineSortingOrder = 5000;
+    [Tooltip("If set, trail uses this sorting layer. Empty = highest sorting layer in project.")]
+    [SerializeField] private string _shotLineSortingLayerName = "";
     [Tooltip("When true, assign a URP-friendly Unlit material (Sprites/Default is unreliable for LineRenderer under URP).")]
     [SerializeField] private bool _preferUrpUnlitLineMaterial = true;
 
@@ -105,8 +107,8 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         EnsureShotLineRenderer();
         CacheLineSortingLayer();
 
-        _heroRoot = FindFirstObjectByType<Hero_V2>();
-        _heroModel = _heroRoot != null ? _heroRoot.GetComponent<HeroModel_V2>() : FindFirstObjectByType<HeroModel_V2>();
+        _heroRoot = FindAnyObjectByType<Hero_V2>();
+        _heroModel = _heroRoot != null ? _heroRoot.GetComponent<HeroModel_V2>() : FindAnyObjectByType<HeroModel_V2>();
         CacheHeroCollider();
     }
 
@@ -143,7 +145,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         {
             if (_heroRoot == null)
             {
-                _heroRoot = FindFirstObjectByType<Hero_V2>();
+                _heroRoot = FindAnyObjectByType<Hero_V2>();
             }
 
             if (_heroRoot != null)
@@ -154,7 +156,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 
         if (_heroModel == null)
         {
-            _heroModel = FindFirstObjectByType<HeroModel_V2>();
+            _heroModel = FindAnyObjectByType<HeroModel_V2>();
         }
         if (_heroRoot == null && _heroModel != null)
         {
@@ -277,7 +279,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
                 ConfigureAndRenderLine(spawnedLine, from, to);
                 if (_debugShotLineLogs)
                 {
-                    Debug.Log($"[ParatrooperWeaponSystem_V2] Shot line rendered from TRAIL prefab. from={from}, to={to}, width={spawnedLine.widthMultiplier:0.000}, sortingOrder={spawnedLine.sortingOrder}, scale={spawnedLine.transform.lossyScale}");
+                    Debug.Log($"[ParatrooperWeaponSystem_V2] Shot line rendered from TRAIL prefab. from={from}, to={to}, width={spawnedLine.widthMultiplier:0.000}, sortingOrder={spawnedLine.sortingOrder}, scale={spawnedLine.transform.lossyScale}, startColor={spawnedLine.startColor}, endColor={spawnedLine.endColor}, overrideLineColor={_overrideLineColor}, lineColor={_lineColor}");
                 }
             }
             else
@@ -295,7 +297,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             ConfigureAndRenderLine(spawnedLine, from, to);
             if (_debugShotLineLogs)
             {
-                Debug.Log($"[ParatrooperWeaponSystem_V2] Shot line rendered from LINE prefab. from={from}, to={to}, width={spawnedLine.widthMultiplier:0.000}, sortingOrder={spawnedLine.sortingOrder}");
+                Debug.Log($"[ParatrooperWeaponSystem_V2] Shot line rendered from LINE prefab. from={from}, to={to}, width={spawnedLine.widthMultiplier:0.000}, sortingOrder={spawnedLine.sortingOrder}, startColor={spawnedLine.startColor}, endColor={spawnedLine.endColor}, overrideLineColor={_overrideLineColor}, lineColor={_lineColor}");
             }
             Destroy(spawnedLine.gameObject, Mathf.Max(0.01f, _lineVisibleDuration));
             return;
@@ -315,7 +317,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         ConfigureAndRenderLine(_shotLineRenderer, from, to);
         if (_debugShotLineLogs)
         {
-            Debug.Log($"[ParatrooperWeaponSystem_V2] Shot line rendered from SCENE line. from={from}, to={to}, width={_shotLineRenderer.widthMultiplier:0.000}, sortingOrder={_shotLineRenderer.sortingOrder}");
+            Debug.Log($"[ParatrooperWeaponSystem_V2] Shot line rendered from SCENE line. from={from}, to={to}, width={_shotLineRenderer.widthMultiplier:0.000}, sortingOrder={_shotLineRenderer.sortingOrder}, startColor={_shotLineRenderer.startColor}, endColor={_shotLineRenderer.endColor}, overrideLineColor={_overrideLineColor}, lineColor={_lineColor}");
         }
 
         if (_lineCoroutine != null)
@@ -385,15 +387,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             return;
         }
 
-        SpriteRenderer sr = GetComponentInChildren<SpriteRenderer>();
-        if (sr != null)
-        {
-            _lineSortingLayerId = sr.sortingLayerID;
-        }
-        else
-        {
-            _lineSortingLayerId = SortingLayer.NameToID("Default");
-        }
+        _lineSortingLayerId = GetTopSortingLayerId();
     }
 
     private static bool TryResolveSortingLayerId(string layerName, out int id)
@@ -417,6 +411,28 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         return false;
     }
 
+    private static int GetTopSortingLayerId()
+    {
+        SortingLayer[] layers = SortingLayer.layers;
+        if (layers == null || layers.Length == 0)
+        {
+            return SortingLayer.NameToID("Default");
+        }
+
+        int topId = layers[0].id;
+        int topValue = layers[0].value;
+        for (int i = 1; i < layers.Length; i++)
+        {
+            if (layers[i].value > topValue)
+            {
+                topValue = layers[i].value;
+                topId = layers[i].id;
+            }
+        }
+
+        return topId;
+    }
+
     private void ConfigureAndRenderLine(LineRenderer line, Vector2 from, Vector2 to)
     {
         if (line == null)
@@ -428,8 +444,9 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         line.transform.localScale = Vector3.one;
         line.useWorldSpace = true;
         line.positionCount = 2;
-        line.startColor = _lineColor;
-        line.endColor = _lineColor;
+        Color tint = _overrideLineColor ? _lineColor : Color.white;
+        line.startColor = tint;
+        line.endColor = tint;
         float runtimeWidth = Mathf.Max(0.08f, _lineWidth);
         line.widthMultiplier = runtimeWidth;
         line.startWidth = line.widthMultiplier;
@@ -438,18 +455,18 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         line.numCapVertices = 2;
         line.textureMode = LineTextureMode.Stretch;
         line.alignment = LineAlignment.View;
-        line.sortingOrder = Mathf.Max(500, _lineSortingOrder);
+        line.sortingOrder = Mathf.Max(5000, _lineSortingOrder);
         CacheLineSortingLayer();
         line.sortingLayerID = _lineSortingLayerId;
-        line.startColor = new Color(_lineColor.r, _lineColor.g, _lineColor.b, 1f);
-        line.endColor = new Color(_lineColor.r, _lineColor.g, _lineColor.b, 1f);
+        line.startColor = new Color(tint.r, tint.g, tint.b, 1f);
+        line.endColor = new Color(tint.r, tint.g, tint.b, 1f);
 
         Gradient gradient = new Gradient();
         gradient.SetKeys(
             new GradientColorKey[]
             {
-                new GradientColorKey(_lineColor, 0f),
-                new GradientColorKey(_lineColor, 1f)
+                new GradientColorKey(tint, 0f),
+                new GradientColorKey(tint, 1f)
             },
             new GradientAlphaKey[]
             {
@@ -458,7 +475,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             });
         line.colorGradient = gradient;
 
-        ApplyLineMaterial(line, line.startColor);
+        ApplyLineMaterial(line, tint);
 
         float z = _firePoint != null ? _firePoint.position.z : transform.position.z;
         line.SetPosition(0, new Vector3(from.x, from.y, z));
@@ -481,6 +498,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
                 if (spriteShader != null)
                 {
                     line.sharedMaterial = new Material(spriteShader);
+                    ConfigureLineMaterial(line.sharedMaterial, tint);
                 }
             }
 
@@ -491,17 +509,9 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         if (urpUnlit != null)
         {
             Material mat = new Material(urpUnlit);
-            if (mat.HasProperty("_BaseColor"))
-            {
-                mat.SetColor("_BaseColor", tint);
-            }
+            ConfigureLineMaterial(mat, tint);
 
-            if (mat.HasProperty("_Color"))
-            {
-                mat.SetColor("_Color", tint);
-            }
-
-            line.sharedMaterial = mat;
+            line.material = mat;
             return;
         }
 
@@ -510,9 +520,67 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             Shader spriteShader = Shader.Find("Sprites/Default");
             if (spriteShader != null)
             {
-                line.sharedMaterial = new Material(spriteShader);
+                Material mat = new Material(spriteShader);
+                ConfigureLineMaterial(mat, tint);
+                line.material = mat;
             }
         }
+    }
+
+    private static void ConfigureLineMaterial(Material mat, Color tint)
+    {
+        if (mat == null)
+        {
+            return;
+        }
+
+        if (mat.HasProperty("_BaseMap"))
+        {
+            mat.SetTexture("_BaseMap", Texture2D.whiteTexture);
+        }
+        if (mat.HasProperty("_MainTex"))
+        {
+            mat.SetTexture("_MainTex", Texture2D.whiteTexture);
+        }
+
+        Color solidTint = new Color(tint.r, tint.g, tint.b, 1f);
+        if (mat.HasProperty("_BaseColor"))
+        {
+            mat.SetColor("_BaseColor", solidTint);
+        }
+
+        if (mat.HasProperty("_Color"))
+        {
+            mat.SetColor("_Color", solidTint);
+        }
+
+        // Force solid draw to avoid transparent blending with blue scene layers.
+        if (mat.HasProperty("_Surface"))
+        {
+            mat.SetFloat("_Surface", 0f);
+        }
+        if (mat.HasProperty("_Blend"))
+        {
+            mat.SetFloat("_Blend", 0f);
+        }
+        if (mat.HasProperty("_SrcBlend"))
+        {
+            mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.One);
+        }
+        if (mat.HasProperty("_DstBlend"))
+        {
+            mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.Zero);
+        }
+        if (mat.HasProperty("_ZWrite"))
+        {
+            mat.SetFloat("_ZWrite", 1f);
+        }
+        if (mat.HasProperty("_ZTest"))
+        {
+            mat.SetFloat("_ZTest", (float)UnityEngine.Rendering.CompareFunction.Always);
+        }
+
+        mat.renderQueue = 5000;
     }
 
     private Vector2 GetShotOrigin()
