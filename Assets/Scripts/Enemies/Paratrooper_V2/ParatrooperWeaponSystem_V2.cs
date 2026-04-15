@@ -1,5 +1,7 @@
 ﻿using Assets.Scripts.Components;
 using Assets.Scripts.Hero_V2;
+using Spine;
+using Spine.Unity;
 using System;
 using System.Collections;
 using UnityEngine;
@@ -27,6 +29,10 @@ using UnityEngine;
 public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 {
     private ParatrooperModel_V2 _model;
+    private ParatrooperView_V2 _view;
+    private SkeletonAnimation _skeletonAnimation;
+    private Bone _aimPointBone;
+    private Bone _crossHairBone;
     private HeroModel_V2 _heroModel;
     private Hero_V2 _heroRoot;
 
@@ -36,16 +42,23 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
     [SerializeField] private int _baseDamage = 9;
     [SerializeField] private LayerMask _whatToHit = 0;
     [SerializeField] private Transform _firePoint;
+    [SerializeField] private string _aimPointBoneName = "mp40-aim";
+    [SerializeField] private string _crossHairBoneName = "crosshair";
 
     [Header("Line Renderer Effect")]
     [SerializeField] private LineRenderer _shotLineRenderer;
     [SerializeField] private Transform _shotTrailPrefab;
-    [SerializeField] private float _lineVisibleDuration = 0.12f;
+    [Tooltip("URP: too short + wrong sorting layer often looks like 'no trail'.")]
+    [SerializeField] private float _lineVisibleDuration = 0.2f;
     [SerializeField] private bool _debugDrawShotRay = true;
     [SerializeField] private bool _debugShotLineLogs = true;
     [SerializeField] private float _lineWidth = 0.06f;
     [SerializeField] private Color _lineColor = new Color(1f, 0.95f, 0.5f, 1f);
     [SerializeField] private int _lineSortingOrder = 500;
+    [Tooltip("If set, trail uses this sorting layer so it is not drawn under Foreground characters. Empty = copy first SpriteRenderer on Paratrooper.")]
+    [SerializeField] private string _shotLineSortingLayerName = "Foreground";
+    [Tooltip("When true, assign a URP-friendly Unlit material (Sprites/Default is unreliable for LineRenderer under URP).")]
+    [SerializeField] private bool _preferUrpUnlitLineMaterial = true;
 
     private float _lastFireTime = -999f;
     private Coroutine _lineCoroutine;
@@ -55,10 +68,22 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
     public void Initialize(ParatrooperModel_V2 model)
     {
         _model = model;
+        _view = GetComponent<ParatrooperView_V2>();
+        _skeletonAnimation = GetComponent<SkeletonAnimation>();
+        if (_skeletonAnimation == null)
+        {
+            _skeletonAnimation = GetComponentInChildren<SkeletonAnimation>();
+        }
+        ResolveAimBones();
 
         if (_firePoint == null)
         {
             _firePoint = transform;
+        }
+        else
+        {
+            // Guard against wrong inspector drag-drop (e.g. Hero fire point assigned to Paratrooper).
+            ValidateFirePointOwnership();
         }
 
         if (_whatToHit.value == 0)
@@ -142,9 +167,19 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             return;
         }
 
-        Vector2 origin = _firePoint != null ? _firePoint.position : transform.position;
-        Vector2 target = _heroModel.transform.position;
-        Vector2 direction = (target - origin).normalized;
+        Vector2 origin;
+        Vector2 direction;
+        if (TryGetParatrooperAimData(out Vector2 boneOrigin, out Vector2 boneDirection))
+        {
+            origin = boneOrigin;
+            direction = boneDirection;
+        }
+        else
+        {
+            origin = GetShotOrigin();
+            Vector2 target = _heroModel.transform.position;
+            direction = (target - origin).normalized;
+        }
 
         RaycastHit2D hit = Physics2D.Raycast(origin, direction, _range, _whatToHit);
         if (hit.collider == null)
@@ -334,21 +369,19 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         _shotLineRenderer.alignment = LineAlignment.View;
         _shotLineRenderer.startColor = _lineColor;
         _shotLineRenderer.endColor = _lineColor;
-
-        if (_shotLineRenderer.sharedMaterial == null)
-        {
-            Shader spriteShader = Shader.Find("Sprites/Default");
-            if (spriteShader != null)
-            {
-                _shotLineRenderer.sharedMaterial = new Material(spriteShader);
-            }
-        }
+        ApplyLineMaterial(_shotLineRenderer, _lineColor);
     }
 
     private void CacheLineSortingLayer()
     {
         if (_lineSortingLayerId >= 0)
         {
+            return;
+        }
+
+        if (TryResolveSortingLayerId(_shotLineSortingLayerName, out int forcedId))
+        {
+            _lineSortingLayerId = forcedId;
             return;
         }
 
@@ -361,6 +394,27 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         {
             _lineSortingLayerId = SortingLayer.NameToID("Default");
         }
+    }
+
+    private static bool TryResolveSortingLayerId(string layerName, out int id)
+    {
+        id = 0;
+        if (string.IsNullOrWhiteSpace(layerName))
+        {
+            return false;
+        }
+
+        SortingLayer[] layers = SortingLayer.layers;
+        for (int i = 0; i < layers.Length; i++)
+        {
+            if (layers[i].name == layerName)
+            {
+                id = layers[i].id;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void ConfigureAndRenderLine(LineRenderer line, Vector2 from, Vector2 to)
@@ -385,6 +439,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         line.textureMode = LineTextureMode.Stretch;
         line.alignment = LineAlignment.View;
         line.sortingOrder = Mathf.Max(500, _lineSortingOrder);
+        CacheLineSortingLayer();
         line.sortingLayerID = _lineSortingLayerId;
         line.startColor = new Color(_lineColor.r, _lineColor.g, _lineColor.b, 1f);
         line.endColor = new Color(_lineColor.r, _lineColor.g, _lineColor.b, 1f);
@@ -403,6 +458,53 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             });
         line.colorGradient = gradient;
 
+        ApplyLineMaterial(line, line.startColor);
+
+        float z = _firePoint != null ? _firePoint.position.z : transform.position.z;
+        line.SetPosition(0, new Vector3(from.x, from.y, z));
+        line.SetPosition(1, new Vector3(to.x, to.y, z));
+        line.enabled = true;
+    }
+
+    private void ApplyLineMaterial(LineRenderer line, Color tint)
+    {
+        if (line == null)
+        {
+            return;
+        }
+
+        if (!_preferUrpUnlitLineMaterial)
+        {
+            if (line.sharedMaterial == null)
+            {
+                Shader spriteShader = Shader.Find("Sprites/Default");
+                if (spriteShader != null)
+                {
+                    line.sharedMaterial = new Material(spriteShader);
+                }
+            }
+
+            return;
+        }
+
+        Shader urpUnlit = Shader.Find("Universal Render Pipeline/Unlit");
+        if (urpUnlit != null)
+        {
+            Material mat = new Material(urpUnlit);
+            if (mat.HasProperty("_BaseColor"))
+            {
+                mat.SetColor("_BaseColor", tint);
+            }
+
+            if (mat.HasProperty("_Color"))
+            {
+                mat.SetColor("_Color", tint);
+            }
+
+            line.sharedMaterial = mat;
+            return;
+        }
+
         if (line.sharedMaterial == null)
         {
             Shader spriteShader = Shader.Find("Sprites/Default");
@@ -411,10 +513,108 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
                 line.sharedMaterial = new Material(spriteShader);
             }
         }
+    }
 
-        line.SetPosition(0, from);
-        line.SetPosition(1, to);
-        line.enabled = true;
+    private Vector2 GetShotOrigin()
+    {
+        ValidateFirePointOwnership();
+        return _firePoint != null ? _firePoint.position : transform.position;
+    }
+
+    private void ResolveAimBones()
+    {
+        if (_skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_aimPointBoneName))
+        {
+            _aimPointBone = _skeletonAnimation.Skeleton.FindBone(_aimPointBoneName);
+        }
+        if (_aimPointBone == null)
+        {
+            _aimPointBone = _skeletonAnimation.Skeleton.FindBone("mp40-aim");
+        }
+
+        if (!string.IsNullOrWhiteSpace(_crossHairBoneName))
+        {
+            _crossHairBone = _skeletonAnimation.Skeleton.FindBone(_crossHairBoneName);
+        }
+        if (_crossHairBone == null)
+        {
+            _crossHairBone = _skeletonAnimation.Skeleton.FindBone("crosshair");
+        }
+    }
+
+    private bool TryGetParatrooperAimData(out Vector2 origin, out Vector2 direction)
+    {
+        origin = default;
+        direction = default;
+
+        ResolveAimBones();
+        if (_skeletonAnimation == null || _aimPointBone == null)
+        {
+            return false;
+        }
+
+        origin = _skeletonAnimation.transform.TransformPoint(
+            new Vector3(_aimPointBone.WorldX, _aimPointBone.WorldY, 0f));
+
+        if (_crossHairBone != null)
+        {
+            Vector2 crossPos = _skeletonAnimation.transform.TransformPoint(
+                new Vector3(_crossHairBone.WorldX, _crossHairBone.WorldY, 0f));
+            Vector2 dir = crossPos - origin;
+            if (dir.sqrMagnitude > 0.0001f)
+            {
+                direction = dir.normalized;
+                return true;
+            }
+        }
+
+        // If no crosshair bone is available, still shoot from aim bone towards Hero.
+        if (_heroModel != null)
+        {
+            Vector2 fallbackDir = ((Vector2)_heroModel.transform.position - origin);
+            if (fallbackDir.sqrMagnitude > 0.0001f)
+            {
+                direction = fallbackDir.normalized;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void ValidateFirePointOwnership()
+    {
+        if (_firePoint == null)
+        {
+            return;
+        }
+
+        if (_firePoint.GetComponentInParent<Hero_V2>() != null)
+        {
+            if (_debugShotLineLogs)
+            {
+                Debug.LogWarning($"[ParatrooperWeaponSystem_V2] FirePoint '{_firePoint.name}' belongs to Hero. Falling back to Paratrooper transform.");
+            }
+
+            _firePoint = transform;
+            return;
+        }
+
+        // In this setup, fire point should be on this Paratrooper hierarchy.
+        if (_firePoint != transform && !_firePoint.IsChildOf(transform))
+        {
+            if (_debugShotLineLogs)
+            {
+                Debug.LogWarning($"[ParatrooperWeaponSystem_V2] FirePoint '{_firePoint.name}' is outside Paratrooper hierarchy. Falling back to root transform.");
+            }
+
+            _firePoint = transform;
+        }
     }
 
     private void CacheHeroCollider()

@@ -1,4 +1,5 @@
 using iStick2War;
+using Spine;
 using Spine.Unity;
 using System.Collections.Generic;
 using UnityEngine;
@@ -49,6 +50,11 @@ public class ParatrooperView_V2 : MonoBehaviour
     private Dictionary<StickmanBodyState, string> animationMap;
 
     private ParatrooperStateMachine_V2 _stateMachine;
+    public Bone _crossHairBone;
+    public Bone _aimPointBone;
+
+    [SpineBone(dataField: "_skeletonAnimation")] public string aimPointBoneName = "mp40-aim";
+    [SpineBone(dataField: "_skeletonAnimation")] public string crossHairBoneName = "crosshair";
 
     [Header("Animations")]
     public AnimationReferenceAsset _deployAnim;
@@ -68,6 +74,7 @@ public class ParatrooperView_V2 : MonoBehaviour
         _stateMachine = stateMachine;
 
         _stateMachine.OnStateChanged += HandleStateChanged;
+        ResolveAimBones();
     }
 
     private void OnDestroy()
@@ -86,6 +93,7 @@ public class ParatrooperView_V2 : MonoBehaviour
     void Start()
     {
         CheckAnimationNames();
+        ResolveAimBones();
     }
 
     // Update is called once per frame
@@ -410,6 +418,67 @@ public class ParatrooperView_V2 : MonoBehaviour
         }
 
         return false;
+    }
+
+    private void ResolveAimBones()
+    {
+        if (_skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(aimPointBoneName))
+        {
+            _aimPointBone = _skeletonAnimation.Skeleton.FindBone(aimPointBoneName);
+        }
+        if (_aimPointBone == null)
+        {
+            _aimPointBone = _skeletonAnimation.Skeleton.FindBone("aimpoint");
+        }
+
+        if (!string.IsNullOrWhiteSpace(crossHairBoneName))
+        {
+            _crossHairBone = _skeletonAnimation.Skeleton.FindBone(crossHairBoneName);
+        }
+        if (_crossHairBone == null)
+        {
+            _crossHairBone = _skeletonAnimation.Skeleton.FindBone("crosshair");
+        }
+    }
+
+    public bool TryGetAimData(out Vector2 origin, out Vector2 direction)
+    {
+        origin = default;
+        direction = default;
+
+        ResolveAimBones();
+        if (_skeletonAnimation == null || _aimPointBone == null)
+        {
+            return false;
+        }
+
+        Vector2 aimPos = _skeletonAnimation.transform.TransformPoint(
+            new Vector3(_aimPointBone.WorldX, _aimPointBone.WorldY, 0f));
+
+        Vector2 dir;
+        if (_crossHairBone != null)
+        {
+            Vector2 crossPos = _skeletonAnimation.transform.TransformPoint(
+                new Vector3(_crossHairBone.WorldX, _crossHairBone.WorldY, 0f));
+            dir = crossPos - aimPos;
+            if (dir.sqrMagnitude <= 0.0001f)
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+
+        origin = aimPos;
+        direction = dir.normalized;
+        return true;
     }
 
 }
