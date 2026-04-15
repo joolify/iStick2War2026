@@ -6032,6 +6032,10 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 614786461488801382, guid: d666dcc1967ffa74fb5a837b05e46d49, type: 3}
+      propertyPath: m_SortingOrder
+      value: 10
+      objectReference: {fileID: 0}
     - target: {fileID: 2183092610365926901, guid: d666dcc1967ffa74fb5a837b05e46d49, type: 3}
       propertyPath: m_Name
       value: btn_shop_startGame
@@ -7668,6 +7672,10 @@ PrefabInstance:
     - target: {fileID: 614786461488801382, guid: d666dcc1967ffa74fb5a837b05e46d49, type: 3}
       propertyPath: m_Enabled
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 614786461488801382, guid: d666dcc1967ffa74fb5a837b05e46d49, type: 3}
+      propertyPath: m_SortingOrder
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 2183092610365926901, guid: d666dcc1967ffa74fb5a837b05e46d49, type: 3}
       propertyPath: m_Name
