@@ -45,6 +45,17 @@ namespace iStick2War_V2
   */
     public class HeroView_V2 : MonoBehaviour
     {
+        private struct WeaponAnimationSet
+        {
+            public AnimationReferenceAsset Idle;
+            public AnimationReferenceAsset Aim;
+            public AnimationReferenceAsset Shoot;
+            public AnimationReferenceAsset Run;
+            public AnimationReferenceAsset Jump;
+            public AnimationReferenceAsset Reload;
+            public AnimationReferenceAsset DryFire;
+        }
+
         public SkeletonAnimation _skeletonAnimation;
 
         private HeroStateMachine_V2 _stateMachine;
@@ -844,107 +855,115 @@ namespace iStick2War_V2
 
         private AnimationReferenceAsset GetIdleAnimationForCurrentWeapon()
         {
-            if (_model != null && _model.currentWeaponType == WeaponType.Colt45 && _idleColt45Anim != null)
-            {
-                return _idleColt45Anim;
-            }
-
-            if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _idleBazookaAnim != null)
-            {
-                return _idleBazookaAnim;
-            }
-
-            return _idleThompsonAnim;
+            return GetAnimationSetForCurrentWeapon().Idle;
         }
 
         private AnimationReferenceAsset GetAimAnimationForCurrentWeapon()
         {
-            if (_model != null && _model.currentWeaponType == WeaponType.Colt45 && _aimColt45Anim != null)
-            {
-                return _aimColt45Anim;
-            }
-
-            if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _aimBazookaAnim != null)
-            {
-                return _aimBazookaAnim;
-            }
-
-            return _aimThompsonAnim;
+            return GetAnimationSetForCurrentWeapon().Aim;
         }
 
         private AnimationReferenceAsset GetShootAnimationForCurrentWeapon()
         {
-            if (_model != null && _model.currentWeaponType == WeaponType.Colt45 && _shootingColt45Anim != null)
-            {
-                return _shootingColt45Anim;
-            }
-
-            if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _shootingBazookaAnim != null)
-            {
-                return _shootingBazookaAnim;
-            }
-
-            return _shootingThompsonAnim;
+            return GetAnimationSetForCurrentWeapon().Shoot;
         }
 
         private AnimationReferenceAsset GetRunAnimationForCurrentWeapon()
         {
-            if (_model != null && _model.currentWeaponType == WeaponType.Colt45 && _runColt45Anim != null)
-            {
-                return _runColt45Anim;
-            }
-
-            if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _runBazookaAnim != null)
-            {
-                return _runBazookaAnim;
-            }
-
-            return _runThompsonAnim;
+            return GetAnimationSetForCurrentWeapon().Run;
         }
 
         private AnimationReferenceAsset GetJumpAnimationForCurrentWeapon()
         {
-            if (_model != null && _model.currentWeaponType == WeaponType.Colt45 && _jumpColt45Anim != null)
-            {
-                return _jumpColt45Anim;
-            }
-
-            if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _jumpBazookaAnim != null)
-            {
-                return _jumpBazookaAnim;
-            }
-
-            return _jumpThompsonAnim;
+            return GetAnimationSetForCurrentWeapon().Jump;
         }
 
         private AnimationReferenceAsset GetReloadAnimationForCurrentWeapon()
         {
-            if (_model != null && _model.currentWeaponType == WeaponType.Colt45 && _reloadColt45Anim != null)
-            {
-                return _reloadColt45Anim;
-            }
-
-            if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _reloadBazookaAnim != null)
-            {
-                return _reloadBazookaAnim;
-            }
-
-            return _reloadThompsonAnim;
+            return GetAnimationSetForCurrentWeapon().Reload;
         }
 
         private AnimationReferenceAsset GetDryFireAnimationForCurrentWeapon()
         {
-            if (_model != null && _model.currentWeaponType == WeaponType.Colt45 && _dryFireColt45Anim != null)
-            {
-                return _dryFireColt45Anim;
-            }
+            return GetAnimationSetForCurrentWeapon().DryFire;
+        }
 
-            if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _dryFireBazookaAnim != null)
-            {
-                return _dryFireBazookaAnim;
-            }
+        private WeaponAnimationSet GetAnimationSetForCurrentWeapon()
+        {
+            WeaponAnimationSet fallbackSet = CreateAnimationSet(
+                _idleThompsonAnim,
+                _aimThompsonAnim,
+                _shootingThompsonAnim,
+                _runThompsonAnim,
+                _jumpThompsonAnim,
+                _reloadThompsonAnim,
+                _dryFireThompsonAnim);
 
-            return _dryFireThompsonAnim;
+            WeaponType currentWeapon = _model != null ? _model.currentWeaponType : WeaponType.Thompson;
+            switch (currentWeapon)
+            {
+                case WeaponType.Colt45:
+                    return MergeWithFallback(
+                        CreateAnimationSet(
+                            _idleColt45Anim,
+                            _aimColt45Anim,
+                            _shootingColt45Anim,
+                            _runColt45Anim,
+                            _jumpColt45Anim,
+                            _reloadColt45Anim,
+                            _dryFireColt45Anim),
+                        fallbackSet);
+
+                case WeaponType.Bazooka:
+                    return MergeWithFallback(
+                        CreateAnimationSet(
+                            _idleBazookaAnim,
+                            _aimBazookaAnim,
+                            _shootingBazookaAnim,
+                            _runBazookaAnim,
+                            _jumpBazookaAnim,
+                            _reloadBazookaAnim,
+                            _dryFireBazookaAnim),
+                        fallbackSet);
+
+                default:
+                    return fallbackSet;
+            }
+        }
+
+        private static WeaponAnimationSet CreateAnimationSet(
+            AnimationReferenceAsset idle,
+            AnimationReferenceAsset aim,
+            AnimationReferenceAsset shoot,
+            AnimationReferenceAsset run,
+            AnimationReferenceAsset jump,
+            AnimationReferenceAsset reload,
+            AnimationReferenceAsset dryFire)
+        {
+            return new WeaponAnimationSet
+            {
+                Idle = idle,
+                Aim = aim,
+                Shoot = shoot,
+                Run = run,
+                Jump = jump,
+                Reload = reload,
+                DryFire = dryFire
+            };
+        }
+
+        private static WeaponAnimationSet MergeWithFallback(WeaponAnimationSet primary, WeaponAnimationSet fallback)
+        {
+            return new WeaponAnimationSet
+            {
+                Idle = primary.Idle != null ? primary.Idle : fallback.Idle,
+                Aim = primary.Aim != null ? primary.Aim : fallback.Aim,
+                Shoot = primary.Shoot != null ? primary.Shoot : fallback.Shoot,
+                Run = primary.Run != null ? primary.Run : fallback.Run,
+                Jump = primary.Jump != null ? primary.Jump : fallback.Jump,
+                Reload = primary.Reload != null ? primary.Reload : fallback.Reload,
+                DryFire = primary.DryFire != null ? primary.DryFire : fallback.DryFire
+            };
         }
     }
 }
