@@ -19,6 +19,8 @@ namespace iStick2War_V2
         [SerializeField] private float _reloadDuration = 0.5f;
         [SerializeField] private float _baseDamage = 30f;
         [SerializeField] private float _range = 100f;
+        [SerializeField] private int _maxReserveAmmo = 90;
+        [SerializeField] private int _startingReserveAmmo = 90;
         [SerializeField] private bool _debugDrawShotRay = true;
 
         [Header("Projectile (optional)")]
@@ -43,6 +45,8 @@ namespace iStick2War_V2
         public float ReloadDuration => Mathf.Max(0.01f, _reloadDuration);
         public float BaseDamage => Mathf.Max(0f, _baseDamage);
         public float Range => Mathf.Max(1f, _range);
+        public int MaxReserveAmmo => Mathf.Max(0, _maxReserveAmmo);
+        public int StartingReserveAmmo => Mathf.Clamp(_startingReserveAmmo, 0, MaxReserveAmmo);
         public bool DebugDrawShotRay => _debugDrawShotRay;
         public bool UseProjectile => _useProjectile;
         public GameObject ProjectilePrefab => _projectilePrefab;

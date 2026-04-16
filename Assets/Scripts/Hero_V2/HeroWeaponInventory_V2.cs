@@ -9,10 +9,12 @@ namespace iStick2War_V2
         {
             Definition = definition;
             CurrentAmmo = definition.MaxAmmo;
+            CurrentReserveAmmo = definition.StartingReserveAmmo;
         }
 
         public HeroWeaponDefinition_V2 Definition { get; }
         public int CurrentAmmo { get; set; }
+        public int CurrentReserveAmmo { get; set; }
     }
 
     internal sealed class HeroWeaponInventory_V2

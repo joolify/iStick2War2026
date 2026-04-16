@@ -70,6 +70,8 @@ namespace iStick2War_V2
         // -------------------------
         public int maxAmmo { get; private set; } = 30;
         public int currentAmmo { get; private set; } = 30;
+        public int maxReserveAmmo { get; private set; } = 90;
+        public int currentReserveAmmo { get; private set; } = 90;
         public float fireRate { get; private set; } = 0.1f;
 
         // -------------------------
@@ -136,11 +138,19 @@ namespace iStick2War_V2
             currentAmmo = maxAmmo;
         }
 
+        public void SetAmmoState(int weaponCurrentAmmo, int weaponCurrentReserveAmmo)
+        {
+            currentAmmo = Mathf.Clamp(weaponCurrentAmmo, 0, maxAmmo);
+            currentReserveAmmo = Mathf.Clamp(weaponCurrentReserveAmmo, 0, maxReserveAmmo);
+        }
+
         public void ConfigureWeaponState(
             HeroWeaponDefinition_V2 weaponDefinition,
             WeaponType weaponType,
             int weaponMaxAmmo,
             int weaponCurrentAmmo,
+            int weaponMaxReserveAmmo,
+            int weaponCurrentReserveAmmo,
             float weaponFireRate,
             float weaponReloadDuration)
         {
@@ -148,6 +158,8 @@ namespace iStick2War_V2
             currentWeaponType = weaponType;
             maxAmmo = Mathf.Max(1, weaponMaxAmmo);
             currentAmmo = Mathf.Clamp(weaponCurrentAmmo, 0, maxAmmo);
+            maxReserveAmmo = Mathf.Max(0, weaponMaxReserveAmmo);
+            currentReserveAmmo = Mathf.Clamp(weaponCurrentReserveAmmo, 0, maxReserveAmmo);
             fireRate = Mathf.Max(0.01f, weaponFireRate);
             reloadDuration = Mathf.Max(0.01f, weaponReloadDuration);
         }

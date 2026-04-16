@@ -256,5 +256,50 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
         {
             return _model != null && _model.isDead;
         }
+
+        public int GetCurrentHealth()
+        {
+            return _model != null ? _model.currentHealth : 0;
+        }
+
+        public int GetMaxHealth()
+        {
+            return _model != null ? _model.maxHealth : 0;
+        }
+
+        public string GetCurrentWeaponDisplayName()
+        {
+            if (_model == null)
+            {
+                return "None";
+            }
+
+            if (_model.currentWeaponDefinition != null && !string.IsNullOrWhiteSpace(_model.currentWeaponDefinition.DisplayName))
+            {
+                return _model.currentWeaponDefinition.DisplayName;
+            }
+
+            return _model.currentWeaponType.ToString();
+        }
+
+        public int GetCurrentWeaponAmmo()
+        {
+            return _model != null ? _model.currentAmmo : 0;
+        }
+
+        public int GetCurrentWeaponMaxAmmo()
+        {
+            return _model != null ? _model.maxAmmo : 0;
+        }
+
+        public int GetCurrentWeaponReserveAmmo()
+        {
+            return _model != null ? _model.currentReserveAmmo : 0;
+        }
+
+        public int GetCurrentWeaponMaxReserveAmmo()
+        {
+            return _model != null ? _model.maxReserveAmmo : 0;
+        }
     }
 }

@@ -12,7 +12,6 @@ namespace iStick2War_V2
         [SerializeField] private TMP_Text _currencyText;
         [SerializeField] private TMP_Text _bunkerText;
         [SerializeField] private TMP_Text _healthCostText;
-        [SerializeField] private TMP_Text _bazookaCostText;
         [SerializeField] private TMP_Text _bunkerCostText;
         [Header("Shop carousel")]
         [Tooltip("Ordered list: use arrow buttons to cycle. Wire BUY to OnPurchaseSelectedOfferClicked.")]
@@ -49,6 +48,8 @@ namespace iStick2War_V2
         private int _originalSiblingIndex;
         private bool _isParentedToCamera;
         private int _offerIndex;
+        private readonly List<Canvas> _resolvedShopUiCanvases = new List<Canvas>();
+        private bool _didResolveShopUiCanvases;
 
         public void Initialize(WaveManager_V2 waveManager)
         {
@@ -101,11 +102,6 @@ namespace iStick2War_V2
             SetText(_bunkerText, $"Bunker HP: {_waveManager.BunkerHealth}");
             SetText(_buyButtonText, _buyButtonDefaultLabel);
             SetText(_healthCostText, $"Heal cost: {_waveManager.GetHealthPurchaseCost()}");
-            SetText(
-                _bazookaCostText,
-                _waveManager.IsBazookaUnlocked()
-                    ? "Bazooka: Unlocked"
-                    : $"Bazooka cost: {_waveManager.GetBazookaUnlockCost()}");
             SetText(_bunkerCostText, $"Repair cost: {_waveManager.GetBunkerRepairCost()}");
             RefreshOfferSelection();
         }
@@ -199,12 +195,6 @@ namespace iStick2War_V2
         public void OnBuyHealthClicked()
         {
             _waveManager?.PurchaseHealth();
-            Refresh();
-        }
-
-        public void OnBuyBazookaClicked()
-        {
-            _waveManager?.PurchaseBazookaUnlock();
             Refresh();
         }
 
@@ -371,8 +361,19 @@ namespace iStick2War_V2
 
         private void SetVisualComponentsVisible(bool visible)
         {
+            ResolveShopUiCanvasesIfNeeded();
+
             if (!_toggleVisualComponentsOnShowHide)
             {
+                for (int i = 0; i < _resolvedShopUiCanvases.Count; i++)
+                {
+                    Canvas canvas = _resolvedShopUiCanvases[i];
+                    if (canvas != null)
+                    {
+                        SetShopCanvasHierarchyVisible(canvas, visible);
+                    }
+                }
+
                 return;
             }
 
@@ -410,10 +411,95 @@ namespace iStick2War_V2
                 }
             }
 
+            for (int i = 0; i < _resolvedShopUiCanvases.Count; i++)
+            {
+                Canvas canvas = _resolvedShopUiCanvases[i];
+                if (canvas != null)
+                {
+                    SetShopCanvasHierarchyVisible(canvas, visible);
+                }
+            }
+
             if (_debugShopPanelLogs)
             {
                 Debug.Log($"[ShopPanel_V2] SetVisualComponentsVisible={visible}");
             }
+        }
+
+        private void ResolveShopUiCanvasesIfNeeded()
+        {
+            if (_didResolveShopUiCanvases)
+            {
+                return;
+            }
+
+            _resolvedShopUiCanvases.Clear();
+
+            string[] names =
+            {
+                "txt_shop_money",
+                "txt_shop_buy",
+                "txt_shop_startGame"
+            };
+
+            TMP_Text[] allTexts = Object.FindObjectsByType<TMP_Text>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+            HashSet<Canvas> unique = new HashSet<Canvas>();
+
+            for (int n = 0; n < names.Length; n++)
+            {
+                string targetName = names[n];
+                for (int i = 0; i < allTexts.Length; i++)
+                {
+                    TMP_Text text = allTexts[i];
+                    if (text == null)
+                    {
+                        continue;
+                    }
+
+                    if (!text.gameObject.name.Equals(targetName, System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    Canvas canvas = text.GetComponentInParent<Canvas>(true);
+                    if (canvas != null)
+                    {
+                        unique.Add(canvas);
+                    }
+
+                    break;
+                }
+            }
+
+            foreach (Canvas canvas in unique)
+            {
+                _resolvedShopUiCanvases.Add(canvas);
+            }
+
+            _didResolveShopUiCanvases = true;
+
+            if (_debugShopPanelLogs)
+            {
+                Debug.Log($"[ShopPanel_V2] Resolved shop UI canvases: {_resolvedShopUiCanvases.Count}");
+            }
+        }
+
+        private static void SetShopCanvasHierarchyVisible(Canvas canvas, bool visible)
+        {
+            if (canvas == null)
+            {
+                return;
+            }
+
+            GameObject root = canvas.gameObject;
+            if (root.activeSelf != visible)
+            {
+                root.SetActive(visible);
+            }
+
+            canvas.enabled = visible;
         }
 
         private void CacheVisualRootTransform()

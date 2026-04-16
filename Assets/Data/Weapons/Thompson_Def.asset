@@ -19,6 +19,8 @@ MonoBehaviour:
   _reloadDuration: 0.5
   _baseDamage: 30
   _range: 100
+  _maxReserveAmmo: 90
+  _startingReserveAmmo: 90
   _debugDrawShotRay: 1
   _useProjectile: 0
   _projectilePrefab: {fileID: 0}

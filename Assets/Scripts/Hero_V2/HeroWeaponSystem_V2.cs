@@ -121,6 +121,7 @@ namespace iStick2War_V2
             if (_model.isDead) return false;
             if (_isReloading) return false;
             if (_model.currentAmmo == _model.maxAmmo) return false;
+            if (_model.currentReserveAmmo <= 0) return false;
 
             return true;
         }
@@ -302,7 +303,9 @@ namespace iStick2War_V2
                 return false;
             }
 
-            return state.Definition != null && state.CurrentAmmo >= state.Definition.MaxAmmo;
+            return state.Definition != null &&
+                   state.CurrentAmmo >= state.Definition.MaxAmmo &&
+                   state.CurrentReserveAmmo >= state.Definition.MaxReserveAmmo;
         }
 
         public bool TryRefillMagazineForWeapon(HeroWeaponDefinition_V2 definition)
@@ -317,12 +320,21 @@ namespace iStick2War_V2
                 return false;
             }
 
-            if (state.Definition == null || state.CurrentAmmo >= state.Definition.MaxAmmo)
+            if (state.Definition == null)
+            {
+                return false;
+            }
+
+            bool alreadyFull =
+                state.CurrentAmmo >= state.Definition.MaxAmmo &&
+                state.CurrentReserveAmmo >= state.Definition.MaxReserveAmmo;
+            if (alreadyFull)
             {
                 return false;
             }
 
             state.CurrentAmmo = state.Definition.MaxAmmo;
+            state.CurrentReserveAmmo = state.Definition.MaxReserveAmmo;
 
             HeroWeaponRuntimeState_V2 active = _inventory.ActiveWeapon;
             if (active != null &&
@@ -373,6 +385,8 @@ namespace iStick2War_V2
                 active.Definition.WeaponType,
                 active.Definition.MaxAmmo,
                 active.CurrentAmmo,
+                active.Definition.MaxReserveAmmo,
+                active.CurrentReserveAmmo,
                 active.Definition.FireRate,
                 active.Definition.ReloadDuration);
             LogWeapon($"[HeroWeaponSystem_V2] Active weapon: {active.Definition.WeaponType} ({active.CurrentAmmo}/{active.Definition.MaxAmmo}).");
@@ -394,10 +408,15 @@ namespace iStick2War_V2
             HeroWeaponRuntimeState_V2 active = _inventory.ActiveWeapon;
             if (active != null && active.Definition != null)
             {
-                active.CurrentAmmo = active.Definition.MaxAmmo;
+                int needed = Mathf.Max(0, active.Definition.MaxAmmo - active.CurrentAmmo);
+                int toLoad = Mathf.Min(needed, Mathf.Max(0, active.CurrentReserveAmmo));
+                active.CurrentAmmo += toLoad;
+                active.CurrentReserveAmmo = Mathf.Max(0, active.CurrentReserveAmmo - toLoad);
+                _model.SetAmmoState(active.CurrentAmmo, active.CurrentReserveAmmo);
+                return;
             }
 
-            _model.RefillAmmo();
+            _model.SetAmmoState(_model.currentAmmo, 0);
         }
 
         private bool TryGetActiveWeaponDefinition(out HeroWeaponDefinition_V2 definition)

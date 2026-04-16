@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using iStick2War;
+using TMPro;
 
 namespace iStick2War_V2
 {
@@ -19,8 +20,11 @@ namespace iStick2War_V2
         [SerializeField] private Hero_V2 _hero;
         [SerializeField] private ShopPanel_V2 _shopPanel;
         [SerializeField] private EnemySpawner_V2 _enemySpawner;
-        [SerializeField] private HeroWeaponDefinition_V2 _bazookaWeaponDefinition;
         [SerializeField] private FollowCamera _followCamera;
+        [Header("Top Bar UI (optional)")]
+        [SerializeField] private TMP_Text _topBarHealthText;
+        [SerializeField] private TMP_Text _topBarCurrentWeaponText;
+        [SerializeField] private TMP_Text _topBarCurrentAmmoText;
 
         [Header("Waves")]
         [SerializeField] private List<WaveConfig_V2> _waves = new List<WaveConfig_V2>();
@@ -30,7 +34,6 @@ namespace iStick2War_V2
         [SerializeField] private int _startingCurrency = 100;
         [SerializeField] private int _healthPurchaseCost = 60;
         [SerializeField] private int _healthPurchaseAmount = 25;
-        [SerializeField] private int _bazookaUnlockCost = 220;
         [SerializeField] private int _bunkerRepairCost = 80;
         [SerializeField] private int _bunkerRepairAmount = 25;
         [SerializeField] private int _bunkerMaxHealth = 250;
@@ -66,6 +69,7 @@ namespace iStick2War_V2
         private void Start()
         {
             ResolveCameraFollowReferenceIfNeeded();
+            ResolveTopBarReferencesIfNeeded();
             if (_shopPanel != null)
             {
                 _shopPanel.Initialize(this);
@@ -74,6 +78,7 @@ namespace iStick2War_V2
 
             EnterPreparingState();
             EmitMetaChanged();
+            RefreshTopBar();
         }
 
         private void Update()
@@ -102,6 +107,8 @@ namespace iStick2War_V2
                     }
                     break;
             }
+
+            RefreshTopBar();
         }
 
         public void ReportEnemyKilled()
@@ -135,31 +142,6 @@ namespace iStick2War_V2
             Log($"Health purchased (+{_healthPurchaseAmount}) for {_healthPurchaseCost}.");
             EmitMetaChanged();
             return true;
-        }
-
-        public bool PurchaseBazookaUnlock()
-        {
-            if (_state != WaveLoopState_V2.Shop || _hero == null || _bazookaWeaponDefinition == null)
-            {
-                return false;
-            }
-
-            if (_hero.HasWeaponUnlocked(_bazookaWeaponDefinition))
-            {
-                return false;
-            }
-
-            if (!TrySpend(_bazookaUnlockCost))
-            {
-                return false;
-            }
-
-            bool unlocked = _hero.UnlockWeapon(_bazookaWeaponDefinition, true);
-            Log(unlocked
-                ? $"Bazooka unlocked for {_bazookaUnlockCost}."
-                : "Bazooka unlock attempt failed.");
-            EmitMetaChanged();
-            return unlocked;
         }
 
         /// <summary>
@@ -340,14 +322,7 @@ namespace iStick2War_V2
         }
 
         public int GetHealthPurchaseCost() => Mathf.Max(0, _healthPurchaseCost);
-        public int GetBazookaUnlockCost() => Mathf.Max(0, _bazookaUnlockCost);
         public int GetBunkerRepairCost() => Mathf.Max(0, _bunkerRepairCost);
-        public bool IsBazookaUnlocked()
-        {
-            return _bazookaWeaponDefinition != null &&
-                   _hero != null &&
-                   _hero.HasWeaponUnlocked(_bazookaWeaponDefinition);
-        }
 
         private void TickInWaveState()
         {
@@ -475,6 +450,7 @@ namespace iStick2War_V2
         private void EmitMetaChanged()
         {
             OnMetaChanged?.Invoke(CurrentWaveNumber, _currency, _bunkerHealth);
+            RefreshTopBar();
         }
 
         private void Log(string message)
@@ -528,6 +504,68 @@ namespace iStick2War_V2
             {
                 Debug.LogWarning($"[WaveManager_V2] SetCameraFollowEnabled({isEnabled}) skipped; _followCamera is null.");
             }
+        }
+
+        private void ResolveTopBarReferencesIfNeeded()
+        {
+            if (_topBarHealthText == null)
+            {
+                _topBarHealthText = FindTextInSceneByName("txt_topbar_health");
+            }
+
+            if (_topBarCurrentWeaponText == null)
+            {
+                _topBarCurrentWeaponText = FindTextInSceneByName("txt_topbar_currentWeapon");
+            }
+
+            if (_topBarCurrentAmmoText == null)
+            {
+                _topBarCurrentAmmoText = FindTextInSceneByName("txt_topbar_currentAmmo");
+            }
+        }
+
+        private void RefreshTopBar()
+        {
+            if (_hero == null)
+            {
+                return;
+            }
+
+            if (_topBarHealthText != null)
+            {
+                _topBarHealthText.text = $"HP: {_hero.GetCurrentHealth()}/{_hero.GetMaxHealth()}";
+            }
+
+            if (_topBarCurrentWeaponText != null)
+            {
+                _topBarCurrentWeaponText.text = $"Weapon: {_hero.GetCurrentWeaponDisplayName()}";
+            }
+
+            if (_topBarCurrentAmmoText != null)
+            {
+                _topBarCurrentAmmoText.text =
+                    $"Ammo: {_hero.GetCurrentWeaponAmmo()}/{_hero.GetCurrentWeaponReserveAmmo()}";
+            }
+        }
+
+        private static TMP_Text FindTextInSceneByName(string objectName)
+        {
+            if (string.IsNullOrWhiteSpace(objectName))
+            {
+                return null;
+            }
+
+            TMP_Text[] allTexts = UnityEngine.Object.FindObjectsByType<TMP_Text>(FindObjectsSortMode.None);
+            for (int i = 0; i < allTexts.Length; i++)
+            {
+                TMP_Text current = allTexts[i];
+                if (current != null && current.gameObject.name.Equals(objectName, StringComparison.Ordinal))
+                {
+                    return current;
+                }
+            }
+
+            return null;
         }
     }
 }

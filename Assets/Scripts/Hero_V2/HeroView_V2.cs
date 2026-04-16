@@ -81,31 +81,8 @@ namespace iStick2War_V2
         private bool _jumpCombatInitialized;
 
         [Header("Animations")]
-        public AnimationReferenceAsset _idleThompsonAnim;
-        public AnimationReferenceAsset _aimThompsonAnim;
-        public AnimationReferenceAsset _shootingThompsonAnim;
-        public AnimationReferenceAsset _runThompsonAnim;
-        public AnimationReferenceAsset _jumpThompsonAnim;
-        public AnimationReferenceAsset _reloadThompsonAnim;
-        public AnimationReferenceAsset _dryFireThompsonAnim;
+        [SerializeField] private HeroWeaponDefinition_V2 _fallbackWeaponDefinition;
         public AnimationReferenceAsset _landFallDownBackAnim;
-
-        public AnimationReferenceAsset _aimBazookaAnim;
-        public AnimationReferenceAsset _idleBazookaAnim;
-        public AnimationReferenceAsset _jumpBazookaAnim;
-        public AnimationReferenceAsset _reloadBazookaAnim;
-        public AnimationReferenceAsset _runBazookaAnim;
-        public AnimationReferenceAsset _shootingBazookaAnim;
-        public AnimationReferenceAsset _dryFireBazookaAnim;
-
-
-        public AnimationReferenceAsset _aimColt45Anim;
-        public AnimationReferenceAsset _idleColt45Anim;
-        public AnimationReferenceAsset _jumpColt45Anim;
-        public AnimationReferenceAsset _reloadColt45Anim;
-        public AnimationReferenceAsset _runColt45Anim;
-        public AnimationReferenceAsset _shootingColt45Anim;
-        public AnimationReferenceAsset _dryFireColt45Anim;
 
         [Header("VFX")]
         [SerializeField] private Transform _trailPrefab;
@@ -328,9 +305,10 @@ namespace iStick2War_V2
             }
 
             // Fallback so Hero does not snap to an unrelated loop if death clip is not assigned yet.
-            if (_idleThompsonAnim != null)
+            AnimationReferenceAsset fallbackIdle = GetFallbackAnimationSet().Idle;
+            if (fallbackIdle != null)
             {
-                _skeletonAnimation.AnimationState.SetAnimation(0, _idleThompsonAnim, true);
+                _skeletonAnimation.AnimationState.SetAnimation(0, fallbackIdle, true);
             }
         }
 
@@ -458,45 +436,6 @@ namespace iStick2War_V2
         internal void PlayDeathEffect()
         {
             HandleDeath();
-        }
-
-        private void CheckAnimationNames()
-        {
-            ValidateAnimationName(_aimBazookaAnim, nameof(_aimBazookaAnim), "H_bazooka_aim");
-            ValidateAnimationName(_idleBazookaAnim, nameof(_idleBazookaAnim), "H_bazooka_idle");
-            ValidateAnimationName(_jumpBazookaAnim, nameof(_jumpBazookaAnim), "H_bazooka_jump");
-            ValidateAnimationName(_reloadBazookaAnim, nameof(_reloadBazookaAnim), "H_bazooka_reload");
-            ValidateAnimationName(_runBazookaAnim, nameof(_runBazookaAnim), "H_bazooka_run");
-            ValidateAnimationName(_shootingBazookaAnim, nameof(_shootingBazookaAnim), "H_bazooka_shoot");
-
-            ValidateAnimationName(_aimColt45Anim, nameof(_aimColt45Anim), "H_colt_aim");
-            ValidateAnimationName(_idleColt45Anim, nameof(_idleColt45Anim), "H_colt_idle");
-            ValidateAnimationName(_jumpColt45Anim, nameof(_jumpColt45Anim), "H_colt_jump");
-            ValidateAnimationName(_reloadColt45Anim, nameof(_reloadColt45Anim), "H_colt_reload");
-            ValidateAnimationName(_runColt45Anim, nameof(_runColt45Anim), "H_colt_run");
-            ValidateAnimationName(_shootingColt45Anim, nameof(_shootingColt45Anim), "H_colt_shoot");
-
-            ValidateAnimationName(_aimThompsonAnim, nameof(_aimThompsonAnim), "H_thompson_aim");
-            ValidateAnimationName(_idleThompsonAnim, nameof(_idleThompsonAnim), "H_thompson_idle");
-            ValidateAnimationName(_jumpThompsonAnim, nameof(_jumpThompsonAnim), "H_thompson_jump");
-            ValidateAnimationName(_reloadThompsonAnim, nameof(_reloadThompsonAnim), "H_thompson_reload");
-            ValidateAnimationName(_runThompsonAnim, nameof(_runThompsonAnim), "H_thompson_run");
-            ValidateAnimationName(_shootingThompsonAnim, nameof(_shootingThompsonAnim), "H_thompson_shoot");
-            ValidateAnimationName(_landFallDownBackAnim, nameof(_landFallDownBackAnim), "E_land_fall_down_back");
-        }
-
-        private static void ValidateAnimationName(AnimationReferenceAsset animation, string fieldName, string expectedName)
-        {
-            if (animation == null)
-            {
-                Debug.LogError($"{fieldName} is missing.");
-                return;
-            }
-
-            if (!animation.name.Equals(expectedName))
-            {
-                Debug.LogError($"{fieldName} has wrong animation");
-            }
         }
 
         internal void PlayShoot()
@@ -814,62 +753,13 @@ namespace iStick2War_V2
 
         private WeaponAnimationSet GetAnimationSetForCurrentWeapon()
         {
-            WeaponAnimationSet fallbackSet = CreateAnimationSet(
-                _idleThompsonAnim,
-                _aimThompsonAnim,
-                _shootingThompsonAnim,
-                _runThompsonAnim,
-                _jumpThompsonAnim,
-                _reloadThompsonAnim,
-                _dryFireThompsonAnim);
+            WeaponAnimationSet fallbackSet = GetFallbackAnimationSet();
 
             HeroWeaponDefinition_V2 currentWeaponDefinition = _model != null
                 ? _model.currentWeaponDefinition
                 : null;
-            if (currentWeaponDefinition != null)
-            {
-                return MergeWithFallback(
-                    CreateAnimationSet(
-                        currentWeaponDefinition.IdleAnimation,
-                        currentWeaponDefinition.AimAnimation,
-                        currentWeaponDefinition.ShootAnimation,
-                        currentWeaponDefinition.RunAnimation,
-                        currentWeaponDefinition.JumpAnimation,
-                        currentWeaponDefinition.ReloadAnimation,
-                        currentWeaponDefinition.DryFireAnimation),
-                    fallbackSet);
-            }
 
-            WeaponType currentWeapon = _model != null ? _model.currentWeaponType : WeaponType.Thompson;
-            switch (currentWeapon)
-            {
-                case WeaponType.Colt45:
-                    return MergeWithFallback(
-                        CreateAnimationSet(
-                            _idleColt45Anim,
-                            _aimColt45Anim,
-                            _shootingColt45Anim,
-                            _runColt45Anim,
-                            _jumpColt45Anim,
-                            _reloadColt45Anim,
-                            _dryFireColt45Anim),
-                        fallbackSet);
-
-                case WeaponType.Bazooka:
-                    return MergeWithFallback(
-                        CreateAnimationSet(
-                            _idleBazookaAnim,
-                            _aimBazookaAnim,
-                            _shootingBazookaAnim,
-                            _runBazookaAnim,
-                            _jumpBazookaAnim,
-                            _reloadBazookaAnim,
-                            _dryFireBazookaAnim),
-                        fallbackSet);
-
-                default:
-                    return fallbackSet;
-            }
+            return MergeWithFallback(CreateAnimationSetFromDefinition(currentWeaponDefinition), fallbackSet);
         }
 
         private static WeaponAnimationSet CreateAnimationSet(
@@ -891,6 +781,28 @@ namespace iStick2War_V2
                 Reload = reload,
                 DryFire = dryFire
             };
+        }
+
+        private static WeaponAnimationSet CreateAnimationSetFromDefinition(HeroWeaponDefinition_V2 definition)
+        {
+            if (definition == null)
+            {
+                return default;
+            }
+
+            return CreateAnimationSet(
+                definition.IdleAnimation,
+                definition.AimAnimation,
+                definition.ShootAnimation,
+                definition.RunAnimation,
+                definition.JumpAnimation,
+                definition.ReloadAnimation,
+                definition.DryFireAnimation);
+        }
+
+        private WeaponAnimationSet GetFallbackAnimationSet()
+        {
+            return CreateAnimationSetFromDefinition(_fallbackWeaponDefinition);
         }
 
         private static WeaponAnimationSet MergeWithFallback(WeaponAnimationSet primary, WeaponAnimationSet fallback)
