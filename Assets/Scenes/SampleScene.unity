@@ -5462,7 +5462,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1714380458
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5483,7 +5483,7 @@ MonoBehaviour:
   _bunkerCostText: {fileID: 0}
   _shopOffers:
   - _displayName: Thompson
-    _kind: 3
+    _kind: 2
     _cost: 100
     _healthAmount: 0
     _bunkerRepairAmount: 0
@@ -7648,6 +7648,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1003368673528517041, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: _animationName
+      value: H/colt_idle
+      objectReference: {fileID: 0}
+    - target: {fileID: 1080077976991037039, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: m_Materials.Array.size
+      value: 3
+      objectReference: {fileID: 0}
     - target: {fileID: 7159943630526338291, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: m_Name
       value: HERO V2
@@ -7656,6 +7664,34 @@ PrefabInstance:
       propertyPath: _cam
       value: 
       objectReference: {fileID: 330585545}
+    - target: {fileID: 8349641459453035569, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: _aimColt45Anim
+      value: 
+      objectReference: {fileID: 11400000, guid: ab4b26a7a7af82c4ab660381c463999f, type: 2}
+    - target: {fileID: 8349641459453035569, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: _runColt45Anim
+      value: 
+      objectReference: {fileID: 11400000, guid: e9fb59b4455bf304f84fe605a7bf587e, type: 2}
+    - target: {fileID: 8349641459453035569, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: _idleColt45Anim
+      value: 
+      objectReference: {fileID: 11400000, guid: 7b5f81dbc87307c48b3212165e3d6861, type: 2}
+    - target: {fileID: 8349641459453035569, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: _jumpColt45Anim
+      value: 
+      objectReference: {fileID: 11400000, guid: e5bd9e53db0377f418e9779e736e9b2f, type: 2}
+    - target: {fileID: 8349641459453035569, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: aimPointBoneName
+      value: colt45-aim
+      objectReference: {fileID: 0}
+    - target: {fileID: 8349641459453035569, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: _reloadColt45Anim
+      value: 
+      objectReference: {fileID: 11400000, guid: fb907fc0399d30949aaac6d6daad3667, type: 2}
+    - target: {fileID: 8349641459453035569, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: _shootingColt45Anim
+      value: 
+      objectReference: {fileID: 11400000, guid: f5971723526693f4c8028fa8ad4ac5f5, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

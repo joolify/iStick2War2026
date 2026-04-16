@@ -87,6 +87,15 @@ namespace iStick2War_V2
         public AnimationReferenceAsset _shootingBazookaAnim;
         public AnimationReferenceAsset _dryFireBazookaAnim;
 
+
+        public AnimationReferenceAsset _aimColt45Anim;
+        public AnimationReferenceAsset _idleColt45Anim;
+        public AnimationReferenceAsset _jumpColt45Anim;
+        public AnimationReferenceAsset _reloadColt45Anim;
+        public AnimationReferenceAsset _runColt45Anim;
+        public AnimationReferenceAsset _shootingColt45Anim;
+        public AnimationReferenceAsset _dryFireColt45Anim;
+
         [Header("VFX")]
         [SerializeField] private Transform _trailPrefab;
         [SerializeField] private float _trailWidth = 0.06f;
@@ -468,18 +477,18 @@ namespace iStick2War_V2
             //if (!runCarbineAnim.name.Equals("H_carbine_run")) Debug.LogError(nameof(runCarbineAnim) + " has wrong animation");
             //if (!shootingCarbineAnim.name.Equals("H_carbine_shoot")) Debug.LogError(nameof(shootingCarbineAnim) + " has wrong animation");
 
-            //if (!aimColt45Anim.name.Equals("H_colt_aim")) Debug.LogError(nameof(aimColt45Anim) + " has wrong animation");
+            if (!_aimColt45Anim.name.Equals("H_colt_aim")) Debug.LogError(nameof(_aimColt45Anim) + " has wrong animation");
             //if (!crouchGrenadeColt45Anim.name.Equals("H_colt_crouch_grenade")) Debug.LogError(nameof(crouchGrenadeColt45Anim) + " has wrong animation");
             //if (!crouchIdleColt45Anim.name.Equals("H_colt_crouch_idle")) Debug.LogError(nameof(crouchIdleColt45Anim) + " has wrong animation");
             //if (!crouchReloadColt45Anim.name.Equals("H_colt_crouch_reload")) Debug.LogError(nameof(crouchReloadColt45Anim) + " has wrong animation");
             //if (!crouchShootColt45Anim.name.Equals("H_colt_crouch_shoot")) Debug.LogError(nameof(crouchShootColt45Anim) + " has wrong animation");
             //if (!crouchWalkColt45Anim.name.Equals("H_colt_crouch_walk")) Debug.LogError(nameof(crouchWalkColt45Anim) + " has wrong animation");
             //if (!grenadeColt45Anim.name.Equals("H_colt_grenade")) Debug.LogError(nameof(grenadeColt45Anim) + " has wrong animation");
-            //if (!idleColt45Anim.name.Equals("H_colt_idle")) Debug.LogError(nameof(idleColt45Anim) + " has wrong animation");
-            //if (!jumpColt45Anim.name.Equals("H_colt_jump")) Debug.LogError(nameof(jumpColt45Anim) + " has wrong animation");
-            //if (!reloadColt45Anim.name.Equals("H_colt_reload")) Debug.LogError(nameof(reloadColt45Anim) + " has wrong animation");
-            //if (!runColt45Anim.name.Equals("H_colt_run")) Debug.LogError(nameof(runColt45Anim) + " has wrong animation");
-            //if (!shootingColt45Anim.name.Equals("H_colt_shoot")) Debug.LogError(nameof(shootingColt45Anim) + " has wrong animation");
+            if (!_idleColt45Anim.name.Equals("H_colt_idle")) Debug.LogError(nameof(_idleColt45Anim) + " has wrong animation");
+            if (!_jumpColt45Anim.name.Equals("H_colt_jump")) Debug.LogError(nameof(_jumpColt45Anim) + " has wrong animation");
+            if (!_reloadColt45Anim.name.Equals("H_colt_reload")) Debug.LogError(nameof(_reloadColt45Anim) + " has wrong animation");
+            if (!_runColt45Anim.name.Equals("H_colt_run")) Debug.LogError(nameof(_runColt45Anim) + " has wrong animation");
+            if (!_shootingColt45Anim.name.Equals("H_colt_shoot")) Debug.LogError(nameof(_shootingColt45Anim) + " has wrong animation");
 
             //if (!aimFlamethrowerAnim.name.Equals("H_flamethrower_aim")) Debug.LogError(nameof(aimFlamethrowerAnim) + " has wrong animation");
             //if (!crouchGrenadeFlamethrowerAnim.name.Equals("H_flamethrower_crouch_grenade")) Debug.LogError(nameof(crouchGrenadeFlamethrowerAnim) + " has wrong animation");
@@ -835,6 +844,11 @@ namespace iStick2War_V2
 
         private AnimationReferenceAsset GetIdleAnimationForCurrentWeapon()
         {
+            if (_model != null && _model.currentWeaponType == WeaponType.Colt45 && _idleColt45Anim != null)
+            {
+                return _idleColt45Anim;
+            }
+
             if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _idleBazookaAnim != null)
             {
                 return _idleBazookaAnim;
@@ -845,6 +859,11 @@ namespace iStick2War_V2
 
         private AnimationReferenceAsset GetAimAnimationForCurrentWeapon()
         {
+            if (_model != null && _model.currentWeaponType == WeaponType.Colt45 && _aimColt45Anim != null)
+            {
+                return _aimColt45Anim;
+            }
+
             if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _aimBazookaAnim != null)
             {
                 return _aimBazookaAnim;
@@ -855,6 +874,11 @@ namespace iStick2War_V2
 
         private AnimationReferenceAsset GetShootAnimationForCurrentWeapon()
         {
+            if (_model != null && _model.currentWeaponType == WeaponType.Colt45 && _shootingColt45Anim != null)
+            {
+                return _shootingColt45Anim;
+            }
+
             if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _shootingBazookaAnim != null)
             {
                 return _shootingBazookaAnim;
@@ -865,6 +889,11 @@ namespace iStick2War_V2
 
         private AnimationReferenceAsset GetRunAnimationForCurrentWeapon()
         {
+            if (_model != null && _model.currentWeaponType == WeaponType.Colt45 && _runColt45Anim != null)
+            {
+                return _runColt45Anim;
+            }
+
             if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _runBazookaAnim != null)
             {
                 return _runBazookaAnim;
@@ -875,6 +904,11 @@ namespace iStick2War_V2
 
         private AnimationReferenceAsset GetJumpAnimationForCurrentWeapon()
         {
+            if (_model != null && _model.currentWeaponType == WeaponType.Colt45 && _jumpColt45Anim != null)
+            {
+                return _jumpColt45Anim;
+            }
+
             if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _jumpBazookaAnim != null)
             {
                 return _jumpBazookaAnim;
@@ -885,6 +919,11 @@ namespace iStick2War_V2
 
         private AnimationReferenceAsset GetReloadAnimationForCurrentWeapon()
         {
+            if (_model != null && _model.currentWeaponType == WeaponType.Colt45 && _reloadColt45Anim != null)
+            {
+                return _reloadColt45Anim;
+            }
+
             if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _reloadBazookaAnim != null)
             {
                 return _reloadBazookaAnim;
@@ -895,6 +934,11 @@ namespace iStick2War_V2
 
         private AnimationReferenceAsset GetDryFireAnimationForCurrentWeapon()
         {
+            if (_model != null && _model.currentWeaponType == WeaponType.Colt45 && _dryFireColt45Anim != null)
+            {
+                return _dryFireColt45Anim;
+            }
+
             if (_model != null && _model.currentWeaponType == WeaponType.Bazooka && _dryFireBazookaAnim != null)
             {
                 return _dryFireBazookaAnim;

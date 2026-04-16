@@ -331,9 +331,8 @@ MonoBehaviour:
   _view: {fileID: 8349641459453035569}
   _skeletonAnimation: {fileID: 1003368673528517041}
   _initialWeapons:
-  - {fileID: 11400000, guid: 6558c37908f5c664f915fa7c826ae5c7, type: 2}
-  - {fileID: 11400000, guid: 6e1e46ecfc98a3c44b4285a36431db4b, type: 2}
-  _startingWeapon: 12
+  - {fileID: 11400000, guid: 9f7d5ca56d7245f482d438dd6a5ef0d1, type: 2}
+  _startingWeapon: 3
 --- !u!114 &5383291416438822190
 MonoBehaviour:
   m_ObjectHideFlags: 0

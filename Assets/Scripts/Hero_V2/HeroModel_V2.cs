@@ -78,7 +78,7 @@ namespace iStick2War_V2
         public float lastShootTime { get; internal set; }
         public float reloadDuration { get; private set; } = 0.5f;
         public float reloadTimer { get; internal set; }
-        public WeaponType currentWeaponType { get; private set; } = WeaponType.Thompson;
+        public WeaponType currentWeaponType { get; private set; } = WeaponType.Colt45;
 
         // -------------------------
         // STATE SETTERS (controlled)

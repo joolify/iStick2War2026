@@ -1,6 +1,7 @@
 ﻿using Spine.Unity;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using UnityEngine;
 using iStick2War;
@@ -58,7 +59,7 @@ namespace iStick2War_V2
         [SerializeField] private SkeletonAnimation _skeletonAnimation;
         [Header("Weapons")]
         [SerializeField] private List<HeroWeaponDefinition_V2> _initialWeapons = new List<HeroWeaponDefinition_V2>();
-        [SerializeField] private WeaponType _startingWeapon = WeaponType.Thompson;
+        [SerializeField] private WeaponType _startingWeapon = WeaponType.Colt45;
 
         private HeroInput_V2 _input;
         private HeroController_V2 _controller;
@@ -135,7 +136,7 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
         {
             _stateMachine = new HeroStateMachine_V2();
             _movementSystem = new HeroMovementSystem_V2(_model);
-            _weaponSystem = new HeroWeaponSystem_V2(_model, _initialWeapons, _startingWeapon);
+            _weaponSystem = new HeroWeaponSystem_V2(_model, BuildStartupLoadout(), _startingWeapon);
             _damageReceiver = new HeroDamageReceiver_V2(_model);
             _deathHandler = new HeroDeathHandler_V2(_model, _stateMachine, _movementSystem, _weaponSystem);
 
@@ -147,6 +148,28 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
                 _movementSystem,
                 _weaponSystem
             );
+        }
+
+        private IEnumerable<HeroWeaponDefinition_V2> BuildStartupLoadout()
+        {
+            if (_initialWeapons == null || _initialWeapons.Count == 0)
+            {
+                return _initialWeapons;
+            }
+
+            List<HeroWeaponDefinition_V2> matchingWeapons = _initialWeapons
+                .Where(definition => definition != null && definition.WeaponType == _startingWeapon)
+                .ToList();
+
+            if (matchingWeapons.Count > 0)
+            {
+                return matchingWeapons;
+            }
+
+            Debug.LogWarning(
+                $"[Hero_V2] No weapon definition in _initialWeapons matched starting weapon '{_startingWeapon}'. " +
+                "Falling back to the full configured loadout.");
+            return _initialWeapons;
         }
 
         private void InitSystems()
