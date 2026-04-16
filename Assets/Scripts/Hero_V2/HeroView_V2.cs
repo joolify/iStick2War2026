@@ -823,6 +823,23 @@ namespace iStick2War_V2
                 _reloadThompsonAnim,
                 _dryFireThompsonAnim);
 
+            HeroWeaponDefinition_V2 currentWeaponDefinition = _model != null
+                ? _model.currentWeaponDefinition
+                : null;
+            if (currentWeaponDefinition != null)
+            {
+                return MergeWithFallback(
+                    CreateAnimationSet(
+                        currentWeaponDefinition.IdleAnimation,
+                        currentWeaponDefinition.AimAnimation,
+                        currentWeaponDefinition.ShootAnimation,
+                        currentWeaponDefinition.RunAnimation,
+                        currentWeaponDefinition.JumpAnimation,
+                        currentWeaponDefinition.ReloadAnimation,
+                        currentWeaponDefinition.DryFireAnimation),
+                    fallbackSet);
+            }
+
             WeaponType currentWeapon = _model != null ? _model.currentWeaponType : WeaponType.Thompson;
             switch (currentWeapon)
             {

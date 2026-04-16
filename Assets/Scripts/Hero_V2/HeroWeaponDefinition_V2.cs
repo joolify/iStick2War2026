@@ -1,4 +1,5 @@
 using iStick2War;
+using Spine.Unity;
 using UnityEngine;
 
 namespace iStick2War_V2
@@ -26,6 +27,15 @@ namespace iStick2War_V2
         [SerializeField] private float _projectileSpeed = 14f;
         [SerializeField] private float _projectileLifetime = 5f;
 
+        [Header("Presentation")]
+        [SerializeField] private AnimationReferenceAsset _idleAnimation;
+        [SerializeField] private AnimationReferenceAsset _aimAnimation;
+        [SerializeField] private AnimationReferenceAsset _shootAnimation;
+        [SerializeField] private AnimationReferenceAsset _runAnimation;
+        [SerializeField] private AnimationReferenceAsset _jumpAnimation;
+        [SerializeField] private AnimationReferenceAsset _reloadAnimation;
+        [SerializeField] private AnimationReferenceAsset _dryFireAnimation;
+
         public WeaponType WeaponType => _weaponType;
         public string DisplayName => _displayName;
         public int MaxAmmo => Mathf.Max(1, _maxAmmo);
@@ -38,5 +48,12 @@ namespace iStick2War_V2
         public GameObject ProjectilePrefab => _projectilePrefab;
         public float ProjectileSpeed => Mathf.Max(0.1f, _projectileSpeed);
         public float ProjectileLifetime => Mathf.Max(0.1f, _projectileLifetime);
+        public AnimationReferenceAsset IdleAnimation => _idleAnimation;
+        public AnimationReferenceAsset AimAnimation => _aimAnimation;
+        public AnimationReferenceAsset ShootAnimation => _shootAnimation;
+        public AnimationReferenceAsset RunAnimation => _runAnimation;
+        public AnimationReferenceAsset JumpAnimation => _jumpAnimation;
+        public AnimationReferenceAsset ReloadAnimation => _reloadAnimation;
+        public AnimationReferenceAsset DryFireAnimation => _dryFireAnimation;
     }
 }

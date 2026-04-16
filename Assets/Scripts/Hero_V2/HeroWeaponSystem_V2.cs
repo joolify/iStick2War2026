@@ -369,6 +369,7 @@ namespace iStick2War_V2
             }
 
             _model.ConfigureWeaponState(
+                active.Definition,
                 active.Definition.WeaponType,
                 active.Definition.MaxAmmo,
                 active.CurrentAmmo,

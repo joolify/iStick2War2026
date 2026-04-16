@@ -24,3 +24,10 @@ MonoBehaviour:
   _projectilePrefab: {fileID: 0}
   _projectileSpeed: 14
   _projectileLifetime: 5
+  _idleAnimation: {fileID: 11400000, guid: 7b5f81dbc87307c48b3212165e3d6861, type: 2}
+  _aimAnimation: {fileID: 11400000, guid: ab4b26a7a7af82c4ab660381c463999f, type: 2}
+  _shootAnimation: {fileID: 11400000, guid: f5971723526693f4c8028fa8ad4ac5f5, type: 2}
+  _runAnimation: {fileID: 11400000, guid: e9fb59b4455bf304f84fe605a7bf587e, type: 2}
+  _jumpAnimation: {fileID: 11400000, guid: e5bd9e53db0377f418e9779e736e9b2f, type: 2}
+  _reloadAnimation: {fileID: 11400000, guid: fb907fc0399d30949aaac6d6daad3667, type: 2}
+  _dryFireAnimation: {fileID: 0}

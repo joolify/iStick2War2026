@@ -20,3 +20,14 @@ MonoBehaviour:
   _baseDamage: 30
   _range: 100
   _debugDrawShotRay: 1
+  _useProjectile: 0
+  _projectilePrefab: {fileID: 0}
+  _projectileSpeed: 14
+  _projectileLifetime: 5
+  _idleAnimation: {fileID: 11400000, guid: 4c2f987a9570dab428c02fc531fe18c4, type: 2}
+  _aimAnimation: {fileID: 11400000, guid: eae03bb901684b346935184c77036d38, type: 2}
+  _shootAnimation: {fileID: 11400000, guid: fb6fb5cb46ef0d14db66ebc39196da69, type: 2}
+  _runAnimation: {fileID: 11400000, guid: f1a380394138ae94c9a0c5aea417af02, type: 2}
+  _jumpAnimation: {fileID: 11400000, guid: ad6fda488e6b8bd419701143b3cb3445, type: 2}
+  _reloadAnimation: {fileID: 11400000, guid: 217373273e5255f43b1f48d6d67c8e46, type: 2}
+  _dryFireAnimation: {fileID: 0}

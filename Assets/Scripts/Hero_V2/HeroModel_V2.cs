@@ -79,6 +79,7 @@ namespace iStick2War_V2
         public float reloadDuration { get; private set; } = 0.5f;
         public float reloadTimer { get; internal set; }
         public WeaponType currentWeaponType { get; private set; } = WeaponType.Colt45;
+        public HeroWeaponDefinition_V2 currentWeaponDefinition { get; private set; }
 
         // -------------------------
         // STATE SETTERS (controlled)
@@ -136,12 +137,14 @@ namespace iStick2War_V2
         }
 
         public void ConfigureWeaponState(
+            HeroWeaponDefinition_V2 weaponDefinition,
             WeaponType weaponType,
             int weaponMaxAmmo,
             int weaponCurrentAmmo,
             float weaponFireRate,
             float weaponReloadDuration)
         {
+            currentWeaponDefinition = weaponDefinition;
             currentWeaponType = weaponType;
             maxAmmo = Mathf.Max(1, weaponMaxAmmo);
             currentAmmo = Mathf.Clamp(weaponCurrentAmmo, 0, maxAmmo);
