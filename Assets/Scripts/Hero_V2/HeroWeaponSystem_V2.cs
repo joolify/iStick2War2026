@@ -194,29 +194,18 @@ namespace iStick2War_V2
 
         public bool ActiveWeaponUsesProjectile()
         {
-            HeroWeaponRuntimeState_V2 activeWeapon = _inventory.ActiveWeapon;
-            if (activeWeapon == null || activeWeapon.Definition == null)
-            {
-                return false;
-            }
-
-            HeroWeaponDefinition_V2 definition = activeWeapon.Definition;
-            bool isProjectileWeaponType = definition.WeaponType == WeaponType.Bazooka;
-            return isProjectileWeaponType || definition.UseProjectile;
+            return TryGetActiveWeaponDefinition(out HeroWeaponDefinition_V2 definition) &&
+                   ShouldUseProjectile(definition);
         }
 
         public bool ShootProjectile(Vector2 origin, Vector2 direction)
         {
-            HeroWeaponRuntimeState_V2 activeWeapon = _inventory.ActiveWeapon;
-            if (activeWeapon == null || activeWeapon.Definition == null)
+            if (!TryGetActiveWeaponDefinition(out HeroWeaponDefinition_V2 definition))
             {
                 return false;
             }
 
-            HeroWeaponDefinition_V2 definition = activeWeapon.Definition;
-            bool isProjectileWeaponType = definition.WeaponType == WeaponType.Bazooka;
-            bool shouldUseProjectile = isProjectileWeaponType || definition.UseProjectile;
-            if (!shouldUseProjectile)
+            if (!ShouldUseProjectile(definition))
             {
                 return false;
             }
@@ -262,40 +251,19 @@ namespace iStick2War_V2
         public bool TrySwitchToNextWeapon()
         {
             if (isDisabled || _model.isDead) return false;
-            if (_inventory.SwitchNext())
-            {
-                _isReloading = false;
-                ApplyActiveWeaponToModel();
-                return true;
-            }
-
-            return false;
+            return TrySwitchActiveWeapon(_inventory.SwitchNext);
         }
 
         public bool TrySwitchToPreviousWeapon()
         {
             if (isDisabled || _model.isDead) return false;
-            if (_inventory.SwitchPrevious())
-            {
-                _isReloading = false;
-                ApplyActiveWeaponToModel();
-                return true;
-            }
-
-            return false;
+            return TrySwitchActiveWeapon(_inventory.SwitchPrevious);
         }
 
         public bool TrySwitchToSlot(int slotIndex)
         {
             if (isDisabled || _model.isDead) return false;
-            if (_inventory.SetActiveBySlot(slotIndex))
-            {
-                _isReloading = false;
-                ApplyActiveWeaponToModel();
-                return true;
-            }
-
-            return false;
+            return TrySwitchActiveWeapon(() => _inventory.SetActiveBySlot(slotIndex));
         }
 
         public bool UnlockWeapon(HeroWeaponDefinition_V2 definition, bool autoEquip = false)
@@ -429,6 +397,30 @@ namespace iStick2War_V2
             }
 
             _model.RefillAmmo();
+        }
+
+        private bool TryGetActiveWeaponDefinition(out HeroWeaponDefinition_V2 definition)
+        {
+            definition = _inventory.ActiveWeapon != null ? _inventory.ActiveWeapon.Definition : null;
+            return definition != null;
+        }
+
+        private static bool ShouldUseProjectile(HeroWeaponDefinition_V2 definition)
+        {
+            return definition != null &&
+                   (definition.WeaponType == WeaponType.Bazooka || definition.UseProjectile);
+        }
+
+        private bool TrySwitchActiveWeapon(System.Func<bool> switchAction)
+        {
+            if (switchAction == null || !switchAction())
+            {
+                return false;
+            }
+
+            _isReloading = false;
+            ApplyActiveWeaponToModel();
+            return true;
         }
 
         private static void LogWeapon(string message)
