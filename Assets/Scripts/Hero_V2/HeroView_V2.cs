@@ -462,117 +462,41 @@ namespace iStick2War_V2
 
         private void CheckAnimationNames()
         {
-            if (!_aimBazookaAnim.name.Equals("H_bazooka_aim")) Debug.LogError(nameof(_aimBazookaAnim) + " has wrong animation");
-            //if (!crouchGrenadeBazookaAnim.name.Equals("H_bazooka_crouch_grenade")) Debug.LogError(nameof(crouchGrenadeBazookaAnim) + " has wrong animation");
-            //if (!crouchIdleBazookaAnim.name.Equals("H_bazooka_crouch_idle")) Debug.LogError(nameof(crouchIdleBazookaAnim) + " has wrong animation");
-            //if (!crouchReloadBazookaAnim.name.Equals("H_bazooka_crouch_reload")) Debug.LogError(nameof(crouchReloadBazookaAnim) + " has wrong animation");
-            //if (!crouchShootBazookaAnim.name.Equals("H_bazooka_crouch_shoot")) Debug.LogError(nameof(crouchShootBazookaAnim) + " has wrong animation");
-            //if (!crouchWalkBazookaAnim.name.Equals("H_bazooka_crouch_walk")) Debug.LogError(nameof(crouchWalkBazookaAnim) + " has wrong animation");
-            //if (!grenadeBazookaAnim.name.Equals("H_bazooka_grenade")) Debug.LogError(nameof(grenadeBazookaAnim) + " has wrong animation");
-            if (!_idleBazookaAnim.name.Equals("H_bazooka_idle")) Debug.LogError(nameof(_idleBazookaAnim) + " has wrong animation");
-            if (!_jumpBazookaAnim.name.Equals("H_bazooka_jump")) Debug.LogError(nameof(_jumpBazookaAnim) + " has wrong animation");
-            if (!_reloadBazookaAnim.name.Equals("H_bazooka_reload")) Debug.LogError(nameof(_reloadBazookaAnim) + " has wrong animation");
-            if (!_runBazookaAnim.name.Equals("H_bazooka_run")) Debug.LogError(nameof(_runBazookaAnim) + " has wrong animation");
-            if (!_shootingBazookaAnim.name.Equals("H_bazooka_shoot")) Debug.LogError(nameof(_shootingBazookaAnim) + " has wrong animation");
+            ValidateAnimationName(_aimBazookaAnim, nameof(_aimBazookaAnim), "H_bazooka_aim");
+            ValidateAnimationName(_idleBazookaAnim, nameof(_idleBazookaAnim), "H_bazooka_idle");
+            ValidateAnimationName(_jumpBazookaAnim, nameof(_jumpBazookaAnim), "H_bazooka_jump");
+            ValidateAnimationName(_reloadBazookaAnim, nameof(_reloadBazookaAnim), "H_bazooka_reload");
+            ValidateAnimationName(_runBazookaAnim, nameof(_runBazookaAnim), "H_bazooka_run");
+            ValidateAnimationName(_shootingBazookaAnim, nameof(_shootingBazookaAnim), "H_bazooka_shoot");
 
-            //if (!aimCarbineAnim.name.Equals("H_carbine_aim")) Debug.LogError(nameof(aimCarbineAnim) + " has wrong animation");
-            //if (!crouchGrenadeCarbineAnim.name.Equals("H_carbine_crouch_grenade")) Debug.LogError(nameof(crouchGrenadeCarbineAnim) + " has wrong animation");
-            //if (!crouchIdleCarbineAnim.name.Equals("H_carbine_crouch_idle")) Debug.LogError(nameof(crouchIdleCarbineAnim) + " has wrong animation");
-            //if (!crouchReloadCarbineAnim.name.Equals("H_carbine_crouch_reload")) Debug.LogError(nameof(crouchReloadCarbineAnim) + " has wrong animation");
-            //if (!crouchShootCarbineAnim.name.Equals("H_carbine_crouch_shoot")) Debug.LogError(nameof(crouchShootCarbineAnim) + " has wrong animation");
-            //if (!crouchWalkCarbineAnim.name.Equals("H_carbine_crouch_walk")) Debug.LogError(nameof(crouchWalkCarbineAnim) + " has wrong animation");
-            //if (!grenadeCarbineAnim.name.Equals("H_carbine_grenade")) Debug.LogError(nameof(grenadeCarbineAnim) + " has wrong animation");
-            //if (!idleCarbineAnim.name.Equals("H_carbine_idle")) Debug.LogError(nameof(idleCarbineAnim) + " has wrong animation");
-            //if (!jumpCarbineAnim.name.Equals("H_carbine_jump")) Debug.LogError(nameof(jumpCarbineAnim) + " has wrong animation");
-            //if (!reloadCarbineAnim.name.Equals("H_carbine_reload")) Debug.LogError(nameof(reloadCarbineAnim) + " has wrong animation");
-            //if (!runCarbineAnim.name.Equals("H_carbine_run")) Debug.LogError(nameof(runCarbineAnim) + " has wrong animation");
-            //if (!shootingCarbineAnim.name.Equals("H_carbine_shoot")) Debug.LogError(nameof(shootingCarbineAnim) + " has wrong animation");
+            ValidateAnimationName(_aimColt45Anim, nameof(_aimColt45Anim), "H_colt_aim");
+            ValidateAnimationName(_idleColt45Anim, nameof(_idleColt45Anim), "H_colt_idle");
+            ValidateAnimationName(_jumpColt45Anim, nameof(_jumpColt45Anim), "H_colt_jump");
+            ValidateAnimationName(_reloadColt45Anim, nameof(_reloadColt45Anim), "H_colt_reload");
+            ValidateAnimationName(_runColt45Anim, nameof(_runColt45Anim), "H_colt_run");
+            ValidateAnimationName(_shootingColt45Anim, nameof(_shootingColt45Anim), "H_colt_shoot");
 
-            if (!_aimColt45Anim.name.Equals("H_colt_aim")) Debug.LogError(nameof(_aimColt45Anim) + " has wrong animation");
-            //if (!crouchGrenadeColt45Anim.name.Equals("H_colt_crouch_grenade")) Debug.LogError(nameof(crouchGrenadeColt45Anim) + " has wrong animation");
-            //if (!crouchIdleColt45Anim.name.Equals("H_colt_crouch_idle")) Debug.LogError(nameof(crouchIdleColt45Anim) + " has wrong animation");
-            //if (!crouchReloadColt45Anim.name.Equals("H_colt_crouch_reload")) Debug.LogError(nameof(crouchReloadColt45Anim) + " has wrong animation");
-            //if (!crouchShootColt45Anim.name.Equals("H_colt_crouch_shoot")) Debug.LogError(nameof(crouchShootColt45Anim) + " has wrong animation");
-            //if (!crouchWalkColt45Anim.name.Equals("H_colt_crouch_walk")) Debug.LogError(nameof(crouchWalkColt45Anim) + " has wrong animation");
-            //if (!grenadeColt45Anim.name.Equals("H_colt_grenade")) Debug.LogError(nameof(grenadeColt45Anim) + " has wrong animation");
-            if (!_idleColt45Anim.name.Equals("H_colt_idle")) Debug.LogError(nameof(_idleColt45Anim) + " has wrong animation");
-            if (!_jumpColt45Anim.name.Equals("H_colt_jump")) Debug.LogError(nameof(_jumpColt45Anim) + " has wrong animation");
-            if (!_reloadColt45Anim.name.Equals("H_colt_reload")) Debug.LogError(nameof(_reloadColt45Anim) + " has wrong animation");
-            if (!_runColt45Anim.name.Equals("H_colt_run")) Debug.LogError(nameof(_runColt45Anim) + " has wrong animation");
-            if (!_shootingColt45Anim.name.Equals("H_colt_shoot")) Debug.LogError(nameof(_shootingColt45Anim) + " has wrong animation");
+            ValidateAnimationName(_aimThompsonAnim, nameof(_aimThompsonAnim), "H_thompson_aim");
+            ValidateAnimationName(_idleThompsonAnim, nameof(_idleThompsonAnim), "H_thompson_idle");
+            ValidateAnimationName(_jumpThompsonAnim, nameof(_jumpThompsonAnim), "H_thompson_jump");
+            ValidateAnimationName(_reloadThompsonAnim, nameof(_reloadThompsonAnim), "H_thompson_reload");
+            ValidateAnimationName(_runThompsonAnim, nameof(_runThompsonAnim), "H_thompson_run");
+            ValidateAnimationName(_shootingThompsonAnim, nameof(_shootingThompsonAnim), "H_thompson_shoot");
+            ValidateAnimationName(_landFallDownBackAnim, nameof(_landFallDownBackAnim), "E_land_fall_down_back");
+        }
 
-            //if (!aimFlamethrowerAnim.name.Equals("H_flamethrower_aim")) Debug.LogError(nameof(aimFlamethrowerAnim) + " has wrong animation");
-            //if (!crouchGrenadeFlamethrowerAnim.name.Equals("H_flamethrower_crouch_grenade")) Debug.LogError(nameof(crouchGrenadeFlamethrowerAnim) + " has wrong animation");
-            //if (!crouchIdleFlamethrowerAnim.name.Equals("H_flamethrower_crouch_idle")) Debug.LogError(nameof(crouchIdleFlamethrowerAnim) + " has wrong animation");
-            //if (!crouchShootFlamethrowerAnim.name.Equals("H_flamethrower_crouch_shoot")) Debug.LogError(nameof(crouchShootFlamethrowerAnim) + " has wrong animation");
-            //if (!crouchWalkFlamethrowerAnim.name.Equals("H_flamethrower_crouch_walk")) Debug.LogError(nameof(crouchWalkFlamethrowerAnim) + " has wrong animation");
-            //if (!grenadeFlamethrowerAnim.name.Equals("H_flamethrower_grenade")) Debug.LogError(nameof(grenadeFlamethrowerAnim) + " has wrong animation");
-            //if (!idleFlamethrowerAnim.name.Equals("H_flamethrower_idle")) Debug.LogError(nameof(idleFlamethrowerAnim) + " has wrong animation");
-            //if (!jumpFlamethrowerAnim.name.Equals("H_flamethrower_jump")) Debug.LogError(nameof(jumpFlamethrowerAnim) + " has wrong animation");
-            //if (!runFlamethrowerAnim.name.Equals("H_flamethrower_run")) Debug.LogError(nameof(runFlamethrowerAnim) + " has wrong animation");
-            //if (!shootingFlamethrowerAnim.name.Equals("H_flamethrower_shoot")) Debug.LogError(nameof(shootingFlamethrowerAnim) + " has wrong animation");
+        private static void ValidateAnimationName(AnimationReferenceAsset animation, string fieldName, string expectedName)
+        {
+            if (animation == null)
+            {
+                Debug.LogError($"{fieldName} is missing.");
+                return;
+            }
 
-            //if (!aimIthacaAnim.name.Equals("H_ithaca_aim")) Debug.LogError(nameof(aimIthacaAnim) + " has wrong animation");
-            //if (!crouchGrenadeIthacaAnim.name.Equals("H_ithaca_crouch_grenade")) Debug.LogError(nameof(crouchGrenadeIthacaAnim) + " has wrong animation");
-            //if (!crouchIdleIthacaAnim.name.Equals("H_ithaca_crouch_idle")) Debug.LogError(nameof(crouchIdleIthacaAnim) + " has wrong animation");
-            //if (!crouchReloadIthacaAnim.name.Equals("H_ithaca_crouch_reload")) Debug.LogError(nameof(crouchReloadIthacaAnim) + " has wrong animation");
-            //if (!crouchShootIthacaAnim.name.Equals("H_ithaca_crouch_shoot")) Debug.LogError(nameof(crouchShootIthacaAnim) + " has wrong animation");
-            //if (!crouchWalkIthacaAnim.name.Equals("H_ithaca_crouch_walk")) Debug.LogError(nameof(crouchWalkIthacaAnim) + " has wrong animation");
-            //if (!grenadeIthacaAnim.name.Equals("H_ithaca_grenade")) Debug.LogError(nameof(grenadeIthacaAnim) + " has wrong animation");
-            //if (!idleIthacaAnim.name.Equals("H_ithaca_idle")) Debug.LogError(nameof(idleIthacaAnim) + " has wrong animation");
-            //if (!jumpIthacaAnim.name.Equals("H_ithaca_jump")) Debug.LogError(nameof(jumpIthacaAnim) + " has wrong animation");
-            //if (!reloadIthacaAnim.name.Equals("H_ithaca_reload")) Debug.LogError(nameof(reloadIthacaAnim) + " has wrong animation");
-            //if (!runIthacaAnim.name.Equals("H_ithaca_run")) Debug.LogError(nameof(runIthacaAnim) + " has wrong animation");
-            //if (!shootingIthacaAnim.name.Equals("H_ithaca_shoot")) Debug.LogError(nameof(shootingIthacaAnim) + " has wrong animation");
-
-            //if (!aimMagicStaffAnim.name.Equals("H_magic_staff_aim")) Debug.LogError(nameof(aimMagicStaffAnim) + " has wrong animation");
-            //if (!crouchGrenadeMagicStaffAnim.name.Equals("H_magic_staff_crouch_grenade")) Debug.LogError(nameof(crouchGrenadeMagicStaffAnim) + " has wrong animation");
-            //if (!crouchIdleMagicStaffAnim.name.Equals("H_magic_staff_crouch_idle")) Debug.LogError(nameof(crouchIdleMagicStaffAnim) + " has wrong animation");
-            //if (!crouchShootMagicStaffAnim.name.Equals("H_magic_staff_crouch_shoot")) Debug.LogError(nameof(crouchShootMagicStaffAnim) + " has wrong animation");
-            //if (!crouchWalkMagicStaffAnim.name.Equals("H_magic_staff_crouch_walk")) Debug.LogError(nameof(crouchWalkMagicStaffAnim) + " has wrong animation");
-            //if (!grenadeMagicStaffAnim.name.Equals("H_magic_staff_grenade")) Debug.LogError(nameof(grenadeMagicStaffAnim) + " has wrong animation");
-            //if (!idleMagicStaffAnim.name.Equals("H_magic_staff_idle")) Debug.LogError(nameof(idleMagicStaffAnim) + " has wrong animation");
-            //if (!jumpMagicStaffAnim.name.Equals("H_magic_staff_jump")) Debug.LogError(nameof(jumpMagicStaffAnim) + " has wrong animation");
-            //if (!runMagicStaffAnim.name.Equals("H_magic_staff_run")) Debug.LogError(nameof(runMagicStaffAnim) + " has wrong animation");
-            //if (!shootingMagicStaffAnim.name.Equals("H_magic_staff_shoot")) Debug.LogError(nameof(shootingMagicStaffAnim) + " has wrong animation");
-
-            //if (!aimSterlingL2A3Anim.name.Equals("H_sterlingL2A3_aim")) Debug.LogError(nameof(aimSterlingL2A3Anim) + " has wrong animation");
-            //if (!crouchGrenadeSterlingL2A3Anim.name.Equals("H_sterlingL2A3_crouch_grenade")) Debug.LogError(nameof(crouchGrenadeSterlingL2A3Anim) + " has wrong animation");
-            //if (!crouchIdleSterlingL2A3Anim.name.Equals("H_sterlingL2A3_crouch_idle")) Debug.LogError(nameof(crouchIdleSterlingL2A3Anim) + " has wrong animation");
-            //if (!crouchReloadSterlingL2A3Anim.name.Equals("H_sterlingL2A3_crouch_reload")) Debug.LogError(nameof(crouchReloadSterlingL2A3Anim) + " has wrong animation");
-            //if (!crouchShootSterlingL2A3Anim.name.Equals("H_sterlingL2A3_crouch_shoot")) Debug.LogError(nameof(crouchShootSterlingL2A3Anim) + " has wrong animation");
-            //if (!crouchWalkSterlingL2A3Anim.name.Equals("H_sterlingL2A3_crouch_walk")) Debug.LogError(nameof(crouchWalkSterlingL2A3Anim) + " has wrong animation");
-            //if (!grenadeSterlingL2A3Anim.name.Equals("H_sterlingL2A3_grenade")) Debug.LogError(nameof(grenadeSterlingL2A3Anim) + " has wrong animation");
-            //if (!idleSterlingL2A3Anim.name.Equals("H_sterlingL2A3_idle")) Debug.LogError(nameof(idleSterlingL2A3Anim) + " has wrong animation");
-            //if (!jumpSterlingL2A3Anim.name.Equals("H_sterlingL2A3_jump")) Debug.LogError(nameof(jumpSterlingL2A3Anim) + " has wrong animation");
-            //if (!reloadSterlingL2A3Anim.name.Equals("H_sterlingL2A3_reload")) Debug.LogError(nameof(reloadSterlingL2A3Anim) + " has wrong animation");
-            //if (!runSterlingL2A3Anim.name.Equals("H_sterlingL2A3_run")) Debug.LogError(nameof(runSterlingL2A3Anim) + " has wrong animation");
-            //if (!shootingSterlingL2A3Anim.name.Equals("H_sterlingL2A3_shoot")) Debug.LogError(nameof(shootingSterlingL2A3Anim) + " has wrong animation");
-
-            //if (!aimTeslaAnim.name.Equals("H_tesla_aim")) Debug.LogError(nameof(aimTeslaAnim) + " has wrong animation");
-            //if (!crouchGrenadeTeslaAnim.name.Equals("H_tesla_crouch_grenade")) Debug.LogError(nameof(crouchGrenadeTeslaAnim) + " has wrong animation");
-            //if (!crouchIdleTeslaAnim.name.Equals("H_tesla_crouch_idle")) Debug.LogError(nameof(crouchIdleTeslaAnim) + " has wrong animation");
-            //if (!crouchShootTeslaAnim.name.Equals("H_tesla_crouch_shoot")) Debug.LogError(nameof(crouchShootTeslaAnim) + " has wrong animation");
-            //if (!crouchWalkTeslaAnim.name.Equals("H_tesla_crouch_walk")) Debug.LogError(nameof(crouchWalkTeslaAnim) + " has wrong animation");
-            //if (!grenadeTeslaAnim.name.Equals("H_tesla_grenade")) Debug.LogError(nameof(grenadeTeslaAnim) + " has wrong animation");
-            //if (!idleTeslaAnim.name.Equals("H_tesla_idle")) Debug.LogError(nameof(idleTeslaAnim) + " has wrong animation");
-            //if (!jumpTeslaAnim.name.Equals("H_tesla_jump")) Debug.LogError(nameof(jumpTeslaAnim) + " has wrong animation");
-            //if (!runTeslaAnim.name.Equals("H_tesla_run")) Debug.LogError(nameof(runTeslaAnim) + " has wrong animation");
-            //if (!shootingTeslaAnim.name.Equals("H_tesla_shoot")) Debug.LogError(nameof(shootingTeslaAnim) + " has wrong animation");
-
-            if (!_aimThompsonAnim.name.Equals("H_thompson_aim")) Debug.LogError(nameof(_aimThompsonAnim) + " has wrong animation");
-            //if (!crouchGrenadeThompsonAnim.name.Equals("H_thompson_crouch_grenade")) Debug.LogError(nameof(crouchGrenadeThompsonAnim) + " has wrong animation");
-            //if (!crouchIdleThompsonAnim.name.Equals("H_thompson_crouch_idle")) Debug.LogError(nameof(crouchIdleThompsonAnim) + " has wrong animation");
-            //if (!crouchReloadThompsonAnim.name.Equals("H_thompson_crouch_reload")) Debug.LogError(nameof(crouchReloadThompsonAnim) + " has wrong animation");
-            //if (!crouchShootThompsonAnim.name.Equals("H_thompson_crouch_shoot")) Debug.LogError(nameof(crouchShootThompsonAnim) + " has wrong animation");
-            //if (!crouchWalkThompsonAnim.name.Equals("H_thompson_crouch_walk")) Debug.LogError(nameof(crouchWalkThompsonAnim) + " has wrong animation");
-            //if (!grenadeThompsonAnim.name.Equals("H_thompson_grenade")) Debug.LogError(nameof(grenadeThompsonAnim) + " has wrong animation");
-            if (!_idleThompsonAnim.name.Equals("H_thompson_idle")) Debug.LogError(nameof(_idleThompsonAnim) + " has wrong animation");
-            if (!_jumpThompsonAnim.name.Equals("H_thompson_jump")) Debug.LogError(nameof(_jumpThompsonAnim) + " has wrong animation");
-            //if (!reloadThompsonAnim.name.Equals("H_thompson_reload")) Debug.LogError(nameof(reloadThompsonAnim) + " has wrong animation");
-            if (!_runThompsonAnim.name.Equals("H_thompson_run")) Debug.LogError(nameof(_runThompsonAnim) + " has wrong animation");
-            if (!_shootingThompsonAnim.name.Equals("H_thompson_shoot")) Debug.LogError(nameof(_shootingThompsonAnim) + " has wrong animation");
-            if (!_landFallDownBackAnim.name.Equals("E_land_fall_down_back")) Debug.LogError(nameof(_landFallDownBackAnim) + " has wrong animation");
+            if (!animation.name.Equals(expectedName))
+            {
+                Debug.LogError($"{fieldName} has wrong animation");
+            }
         }
 
         internal void PlayShoot()
