@@ -301,5 +301,16 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
         {
             return _model != null ? _model.maxReserveAmmo : 0;
         }
+
+        public bool ShouldShowReloadPrompt()
+        {
+            if (_model == null || _model.isDead)
+            {
+                return false;
+            }
+
+            // Show prompt when magazine is empty but there is reserve ammo to reload from.
+            return _model.currentAmmo <= 0 && _model.currentReserveAmmo > 0;
+        }
     }
 }

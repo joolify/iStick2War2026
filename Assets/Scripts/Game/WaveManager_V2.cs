@@ -25,6 +25,7 @@ namespace iStick2War_V2
         [SerializeField] private TMP_Text _topBarHealthText;
         [SerializeField] private TMP_Text _topBarCurrentWeaponText;
         [SerializeField] private TMP_Text _topBarCurrentAmmoText;
+        [SerializeField] private TMP_Text _topBarReloadText;
 
         [Header("Waves")]
         [SerializeField] private List<WaveConfig_V2> _waves = new List<WaveConfig_V2>();
@@ -119,10 +120,16 @@ namespace iStick2War_V2
             }
 
             _enemiesKilledThisWave++;
-            WaveConfig_V2 wave = GetCurrentWaveConfig();
-            if (wave != null && _enemiesKilledThisWave >= wave.EnemyCount)
+
+            // Do not complete wave from kill-count while spawner-driven delayed spawns
+            // (e.g. aircraft -> drop-when-visible) may still be pending.
+            if (_enemySpawner == null)
             {
-                CompleteWave();
+                WaveConfig_V2 wave = GetCurrentWaveConfig();
+                if (wave != null && _enemiesKilledThisWave >= wave.EnemyCount)
+                {
+                    CompleteWave();
+                }
             }
         }
 
@@ -522,6 +529,11 @@ namespace iStick2War_V2
             {
                 _topBarCurrentAmmoText = FindTextInSceneByName("txt_topbar_currentAmmo");
             }
+
+            if (_topBarReloadText == null)
+            {
+                _topBarReloadText = FindTextInSceneByName("txt_topbar_reload");
+            }
         }
 
         private void RefreshTopBar()
@@ -545,6 +557,12 @@ namespace iStick2War_V2
             {
                 _topBarCurrentAmmoText.text =
                     $"Ammo: {_hero.GetCurrentWeaponAmmo()}/{_hero.GetCurrentWeaponReserveAmmo()}";
+            }
+
+            if (_topBarReloadText != null)
+            {
+                bool showReloadPrompt = _hero.ShouldShowReloadPrompt();
+                _topBarReloadText.gameObject.SetActive(showReloadPrompt);
             }
         }
 

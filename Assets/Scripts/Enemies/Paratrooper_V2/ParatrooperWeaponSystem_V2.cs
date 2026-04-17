@@ -52,6 +52,8 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
     [SerializeField] private bool _debugDrawShotRay = true;
     [SerializeField] private bool _debugShotLineLogs = false;
     [SerializeField] private bool _debugCombatLogs = false;
+    [SerializeField] private bool _debugAimFallbackLogs = true;
+    [SerializeField] private float _maxAimOriginDistanceFromRoot = 3.5f;
     [SerializeField] private float _lineWidth = 0.06f;
     [SerializeField] private Color _lineColor = new Color(1f, 0.95f, 0.5f, 1f);
     [Tooltip("When false, force neutral white trail color at runtime.")]
@@ -634,6 +636,21 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 
         origin = _skeletonAnimation.transform.TransformPoint(
             new Vector3(_aimPointBone.WorldX, _aimPointBone.WorldY, 0f));
+
+        float rootDistance = Vector2.Distance(origin, transform.position);
+        if (rootDistance > Mathf.Max(0.5f, _maxAimOriginDistanceFromRoot))
+        {
+            if (_debugAimFallbackLogs)
+            {
+                Debug.LogWarning(
+                    $"[ParatrooperWeaponSystem_V2] Aim origin too far from root ({rootDistance:0.00}). " +
+                    $"origin={origin}, root={transform.position}. Falling back to firePoint/root origin.");
+            }
+
+            origin = default;
+            direction = default;
+            return false;
+        }
 
         if (_crossHairBone != null)
         {

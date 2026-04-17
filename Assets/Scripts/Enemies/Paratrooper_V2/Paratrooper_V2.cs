@@ -109,6 +109,9 @@ public class Paratrooper : MonoBehaviour
 
     [Header("View")]
     [SerializeField] private ParatrooperView_V2 _view;
+    [SerializeField] private bool _autoFixVisualRootOffsetOnSpawn = true;
+    [SerializeField] private float _maxAllowedVisualRootLocalOffset = 2.5f;
+    [SerializeField] private bool _debugVisualRootOffsetFixLogs = true;
 
     [Header("Body Parts")]
     [SerializeField] private ParatrooperBodyPart_V2[] _bodyParts;
@@ -117,8 +120,8 @@ public class Paratrooper : MonoBehaviour
     [SerializeField] private Rigidbody2D _rigidbody2D;
     [SerializeField] private Collider2D _mainCollider2D;
     [SerializeField] private float _glideMaxFallSpeed = 1.35f;
+    [SerializeField] private float _glideMinFallSpeed = 0.5f;
     [SerializeField] private float _glideDeathMaxFallSpeed = 4.75f;
-    [SerializeField] private float _glideHorizontalDrift = 0.15f;
     [SerializeField] private LayerMask _groundMask = 0;
     [SerializeField] private float _groundCheckDistance = 0.08f;
     [SerializeField] private float _nearGroundRayDistance = 1.25f;
@@ -145,6 +148,7 @@ public class Paratrooper : MonoBehaviour
     private void Awake()
     {
         InitializeDependencies();
+        SanitizeVisualRootAlignment();
         _groundLayer = LayerMask.NameToLayer("Ground");
         if (_groundMask.value == 0 && _groundLayer >= 0)
         {
@@ -178,6 +182,35 @@ public class Paratrooper : MonoBehaviour
         }
         if (_rigidbody2D == null) _rigidbody2D = GetComponent<Rigidbody2D>();
         if (_mainCollider2D == null) _mainCollider2D = GetComponent<Collider2D>();
+    }
+
+    private void SanitizeVisualRootAlignment()
+    {
+        if (!_autoFixVisualRootOffsetOnSpawn || _skeletonAnimation == null)
+        {
+            return;
+        }
+
+        Transform skeletonRoot = _skeletonAnimation.transform;
+        if (skeletonRoot == transform || !skeletonRoot.IsChildOf(transform))
+        {
+            return;
+        }
+
+        Vector3 local = skeletonRoot.localPosition;
+        float planarOffset = new Vector2(local.x, local.y).magnitude;
+        if (planarOffset <= Mathf.Max(0.05f, _maxAllowedVisualRootLocalOffset))
+        {
+            return;
+        }
+
+        if (_debugVisualRootOffsetFixLogs)
+        {
+            Debug.LogWarning(
+                $"[Paratrooper_V2] Auto-corrected visual root local offset from {local} to (0,0,{local.z:0.###}).");
+        }
+
+        skeletonRoot.localPosition = new Vector3(0f, 0f, local.z);
     }
 
     private void WireSystems()
@@ -329,11 +362,20 @@ public class Paratrooper : MonoBehaviour
         {
             velocity.y = -maxFallSpeed;
         }
-
-        if (isGlide && Mathf.Abs(velocity.x) < _glideHorizontalDrift)
+        else if (!isGlideDeath)
         {
-            float driftSign = transform.position.x >= 0f ? -1f : 1f;
-            velocity.x = driftSign * _glideHorizontalDrift;
+            // Prevent deploy/glide from stalling at y=0 when gravity is neutralized by animation/state changes.
+            float minFall = Mathf.Min(Mathf.Max(0f, _glideMinFallSpeed), maxFallSpeed);
+            if (velocity.y > -minFall)
+            {
+                velocity.y = -minFall;
+            }
+        }
+
+        if (isGlide)
+        {
+            // Design decision: paratroopers should drop straight down only.
+            velocity.x = 0f;
         }
 
         _rigidbody2D.linearVelocity = velocity;

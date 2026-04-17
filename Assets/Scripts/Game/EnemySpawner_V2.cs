@@ -41,9 +41,12 @@ namespace iStick2War_V2
         [Tooltip("e.g. Fa_223_Drache — instantiated at the chosen left/right spawn anchor when anchors are used.")]
         [SerializeField] private GameObject _aircraftPrefab;
         [SerializeField] private float _aircraftAutoDestroySeconds = 8f;
-        [Tooltip("If set, paratrooper spawn position uses this child transform under the aircraft instance (else aircraft root).")]
-        [SerializeField] private string _paratrooperMountChildName;
+        [Tooltip("Child transform name on aircraft used as paratrooper drop origin (recommended: place at helicopter door center).")]
+        [SerializeField] private string _paratrooperMountChildName = "ParatrooperDoorMount";
         [SerializeField] private Vector3 _paratrooperOffsetFromMount = Vector3.zero;
+        [Tooltip("If the resolved mount point is inside aircraft bounds, auto-place drop point below aircraft.")]
+        [SerializeField] private bool _forceDropBelowAircraftWhenMountInsideBounds = true;
+        [SerializeField] private float _forceDropBelowAircraftExtraMargin = 0.2f;
         [Tooltip("When spawning from the right anchor, flip root localScale.x to face inward.")]
         [SerializeField] private bool _flipAircraftScaleXWhenFromRightSpawn = true;
         [SerializeField] private bool _overrideAircraftSpriteSorting = true;
@@ -55,6 +58,16 @@ namespace iStick2War_V2
         [SerializeField] private float _aircraftHorizontalFlySpeed = 5.5f;
         [SerializeField] private float _aircraftFlyOffscreenMarginWorld = 4f;
         [SerializeField] private float _aircraftFlightMaxLifetimeSeconds = 45f;
+        [Tooltip("If enabled, paratrooper is spawned only after aircraft enters camera view.")]
+        [SerializeField] private bool _spawnParatrooperWhenAircraftIsVisible = true;
+        [Tooltip("Safety timeout for delayed drop; spawns anyway after this many seconds.")]
+        [SerializeField] private float _maxSecondsToWaitForVisibleAircraftDrop = 6f;
+        [Tooltip(
+            "Inset (safe margin) inside camera rect before drop is allowed. " +
+            "Higher values delay drop until aircraft is clearly inside view.")]
+        [SerializeField] private float _aircraftVisibleCheckPaddingWorld = 0.25f;
+        [Tooltip("Extra safety margin added to visible-check inset for actual paratrooper drop position.")]
+        [SerializeField] private float _paratrooperDropSafetyMarginWorld = 0.2f;
         [Tooltip(
             "Extra world offset per spawn index further outside the playfield (left spawns: −X, right spawns: +X) " +
             "so multiple helicopters in one wave do not share the same approach X.")]
@@ -65,6 +78,12 @@ namespace iStick2War_V2
             "Visual facing calibration: ON if sprite nose points right when localScale.x is positive. " +
             "OFF if sprite nose points left at positive scale.")]
         [SerializeField] private bool _aircraftSpriteFacesRightWhenScaleXPositive = false;
+        [Tooltip("Flip spawned paratrooper root so it faces toward the playfield/hero based on spawn side.")]
+        [SerializeField] private bool _faceParatrooperTowardPlayfieldOnSpawn = true;
+        [Tooltip(
+            "Paratrooper visual calibration: ON if paratrooper faces right when localScale.x is positive. " +
+            "OFF if it faces left at positive scale.")]
+        [SerializeField] private bool _paratrooperFacesRightWhenScaleXPositive = true;
 
         [Header("Fallback Random Area")]
         [SerializeField] private Vector2 _spawnXRange = new Vector2(-12f, 12f);
@@ -93,7 +112,13 @@ namespace iStick2War_V2
         private int _targetSpawnCount;
         private int _spawnedCount;
         private bool _spawnRoutineFinished;
+        private bool _isWaveActive;
+        private int _waveSessionId;
         private static bool _loggedFrustumPaddingClamp;
+        private bool _loggedMissingParatrooperMountOnce;
+        private int _paratrooperDebugSpawnSeq;
+        private bool _lastResolvedMountUsedFallbackRoot;
+        private int _pendingDelayedDropCoroutines;
 
         private void Awake()
         {
@@ -116,15 +141,19 @@ namespace iStick2War_V2
                 return;
             }
 
+            _isWaveActive = true;
+            _waveSessionId++;
             _onEnemyKilled = onEnemyKilled;
             _targetSpawnCount = Mathf.Max(0, config.EnemyCount);
             _spawnedCount = 0;
             _spawnRoutineFinished = false;
+            _pendingDelayedDropCoroutines = 0;
             _spawnRoutine = StartCoroutine(SpawnRoutine(config));
         }
 
         public void StopWave()
         {
+            _isWaveActive = false;
             if (_spawnRoutine != null)
             {
                 StopCoroutine(_spawnRoutine);
@@ -145,14 +174,26 @@ namespace iStick2War_V2
             _targetSpawnCount = 0;
             _spawnedCount = 0;
             _spawnRoutineFinished = false;
+            _pendingDelayedDropCoroutines = 0;
+        }
+
+        private void OnDisable()
+        {
+            StopWave();
         }
 
         private IEnumerator SpawnRoutine(WaveConfig_V2 config)
         {
             int toSpawn = config.EnemyCount;
             float interval = config.SpawnIntervalSeconds;
+            int waveSession = _waveSessionId;
             for (int i = 0; i < toSpawn; i++)
             {
+                if (!_isWaveActive || waveSession != _waveSessionId)
+                {
+                    yield break;
+                }
+
                 SpawnOne(i);
                 if (i < toSpawn - 1)
                 {
@@ -166,9 +207,13 @@ namespace iStick2War_V2
 
         private void SpawnOne(int spawnIndexInWave)
         {
+            if (!_isWaveActive)
+            {
+                return;
+            }
+
             PruneDestroyedAircraftFromTracking();
 
-            Vector3 paratrooperWorldPosition;
             bool usedAnchorSpawn;
             GameObject aircraft = null;
 
@@ -251,20 +296,31 @@ namespace iStick2War_V2
                         Destroy(aircraft, _aircraftAutoDestroySeconds);
                     }
 
-                    Transform mount = ResolveParatrooperMountTransform(aircraft);
-                    paratrooperWorldPosition = mount.position + _paratrooperOffsetFromMount;
+                    if (_spawnParatrooperWhenAircraftIsVisible)
+                    {
+                        StartCoroutine(SpawnParatrooperWhenAircraftVisible(
+                            aircraft,
+                            usedAnchorSpawn,
+                            fromLeft));
+                        return;
+                    }
+
+                    Vector3 paratrooperWorldPositionNow = GetParatrooperSpawnPositionFromAircraft(aircraft);
+                    SpawnParatrooper(paratrooperWorldPositionNow, usedAnchorSpawn, fromLeft, aircraft);
+                    return;
                 }
                 else
                 {
-                    paratrooperWorldPosition = aircraftWorldPos + _paratrooperOffsetFromMount;
+                    Vector3 paratrooperWorldPositionNow = aircraftWorldPos + _paratrooperOffsetFromMount;
+                    paratrooperWorldPositionNow.z = _anchorSpawnWorldZ;
+                    SpawnParatrooper(paratrooperWorldPositionNow, usedAnchorSpawn, fromLeft, aircraft);
+                    return;
                 }
-
-                paratrooperWorldPosition.z = _anchorSpawnWorldZ;
             }
             else
             {
                 usedAnchorSpawn = false;
-                paratrooperWorldPosition = new Vector3(
+                Vector3 paratrooperWorldPosition = new Vector3(
                     UnityEngine.Random.Range(_spawnXRange.x, _spawnXRange.y),
                     UnityEngine.Random.Range(_spawnYRange.x, _spawnYRange.y),
                     0f);
@@ -277,12 +333,47 @@ namespace iStick2War_V2
                         $"Enable '{nameof(_useFrustumOffscreenSpawnWhenNoAnchors)}' or assign spawn transforms. " +
                         $"Final pos={paratrooperWorldPosition}, waveSpawnIndex={spawnIndexInWave}");
                 }
+
+                SpawnParatrooper(paratrooperWorldPosition, usedAnchorSpawn, fromLeft, aircraft);
+                return;
+            }
+        }
+
+        private void SpawnParatrooper(
+            Vector3 worldPosition,
+            bool usedAnchorSpawn,
+            bool fromLeft,
+            GameObject aircraft)
+        {
+            if (!_isWaveActive)
+            {
+                return;
             }
 
-            Paratrooper spawned = Instantiate(_paratrooperPrefab, paratrooperWorldPosition, Quaternion.identity);
+            Paratrooper spawned = Instantiate(_paratrooperPrefab, worldPosition, Quaternion.identity);
             if (spawned == null)
             {
                 return;
+            }
+
+            int spawnSeq = ++_paratrooperDebugSpawnSeq;
+
+            // Ensure each drop starts with deterministic physics and cannot inherit stray prefab velocity.
+            Rigidbody2D spawnedRb = spawned.GetComponent<Rigidbody2D>();
+            if (spawnedRb != null)
+            {
+                spawnedRb.linearVelocity = Vector2.zero;
+                spawnedRb.angularVelocity = 0f;
+            }
+
+            if (aircraft != null)
+            {
+                IgnoreParatrooperCollisionsWithAircraft(spawned, aircraft);
+            }
+
+            if (usedAnchorSpawn)
+            {
+                ApplyParatrooperSpawnFacing(spawned.transform, fromLeft);
             }
             _spawnedCount++;
 
@@ -299,9 +390,311 @@ namespace iStick2War_V2
             if (_debugSpawnLogs)
             {
                 Debug.Log(
-                    $"[EnemySpawner_V2] Spawned Paratrooper at {paratrooperWorldPosition} " +
+                    $"[EnemySpawner_V2] Spawned Paratrooper at {worldPosition} " +
                     $"(anchorSpawn={usedAnchorSpawn}, aircraft={(aircraft != null ? aircraft.name : "none")})");
             }
+
+            if (_debugAnchorSpawnDiagnostics)
+            {
+                LogParatrooperSpawnSnapshot(
+                    "spawn-now",
+                    spawnSeq,
+                    worldPosition,
+                    spawned.transform.position,
+                    spawnedRb,
+                    aircraft,
+                    fromLeft);
+                StartCoroutine(LogParatrooperSpawnTrace(spawned, spawnSeq, worldPosition, fromLeft));
+            }
+        }
+
+        private IEnumerator SpawnParatrooperWhenAircraftVisible(GameObject aircraft, bool usedAnchorSpawn, bool fromLeft)
+        {
+            _pendingDelayedDropCoroutines++;
+            try
+            {
+                if (aircraft == null)
+                {
+                    yield break;
+                }
+
+                int waveSession = _waveSessionId;
+                float timeoutAt = Time.time + Mathf.Max(0.1f, _maxSecondsToWaitForVisibleAircraftDrop);
+                Vector3 fallbackPosition = GetParatrooperSpawnPositionFromAircraft(aircraft);
+
+                while (_isWaveActive && waveSession == _waveSessionId && aircraft != null && Time.time < timeoutAt)
+                {
+                    fallbackPosition = GetParatrooperSpawnPositionFromAircraft(aircraft);
+                    float requiredInset = Mathf.Max(0f, _aircraftVisibleCheckPaddingWorld) + Mathf.Max(0f, _paratrooperDropSafetyMarginWorld);
+                    bool mountInsideForDrop = IsWorldPositionInsideOrthographicCameraView(fallbackPosition, requiredInset);
+                    if (mountInsideForDrop)
+                    {
+                        LogParatrooperDropDecision(
+                            "visible",
+                            aircraft.transform.position,
+                            fallbackPosition,
+                            fromLeft);
+                        Vector3 safeDropPosition = ClampDropPositionInsideOrthographicCameraView(fallbackPosition, requiredInset);
+                        SpawnParatrooper(safeDropPosition, usedAnchorSpawn, fromLeft, aircraft);
+                        yield break;
+                    }
+
+                    yield return null;
+                }
+
+                if (!_isWaveActive || waveSession != _waveSessionId)
+                {
+                    yield break;
+                }
+
+                // Aircraft was destroyed before it ever reached a valid drop state.
+                // In that case we should cancel this drop completely.
+                if (aircraft == null)
+                {
+                    if (_debugAnchorSpawnDiagnostics)
+                    {
+                        Debug.Log(
+                            "[EnemySpawner_V2] Paratrooper drop cancelled: aircraft destroyed before drop could happen.");
+                    }
+                    yield break;
+                }
+
+                // Safety net so waves don't get stuck if visibility condition was never met.
+                LogParatrooperDropDecision(
+                    "timeout",
+                    aircraft != null ? aircraft.transform.position : fallbackPosition,
+                    fallbackPosition,
+                    fromLeft);
+                float timeoutInset = Mathf.Max(0f, _aircraftVisibleCheckPaddingWorld);
+                Vector3 timeoutDropPosition = ClampDropPositionInsideOrthographicCameraView(fallbackPosition, timeoutInset);
+                SpawnParatrooper(timeoutDropPosition, usedAnchorSpawn, fromLeft, aircraft);
+            }
+            finally
+            {
+                _pendingDelayedDropCoroutines = Mathf.Max(0, _pendingDelayedDropCoroutines - 1);
+            }
+        }
+
+        private Vector3 GetParatrooperSpawnPositionFromAircraft(GameObject aircraft)
+        {
+            if (aircraft == null)
+            {
+                return Vector3.zero;
+            }
+
+            Transform mount = ResolveParatrooperMountTransform(aircraft);
+            Vector3 p = mount.position + _paratrooperOffsetFromMount;
+            if (_lastResolvedMountUsedFallbackRoot && _paratrooperOffsetFromMount == Vector3.zero)
+            {
+                // If no dedicated door mount exists, place the drop point slightly below aircraft bounds
+                // so the paratrooper does not immediately overlap and collide with the aircraft body.
+                p = GetFallbackDropPositionBelowAircraft(aircraft, p);
+            }
+
+            if (_forceDropBelowAircraftWhenMountInsideBounds &&
+                TryGetAircraftBounds(aircraft, out Bounds aircraftBounds) &&
+                aircraftBounds.Contains(p))
+            {
+                float margin = Mathf.Max(0.01f, _forceDropBelowAircraftExtraMargin);
+                p.y = aircraftBounds.min.y - margin;
+            }
+
+            p.z = _anchorSpawnWorldZ;
+
+            if (_debugAnchorSpawnDiagnostics)
+            {
+                Debug.Log(
+                    "[EnemySpawner_V2] Paratrooper mount sample\n" +
+                    $"  aircraft='{aircraft.name}' aircraftPos={aircraft.transform.position}\n" +
+                    $"  mountName='{mount.name}' mountPos={mount.position}\n" +
+                    $"  offset={_paratrooperOffsetFromMount} finalDropPos={p}");
+            }
+
+            return p;
+        }
+
+        private IEnumerator LogParatrooperSpawnTrace(
+            Paratrooper spawned,
+            int spawnSeq,
+            Vector3 requestedSpawnPos,
+            bool fromLeft)
+        {
+            const int maxSamples = 12;
+            const float interval = 0.15f;
+
+            int sampleIndex = 0;
+            while (sampleIndex < maxSamples && spawned != null)
+            {
+                yield return new WaitForSeconds(interval);
+                sampleIndex++;
+
+                if (spawned == null)
+                {
+                    yield break;
+                }
+
+                Rigidbody2D rb = spawned.GetComponent<Rigidbody2D>();
+                ParatrooperStateMachine_V2 sm = spawned.GetComponent<ParatrooperStateMachine_V2>();
+                string stateLabel = sm != null ? sm.CurrentState.ToString() : "n/a";
+                LogParatrooperSpawnSnapshot(
+                    $"trace-{sampleIndex}",
+                    spawnSeq,
+                    requestedSpawnPos,
+                    spawned.transform.position,
+                    rb,
+                    null,
+                    fromLeft,
+                    stateLabel);
+            }
+        }
+
+        private void LogParatrooperSpawnSnapshot(
+            string phase,
+            int spawnSeq,
+            Vector3 requestedSpawnPos,
+            Vector3 actualTransformPos,
+            Rigidbody2D rb,
+            GameObject aircraft,
+            bool fromLeft,
+            string stateLabel = "n/a")
+        {
+            Camera cam = _spawnCamera != null ? _spawnCamera : Camera.main;
+            string camInfo = "missing-or-non-orthographic";
+            bool reqInside = true;
+            bool actualInside = true;
+            bool rbInside = true;
+
+            if (cam != null && cam.orthographic)
+            {
+                float halfHeight = cam.orthographicSize;
+                float halfWidth = halfHeight * cam.aspect;
+                Vector3 c = cam.transform.position;
+                float inset = GetClampedVisibilityInset(_aircraftVisibleCheckPaddingWorld, halfWidth, halfHeight);
+                float minX = c.x - halfWidth + inset;
+                float maxX = c.x + halfWidth - inset;
+                float minY = c.y - halfHeight + inset;
+                float maxY = c.y + halfHeight - inset;
+
+                reqInside = requestedSpawnPos.x >= minX && requestedSpawnPos.x <= maxX
+                    && requestedSpawnPos.y >= minY && requestedSpawnPos.y <= maxY;
+                actualInside = actualTransformPos.x >= minX && actualTransformPos.x <= maxX
+                    && actualTransformPos.y >= minY && actualTransformPos.y <= maxY;
+                Vector2 rbPos = rb != null ? rb.position : (Vector2)actualTransformPos;
+                rbInside = rbPos.x >= minX && rbPos.x <= maxX
+                    && rbPos.y >= minY && rbPos.y <= maxY;
+
+                camInfo =
+                    $"cam='{cam.name}' pos={c} inset={inset:0.###} " +
+                    $"rectX=[{minX:0.###}..{maxX:0.###}] rectY=[{minY:0.###}..{maxY:0.###}]";
+            }
+
+            Vector2 rbPosition = rb != null ? rb.position : (Vector2)actualTransformPos;
+            Vector2 rbVelocity = rb != null ? rb.linearVelocity : Vector2.zero;
+            string aircraftInfo = aircraft != null ? $"aircraft='{aircraft.name}' aircraftPos={aircraft.transform.position}" : "aircraft=(none)";
+
+            Debug.Log(
+                "[EnemySpawner_V2] Paratrooper spawn snapshot\n" +
+                $"  id={spawnSeq} phase={phase} side={(fromLeft ? "LEFT" : "RIGHT")} state={stateLabel}\n" +
+                $"  requestedPos={requestedSpawnPos} inside={reqInside}\n" +
+                $"  actualTransformPos={actualTransformPos} inside={actualInside}\n" +
+                $"  rbPos={rbPosition} inside={rbInside} rbVel={rbVelocity}\n" +
+                $"  {aircraftInfo}\n" +
+                $"  {camInfo}");
+        }
+
+        private bool IsWorldPositionInsideOrthographicCameraView(Vector3 worldPosition, float padding)
+        {
+            Camera cam = _spawnCamera != null ? _spawnCamera : Camera.main;
+            if (cam == null || !cam.orthographic)
+            {
+                return true;
+            }
+
+            float halfHeight = cam.orthographicSize;
+            float halfWidth = halfHeight * cam.aspect;
+            Vector3 camPos = cam.transform.position;
+            float inset = GetClampedVisibilityInset(padding, halfWidth, halfHeight);
+
+            float minX = camPos.x - halfWidth + inset;
+            float maxX = camPos.x + halfWidth - inset;
+            float minY = camPos.y - halfHeight + inset;
+            float maxY = camPos.y + halfHeight - inset;
+
+            return worldPosition.x >= minX && worldPosition.x <= maxX
+                && worldPosition.y >= minY && worldPosition.y <= maxY;
+        }
+
+        private Vector3 ClampDropPositionInsideOrthographicCameraView(Vector3 worldPosition, float padding)
+        {
+            Camera cam = _spawnCamera != null ? _spawnCamera : Camera.main;
+            if (cam == null || !cam.orthographic)
+            {
+                return worldPosition;
+            }
+
+            float halfHeight = cam.orthographicSize;
+            float halfWidth = halfHeight * cam.aspect;
+            Vector3 camPos = cam.transform.position;
+            float inset = GetClampedVisibilityInset(padding, halfWidth, halfHeight);
+
+            float minX = camPos.x - halfWidth + inset;
+            float maxX = camPos.x + halfWidth - inset;
+            float minY = camPos.y - halfHeight + inset;
+            float maxY = camPos.y + halfHeight - inset;
+
+            worldPosition.x = Mathf.Clamp(worldPosition.x, minX, maxX);
+            worldPosition.y = Mathf.Clamp(worldPosition.y, minY, maxY);
+            return worldPosition;
+        }
+
+        private static float GetClampedVisibilityInset(float rawInset, float halfWidth, float halfHeight)
+        {
+            float limit = Mathf.Max(0f, Mathf.Min(halfWidth, halfHeight) - 0.01f);
+            return Mathf.Min(Mathf.Max(0f, rawInset), limit);
+        }
+
+        private void LogParatrooperDropDecision(string reason, Vector3 aircraftPos, Vector3 mountDropPos, bool fromLeft)
+        {
+            if (!_debugAnchorSpawnDiagnostics)
+            {
+                return;
+            }
+
+            Camera cam = _spawnCamera != null ? _spawnCamera : Camera.main;
+            if (cam == null || !cam.orthographic)
+            {
+                Debug.Log(
+                    "[EnemySpawner_V2] Paratrooper drop decision\n" +
+                    $"  reason={reason}, side={(fromLeft ? "LEFT" : "RIGHT")}\n" +
+                    $"  aircraftPos={aircraftPos}, mountDropPos={mountDropPos}\n" +
+                    "  cam=(missing or non-orthographic)");
+                return;
+            }
+
+            float halfHeight = cam.orthographicSize;
+            float halfWidth = halfHeight * cam.aspect;
+            Vector3 c = cam.transform.position;
+            float inset = GetClampedVisibilityInset(_aircraftVisibleCheckPaddingWorld, halfWidth, halfHeight);
+            float minX = c.x - halfWidth + inset;
+            float maxX = c.x + halfWidth - inset;
+            float minY = c.y - halfHeight + inset;
+            float maxY = c.y + halfHeight - inset;
+
+            bool aircraftInside =
+                aircraftPos.x >= minX && aircraftPos.x <= maxX &&
+                aircraftPos.y >= minY && aircraftPos.y <= maxY;
+
+            bool mountInside =
+                mountDropPos.x >= minX && mountDropPos.x <= maxX &&
+                mountDropPos.y >= minY && mountDropPos.y <= maxY;
+
+            Debug.Log(
+                "[EnemySpawner_V2] Paratrooper drop decision\n" +
+                $"  reason={reason}, side={(fromLeft ? "LEFT" : "RIGHT")}\n" +
+                $"  cam='{cam.name}' camPos={c} orthoSize={halfHeight:0.###} halfWidth={halfWidth:0.###} visibleInset={inset:0.###}\n" +
+                $"  visibleRectX=[{minX:0.###}..{maxX:0.###}] visibleRectY=[{minY:0.###}..{maxY:0.###}]\n" +
+                $"  aircraftPos={aircraftPos} inside={aircraftInside}\n" +
+                $"  mountDropPos={mountDropPos} inside={mountInside}");
         }
 
         private void HandleTrackedEnemyDeath(ParatrooperDeathHandler_V2 deathHandler)
@@ -319,7 +712,9 @@ namespace iStick2War_V2
         {
             PruneInactiveTrackedDeaths();
             bool allSpawned = _spawnRoutineFinished || _spawnedCount >= _targetSpawnCount;
-            return allSpawned && _trackedDeaths.Count == 0;
+            return allSpawned
+                && _pendingDelayedDropCoroutines == 0
+                && _trackedDeaths.Count == 0;
         }
 
         private void PruneInactiveTrackedDeaths()
@@ -485,6 +880,7 @@ namespace iStick2War_V2
 
         private Transform ResolveParatrooperMountTransform(GameObject aircraftInstance)
         {
+            _lastResolvedMountUsedFallbackRoot = false;
             if (aircraftInstance == null)
             {
                 return null;
@@ -497,9 +893,122 @@ namespace iStick2War_V2
                 {
                     return child;
                 }
+
+                if (_debugAnchorSpawnDiagnostics && !_loggedMissingParatrooperMountOnce)
+                {
+                    _loggedMissingParatrooperMountOnce = true;
+                    Debug.LogWarning(
+                        "[EnemySpawner_V2] Paratrooper mount child was not found on aircraft. " +
+                        $"Expected child name '{_paratrooperMountChildName}'. Falling back to aircraft root. " +
+                        "Add an empty child at the helicopter door and use that name for accurate drop position.");
+                }
             }
 
+            _lastResolvedMountUsedFallbackRoot = true;
             return aircraftInstance.transform;
+        }
+
+        private Vector3 GetFallbackDropPositionBelowAircraft(GameObject aircraft, Vector3 fallback)
+        {
+            if (!TryGetAircraftBounds(aircraft, out Bounds bounds))
+            {
+                return fallback;
+            }
+
+            float extraBelow = 0.2f;
+            return new Vector3(bounds.center.x, bounds.min.y - extraBelow, fallback.z);
+        }
+
+        private static bool TryGetAircraftBounds(GameObject aircraft, out Bounds bounds)
+        {
+            bounds = default;
+            if (aircraft == null)
+            {
+                return false;
+            }
+
+            bool hasBounds = false;
+            Collider2D[] colliders = aircraft.GetComponentsInChildren<Collider2D>(true);
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                Collider2D c = colliders[i];
+                if (c == null)
+                {
+                    continue;
+                }
+
+                if (!hasBounds)
+                {
+                    bounds = c.bounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(c.bounds);
+                }
+            }
+
+            if (hasBounds)
+            {
+                return true;
+            }
+
+            SpriteRenderer[] renderers = aircraft.GetComponentsInChildren<SpriteRenderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                SpriteRenderer sr = renderers[i];
+                if (sr == null)
+                {
+                    continue;
+                }
+
+                if (!hasBounds)
+                {
+                    bounds = sr.bounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(sr.bounds);
+                }
+            }
+
+            return hasBounds;
+        }
+
+        private static void IgnoreParatrooperCollisionsWithAircraft(Paratrooper paratrooper, GameObject aircraft)
+        {
+            if (paratrooper == null || aircraft == null)
+            {
+                return;
+            }
+
+            Collider2D[] paraColliders = paratrooper.GetComponentsInChildren<Collider2D>(true);
+            Collider2D[] aircraftColliders = aircraft.GetComponentsInChildren<Collider2D>(true);
+            if (paraColliders == null || aircraftColliders == null || paraColliders.Length == 0 || aircraftColliders.Length == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < paraColliders.Length; i++)
+            {
+                Collider2D p = paraColliders[i];
+                if (p == null)
+                {
+                    continue;
+                }
+
+                for (int j = 0; j < aircraftColliders.Length; j++)
+                {
+                    Collider2D a = aircraftColliders[j];
+                    if (a == null)
+                    {
+                        continue;
+                    }
+
+                    Physics2D.IgnoreCollision(p, a, true);
+                }
+            }
         }
 
         private void ApplyAircraftFacing(GameObject aircraft, bool spawnedFromLeftAnchor)
@@ -517,6 +1026,22 @@ namespace iStick2War_V2
             s.x = usePositiveScaleX ? Mathf.Abs(s.x) : -Mathf.Abs(s.x);
 
             aircraft.transform.localScale = s;
+        }
+
+        private void ApplyParatrooperSpawnFacing(Transform paratrooperRoot, bool spawnedFromLeftSide)
+        {
+            if (!_faceParatrooperTowardPlayfieldOnSpawn || paratrooperRoot == null)
+            {
+                return;
+            }
+
+            // From LEFT side -> face RIGHT toward center. From RIGHT side -> face LEFT toward center.
+            bool shouldFaceRight = spawnedFromLeftSide;
+            bool usePositiveScaleX = shouldFaceRight == _paratrooperFacesRightWhenScaleXPositive;
+
+            Vector3 s = paratrooperRoot.localScale;
+            s.x = usePositiveScaleX ? Mathf.Abs(s.x) : -Mathf.Abs(s.x);
+            paratrooperRoot.localScale = s;
         }
 
         private void ApplyAircraftSpriteSorting(GameObject aircraft)
