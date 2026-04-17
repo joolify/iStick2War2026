@@ -7,7 +7,8 @@ namespace iStick2War_V2
         HealthPack,
         BunkerRepair,
         WeaponUnlock,
-        AmmoRefill
+        AmmoRefill,
+        BunkerMaxUpgrade
     }
 
     /// <summary>
@@ -23,9 +24,11 @@ namespace iStick2War_V2
         [SerializeField] private int _healthAmount;
         [Tooltip("Bunker repair amount. 0 = use WaveManager default.")]
         [SerializeField] private int _bunkerRepairAmount;
-        [Tooltip("Required for WeaponUnlock and AmmoRefill.")]
+        [Tooltip("Bunker max HP increase (run-persistent). 0 = use WaveManager default.")]
+        [SerializeField] private int _bunkerMaxIncrease;
+        [Tooltip("Only used for WeaponUnlock / AmmoRefill. Ignored for bunker and health offers.")]
         [SerializeField] private HeroWeaponDefinition_V2 _weapon;
-        [Tooltip("Optional: GameObject in the scene (e.g. weapon silhouette). Only the active offer's object is enabled.")]
+        [Tooltip("Optional shop preview. Only the selected offer's object is shown. Not used for bunker/health unless you assign one.")]
         [SerializeField] private GameObject _previewObject;
 
         public string DisplayName
@@ -37,7 +40,9 @@ namespace iStick2War_V2
                     return _displayName;
                 }
 
-                if (_weapon != null && !string.IsNullOrWhiteSpace(_weapon.DisplayName))
+                if (_kind is ShopOfferKind_V2.WeaponUnlock or ShopOfferKind_V2.AmmoRefill &&
+                    _weapon != null &&
+                    !string.IsNullOrWhiteSpace(_weapon.DisplayName))
                 {
                     return _weapon.DisplayName;
                 }
@@ -50,6 +55,7 @@ namespace iStick2War_V2
         public int Cost => Mathf.Max(0, _cost);
         public int HealthAmount => Mathf.Max(0, _healthAmount);
         public int BunkerRepairAmount => Mathf.Max(0, _bunkerRepairAmount);
+        public int BunkerMaxIncrease => Mathf.Max(0, _bunkerMaxIncrease);
         public HeroWeaponDefinition_V2 Weapon => _weapon;
         public GameObject PreviewObject => _previewObject;
     }

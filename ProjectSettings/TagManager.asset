@@ -25,7 +25,7 @@ TagManager:
   - Topbar
   - Aircraft
   - MainMenu
-  - 
+  - Bunker
   - 
   - 
   - 
@@ -69,6 +69,15 @@ TagManager:
     locked: 0
   - name: Paratrooper
     uniqueID: 1456502635
+    locked: 0
+  - name: BunkerBack
+    uniqueID: 202445081
+    locked: 0
+  - name: Hero
+    uniqueID: 3925672017
+    locked: 0
+  - name: BunkerFront
+    uniqueID: 34275681
     locked: 0
   - name: Shop
     uniqueID: 2029628213

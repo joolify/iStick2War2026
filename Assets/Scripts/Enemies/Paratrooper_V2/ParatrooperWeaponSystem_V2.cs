@@ -1,6 +1,7 @@
 ﻿using Assets.Scripts.Components;
 using Spine;
 using Spine.Unity;
+using System;
 using System.Collections;
 using UnityEngine;
 
@@ -40,6 +41,10 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
     [SerializeField] private float _range = 100f;
     [SerializeField] private int _baseDamage = 9;
     [SerializeField] private LayerMask _whatToHit = 0;
+    [Header("Bunker cover")]
+    [Tooltip("Colliders on this mask should use BunkerHitbox_V2 (e.g. bunkerFront). Tries layer 'Bunker' when unset.")]
+    [SerializeField] private LayerMask _bunkerShotBlockMask;
+    [SerializeField] private bool _respectBunkerCover = true;
     [SerializeField] private Transform _firePoint;
     [SerializeField] private string _aimPointBoneName = "mp40-aim";
     [SerializeField] private string _crossHairBoneName = "crosshair";
@@ -54,6 +59,8 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
     [SerializeField] private bool _debugCombatLogs = false;
     [SerializeField] private bool _debugAimFallbackLogs = true;
     [SerializeField] private float _maxAimOriginDistanceFromRoot = 3.5f;
+    [Tooltip("Combat ray aims at this height on the hero collider (0=feet, 1=head). Lower = more likely to intersect bunker cover.")]
+    [SerializeField] [Range(0f, 1f)] private float _heroCombatAimHeightLerp = 0.42f;
     [SerializeField] private float _lineWidth = 0.06f;
     [SerializeField] private Color _lineColor = new Color(1f, 0.95f, 0.5f, 1f);
     [Tooltip("When false, force neutral white trail color at runtime.")]
@@ -95,6 +102,15 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             if (playerLayer >= 0)
             {
                 _whatToHit = 1 << playerLayer;
+            }
+        }
+
+        if (_bunkerShotBlockMask.value == 0)
+        {
+            int bunkerLayer = LayerMask.NameToLayer("Bunker");
+            if (bunkerLayer >= 0)
+            {
+                _bunkerShotBlockMask = 1 << bunkerLayer;
             }
         }
 
@@ -173,47 +189,155 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             return;
         }
 
-        Vector2 origin;
-        Vector2 direction;
-        if (TryGetParatrooperAimData(out Vector2 boneOrigin, out Vector2 boneDirection))
-        {
-            origin = boneOrigin;
-            direction = boneDirection;
-        }
-        else
+        // Muzzle from Spine aim bone when valid; combat direction always toward hero body (not crosshair bone),
+        // so shots intersect bunker cover instead of passing above it.
+        if (!TryGetParatrooperMuzzleWorld(out Vector2 origin))
         {
             origin = GetShotOrigin();
-            Vector2 target = _heroModel.transform.position;
-            direction = (target - origin).normalized;
         }
 
-        RaycastHit2D hit = Physics2D.Raycast(origin, direction, _range, _whatToHit);
-        if (hit.collider == null)
+        Vector2 aimTarget = GetHeroCombatAimWorldPoint();
+        Vector2 toHero = aimTarget - origin;
+        if (toHero.sqrMagnitude < 0.0001f)
         {
-            // Fallback: still detect Hero even if Player layer/mask is misconfigured.
-            var allHits = Physics2D.RaycastAll(origin, direction, _range);
-            for (int i = 0; i < allHits.Length; i++)
+            return;
+        }
+
+        Vector2 direction = toHero.normalized;
+
+        // Include triggers (bunker cover may use trigger colliders) and all layers so bunker is never skipped.
+        bool prevHitTriggers = Physics2D.queriesHitTriggers;
+        Physics2D.queriesHitTriggers = true;
+        RaycastHit2D[] hits;
+        try
+        {
+            hits = Physics2D.RaycastAll(origin, direction, _range, ~0);
+        }
+        finally
+        {
+            Physics2D.queriesHitTriggers = prevHitTriggers;
+        }
+
+        Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+        WaveManager_V2 waveManager = FindAnyObjectByType<WaveManager_V2>();
+
+        RaycastHit2D damageHit = default;
+        bool didApplyDamage = false;
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            RaycastHit2D h = hits[i];
+            if (h.collider == null)
             {
-                var candidate = allHits[i];
-                if (candidate.collider == null)
+                continue;
+            }
+
+            if (_respectBunkerCover && IsBunkerCoverHit(h.collider))
+            {
+                if (waveManager != null && waveManager.BunkerHealth <= 0)
                 {
+                    if (_debugCombatLogs)
+                    {
+                        Debug.Log("[ParatrooperWeaponSystem_V2] Bunker cover hit ignored (bunker destroyed).");
+                    }
+
+                    // Destroyed bunker should no longer shield hero.
                     continue;
                 }
 
-                if (candidate.collider.GetComponentInParent<Hero_V2>() != null ||
-                    candidate.collider.GetComponentInParent<HeroModel_V2>() != null)
+                if (waveManager != null)
                 {
-                    hit = candidate;
-                    Debug.LogWarning("[ParatrooperWeaponSystem_V2] Hero hit outside Player mask. Verify hero layer/mask setup.");
-                    break;
+                    waveManager.ApplyBunkerDamage(_baseDamage);
                 }
+
+                if (_debugCombatLogs)
+                {
+                    Debug.Log($"[ParatrooperWeaponSystem_V2] Hit bunker cover for {_baseDamage} damage.");
+                }
+
+                didApplyDamage = true;
+                damageHit = h;
+                break;
+            }
+
+            Hero_V2 heroRoot = h.collider.GetComponentInParent<Hero_V2>();
+            if (heroRoot != null)
+            {
+                if (waveManager != null && waveManager.IsHeroInsideBunker(heroRoot))
+                {
+                    if (_debugCombatLogs)
+                    {
+                        Debug.Log("[ParatrooperWeaponSystem_V2] Hero inside bunker — skipping HP damage, ray continues.");
+                    }
+
+                    continue;
+                }
+
+                if (_debugCombatLogs)
+                {
+                    Debug.Log($"[ParatrooperWeaponSystem_V2] Hit Hero_V2 for {_baseDamage} damage.");
+                }
+
+                heroRoot.ReceiveDamage(_baseDamage);
+                didApplyDamage = true;
+                damageHit = h;
+                break;
+            }
+
+            HeroModel_V2 heroModelHit = h.collider.GetComponentInParent<HeroModel_V2>();
+            if (heroModelHit != null)
+            {
+                Hero_V2 heroForZone = heroModelHit.GetComponentInParent<Hero_V2>();
+                if (heroForZone == null)
+                {
+                    heroForZone = _heroRoot;
+                }
+
+                bool heroProtected = waveManager != null &&
+                    (heroForZone != null ? waveManager.IsHeroInsideBunker(heroForZone) : waveManager.IsHeroInsideBunker());
+                if (heroProtected)
+                {
+                    if (_debugCombatLogs)
+                    {
+                        Debug.Log("[ParatrooperWeaponSystem_V2] Hero model hit ignored (bunker protection active).");
+                    }
+
+                    continue;
+                }
+
+                if (_debugCombatLogs)
+                {
+                    Debug.Log($"[ParatrooperWeaponSystem_V2] Hit HeroModel_V2 for {_baseDamage} damage.");
+                }
+
+                if (heroForZone != null)
+                {
+                    heroForZone.ReceiveDamage(_baseDamage);
+                }
+                else
+                {
+                    heroModelHit.TakeDamage(_baseDamage);
+                }
+
+                didApplyDamage = true;
+                damageHit = h;
+                break;
             }
         }
 
-        // Prefer physical hit point; if masked miss, snap to nearest visible Hero collider point.
-        Vector2 finalPos = hit.collider != null ? hit.point : origin + direction * _range;
-        if (hit.collider == null)
+        Vector2 finalPos;
+        if (didApplyDamage && damageHit.collider != null)
         {
+            finalPos = damageHit.point;
+        }
+        else if (hits.Length > 0 && hits[0].collider != null)
+        {
+            finalPos = hits[0].point;
+        }
+        else
+        {
+            finalPos = origin + direction * _range;
             finalPos = ResolveHeroVisualTarget(origin, finalPos);
         }
 
@@ -221,56 +345,37 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         {
             Debug.DrawLine(origin, finalPos, Color.green, 0.5f);
         }
+
         PlayShotLine(origin, finalPos);
+    }
 
-        bool didApplyDamage = false;
-        if (hit.collider != null)
+    private static bool IsBunkerCoverHit(Collider2D collider)
+    {
+        if (collider == null)
         {
-            Hero_V2 heroRoot = hit.collider.GetComponentInParent<Hero_V2>();
-            if (heroRoot != null)
-            {
-                if (_debugCombatLogs)
-                {
-                    Debug.Log($"[ParatrooperWeaponSystem_V2] Hit Hero_V2 for {_baseDamage} damage.");
-                }
-                heroRoot.ReceiveDamage(_baseDamage);
-                didApplyDamage = true;
-            }
-            else
-            {
-                HeroModel_V2 hero = hit.collider.GetComponentInParent<HeroModel_V2>();
-                if (hero != null)
-                {
-                    if (_debugCombatLogs)
-                    {
-                        Debug.Log($"[ParatrooperWeaponSystem_V2] Hit HeroModel_V2 for {_baseDamage} damage.");
-                    }
-                    hero.TakeDamage(_baseDamage);
-                    didApplyDamage = true;
-                }
-            }
+            return false;
         }
 
-        // Last-resort fallback: still allow enemy bullets to hurt Hero if collider/layer setup is incomplete.
-        if (!didApplyDamage && _heroModel != null)
+        if (collider.GetComponentInParent<BunkerHitbox_V2>() != null)
         {
-            float distanceToHero = Vector2.Distance(origin, _heroModel.transform.position);
-            if (distanceToHero <= _range)
-            {
-                if (_heroRoot != null)
-                {
-                    _heroRoot.ReceiveDamage(_baseDamage);
-                }
-                else
-                {
-                    _heroModel.TakeDamage(_baseDamage);
-                }
-
-                Debug.LogWarning("[ParatrooperWeaponSystem_V2] Applied fallback hero damage. Verify Hero collider/layer setup.");
-            }
+            return true;
         }
 
-        // No second line pass here; visual endpoint is already stabilized above.
+        // Fallback for scenes where BunkerHitbox_V2 was not added yet.
+        Transform t = collider.transform;
+        while (t != null)
+        {
+            string n = t.name;
+            if (!string.IsNullOrWhiteSpace(n) &&
+                n.IndexOf("bunker", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return true;
+            }
+
+            t = t.parent;
+        }
+
+        return false;
     }
 
     private void PlayShotLine(Vector2 from, Vector2 to)
@@ -623,10 +728,10 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         }
     }
 
-    private bool TryGetParatrooperAimData(out Vector2 origin, out Vector2 direction)
+    /// <summary>World position of the muzzle / mp40-aim bone when within sanity distance of the paratrooper root.</summary>
+    private bool TryGetParatrooperMuzzleWorld(out Vector2 origin)
     {
         origin = default;
-        direction = default;
 
         ResolveAimBones();
         if (_skeletonAnimation == null || _aimPointBone == null)
@@ -648,34 +753,24 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             }
 
             origin = default;
-            direction = default;
             return false;
         }
 
-        if (_crossHairBone != null)
+        return true;
+    }
+
+    private Vector2 GetHeroCombatAimWorldPoint()
+    {
+        CacheHeroCollider();
+        if (_cachedHeroCollider != null)
         {
-            Vector2 crossPos = _skeletonAnimation.transform.TransformPoint(
-                new Vector3(_crossHairBone.WorldX, _crossHairBone.WorldY, 0f));
-            Vector2 dir = crossPos - origin;
-            if (dir.sqrMagnitude > 0.0001f)
-            {
-                direction = dir.normalized;
-                return true;
-            }
+            Bounds b = _cachedHeroCollider.bounds;
+            float t = Mathf.Clamp01(_heroCombatAimHeightLerp);
+            float y = Mathf.Lerp(b.min.y, b.max.y, t);
+            return new Vector2(b.center.x, y);
         }
 
-        // If no crosshair bone is available, still shoot from aim bone towards Hero.
-        if (_heroModel != null)
-        {
-            Vector2 fallbackDir = ((Vector2)_heroModel.transform.position - origin);
-            if (fallbackDir.sqrMagnitude > 0.0001f)
-            {
-                direction = fallbackDir.normalized;
-                return true;
-            }
-        }
-
-        return false;
+        return _heroModel != null ? (Vector2)_heroModel.transform.position : Vector2.zero;
     }
 
     private void ValidateFirePointOwnership()

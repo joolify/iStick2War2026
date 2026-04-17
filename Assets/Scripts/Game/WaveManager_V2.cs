@@ -21,11 +21,15 @@ namespace iStick2War_V2
         [SerializeField] private ShopPanel_V2 _shopPanel;
         [SerializeField] private EnemySpawner_V2 _enemySpawner;
         [SerializeField] private FollowCamera _followCamera;
+        [Header("Bunker hero protection")]
+        [Tooltip("Optional trigger: hero inside takes no HP damage (enemy shots may still damage the bunker).")]
+        [SerializeField] private Collider2D _bunkerHeroSafeZoneCollider;
         [Header("Top Bar UI (optional)")]
         [SerializeField] private TMP_Text _topBarHealthText;
         [SerializeField] private TMP_Text _topBarCurrentWeaponText;
         [SerializeField] private TMP_Text _topBarCurrentAmmoText;
         [SerializeField] private TMP_Text _topBarReloadText;
+        [SerializeField] private TMP_Text _topBarBunkerHealthText;
         [Tooltip("When reload prompt is visible, pulse color between the label's base color and accent.")]
         [SerializeField] private bool _reloadPromptPulse = true;
         [SerializeField] private float _reloadPromptPulsePeriodSeconds = 0.85f;
@@ -41,8 +45,17 @@ namespace iStick2War_V2
         [SerializeField] private int _healthPurchaseAmount = 25;
         [SerializeField] private int _bunkerRepairCost = 80;
         [SerializeField] private int _bunkerRepairAmount = 25;
+        [Tooltip("Starting bunker max HP for the run (can be raised via shop BunkerMaxUpgrade).")]
         [SerializeField] private int _bunkerMaxHealth = 250;
         [SerializeField] private int _startingBunkerHealth = 250;
+        [Tooltip("Base cost for bunker max upgrade; scales with each purchase.")]
+        [SerializeField] private int _bunkerMaxUpgradeBaseCost = 90;
+        [Tooltip("HP added to bunker max (and current, up to new max) per upgrade.")]
+        [SerializeField] private int _bunkerMaxUpgradeAmount = 25;
+        [Tooltip("0 = no cap on bunker max from upgrades.")]
+        [SerializeField] private int _bunkerMaxHealthCap;
+        [Tooltip("Multiply cost after each completed purchase of that category (e.g. 1.08 ≈ +8%).")]
+        [SerializeField] private float _shopCostScalePerPurchase = 1.08f;
 
         [Header("Debug")]
         [SerializeField] private bool _debugWaveLogs = false;
@@ -54,9 +67,14 @@ namespace iStick2War_V2
         private float _stateEndTime;
         private int _currency;
         private int _bunkerHealth;
+        private int _bunkerMaxHealthRuntime;
+        private int _healthPurchasesThisRun;
+        private int _bunkerMaxUpgradesThisRun;
         private int _enemiesKilledThisWave;
         private Color _reloadPromptBaseColor = Color.white;
         private bool _reloadPromptBaseColorCached;
+        private Transform _cachedBunkerRootTransform;
+        private bool _bunkerRootResolveAttempted;
 
         public event Action<WaveLoopState_V2> OnStateChanged;
         public event Action<int, int, int> OnMetaChanged;
@@ -65,12 +83,135 @@ namespace iStick2War_V2
         public int CurrentWaveNumber => _waveIndex + 1;
         public int Currency => _currency;
         public int BunkerHealth => _bunkerHealth;
-        public int BunkerMaxHealth => _bunkerMaxHealth;
+        public int BunkerMaxHealth => _bunkerMaxHealthRuntime;
+
+        /// <summary>Enemy fire etc. — reduces current bunker HP and refreshes UI.</summary>
+        public void ApplyBunkerDamage(int amount)
+        {
+            if (amount <= 0)
+            {
+                return;
+            }
+
+            _bunkerHealth = Mathf.Max(0, _bunkerHealth - amount);
+            Log($"Bunker took {amount} damage. hp={_bunkerHealth}/{_bunkerMaxHealthRuntime}");
+            EmitMetaChanged();
+        }
+
+        /// <summary>
+        /// When true, hero HP damage from enemies is blocked while in the bunker zone.
+        /// If <see cref="BunkerHealth"/> is 0, cover is breached — always false (hero can be hit).
+        /// </summary>
+        public bool IsHeroInsideBunker()
+        {
+            return IsHeroInsideBunker(_hero);
+        }
+
+        public bool IsHeroInsideBunker(Hero_V2 hero)
+        {
+            if (hero == null || hero.IsDead())
+            {
+                return false;
+            }
+
+            if (_bunkerHealth <= 0)
+            {
+                return false;
+            }
+
+            Vector2 p = GetHeroWorldPointForBunkerCheck(hero);
+
+            if (_bunkerHeroSafeZoneCollider != null)
+            {
+                return _bunkerHeroSafeZoneCollider.OverlapPoint(p);
+            }
+
+            BunkerInteriorZone_V2 zone =
+                FindAnyObjectByType<BunkerInteriorZone_V2>(FindObjectsInactive.Include);
+            if (zone != null && zone.ContainsWorldPoint(p))
+            {
+                return true;
+            }
+
+            return FallbackHeroInsideBunkerRootColliderBounds(p);
+        }
+
+        private static Vector2 GetHeroWorldPointForBunkerCheck(Hero_V2 hero)
+        {
+            Collider2D c = hero.GetComponentInChildren<Collider2D>();
+            if (c != null)
+            {
+                return c.bounds.center;
+            }
+
+            return hero.transform.position;
+        }
+
+        private bool FallbackHeroInsideBunkerRootColliderBounds(Vector2 p)
+        {
+            Transform root = ResolveBunkerRootTransformCached();
+            if (root == null)
+            {
+                return false;
+            }
+
+            Collider2D[] cols = root.GetComponentsInChildren<Collider2D>(true);
+            if (cols == null || cols.Length == 0)
+            {
+                return false;
+            }
+
+            Bounds b = cols[0].bounds;
+            for (int i = 1; i < cols.Length; i++)
+            {
+                if (cols[i] != null)
+                {
+                    b.Encapsulate(cols[i].bounds);
+                }
+            }
+
+            b.Expand(0.08f);
+            Vector3 p3 = new Vector3(p.x, p.y, b.center.z);
+            return b.Contains(p3);
+        }
+
+        private Transform ResolveBunkerRootTransformCached()
+        {
+            if (_cachedBunkerRootTransform != null)
+            {
+                return _cachedBunkerRootTransform;
+            }
+
+            if (_bunkerRootResolveAttempted)
+            {
+                return null;
+            }
+
+            _bunkerRootResolveAttempted = true;
+            _cachedBunkerRootTransform = FindTransformByExactName("BunkerRoot");
+            return _cachedBunkerRootTransform;
+        }
+
+        private static Transform FindTransformByExactName(string exactName)
+        {
+            Transform[] all = FindObjectsByType<Transform>(FindObjectsInactive.Include);
+            for (int i = 0; i < all.Length; i++)
+            {
+                Transform t = all[i];
+                if (t != null && t.gameObject.name.Equals(exactName, StringComparison.Ordinal))
+                {
+                    return t;
+                }
+            }
+
+            return null;
+        }
 
         private void Awake()
         {
             _currency = Mathf.Max(0, _startingCurrency);
-            _bunkerHealth = Mathf.Clamp(_startingBunkerHealth, 0, Mathf.Max(1, _bunkerMaxHealth));
+            _bunkerMaxHealthRuntime = Mathf.Max(1, _bunkerMaxHealth);
+            _bunkerHealth = Mathf.Clamp(_startingBunkerHealth, 0, _bunkerMaxHealthRuntime);
         }
 
         private void Start()
@@ -141,18 +282,20 @@ namespace iStick2War_V2
 
         public bool PurchaseHealth()
         {
-            if (_state != WaveLoopState_V2.Shop || _hero == null)
+            if (_state != WaveLoopState_V2.Shop || _hero == null || _hero.IsHealthFull())
             {
                 return false;
             }
 
-            if (!TrySpend(_healthPurchaseCost))
+            int cost = GetHealthPurchaseCost();
+            if (!TrySpend(cost))
             {
                 return false;
             }
 
             _hero.Heal(_healthPurchaseAmount);
-            Log($"Health purchased (+{_healthPurchaseAmount}) for {_healthPurchaseCost}.");
+            _healthPurchasesThisRun++;
+            Log($"Health purchased (+{_healthPurchaseAmount}) for {cost}.");
             EmitMetaChanged();
             return true;
         }
@@ -167,7 +310,6 @@ namespace iStick2War_V2
                 return false;
             }
 
-            int cost = offer.Cost;
             switch (offer.Kind)
             {
                 case ShopOfferKind_V2.HealthPack:
@@ -176,31 +318,71 @@ namespace iStick2War_V2
                         return false;
                     }
 
-                    if (!TrySpend(cost))
+                    int healthCost = GetOfferEffectiveCost(offer);
+                    if (!TrySpend(healthCost))
                     {
                         return false;
                     }
 
                     int heal = offer.HealthAmount > 0 ? offer.HealthAmount : _healthPurchaseAmount;
                     _hero.Heal(heal);
-                    Log($"Health purchased (+{heal}) for {cost}.");
+                    _healthPurchasesThisRun++;
+                    Log($"Health purchased (+{heal}) for {healthCost}.");
                     EmitMetaChanged();
                     return true;
 
                 case ShopOfferKind_V2.BunkerRepair:
-                    if (_bunkerHealth >= _bunkerMaxHealth)
+                    if (_bunkerHealth >= _bunkerMaxHealthRuntime)
                     {
                         return false;
                     }
 
-                    if (!TrySpend(cost))
+                    int repairCost = Mathf.Max(0, offer.Cost);
+                    if (!TrySpend(repairCost))
                     {
                         return false;
                     }
 
                     int repair = offer.BunkerRepairAmount > 0 ? offer.BunkerRepairAmount : _bunkerRepairAmount;
-                    _bunkerHealth = Mathf.Min(_bunkerMaxHealth, _bunkerHealth + repair);
-                    Log($"Bunker repaired (+{repair}) for {cost}. hp={_bunkerHealth}/{_bunkerMaxHealth}");
+                    _bunkerHealth = Mathf.Min(_bunkerMaxHealthRuntime, _bunkerHealth + repair);
+                    Log($"Bunker repaired (+{repair}) for {repairCost}. hp={_bunkerHealth}/{_bunkerMaxHealthRuntime}");
+                    EmitMetaChanged();
+                    return true;
+
+                case ShopOfferKind_V2.BunkerMaxUpgrade:
+                    if (IsBunkerMaxAtCap())
+                    {
+                        return false;
+                    }
+
+                    int delta = offer.BunkerMaxIncrease > 0 ? offer.BunkerMaxIncrease : _bunkerMaxUpgradeAmount;
+                    if (delta <= 0)
+                    {
+                        return false;
+                    }
+
+                    if (_bunkerMaxHealthCap > 0)
+                    {
+                        int room = _bunkerMaxHealthCap - _bunkerMaxHealthRuntime;
+                        if (room <= 0)
+                        {
+                            return false;
+                        }
+
+                        delta = Mathf.Min(delta, room);
+                    }
+
+                    int maxCost = GetOfferEffectiveCost(offer);
+                    if (!TrySpend(maxCost))
+                    {
+                        return false;
+                    }
+
+                    _bunkerMaxHealthRuntime += delta;
+                    _bunkerHealth = Mathf.Min(_bunkerMaxHealthRuntime, _bunkerHealth + delta);
+                    _bunkerMaxUpgradesThisRun++;
+                    Log(
+                        $"Bunker max upgraded (+{delta} max) for {maxCost}. hp={_bunkerHealth}/{_bunkerMaxHealthRuntime}");
                     EmitMetaChanged();
                     return true;
 
@@ -215,7 +397,8 @@ namespace iStick2War_V2
                         return false;
                     }
 
-                    if (!TrySpend(cost))
+                    int weaponCost = Mathf.Max(0, offer.Cost);
+                    if (!TrySpend(weaponCost))
                     {
                         return false;
                     }
@@ -223,11 +406,11 @@ namespace iStick2War_V2
                     bool added = _hero.UnlockWeapon(offer.Weapon, true);
                     if (!added)
                     {
-                        _currency += cost;
+                        _currency += weaponCost;
                         return false;
                     }
 
-                    Log($"Weapon unlocked: {offer.Weapon.DisplayName} for {cost}.");
+                    Log($"Weapon unlocked: {offer.Weapon.DisplayName} for {weaponCost}.");
                     EmitMetaChanged();
                     return true;
 
@@ -247,7 +430,8 @@ namespace iStick2War_V2
                         return false;
                     }
 
-                    if (!TrySpend(cost))
+                    int ammoCost = Mathf.Max(0, offer.Cost);
+                    if (!TrySpend(ammoCost))
                     {
                         return false;
                     }
@@ -255,11 +439,11 @@ namespace iStick2War_V2
                     bool refilled = _hero.TryRefillWeaponMagazine(offer.Weapon);
                     if (!refilled)
                     {
-                        _currency += cost;
+                        _currency += ammoCost;
                         return false;
                     }
 
-                    Log($"Ammo refilled: {offer.Weapon.DisplayName} for {cost}.");
+                    Log($"Ammo refilled: {offer.Weapon.DisplayName} for {ammoCost}.");
                     EmitMetaChanged();
                     return true;
 
@@ -280,7 +464,12 @@ namespace iStick2War_V2
 
         public bool IsBunkerFullHealth()
         {
-            return _bunkerHealth >= _bunkerMaxHealth;
+            return _bunkerHealth >= _bunkerMaxHealthRuntime;
+        }
+
+        public bool IsBunkerMaxAtCap()
+        {
+            return _bunkerMaxHealthCap > 0 && _bunkerMaxHealthRuntime >= _bunkerMaxHealthCap;
         }
 
         public bool IsHeroHealthFull()
@@ -300,7 +489,7 @@ namespace iStick2War_V2
                 return false;
             }
 
-            if (_bunkerHealth >= _bunkerMaxHealth)
+            if (_bunkerHealth >= _bunkerMaxHealthRuntime)
             {
                 return false;
             }
@@ -310,8 +499,9 @@ namespace iStick2War_V2
                 return false;
             }
 
-            _bunkerHealth = Mathf.Min(_bunkerMaxHealth, _bunkerHealth + _bunkerRepairAmount);
-            Log($"Bunker repaired (+{_bunkerRepairAmount}) for {_bunkerRepairCost}. hp={_bunkerHealth}/{_bunkerMaxHealth}");
+            _bunkerHealth = Mathf.Min(_bunkerMaxHealthRuntime, _bunkerHealth + _bunkerRepairAmount);
+            Log(
+                $"Bunker repaired (+{_bunkerRepairAmount}) for {_bunkerRepairCost}. hp={_bunkerHealth}/{_bunkerMaxHealthRuntime}");
             EmitMetaChanged();
             return true;
         }
@@ -334,8 +524,50 @@ namespace iStick2War_V2
             EmitMetaChanged();
         }
 
-        public int GetHealthPurchaseCost() => Mathf.Max(0, _healthPurchaseCost);
+        public int GetHealthPurchaseCost()
+        {
+            return GetScaledPurchaseCost(Mathf.Max(0, _healthPurchaseCost), _healthPurchasesThisRun);
+        }
+
         public int GetBunkerRepairCost() => Mathf.Max(0, _bunkerRepairCost);
+
+        public int GetBunkerMaxUpgradeCost()
+        {
+            return GetScaledPurchaseCost(Mathf.Max(0, _bunkerMaxUpgradeBaseCost), _bunkerMaxUpgradesThisRun);
+        }
+
+        /// <summary>
+        /// Effective price for carousel UI and purchases (health / bunker max scale per buy; other kinds use offer.Cost).
+        /// </summary>
+        public int GetOfferEffectiveCost(ShopOfferConfig_V2 offer)
+        {
+            if (offer == null)
+            {
+                return 0;
+            }
+
+            switch (offer.Kind)
+            {
+                case ShopOfferKind_V2.HealthPack:
+                {
+                    int basis = offer.Cost > 0 ? offer.Cost : _healthPurchaseCost;
+                    return GetScaledPurchaseCost(Mathf.Max(0, basis), _healthPurchasesThisRun);
+                }
+                case ShopOfferKind_V2.BunkerMaxUpgrade:
+                {
+                    int basis = offer.Cost > 0 ? offer.Cost : _bunkerMaxUpgradeBaseCost;
+                    return GetScaledPurchaseCost(Mathf.Max(0, basis), _bunkerMaxUpgradesThisRun);
+                }
+                default:
+                    return Mathf.Max(0, offer.Cost);
+            }
+        }
+
+        private int GetScaledPurchaseCost(int baseCost, int completedPurchases)
+        {
+            float mult = Mathf.Max(1f, _shopCostScalePerPurchase);
+            return Mathf.Max(1, Mathf.RoundToInt(baseCost * Mathf.Pow(mult, completedPurchases)));
+        }
 
         private void TickInWaveState()
         {
@@ -540,10 +772,22 @@ namespace iStick2War_V2
             {
                 _topBarReloadText = FindTextInSceneByName("txt_topbar_reload");
             }
+
+            if (_topBarBunkerHealthText == null)
+            {
+                _topBarBunkerHealthText = FindTextInSceneByName("txt_topbar_bunkerHealth");
+            }
         }
 
         private void RefreshTopBar()
         {
+            ResolveTopBarReferencesIfNeeded();
+
+            if (_topBarBunkerHealthText != null)
+            {
+                _topBarBunkerHealthText.text = $"Bunker: {_bunkerHealth}/{_bunkerMaxHealthRuntime}";
+            }
+
             if (_hero == null)
             {
                 return;
@@ -602,11 +846,18 @@ namespace iStick2War_V2
                 return null;
             }
 
+            string wanted = objectName.Trim();
             TMP_Text[] allTexts = UnityEngine.Object.FindObjectsByType<TMP_Text>(FindObjectsInactive.Include);
             for (int i = 0; i < allTexts.Length; i++)
             {
                 TMP_Text current = allTexts[i];
-                if (current != null && current.gameObject.name.Equals(objectName, StringComparison.Ordinal))
+                if (current == null)
+                {
+                    continue;
+                }
+
+                string n = current.gameObject.name.Trim();
+                if (n.Equals(wanted, StringComparison.OrdinalIgnoreCase))
                 {
                     return current;
                 }

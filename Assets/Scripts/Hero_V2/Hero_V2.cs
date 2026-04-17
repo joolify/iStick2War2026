@@ -71,6 +71,7 @@ namespace iStick2War_V2
 
         private HeroDamageReceiver_V2 _damageReceiver;
         private HeroDeathHandler_V2 _deathHandler;
+        private WaveManager_V2 _cachedWaveManager;
 
         private void Awake()
         {
@@ -196,6 +197,19 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
 
         public void ReceiveDamage(int damage)
         {
+            if (damage > 0)
+            {
+                if (_cachedWaveManager == null)
+                {
+                    _cachedWaveManager = FindAnyObjectByType<WaveManager_V2>();
+                }
+
+                if (_cachedWaveManager != null && _cachedWaveManager.IsHeroInsideBunker(this))
+                {
+                    return;
+                }
+            }
+
             if (_debugDamageLogs)
             {
                 Debug.Log($"[Hero_V2] ReceiveDamage called. damage={damage}");

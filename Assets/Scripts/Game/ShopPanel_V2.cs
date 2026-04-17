@@ -99,7 +99,9 @@ namespace iStick2War_V2
 
             SetText(_waveText, $"Wave: {_waveManager.CurrentWaveNumber}");
             SetText(_currencyText, $"Currency: {_waveManager.Currency}");
-            SetText(_bunkerText, $"Bunker HP: {_waveManager.BunkerHealth}");
+            SetText(
+                _bunkerText,
+                $"Bunker HP: {_waveManager.BunkerHealth}/{_waveManager.BunkerMaxHealth}");
             SetText(_buyButtonText, _buyButtonDefaultLabel);
             SetText(_healthCostText, $"Heal cost: {_waveManager.GetHealthPurchaseCost()}");
             SetText(_bunkerCostText, $"Repair cost: {_waveManager.GetBunkerRepairCost()}");
@@ -252,12 +254,20 @@ namespace iStick2War_V2
                 case ShopOfferKind_V2.HealthPack:
                     return _waveManager.IsHeroHealthFull()
                         ? "HP full"
-                        : $"Cost: {offer.Cost}";
+                        : $"Cost: {_waveManager.GetOfferEffectiveCost(offer)}";
 
                 case ShopOfferKind_V2.BunkerRepair:
                     return _waveManager.IsBunkerFullHealth()
                         ? "Bunker full"
                         : $"Cost: {offer.Cost}";
+
+                case ShopOfferKind_V2.BunkerMaxUpgrade:
+                    if (_waveManager.IsBunkerMaxAtCap())
+                    {
+                        return "Bunker max cap";
+                    }
+
+                    return $"Cost: {_waveManager.GetOfferEffectiveCost(offer)} (+max HP)";
 
                 case ShopOfferKind_V2.WeaponUnlock:
                     return _waveManager.IsWeaponOwned(offer.Weapon)
@@ -291,7 +301,12 @@ namespace iStick2War_V2
                 return _buyButtonDefaultLabel;
             }
 
-            bool canAfford = _waveManager.CanAfford(offer.Cost);
+            int effectiveCost = _waveManager.GetOfferEffectiveCost(offer);
+            bool canAfford = offer.Kind == ShopOfferKind_V2.BunkerRepair ||
+                             offer.Kind == ShopOfferKind_V2.WeaponUnlock ||
+                             offer.Kind == ShopOfferKind_V2.AmmoRefill
+                ? _waveManager.CanAfford(offer.Cost)
+                : _waveManager.CanAfford(effectiveCost);
             switch (offer.Kind)
             {
                 case ShopOfferKind_V2.HealthPack:
@@ -306,6 +321,14 @@ namespace iStick2War_V2
                     if (_waveManager.IsBunkerFullHealth())
                     {
                         return "FULL";
+                    }
+
+                    return canAfford ? _buyButtonDefaultLabel : "NO CASH";
+
+                case ShopOfferKind_V2.BunkerMaxUpgrade:
+                    if (_waveManager.IsBunkerMaxAtCap())
+                    {
+                        return "MAX";
                     }
 
                     return canAfford ? _buyButtonDefaultLabel : "NO CASH";
