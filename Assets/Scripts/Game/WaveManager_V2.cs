@@ -26,6 +26,10 @@ namespace iStick2War_V2
         [SerializeField] private TMP_Text _topBarCurrentWeaponText;
         [SerializeField] private TMP_Text _topBarCurrentAmmoText;
         [SerializeField] private TMP_Text _topBarReloadText;
+        [Tooltip("When reload prompt is visible, pulse color between the label's base color and accent.")]
+        [SerializeField] private bool _reloadPromptPulse = true;
+        [SerializeField] private float _reloadPromptPulsePeriodSeconds = 0.85f;
+        [SerializeField] private Color _reloadPromptPulseAccent = new Color(1f, 0.5f, 0.12f, 1f);
 
         [Header("Waves")]
         [SerializeField] private List<WaveConfig_V2> _waves = new List<WaveConfig_V2>();
@@ -51,6 +55,8 @@ namespace iStick2War_V2
         private int _currency;
         private int _bunkerHealth;
         private int _enemiesKilledThisWave;
+        private Color _reloadPromptBaseColor = Color.white;
+        private bool _reloadPromptBaseColorCached;
 
         public event Action<WaveLoopState_V2> OnStateChanged;
         public event Action<int, int, int> OnMetaChanged;
@@ -561,8 +567,31 @@ namespace iStick2War_V2
 
             if (_topBarReloadText != null)
             {
+                if (!_reloadPromptBaseColorCached)
+                {
+                    _reloadPromptBaseColor = _topBarReloadText.color;
+                    _reloadPromptBaseColorCached = true;
+                }
+
                 bool showReloadPrompt = _hero.ShouldShowReloadPrompt();
                 _topBarReloadText.gameObject.SetActive(showReloadPrompt);
+                if (showReloadPrompt)
+                {
+                    if (_reloadPromptPulse)
+                    {
+                        float period = Mathf.Max(0.08f, _reloadPromptPulsePeriodSeconds);
+                        float t = Mathf.PingPong(Time.time, period) / period;
+                        _topBarReloadText.color = Color.Lerp(_reloadPromptBaseColor, _reloadPromptPulseAccent, t);
+                    }
+                    else
+                    {
+                        _topBarReloadText.color = _reloadPromptBaseColor;
+                    }
+                }
+                else
+                {
+                    _topBarReloadText.color = _reloadPromptBaseColor;
+                }
             }
         }
 

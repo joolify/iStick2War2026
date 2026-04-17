@@ -24,7 +24,7 @@ TagManager:
   - Shop
   - Topbar
   - Aircraft
-  - 
+  - MainMenu
   - 
   - 
   - 
@@ -67,8 +67,14 @@ TagManager:
   - name: LandingPoint
     uniqueID: 4263339047
     locked: 0
+  - name: Paratrooper
+    uniqueID: 1456502635
+    locked: 0
   - name: Shop
     uniqueID: 2029628213
+    locked: 0
+  - name: MainMenu
+    uniqueID: 1515298761
     locked: 0
   m_RenderingLayers:
   - Default
