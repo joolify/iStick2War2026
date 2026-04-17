@@ -23,6 +23,7 @@ namespace iStick2War_V2
         [SerializeField] private bool _debugExplosion = false;
 
         private float _damage;
+        private float _explosionDamageVsAircraft;
         private bool _isInitialized;
         private float _lifetime;
         private bool _hasExploded;
@@ -30,10 +31,11 @@ namespace iStick2War_V2
         private float _travelSpeed = 14f;
         private bool _useManualMovement;
 
-        public void Initialize(Vector2 direction, float speed, float lifetime, float damage)
+        public void Initialize(Vector2 direction, float speed, float lifetime, float damage, float explosionDamageVsAircraft = -1f)
         {
             _isInitialized = true;
             _damage = Mathf.Max(0f, damage);
+            _explosionDamageVsAircraft = explosionDamageVsAircraft >= 0f ? explosionDamageVsAircraft : _damage;
             _lifetime = Mathf.Max(0.1f, lifetime);
 
             _travelDirection = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector2.right;
@@ -137,6 +139,7 @@ namespace iStick2War_V2
             Collider2D[] hits = Physics2D.OverlapCircleAll(explosionCenter, Mathf.Max(0.1f, _explosionRadius), _explosionMask);
             HashSet<ParatrooperDamageReceiver_V2> damagedParatroopers = new HashSet<ParatrooperDamageReceiver_V2>();
             HashSet<Explodable> damagedExplodables = new HashSet<Explodable>();
+            HashSet<AircraftHealth_V2> damagedAircraft = new HashSet<AircraftHealth_V2>();
 
             for (int i = 0; i < hits.Length; i++)
             {
@@ -150,6 +153,7 @@ namespace iStick2War_V2
                 float normalized = Mathf.Clamp01(dist / Mathf.Max(0.1f, _explosionRadius));
                 float damageMultiplier = Mathf.Lerp(1f, Mathf.Clamp01(_minFalloffMultiplier), normalized);
                 float finalDamage = Mathf.Max(0f, _damage * damageMultiplier);
+                float finalAircraftDamage = Mathf.Max(0f, _explosionDamageVsAircraft * damageMultiplier);
 
                 ParatrooperBodyPart_V2 bodyPart = hit.GetComponent<ParatrooperBodyPart_V2>();
                 if (bodyPart != null)
@@ -178,12 +182,24 @@ namespace iStick2War_V2
                 {
                     damagedExplodables.Add(explodable);
                     explodable.TakeDamage(finalDamage);
+                    continue;
+                }
+
+                AircraftHealth_V2 aircraft =
+                    hit.GetComponent<AircraftHealth_V2>() ??
+                    hit.GetComponentInParent<AircraftHealth_V2>();
+                if (aircraft != null && !damagedAircraft.Contains(aircraft))
+                {
+                    damagedAircraft.Add(aircraft);
+                    aircraft.ApplyDamage(finalAircraftDamage);
                 }
             }
 
             if (_debugExplosion)
             {
-                Debug.Log($"[HeroRocketProjectile_V2] Explosion center={explosionCenter}, radius={_explosionRadius:0.00}, paratroopers={damagedParatroopers.Count}, explodables={damagedExplodables.Count}");
+                Debug.Log(
+                    $"[HeroRocketProjectile_V2] Explosion center={explosionCenter}, radius={_explosionRadius:0.00}, " +
+                    $"paratroopers={damagedParatroopers.Count}, explodables={damagedExplodables.Count}, aircraft={damagedAircraft.Count}");
             }
 
             Destroy(gameObject);

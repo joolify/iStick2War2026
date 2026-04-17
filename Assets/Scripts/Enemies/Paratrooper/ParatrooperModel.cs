@@ -8,7 +8,7 @@ namespace iStick2War
     public class ParatrooperModel : BaseModel
     {
         public new event System.Action GrenadeEvent;
-        public new event System.Action ExplodeEvent;
+        public event System.Action ExplodeEvent;
         public event System.Action MagicSpellEvent;
         public event System.Action DeployEvent;
         public event System.Action GlideEvent;

@@ -10,6 +10,8 @@ namespace iStick2War_V2
         public float Range;
         public LayerMask WhatToHit;
         public float BaseDamage;
+        /// <summary>Hit-scan damage to aircraft (AircraftHealth_V2), per weapon.</summary>
+        public float AircraftDamage;
         public bool DebugDrawShotRay;
     }
 
@@ -27,7 +29,7 @@ namespace iStick2War_V2
     public sealed class HeroShotResolver_V2
     {
         private const float FallbackHitRadius = 0.12f;
-        private const bool DebugShotLogs = false;
+        private static readonly bool DebugShotLogs = false;
 
         public HeroShotResult_V2 ResolveShot(HeroShotContext_V2 context)
         {
@@ -61,7 +63,7 @@ namespace iStick2War_V2
                 {
                     LogShot($"[HeroShotResolver_V2] Hit collider={hit.collider.name} layer={LayerMask.LayerToName(hit.collider.gameObject.layer)}");
                 }
-                ApplyDamage(hit, context.BaseDamage);
+                ApplyDamage(hit, context);
             }
             else
             {
@@ -83,27 +85,36 @@ namespace iStick2War_V2
             };
         }
 
-        private static void ApplyDamage(RaycastHit2D hit, float baseDamage)
+        private static void ApplyDamage(RaycastHit2D hit, HeroShotContext_V2 context)
         {
-            var bodyPart = hit.collider.GetComponent<ParatrooperBodyPart_V2>();
-            if (bodyPart == null)
+            ParatrooperBodyPart_V2 bodyPart = hit.collider.GetComponent<ParatrooperBodyPart_V2>();
+            if (bodyPart != null)
             {
+                var damageInfo = new DamageInfo
+                {
+                    BaseDamage = context.BaseDamage,
+                    HitPoint = hit.point,
+                };
+
+                try
+                {
+                    bodyPart.OnHit(damageInfo);
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogError($"[HeroShotResolver_V2] ApplyDamage failed on collider '{hit.collider.name}': {ex.Message}");
+                }
+
                 return;
             }
 
-            var damageInfo = new DamageInfo
+            AircraftHealth_V2 aircraft =
+                hit.collider.GetComponent<AircraftHealth_V2>() ??
+                hit.collider.GetComponentInParent<AircraftHealth_V2>();
+            if (aircraft != null)
             {
-                BaseDamage = baseDamage,
-                HitPoint = hit.point,
-            };
-
-            try
-            {
-                bodyPart.OnHit(damageInfo);
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogError($"[HeroShotResolver_V2] ApplyDamage failed on collider '{hit.collider.name}': {ex.Message}");
+                float damage = context.AircraftDamage > 0f ? context.AircraftDamage : context.BaseDamage;
+                aircraft.ApplyDamage(damage);
             }
         }
 

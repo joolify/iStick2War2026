@@ -18,6 +18,8 @@ namespace iStick2War_V2
         [SerializeField] private float _fireRate = 0.1f;
         [SerializeField] private float _reloadDuration = 0.5f;
         [SerializeField] private float _baseDamage = 30f;
+        [Tooltip("Damage to aircraft (helicopter). Below zero = use BaseDamage.")]
+        [SerializeField] private float _damageVsAircraft = -1f;
         [SerializeField] private float _range = 100f;
         [SerializeField] private int _maxReserveAmmo = 90;
         [SerializeField] private int _startingReserveAmmo = 90;
@@ -44,6 +46,8 @@ namespace iStick2War_V2
         public float FireRate => Mathf.Max(0.01f, _fireRate);
         public float ReloadDuration => Mathf.Max(0.01f, _reloadDuration);
         public float BaseDamage => Mathf.Max(0f, _baseDamage);
+        /// <summary>Damage applied to aircraft (AircraftHealth_V2). If unset on asset (negative), uses BaseDamage.</summary>
+        public float DamageVsAircraft => _damageVsAircraft < 0f ? BaseDamage : Mathf.Max(0f, _damageVsAircraft);
         public float Range => Mathf.Max(1f, _range);
         public int MaxReserveAmmo => Mathf.Max(0, _maxReserveAmmo);
         public int StartingReserveAmmo => Mathf.Clamp(_startingReserveAmmo, 0, MaxReserveAmmo);

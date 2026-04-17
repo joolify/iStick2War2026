@@ -48,7 +48,7 @@ namespace iStick2War_V2
         private readonly HeroMovementSystem_V2 _movementSystem;
         private readonly HeroWeaponSystem_V2 _weaponSystem;
         private const bool DebugDrawShotRay = true;
-        private const bool DebugCombatLogs = false;
+        private static readonly bool DebugCombatLogs = false;
         private bool _isShootLoopActive;
         private bool _outOfAmmoLatched;
 

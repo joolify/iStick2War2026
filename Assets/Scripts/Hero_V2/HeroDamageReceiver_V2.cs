@@ -48,7 +48,7 @@ namespace iStick2War_V2
  */
     public class HeroDamageReceiver_V2 
     {
-        private const bool DebugDamageLogs = false;
+        private static readonly bool DebugDamageLogs = false;
         private readonly HeroModel_V2 _model;
 
         // Events (extremt viktigt för clean architecture)

@@ -716,12 +716,10 @@ namespace iStick2War
 
         void FaceMouse()
         {
-
-            int i = 0;
-
             Vector3 delta = Vector3.zero;
 
 #if (UNITY_IPHONE || UNITY_ANDROID) && !UNITY_EDITOR
+            int i = 0;
             while (i < Input.touchCount)
             {
                 var localTouch = Input.GetTouch(i);

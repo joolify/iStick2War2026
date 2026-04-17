@@ -27,6 +27,9 @@ public class ParatrooperController_V2 : MonoBehaviour
     ParatrooperDamageReceiver_V2 _damageReceiver;
     ParatrooperWeaponSystem_V2 _weaponSystem;
     private bool _isShootWindowOpen;
+
+    /// <summary>True while Spine shoot window is open (read keeps field from CS0414).</summary>
+    internal bool IsShootWindowOpen => _isShootWindowOpen;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
 
     public void Initialize(

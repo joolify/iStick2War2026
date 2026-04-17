@@ -22,7 +22,7 @@ TagManager:
   - EnemyDead
   - EnemyBodyPart
   - Shop
-  - 
+  - Topbar
   - 
   - 
   - 
@@ -60,6 +60,9 @@ TagManager:
     locked: 0
   - name: Foreground
     uniqueID: 2062274835
+    locked: 0
+  - name: Aircrafts
+    uniqueID: 2015292705
     locked: 0
   - name: LandingPoint
     uniqueID: 4263339047

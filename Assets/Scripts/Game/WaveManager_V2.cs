@@ -555,7 +555,7 @@ namespace iStick2War_V2
                 return null;
             }
 
-            TMP_Text[] allTexts = UnityEngine.Object.FindObjectsByType<TMP_Text>(FindObjectsSortMode.None);
+            TMP_Text[] allTexts = UnityEngine.Object.FindObjectsByType<TMP_Text>(FindObjectsInactive.Include);
             for (int i = 0; i < allTexts.Length; i++)
             {
                 TMP_Text current = allTexts[i];

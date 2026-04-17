@@ -442,9 +442,7 @@ namespace iStick2War_V2
                 "txt_shop_startGame"
             };
 
-            TMP_Text[] allTexts = Object.FindObjectsByType<TMP_Text>(
-                FindObjectsInactive.Include,
-                FindObjectsSortMode.None);
+            TMP_Text[] allTexts = Object.FindObjectsByType<TMP_Text>(FindObjectsInactive.Include);
             HashSet<Canvas> unique = new HashSet<Canvas>();
 
             for (int n = 0; n < names.Length; n++)

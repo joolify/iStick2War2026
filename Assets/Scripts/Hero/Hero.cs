@@ -11,9 +11,11 @@ namespace iStick2War
         public float maxJumpHeight = 4;
         public float minJumpHeight = 1;
         public float timeToJumpApex = .4f;
+#pragma warning disable 0414 // Used when Controller2D / CalculateVelocity integration is re-enabled.
         float accelerationTimeAirborne = .2f;
         float accelerationTimeGrounded = .1f;
         float moveSpeed = 6;
+#pragma warning restore 0414
 
         public Vector2 wallJumpClimb;
         public Vector2 wallJumpOff;

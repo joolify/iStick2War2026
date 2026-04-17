@@ -39,7 +39,7 @@ namespace iStick2War_V2
  */
     public class HeroWeaponSystem_V2 
     {
-        private const bool DebugWeaponLogs = false;
+        private static readonly bool DebugWeaponLogs = false;
         private readonly HeroModel_V2 _model;
         private readonly HeroWeaponInventory_V2 _inventory = new HeroWeaponInventory_V2();
 
@@ -180,6 +180,7 @@ namespace iStick2War_V2
             HeroWeaponRuntimeState_V2 activeWeapon = _inventory.ActiveWeapon;
             float range = activeWeapon != null ? activeWeapon.Definition.Range : 100f;
             float baseDamage = activeWeapon != null ? activeWeapon.Definition.BaseDamage : 30f;
+            float aircraftDamage = activeWeapon != null ? activeWeapon.Definition.DamageVsAircraft : baseDamage;
             bool debugRay = activeWeapon != null ? activeWeapon.Definition.DebugDrawShotRay : defaultDebugDrawShotRay;
 
             return new HeroShotContext_V2
@@ -189,6 +190,7 @@ namespace iStick2War_V2
                 Range = range,
                 WhatToHit = LayerMask.GetMask("EnemyBodyPart"),
                 BaseDamage = baseDamage,
+                AircraftDamage = aircraftDamage,
                 DebugDrawShotRay = debugRay
             };
         }
@@ -233,7 +235,12 @@ namespace iStick2War_V2
             HeroRocketProjectile_V2 rocket = projectileObject.GetComponent<HeroRocketProjectile_V2>();
             if (rocket != null)
             {
-                rocket.Initialize(dir, definition.ProjectileSpeed, definition.ProjectileLifetime, definition.BaseDamage);
+                rocket.Initialize(
+                    dir,
+                    definition.ProjectileSpeed,
+                    definition.ProjectileLifetime,
+                    definition.BaseDamage,
+                    definition.DamageVsAircraft);
             }
             else
             {

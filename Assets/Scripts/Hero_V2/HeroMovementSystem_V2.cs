@@ -61,7 +61,7 @@ namespace iStick2War_V2
  */
     public class HeroMovementSystem_V2
     {
-        private const bool DebugMovementLogs = false;
+        private static readonly bool DebugMovementLogs = false;
 
         private HeroModel_V2 _model;
         private readonly Transform _transform;
