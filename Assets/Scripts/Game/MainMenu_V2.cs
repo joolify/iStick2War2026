@@ -36,6 +36,10 @@ namespace iStick2War_V2
         [SerializeField] private GameObject _settingsPanel;
         [SerializeField] private bool _pauseTimeWhileMenuOpen = true;
 
+        [Header("Gameplay")]
+        [Tooltip("Optional; if unset, resolved once when Play is pressed.")]
+        [SerializeField] private WaveManager_V2 _waveManager;
+
         private bool _gameStarted;
         private bool _loggedMissingSettingsPanel;
 
@@ -130,6 +134,21 @@ namespace iStick2War_V2
             if (_pauseTimeWhileMenuOpen)
             {
                 Time.timeScale = 1f;
+            }
+
+            NotifyWaveManagerGameStartedIfPossible();
+        }
+
+        private void NotifyWaveManagerGameStartedIfPossible()
+        {
+            if (_waveManager == null)
+            {
+                _waveManager = FindAnyObjectByType<WaveManager_V2>();
+            }
+
+            if (_waveManager != null)
+            {
+                _waveManager.NotifyGameStartedFromMainMenu();
             }
         }
 

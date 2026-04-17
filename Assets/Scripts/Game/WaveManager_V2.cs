@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using iStick2War;
@@ -30,6 +31,12 @@ namespace iStick2War_V2
         [SerializeField] private TMP_Text _topBarCurrentAmmoText;
         [SerializeField] private TMP_Text _topBarReloadText;
         [SerializeField] private TMP_Text _topBarBunkerHealthText;
+        [SerializeField] private TMP_Text _topBarWaveText;
+        [Header("Top bar wave label (intro)")]
+        [Tooltip("Fully visible duration after main menu Play or shop Continue before fade-out.")]
+        [SerializeField] private float _topBarWaveTextVisibleSeconds = 4f;
+        [Tooltip("Alpha fade duration after the hold.")]
+        [SerializeField] private float _topBarWaveTextFadeOutSeconds = 0.75f;
         [Tooltip("When reload prompt is visible, pulse color between the label's base color and accent.")]
         [SerializeField] private bool _reloadPromptPulse = true;
         [SerializeField] private float _reloadPromptPulsePeriodSeconds = 0.85f;
@@ -75,6 +82,10 @@ namespace iStick2War_V2
         private bool _reloadPromptBaseColorCached;
         private Transform _cachedBunkerRootTransform;
         private bool _bunkerRootResolveAttempted;
+        private Coroutine _topBarWaveTextRoutine;
+        private Coroutine _deferredTopBarWaveIntroRoutine;
+        private Color _topBarWaveTextBaseColor = Color.white;
+        private bool _topBarWaveTextBaseColorCached;
 
         public event Action<WaveLoopState_V2> OnStateChanged;
         public event Action<int, int, int> OnMetaChanged;
@@ -84,6 +95,28 @@ namespace iStick2War_V2
         public int Currency => _currency;
         public int BunkerHealth => _bunkerHealth;
         public int BunkerMaxHealth => _bunkerMaxHealthRuntime;
+
+        /// <summary>
+        /// Call from <see cref="MainMenu_V2"/> after Play: shows <c>Wave N</c> for <see cref="_topBarWaveTextVisibleSeconds"/>, then fades out.
+        /// </summary>
+        public void NotifyGameStartedFromMainMenu()
+        {
+            BeginTopBarWaveTextIntro();
+        }
+
+        /// <summary>
+        /// Shows the top-bar wave label (hold + fade) using <see cref="CurrentWaveNumber"/>.
+        /// </summary>
+        private void BeginTopBarWaveTextIntro()
+        {
+            if (_topBarWaveTextRoutine != null)
+            {
+                StopCoroutine(_topBarWaveTextRoutine);
+                _topBarWaveTextRoutine = null;
+            }
+
+            _topBarWaveTextRoutine = StartCoroutine(TopBarWaveTextIntroRoutine());
+        }
 
         /// <summary>Enemy fire etc. — reduces current bunker HP and refreshes UI.</summary>
         public void ApplyBunkerDamage(int amount)
@@ -218,6 +251,8 @@ namespace iStick2War_V2
         {
             ResolveCameraFollowReferenceIfNeeded();
             ResolveTopBarReferencesIfNeeded();
+            CacheTopBarWaveTextBaseColorIfNeeded();
+            HideTopBarWaveTextImmediate();
             if (_shopPanel != null)
             {
                 _shopPanel.Initialize(this);
@@ -522,6 +557,13 @@ namespace iStick2War_V2
             _waveIndex++;
             EnterPreparingState();
             EmitMetaChanged();
+            if (_deferredTopBarWaveIntroRoutine != null)
+            {
+                StopCoroutine(_deferredTopBarWaveIntroRoutine);
+                _deferredTopBarWaveIntroRoutine = null;
+            }
+
+            _deferredTopBarWaveIntroRoutine = StartCoroutine(DeferredTopBarWaveTextIntroNextFrame());
         }
 
         public int GetHealthPurchaseCost()
@@ -777,6 +819,11 @@ namespace iStick2War_V2
             {
                 _topBarBunkerHealthText = FindTextInSceneByName("txt_topbar_bunkerHealth");
             }
+
+            if (_topBarWaveText == null)
+            {
+                _topBarWaveText = FindTextInSceneByName("txt_topbar_waveText");
+            }
         }
 
         private void RefreshTopBar()
@@ -837,6 +884,127 @@ namespace iStick2War_V2
                     _topBarReloadText.color = _reloadPromptBaseColor;
                 }
             }
+        }
+
+        private void CacheTopBarWaveTextBaseColorIfNeeded()
+        {
+            if (_topBarWaveTextBaseColorCached || _topBarWaveText == null)
+            {
+                return;
+            }
+
+            Color c = _topBarWaveText.color;
+            c.a = 1f;
+            _topBarWaveTextBaseColor = c;
+            _topBarWaveTextBaseColorCached = true;
+        }
+
+        private void HideTopBarWaveTextImmediate()
+        {
+            if (_topBarWaveText == null)
+            {
+                return;
+            }
+
+            CacheTopBarWaveTextBaseColorIfNeeded();
+            Color c = _topBarWaveTextBaseColor;
+            c.a = 0f;
+            _topBarWaveText.color = c;
+        }
+
+        /// <summary>
+        /// After shop UI teardown, wait one frame so canvases/layout settle before showing the wave label.
+        /// </summary>
+        private IEnumerator DeferredTopBarWaveTextIntroNextFrame()
+        {
+            yield return null;
+            BeginTopBarWaveTextIntro();
+            _deferredTopBarWaveIntroRoutine = null;
+        }
+
+        /// <summary>
+        /// Ensures ancestors from the wave label up to (and including) Topbar-canvas are active so TMP can render.
+        /// </summary>
+        private void EnsureTopbarBranchActiveForWaveLabel()
+        {
+            if (_topBarWaveText == null)
+            {
+                return;
+            }
+
+            Transform t = _topBarWaveText.transform;
+            Transform topbarCanvas = null;
+            Transform walk = t;
+            while (walk != null)
+            {
+                if (walk.name.Equals("Topbar-canvas", StringComparison.OrdinalIgnoreCase))
+                {
+                    topbarCanvas = walk;
+                    break;
+                }
+
+                walk = walk.parent;
+            }
+
+            if (topbarCanvas == null)
+            {
+                return;
+            }
+
+            walk = _topBarWaveText.transform;
+            while (walk != null)
+            {
+                if (!walk.gameObject.activeSelf)
+                {
+                    walk.gameObject.SetActive(true);
+                }
+
+                if (walk == topbarCanvas)
+                {
+                    break;
+                }
+
+                walk = walk.parent;
+            }
+        }
+
+        private IEnumerator TopBarWaveTextIntroRoutine()
+        {
+            ResolveTopBarReferencesIfNeeded();
+            if (_topBarWaveText == null)
+            {
+                _topBarWaveTextRoutine = null;
+                yield break;
+            }
+
+            EnsureTopbarBranchActiveForWaveLabel();
+            CacheTopBarWaveTextBaseColorIfNeeded();
+            _topBarWaveText.gameObject.SetActive(true);
+            _topBarWaveText.text = $"Wave {CurrentWaveNumber}";
+            Color c = _topBarWaveTextBaseColor;
+            c.a = 1f;
+            _topBarWaveText.color = c;
+
+            float hold = Mathf.Max(0f, _topBarWaveTextVisibleSeconds);
+            if (hold > 0f)
+            {
+                yield return new WaitForSecondsRealtime(hold);
+            }
+
+            float fade = Mathf.Max(0.01f, _topBarWaveTextFadeOutSeconds);
+            float t = 0f;
+            while (t < fade)
+            {
+                t += Time.unscaledDeltaTime;
+                float a = 1f - Mathf.Clamp01(t / fade);
+                c = _topBarWaveTextBaseColor;
+                c.a = a;
+                _topBarWaveText.color = c;
+                yield return null;
+            }
+
+            HideTopBarWaveTextImmediate();
+            _topBarWaveTextRoutine = null;
         }
 
         private static TMP_Text FindTextInSceneByName(string objectName)

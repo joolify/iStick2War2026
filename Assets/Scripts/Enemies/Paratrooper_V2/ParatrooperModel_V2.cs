@@ -37,6 +37,17 @@ public class ParatrooperModel_V2 : MonoBehaviour
     public float health = 55f;
     public float armorMultiplier = 1f;
 
+    /// <summary>Scales <see cref="health"/> after Awake profile setup (e.g. per-wave difficulty).</summary>
+    public void ApplyWaveHealthMultiplier(float multiplier)
+    {
+        if (multiplier <= 0f || Mathf.Approximately(multiplier, 1f))
+        {
+            return;
+        }
+
+        health *= multiplier;
+    }
+
     public StickmanBodyState currentState;
 
     public Dictionary<BodyPartType, float> damageMultipliers;

@@ -77,6 +77,16 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
     private int _lineSortingLayerId = -1;
     private Collider2D _cachedHeroCollider;
 
+    public void ApplyWaveDamageMultiplier(float multiplier)
+    {
+        if (multiplier <= 0f || Mathf.Approximately(multiplier, 1f))
+        {
+            return;
+        }
+
+        _baseDamage = Mathf.Max(1, Mathf.RoundToInt(_baseDamage * multiplier));
+    }
+
     public void Initialize(ParatrooperModel_V2 model)
     {
         _model = model;

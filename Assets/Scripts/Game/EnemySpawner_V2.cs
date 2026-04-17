@@ -125,6 +125,7 @@ namespace iStick2War_V2
         private bool _spawnRoutineFinished;
         private bool _isWaveActive;
         private int _waveSessionId;
+        private WaveConfig_V2 _activeWaveConfig;
         private static bool _loggedFrustumPaddingClamp;
         private bool _loggedMissingParatrooperMountOnce;
         private int _paratrooperDebugSpawnSeq;
@@ -154,17 +155,25 @@ namespace iStick2War_V2
 
             _isWaveActive = true;
             _waveSessionId++;
+            _activeWaveConfig = config;
             _onEnemyKilled = onEnemyKilled;
             _targetSpawnCount = Mathf.Max(0, config.EnemyCount);
             _spawnedCount = 0;
             _spawnRoutineFinished = false;
             _pendingDelayedDropCoroutines = 0;
             _spawnRoutine = StartCoroutine(SpawnRoutine(config));
+            if (config.BomberPassCount > 0 && _debugSpawnLogs)
+            {
+                Debug.Log(
+                    "[EnemySpawner_V2] This wave requests " + config.BomberPassCount +
+                    " bomber pass(es); bomber spawn is not implemented yet (helicopter paratrooper drops still run).");
+            }
         }
 
         public void StopWave()
         {
             _isWaveActive = false;
+            _activeWaveConfig = null;
             if (_spawnRoutine != null)
             {
                 StopCoroutine(_spawnRoutine);
@@ -393,6 +402,13 @@ namespace iStick2War_V2
             // Awake visual sanitize / missing reconcile (e.g. SkeletonAnimation on root) can leave rigidbody root off
             // the requested drop while Spine is elsewhere — snap so gameplay matches the spawn resolution logs.
             spawned.SnapSpawnAlignmentToRequestedWorld(worldPosition);
+
+            if (_activeWaveConfig != null)
+            {
+                spawned.ApplyWaveDifficultyMultipliers(
+                    _activeWaveConfig.EnemyHealthMultiplier,
+                    _activeWaveConfig.EnemyDamageMultiplier);
+            }
 
             _spawnedCount++;
 

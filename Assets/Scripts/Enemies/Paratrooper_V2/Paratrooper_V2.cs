@@ -433,6 +433,37 @@ public class Paratrooper : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Applied by <see cref="EnemySpawner_V2"/> after spawn so <see cref="WaveConfig_V2"/> multipliers affect this unit.
+    /// </summary>
+    public void ApplyWaveDifficultyMultipliers(float healthMultiplier, float damageMultiplier)
+    {
+        if (_model == null)
+        {
+            _model = GetComponent<ParatrooperModel_V2>();
+        }
+
+        if (_model != null)
+        {
+            _model.ApplyWaveHealthMultiplier(healthMultiplier);
+        }
+
+        if (_weaponSystem == null)
+        {
+            _weaponSystem = GetComponent<ParatrooperWeaponSystem_V2>();
+        }
+
+        if (_weaponSystem == null)
+        {
+            _weaponSystem = GetComponentInChildren<ParatrooperWeaponSystem_V2>(true);
+        }
+
+        if (_weaponSystem != null)
+        {
+            _weaponSystem.ApplyWaveDamageMultiplier(damageMultiplier);
+        }
+    }
+
     private void WireSystems()
     {
         // Inject dependencies manually (clean + fast in Unity)
