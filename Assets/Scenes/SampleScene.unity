@@ -537,7 +537,7 @@ Transform:
   m_GameObject: {fileID: 244598614}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.33, y: -0.95, z: 0}
+  m_LocalPosition: {x: -0.35, y: -0.93, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -5681,7 +5681,7 @@ GameObject:
   - component: {fileID: 1275965429}
   - component: {fileID: 1275965428}
   - component: {fileID: 1275965430}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: bunkerFront
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5899,6 +5899,11 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1429252030 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6125229543569532899, guid: ccf58fd5ff6ab824383aeb9b7f41dedb, type: 3}
+  m_PrefabInstance: {fileID: 2034365236}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1445804472
 GameObject:
   m_ObjectHideFlags: 0
@@ -6910,7 +6915,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1714380458
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6952,7 +6957,7 @@ MonoBehaviour:
     _bunkerRepairAmount: 0
     _bunkerMaxIncrease: 0
     _weapon: {fileID: 0}
-    _previewObject: {fileID: 6125229543569532899, guid: ccf58fd5ff6ab824383aeb9b7f41dedb, type: 3}
+    _previewObject: {fileID: 1429252030}
   _offerTitleText: {fileID: 0}
   _offerSubtitleText: {fileID: 0}
   _buyButtonText: {fileID: 606058596}
@@ -7555,6 +7560,13 @@ MonoBehaviour:
   _useFrustumOffscreenSpawnWhenNoAnchors: 1
   _offscreenBeyondFrustumHorizontalWorld: 2
   _flyLaneVerticalNormalized01: 0.82
+  _alignFlyLaneYToGroundSurface: 1
+  _groundSurfaceProbeMask:
+    serializedVersion: 2
+    m_Bits: 0
+  _flyLaneHeightAboveGroundWorld: 5.75
+  _groundProbeStartPaddingAboveFrustumTop: 1.5
+  _groundProbeMaxDistanceWorld: 220
   _aircraftPrefab: {fileID: 7381843924167722091, guid: e4631d7f4e27c5b4f93ab8ce44f5b27b, type: 3}
   _aircraftAutoDestroySeconds: 4
   _paratrooperMountChildName: ParatrooperDrop
@@ -7916,7 +7928,7 @@ Transform:
   m_GameObject: {fileID: 1985666074}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.00000089407, y: 0, z: 0}
+  m_LocalPosition: {x: -0.02, y: 1.54, z: 0}
   m_LocalScale: {x: 57.835735, y: 0.99116, z: 0.99116}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -7956,7 +7968,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
+  m_Offset: {x: 0, y: -1.9526764}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -7966,7 +7978,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 1, y: 1}
+  m_Size: {x: 1, y: 1.339596}
   m_EdgeRadius: 0
 --- !u!1 &1991422063
 GameObject:
@@ -9376,21 +9388,13 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 6004268766125524457, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
-      propertyPath: m_SortingLayer
-      value: 9
-      objectReference: {fileID: 0}
-    - target: {fileID: 6004268766125524457, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
-      propertyPath: m_SortingLayerID
-      value: 1456502635
-      objectReference: {fileID: 0}
     - target: {fileID: 6008574131695582798, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 6.96
+      value: 2.03
       objectReference: {fileID: 0}
     - target: {fileID: 6008574131695582798, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 3.67
+      value: -1.2
       objectReference: {fileID: 0}
     - target: {fileID: 6008574131695582798, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
       propertyPath: m_LocalPosition.z
@@ -9455,11 +9459,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 865140650397979084, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.73
+      value: 0.36
       objectReference: {fileID: 0}
     - target: {fileID: 865140650397979084, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.38
+      value: -1.23
       objectReference: {fileID: 0}
     - target: {fileID: 865140650397979084, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: m_LocalPosition.z
@@ -9512,6 +9516,22 @@ PrefabInstance:
     - target: {fileID: 7159943630526338291, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: m_Name
       value: HERO V2
+      objectReference: {fileID: 0}
+    - target: {fileID: 8181619668035624711, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: m_Size.x
+      value: 0.8422687
+      objectReference: {fileID: 0}
+    - target: {fileID: 8181619668035624711, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: m_Size.y
+      value: 1.3731008
+      objectReference: {fileID: 0}
+    - target: {fileID: 8181619668035624711, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: m_Offset.x
+      value: -0.8542435
+      objectReference: {fileID: 0}
+    - target: {fileID: 8181619668035624711, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: m_Offset.y
+      value: -2.19751
       objectReference: {fileID: 0}
     - target: {fileID: 8271757112210747490, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: m_LocalPosition.x

@@ -36,6 +36,17 @@ namespace iStick2War_V2
         [Tooltip("Fly lane height: 0 = bottom inset of frame, 1 = top inset (orthographic, uses Frustum Inset Padding).")]
         [Range(0f, 1f)]
         [SerializeField] private float _flyLaneVerticalNormalized01 = 0.82f;
+        [Tooltip(
+            "When using computed frustum spawns, raycast down from above the camera to the Ground layer and place the fly lane " +
+            "that many world units above the hit. Falls back to the normalized frustum lane if nothing is hit (keeps old behaviour).")]
+        [SerializeField] private bool _alignFlyLaneYToGroundSurface = true;
+        [SerializeField] private LayerMask _groundSurfaceProbeMask = 0;
+        [Tooltip("Helicopter / drop lane sits this far above the probed ground surface (world Y).")]
+        [SerializeField] private float _flyLaneHeightAboveGroundWorld = 5.75f;
+        [Tooltip("Ray origin is this far above the top inset of the orthographic frustum before casting down.")]
+        [SerializeField] private float _groundProbeStartPaddingAboveFrustumTop = 1.5f;
+        [Tooltip("Max ray length when probing for ground (world units).")]
+        [SerializeField] private float _groundProbeMaxDistanceWorld = 220f;
 
         [Header("Aircraft (optional)")]
         [Tooltip("e.g. Fa_223_Drache — instantiated at the chosen left/right spawn anchor when anchors are used.")]
@@ -374,7 +385,15 @@ namespace iStick2War_V2
             if (usedAnchorSpawn)
             {
                 ApplyParatrooperSpawnFacing(spawned.transform, fromLeft);
+                // Awake() may flatten Spine local offset while prefab scale is still default; facing flips root X
+                // scale afterward and mirrors the skeleton in world space unless we compensate again.
+                spawned.ReconcileRootPositionAfterSpawnFacing();
             }
+
+            // Awake visual sanitize / missing reconcile (e.g. SkeletonAnimation on root) can leave rigidbody root off
+            // the requested drop while Spine is elsewhere — snap so gameplay matches the spawn resolution logs.
+            spawned.SnapSpawnAlignmentToRequestedWorld(worldPosition);
+
             _spawnedCount++;
 
             ParatrooperDeathHandler_V2 deathHandler = spawned.GetComponent<ParatrooperDeathHandler_V2>();
@@ -803,11 +822,65 @@ namespace iStick2War_V2
             float visibleMaxX = camPos.x + halfWidth;
             float minY = camPos.y - halfHeight + pad;
             float maxY = camPos.y + halfHeight - pad;
-            float y = Mathf.Lerp(minY, maxY, Mathf.Clamp01(_flyLaneVerticalNormalized01));
+            float yFromFrustum = Mathf.Lerp(minY, maxY, Mathf.Clamp01(_flyLaneVerticalNormalized01));
+            float y = ResolveFlyLaneWorldY(cam, camPos, minY, maxY, yFromFrustum);
 
             float x = fromLeft ? visibleMinX - margin : visibleMaxX + margin;
             aircraftWorldPos = new Vector3(x, y, _anchorSpawnWorldZ);
             rawWorldForLog = aircraftWorldPos;
+            return true;
+        }
+
+        private int ResolveGroundSurfaceProbeMask()
+        {
+            if (_groundSurfaceProbeMask.value != 0)
+            {
+                return _groundSurfaceProbeMask.value;
+            }
+
+            int ground = LayerMask.NameToLayer("Ground");
+            return ground >= 0 ? 1 << ground : 0;
+        }
+
+        private float ResolveFlyLaneWorldY(Camera cam, Vector3 camPos, float minY, float maxY, float yFromFrustum)
+        {
+            if (!_alignFlyLaneYToGroundSurface || cam == null)
+            {
+                return yFromFrustum;
+            }
+
+            int mask = ResolveGroundSurfaceProbeMask();
+            if (mask == 0)
+            {
+                return yFromFrustum;
+            }
+
+            if (!TryProbeGroundSurfaceY(cam, camPos, mask, out float groundY))
+            {
+                return yFromFrustum;
+            }
+
+            float candidate = groundY + Mathf.Max(0f, _flyLaneHeightAboveGroundWorld);
+            return Mathf.Clamp(candidate, minY, maxY);
+        }
+
+        private bool TryProbeGroundSurfaceY(Camera cam, Vector3 camPos, int mask, out float groundY)
+        {
+            groundY = 0f;
+            float halfHeight = cam.orthographicSize;
+            float halfWidth = halfHeight * cam.aspect;
+            float rawPad = Mathf.Max(0f, _orthographicFrustumInsetPadding);
+            float pad = GetClampedFrustumPadding(rawPad, halfWidth, halfHeight);
+            float topY = camPos.y + halfHeight - pad + Mathf.Max(0f, _groundProbeStartPaddingAboveFrustumTop);
+            Vector2 origin = new Vector2(camPos.x, topY);
+            float dist = Mathf.Max(1f, _groundProbeMaxDistanceWorld);
+            RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.down, dist, mask);
+            if (hit.collider == null)
+            {
+                return false;
+            }
+
+            groundY = hit.point.y;
             return true;
         }
 

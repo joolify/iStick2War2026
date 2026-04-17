@@ -79,6 +79,8 @@ namespace iStick2War_V2
 
         private bool isGrounded;
         private const float GroundCheckDistance = 0.2f;
+        private readonly int _groundPhysicsLayer;
+        private readonly int _groundRaycastMask;
         private float _jumpGracePeriodTimer;
         public float JumpGracePeriod = 0.12f;
         public float FallThresholdVelocity = -0.1f;
@@ -89,6 +91,8 @@ namespace iStick2War_V2
             _transform = model.transform;
             _rigidbody2D = model.GetComponent<Rigidbody2D>();
             _collider2D = model.GetComponent<Collider2D>();
+            _groundPhysicsLayer = LayerMask.NameToLayer("Ground");
+            _groundRaycastMask = _groundPhysicsLayer >= 0 ? 1 << _groundPhysicsLayer : Physics2D.DefaultRaycastLayers;
         }
 
         // -------------------------
@@ -293,11 +297,16 @@ namespace iStick2War_V2
 
         private RaycastHit2D GetFirstValidGroundHit(Vector2 origin)
         {
-            RaycastHit2D[] hits = Physics2D.RaycastAll(origin, Vector2.down, GroundCheckDistance);
+            RaycastHit2D[] hits = Physics2D.RaycastAll(origin, Vector2.down, GroundCheckDistance, _groundRaycastMask);
             for (int i = 0; i < hits.Length; i++)
             {
                 Collider2D hitCollider = hits[i].collider;
                 if (hitCollider == null || hitCollider == _collider2D || hitCollider.isTrigger)
+                {
+                    continue;
+                }
+
+                if (_groundPhysicsLayer >= 0 && hitCollider.gameObject.layer != _groundPhysicsLayer)
                 {
                     continue;
                 }

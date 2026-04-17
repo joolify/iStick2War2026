@@ -53,6 +53,13 @@ namespace iStick2War_V2
         [SerializeField] private bool _debugLifecycleLogs = false;
         [SerializeField] private bool _debugDamageLogs = false;
 
+        [Header("Physics")]
+        [Tooltip(
+            "Bunker cover often uses solid Collider2D while shots use the same geometry. The hero Rigidbody2D would " +
+            "otherwise rest on those colliders even when Ground raycasts miss. Adds Bunker to Rigidbody2D.excludeLayers " +
+            "(Unity 6). BunkerHitbox / ray weapons are unaffected.")]
+        [SerializeField] private bool _excludeBunkerLayerFromHeroRigidbodyContacts = true;
+
         [Header("Core References")]
         [SerializeField] private HeroModel_V2 _model;
         [SerializeField] private HeroView_V2 _view;
@@ -72,6 +79,7 @@ namespace iStick2War_V2
         private HeroDamageReceiver_V2 _damageReceiver;
         private HeroDeathHandler_V2 _deathHandler;
         private WaveManager_V2 _cachedWaveManager;
+        private int _heroRigidbodyBunkerExcludeBits;
 
         private void Awake()
         {
@@ -80,6 +88,7 @@ namespace iStick2War_V2
                 Debug.Log("HERE AWAKE");
             }
             BindComponents();
+            ApplyHeroRigidbodyBunkerContactExclusion();
             CreateSystems();
             InitSystems();
 
@@ -94,6 +103,50 @@ namespace iStick2War_V2
             _deathHandler.OnDeathHandled += _view.PlayDeathEffect;
 
             _deathHandler.OnDeathHandled += OnGameOver;
+        }
+
+        private void OnDestroy()
+        {
+            ClearHeroRigidbodyBunkerContactExclusion();
+        }
+
+        private void ApplyHeroRigidbodyBunkerContactExclusion()
+        {
+            if (!_excludeBunkerLayerFromHeroRigidbodyContacts || _model == null)
+            {
+                return;
+            }
+
+            Rigidbody2D rb = _model.GetComponent<Rigidbody2D>();
+            if (rb == null)
+            {
+                return;
+            }
+
+            int bunker = LayerMask.NameToLayer("Bunker");
+            if (bunker < 0)
+            {
+                return;
+            }
+
+            _heroRigidbodyBunkerExcludeBits = 1 << bunker;
+            rb.excludeLayers |= _heroRigidbodyBunkerExcludeBits;
+        }
+
+        private void ClearHeroRigidbodyBunkerContactExclusion()
+        {
+            if (_heroRigidbodyBunkerExcludeBits == 0 || _model == null)
+            {
+                return;
+            }
+
+            Rigidbody2D rb = _model.GetComponent<Rigidbody2D>();
+            if (rb != null)
+            {
+                rb.excludeLayers &= ~_heroRigidbodyBunkerExcludeBits;
+            }
+
+            _heroRigidbodyBunkerExcludeBits = 0;
         }
 
         /*

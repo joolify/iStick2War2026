@@ -216,9 +216,26 @@ public class ParatrooperView_V2 : MonoBehaviour
                 trackIndex = 0;
                 break;
             case StickmanBodyState.Land:
-                nextAnimation = _landAnim != null ? _landAnim : _glideAnim;
+                // Full-body clip on track 0 (same idea as death). Glide lives on track 1 only in V2; leaving Land on
+                // track 1 can fail to replace the visible pose depending on track mix / setup pose.
+                if (_landAnim != null && _landAnim.Animation != null)
+                {
+                    nextAnimation = _landAnim.Animation;
+                    trackIndex = 0;
+                }
+                else
+                {
+                    if (_landAnim != null)
+                    {
+                        Debug.LogError(
+                            "[ParatrooperView_V2] _landAnim did not resolve to a Spine.Animation (check ReferenceAsset skeleton + animation name, e.g. E/land). Falling back to glide.");
+                    }
+
+                    nextAnimation = _glideAnim;
+                    trackIndex = 1;
+                }
+
                 loop = false;
-                trackIndex = 1;
                 break;
             case StickmanBodyState.Idle:
             case StickmanBodyState.Shoot:
@@ -253,15 +270,30 @@ public class ParatrooperView_V2 : MonoBehaviour
             _skeletonAnimation.AnimationState.ClearTracks();
             _skeletonAnimation.AnimationState.SetEmptyAnimation(1, 0f);
         }
+        else if (state == StickmanBodyState.Land && trackIndex == 0)
+        {
+            _skeletonAnimation.AnimationState.ClearTracks();
+        }
         else
         {
+            // Land may have left a hold pose on track 0; combat states use track 1 and must not mix with it.
+            if (state == StickmanBodyState.Idle || state == StickmanBodyState.Shoot)
+            {
+                _skeletonAnimation.AnimationState.ClearTrack(0);
+            }
+
             // Clear previous entry on this track to avoid stale blends.
             _skeletonAnimation.AnimationState.ClearTrack(trackIndex);
         }
+
         var trackEntry = _skeletonAnimation.AnimationState.SetAnimation(trackIndex, nextAnimation, loop);
         if (trackEntry != null)
         {
             trackEntry.MixDuration = 0f;
+            if (state == StickmanBodyState.Land && trackIndex == 0)
+            {
+                trackEntry.TrackTime = 0f;
+            }
         }
         if (isDeathState)
         {

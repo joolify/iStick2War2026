@@ -2,6 +2,7 @@ using iStick2War;
 using Spine.Unity;
 using System;
 using System.Collections.Generic;
+using System.Text;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem.LowLevel;
@@ -109,9 +110,14 @@ public class Paratrooper : MonoBehaviour
 
     [Header("View")]
     [SerializeField] private ParatrooperView_V2 _view;
+    [Tooltip(
+        "If true, Awake() zeros SkeletonAnimation.localPosition X/Y when its planar offset exceeds the max, and " +
+        "moves the paratrooper root + Rigidbody2D by the same world delta so Spine mesh/hitboxes stay where the prefab " +
+        "placed them (avoids invisible mesh off-screen while shot LineRenderer still uses root/fallback origin).")]
     [SerializeField] private bool _autoFixVisualRootOffsetOnSpawn = true;
+    [Tooltip("Only used when auto-fix is on. Offsets larger than this (planar magnitude) trigger flatten + root compensation.")]
     [SerializeField] private float _maxAllowedVisualRootLocalOffset = 2.5f;
-    [SerializeField] private bool _debugVisualRootOffsetFixLogs = true;
+    [SerializeField] private bool _debugVisualRootOffsetFixLogs;
 
     [Header("Body Parts")]
     [SerializeField] private ParatrooperBodyPart_V2[] _bodyParts;
@@ -124,7 +130,37 @@ public class Paratrooper : MonoBehaviour
     [SerializeField] private float _glideDeathMaxFallSpeed = 4.75f;
     [SerializeField] private LayerMask _groundMask = 0;
     [SerializeField] private float _groundCheckDistance = 0.08f;
-    [SerializeField] private float _nearGroundRayDistance = 1.25f;
+    [Tooltip("How far below the feet we look for Ground when switching Glide → Land (larger = earlier landing).")]
+    [SerializeField] private float _nearGroundRayDistance = 3f;
+    [Tooltip(
+        "Optional empty child at the visual feet. When set, Ground ray origins use this transform (recommended) " +
+        "instead of collider bounds — avoids Spine mesh vs BoundingBox mismatch without adding extra physics colliders.")]
+    [SerializeField] private Transform _groundProbeAnchor;
+    [Tooltip(
+        "If the anchor is not parented under this paratrooper, or its X drifts farther than this from the Rigidbody2D " +
+        "(e.g. wrong scene reference / stale bone), it is ignored so probes use collider or rigidbody fallbacks.")]
+    [SerializeField] private float _groundProbeAnchorMaxHorizontalDriftFromRb = 4f;
+    [Tooltip(
+        "Ground probes use the lowest enabled non-trigger collider on this Rigidbody2D (Spine BoundingBoxFollower " +
+        "polygons), not only the root collider. Negative bias moves the probe down if feet still look above Ground.")]
+    [SerializeField] private float _groundProbeFootBiasWorld;
+    [Tooltip("Buffer size for Rigidbody2D.GetAttachedColliders (raise if you add many hitboxes).")]
+    [SerializeField] [Min(8)] private int _groundAttachedColliderProbeCapacity = 48;
+
+    [Header("Debug — Ground probe")]
+    [Tooltip("Throttled logs for ray origin, mask, hits, and rigidbody vs probe (feet vs colliders vs anchor).")]
+    [SerializeField] private bool _debugGroundProbeLogs;
+    [SerializeField] private float _debugGroundProbeLogIntervalSeconds = 0.35f;
+    [Tooltip("If on, only logs while state is Glide, GlideDie, or Land (reduces noise from Die/Shoot checks).")]
+    [SerializeField] private bool _debugGroundProbeLogOnlyWhenGlideOrLand;
+    [Tooltip(
+        "While deploying / gliding, ignore physics contacts with the Bunker layer so drops are not blocked mid-air " +
+        "(Unity 6 Rigidbody2D.excludeLayers). Cleared when landing or fighting on the ground.")]
+    [SerializeField] private bool _excludeBunkerLayerWhileAirborne = true;
+    [Tooltip(
+        "OR'ed into Rigidbody2D.excludeLayers while Deploy/Glide/GlideDie (in addition to Bunker when enabled). " +
+        "Assign if bunker sandbags / props still use Default or another layer and block falling.")]
+    [SerializeField] private LayerMask _airborneRigidbodyExtraExcludeLayers;
 
     [Header("Collider Debug")]
     [SerializeField] private bool _enableColliderSummaryLog = true;
@@ -136,6 +172,75 @@ public class Paratrooper : MonoBehaviour
     private float _nextColliderSummaryTime;
     private string _lastColliderSummary;
     private int _groundLayer = -1;
+    private int _landingPointLayer = -1;
+    private int _trackedAirborneRigidbodyExcludeBits;
+    private Collider2D[] _attachedCollidersScratch;
+    private bool _warnedAttachedColliderBufferTruncation;
+    private float _lastGroundProbeDebugUnscaledTime = float.NegativeInfinity;
+    private bool _warnedGroundProbeAnchorRejected;
+    private float _airborneGravityScaleCached;
+    private bool _airborneGravityScaleCachedValid;
+
+    /// <summary>
+    /// Spine root world position at end of <see cref="Awake"/> (before spawner flips spawn facing on root scale X).
+    /// Mirroring after that pass would shift the mesh/hitboxes unless we compensate — see <see cref="ReconcileRootPositionAfterSpawnFacing"/>.
+    /// </summary>
+    private Vector3 _spinePivotWorldAfterVisualRootSanitize;
+    private bool _pendingSpineWorldReconcileAfterSpawnFacing;
+
+    private enum GroundProbeOriginSource
+    {
+        Failed,
+        Anchor,
+        AttachedCollidersLowest,
+        MainCollider,
+        RigidbodyPosition,
+    }
+
+    private readonly struct GroundProbeBuild
+    {
+        public readonly bool Ok;
+        public readonly Vector2 Origin;
+        public readonly GroundProbeOriginSource Source;
+        public readonly float DebugLowestSolidMinYWorld;
+        public readonly int DebugSolidColliderCount;
+
+        private GroundProbeBuild(
+            bool ok,
+            Vector2 origin,
+            GroundProbeOriginSource source,
+            float debugLowestSolidMinYWorld,
+            int debugSolidColliderCount)
+        {
+            Ok = ok;
+            Origin = origin;
+            Source = source;
+            DebugLowestSolidMinYWorld = debugLowestSolidMinYWorld;
+            DebugSolidColliderCount = debugSolidColliderCount;
+        }
+
+        public static GroundProbeBuild Failed => new GroundProbeBuild(false, default, GroundProbeOriginSource.Failed, float.NaN, 0);
+
+        public static GroundProbeBuild FromAnchor(Vector2 origin)
+        {
+            return new GroundProbeBuild(true, origin, GroundProbeOriginSource.Anchor, float.NaN, 0);
+        }
+
+        public static GroundProbeBuild FromAttachedLowest(Vector2 origin, float lowestMinYWorld, int solidCount)
+        {
+            return new GroundProbeBuild(true, origin, GroundProbeOriginSource.AttachedCollidersLowest, lowestMinYWorld, solidCount);
+        }
+
+        public static GroundProbeBuild FromMainCollider(Vector2 origin, float lowestMinYWorld)
+        {
+            return new GroundProbeBuild(true, origin, GroundProbeOriginSource.MainCollider, lowestMinYWorld, 1);
+        }
+
+        public static GroundProbeBuild FromRigidbodyPosition(Vector2 origin)
+        {
+            return new GroundProbeBuild(true, origin, GroundProbeOriginSource.RigidbodyPosition, float.NaN, 0);
+        }
+    }
 
 
     /*
@@ -150,15 +255,41 @@ public class Paratrooper : MonoBehaviour
         InitializeDependencies();
         SanitizeVisualRootAlignment();
         _groundLayer = LayerMask.NameToLayer("Ground");
-        if (_groundMask.value == 0 && _groundLayer >= 0)
+        _landingPointLayer = LayerMask.NameToLayer("LandingPoint");
+        int groundProbeMask = LayerMask.GetMask("Ground", "LandingPoint");
+        if (groundProbeMask != 0)
+        {
+            // Prefabs often leave this at Default/-1 (Everything); force a sane mask so probes match IsGroundLayer.
+            _groundMask = groundProbeMask;
+        }
+        else if (_groundMask.value == 0 && _groundLayer >= 0)
         {
             _groundMask = 1 << _groundLayer;
         }
+
         ValidateBodyPartSetup();
 
         WireSystems();
 
         _controller.StartGame();
+        CaptureSpineWorldAnchorForPostSpawnFacingReconcile();
+    }
+
+    private void CaptureSpineWorldAnchorForPostSpawnFacingReconcile()
+    {
+        if (_skeletonAnimation == null)
+        {
+            return;
+        }
+
+        Transform skeletonRoot = _skeletonAnimation.transform;
+        if (skeletonRoot == transform || !skeletonRoot.IsChildOf(transform))
+        {
+            return;
+        }
+
+        _spinePivotWorldAfterVisualRootSanitize = skeletonRoot.position;
+        _pendingSpineWorldReconcileAfterSpawnFacing = true;
     }
 
     private void InitializeDependencies()
@@ -182,6 +313,16 @@ public class Paratrooper : MonoBehaviour
         }
         if (_rigidbody2D == null) _rigidbody2D = GetComponent<Rigidbody2D>();
         if (_mainCollider2D == null) _mainCollider2D = GetComponent<Collider2D>();
+        EnsureAttachedColliderScratch();
+    }
+
+    private void EnsureAttachedColliderScratch()
+    {
+        int cap = Mathf.Clamp(_groundAttachedColliderProbeCapacity, 8, 128);
+        if (_attachedCollidersScratch == null || _attachedCollidersScratch.Length != cap)
+        {
+            _attachedCollidersScratch = new Collider2D[cap];
+        }
     }
 
     private void SanitizeVisualRootAlignment()
@@ -204,13 +345,92 @@ public class Paratrooper : MonoBehaviour
             return;
         }
 
+        Vector3 worldBefore = skeletonRoot.position;
+        skeletonRoot.localPosition = new Vector3(0f, 0f, local.z);
+        Vector3 worldAfter = skeletonRoot.position;
+        Vector3 worldDelta = worldBefore - worldAfter;
+        transform.position += worldDelta;
+        if (_rigidbody2D != null)
+        {
+            _rigidbody2D.position = (Vector2)transform.position;
+        }
+
         if (_debugVisualRootOffsetFixLogs)
         {
             Debug.LogWarning(
-                $"[Paratrooper_V2] Auto-corrected visual root local offset from {local} to (0,0,{local.z:0.###}).");
+                $"[Paratrooper_V2] Flattened SkeletonAnimation local XY from {local} to (0,0,{local.z:0.###}); " +
+                $"compensated root+rb by worldDelta={worldDelta} so Spine world pose is preserved.");
+        }
+    }
+
+    /// <summary>
+    /// Call after any code that changes the paratrooper root's lossy scale (e.g. spawn facing flip). Awake-time
+    /// visual-root flattening preserves Spine world position for the scale at that moment; flipping X afterward
+    /// mirrors children and would otherwise shift the mesh/hitboxes in world space.
+    /// </summary>
+    public void ReconcileRootPositionAfterSpawnFacing()
+    {
+        if (!_pendingSpineWorldReconcileAfterSpawnFacing || _skeletonAnimation == null)
+        {
+            return;
         }
 
-        skeletonRoot.localPosition = new Vector3(0f, 0f, local.z);
+        Transform skeletonRoot = _skeletonAnimation.transform;
+        if (skeletonRoot == transform || !skeletonRoot.IsChildOf(transform))
+        {
+            _pendingSpineWorldReconcileAfterSpawnFacing = false;
+            return;
+        }
+
+        Vector3 delta = _spinePivotWorldAfterVisualRootSanitize - skeletonRoot.position;
+        if (delta.sqrMagnitude < 1e-10f)
+        {
+            _pendingSpineWorldReconcileAfterSpawnFacing = false;
+            return;
+        }
+
+        transform.position += delta;
+        if (_rigidbody2D != null)
+        {
+            _rigidbody2D.position = (Vector2)transform.position;
+        }
+
+        if (_debugVisualRootOffsetFixLogs)
+        {
+            Debug.LogWarning(
+                $"[Paratrooper_V2] Reconciled root+rb after spawn facing by worldDelta={delta} " +
+                $"(preserved spine pivot {_spinePivotWorldAfterVisualRootSanitize}).");
+        }
+
+        _pendingSpineWorldReconcileAfterSpawnFacing = false;
+    }
+
+    /// <summary>
+    /// Spawner calls this after <see cref="Awake"/> and optional spawn-facing. Instantiate uses a world drop point, but
+    /// <see cref="SanitizeVisualRootAlignment"/> may shift the root to preserve Spine pose, and scale flips mirror children.
+    /// This moves root + <see cref="Rigidbody2D"/> so the Spine transform (or the root if SkeletonAnimation is on the root)
+    /// matches <paramref name="requestedWorldPosition"/> in XY.
+    /// </summary>
+    public void SnapSpawnAlignmentToRequestedWorld(Vector3 requestedWorldPosition)
+    {
+        Vector3 referenceWorld = transform.position;
+        if (_skeletonAnimation != null)
+        {
+            referenceWorld = _skeletonAnimation.transform.position;
+        }
+
+        Vector3 delta = requestedWorldPosition - referenceWorld;
+        delta.z = 0f;
+        if (delta.sqrMagnitude < 1e-10f)
+        {
+            return;
+        }
+
+        transform.position += delta;
+        if (_rigidbody2D != null)
+        {
+            _rigidbody2D.position = (Vector2)transform.position;
+        }
     }
 
     private void WireSystems()
@@ -270,6 +490,13 @@ public class Paratrooper : MonoBehaviour
         {
             _damageReceiver.OnExploded -= _view.ExplodeIntoPieces;
         }
+
+        ClearAirborneBunkerCollisionExclusion();
+    }
+
+    private void OnDisable()
+    {
+        ClearAirborneBunkerCollisionExclusion();
     }
 
     /*
@@ -305,11 +532,81 @@ public class Paratrooper : MonoBehaviour
             return;
         }
 
+        UpdateAirborneBunkerCollisionExclusion(to);
+
+        if (to == StickmanBodyState.Land && (from == StickmanBodyState.Glide || from == StickmanBodyState.GlideDie))
+        {
+            SnapRigidbodyToGroundUnderProbe();
+        }
+
         // Death handling
         if (to == StickmanBodyState.Die || to == StickmanBodyState.GlideDie)
         {
             _deathHandler.Die();
         }
+    }
+
+    private void UpdateAirborneBunkerCollisionExclusion(StickmanBodyState to)
+    {
+        if (_rigidbody2D == null)
+        {
+            return;
+        }
+
+        bool airborne =
+            to == StickmanBodyState.Deploy ||
+            to == StickmanBodyState.Glide ||
+            to == StickmanBodyState.GlideDie;
+
+        if (!airborne)
+        {
+            if (_trackedAirborneRigidbodyExcludeBits != 0)
+            {
+                _rigidbody2D.excludeLayers &= ~_trackedAirborneRigidbodyExcludeBits;
+                _trackedAirborneRigidbodyExcludeBits = 0;
+            }
+
+            return;
+        }
+
+        int add = BuildAirborneRigidbodyExcludeLayerBits();
+        if (_trackedAirborneRigidbodyExcludeBits != 0)
+        {
+            _rigidbody2D.excludeLayers &= ~_trackedAirborneRigidbodyExcludeBits;
+        }
+
+        _trackedAirborneRigidbodyExcludeBits = add;
+        if (add != 0)
+        {
+            _rigidbody2D.excludeLayers |= add;
+        }
+    }
+
+    private int BuildAirborneRigidbodyExcludeLayerBits()
+    {
+        int bits = 0;
+        if (_excludeBunkerLayerWhileAirborne)
+        {
+            int bunkerLayer = LayerMask.NameToLayer("Bunker");
+            if (bunkerLayer >= 0)
+            {
+                bits |= 1 << bunkerLayer;
+            }
+        }
+
+        bits |= _airborneRigidbodyExtraExcludeLayers.value;
+        return bits;
+    }
+
+    private void ClearAirborneBunkerCollisionExclusion()
+    {
+        if (_rigidbody2D == null || _trackedAirborneRigidbodyExcludeBits == 0)
+        {
+            return;
+        }
+
+        _rigidbody2D.excludeLayers &= ~_trackedAirborneRigidbodyExcludeBits;
+        _trackedAirborneRigidbodyExcludeBits = 0;
     }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -338,6 +635,49 @@ public class Paratrooper : MonoBehaviour
         {
             _nextColliderSummaryTime = Time.time + Mathf.Max(0.2f, _colliderSummaryIntervalSeconds);
             LogColliderSummary();
+        }
+    }
+
+    private void LateUpdate()
+    {
+        ApplyGroundedCombatPhysicsSuppression();
+    }
+
+    /// <summary>
+    /// Spine hitboxes are often triggers; without a solid floor collider the RB keeps accelerating.
+    /// While landing / shooting on the ground, cancel vertical motion and gravity (X stays physics-driven if any).
+    /// </summary>
+    private void ApplyGroundedCombatPhysicsSuppression()
+    {
+        if (_rigidbody2D == null || _stateMachine == null)
+        {
+            return;
+        }
+
+        StickmanBodyState s = _stateMachine.CurrentState;
+        if (s == StickmanBodyState.Land || s == StickmanBodyState.Shoot)
+        {
+            if (!_airborneGravityScaleCachedValid)
+            {
+                _airborneGravityScaleCached = _rigidbody2D.gravityScale;
+                _airborneGravityScaleCachedValid = true;
+            }
+
+            _rigidbody2D.gravityScale = 0f;
+            Vector2 v = _rigidbody2D.linearVelocity;
+            if (!Mathf.Approximately(v.y, 0f))
+            {
+                v.y = 0f;
+                _rigidbody2D.linearVelocity = v;
+            }
+
+            return;
+        }
+
+        if (_airborneGravityScaleCachedValid &&
+            (s == StickmanBodyState.Deploy || s == StickmanBodyState.Glide || s == StickmanBodyState.GlideDie))
+        {
+            _rigidbody2D.gravityScale = _airborneGravityScaleCached;
         }
     }
 
@@ -450,16 +790,84 @@ public class Paratrooper : MonoBehaviour
 
     private bool IsGrounded()
     {
-        if (_mainCollider2D == null)
+        GroundProbeBuild probe = BuildGroundProbeOrigin();
+        if (!probe.Ok)
         {
+            MaybeLogGroundProbeFailure("IsGrounded", probe);
             return false;
         }
 
-        Bounds bounds = _mainCollider2D.bounds;
-        Vector2 origin = new Vector2(bounds.center.x, bounds.min.y + 0.01f);
         float rayLength = Mathf.Max(0.01f, _groundCheckDistance);
-        RaycastHit2D[] hits = Physics2D.RaycastAll(origin, Vector2.down, rayLength, _groundMask);
+        RaycastHit2D[] hits = Physics2D.RaycastAll(probe.Origin, Vector2.down, rayLength, _groundMask);
+        bool grounded = EvaluateGroundHits(hits);
 
+        MaybeLogGroundProbe("IsGrounded", in probe, rayLength, hits, grounded);
+        return grounded;
+    }
+
+    private bool IsNearGround()
+    {
+        GroundProbeBuild probe = BuildGroundProbeOrigin();
+        if (!probe.Ok)
+        {
+            MaybeLogGroundProbeFailure("IsNearGround", probe);
+            return false;
+        }
+
+        float rayLength = Mathf.Max(_groundCheckDistance, _nearGroundRayDistance);
+        RaycastHit2D[] hits = Physics2D.RaycastAll(probe.Origin, Vector2.down, rayLength, _groundMask);
+        bool near = EvaluateGroundHits(hits);
+
+        MaybeLogGroundProbe("IsNearGround", in probe, rayLength, hits, near);
+        return near;
+    }
+
+    /// <summary>
+    /// When hitboxes are triggers only (no solid collider on the RB), physics never rests on Ground.
+    /// Snap once on Land so the entity stays on the surface the glide probe already trusted.
+    /// </summary>
+    private void SnapRigidbodyToGroundUnderProbe()
+    {
+        if (_rigidbody2D == null)
+        {
+            return;
+        }
+
+        GroundProbeBuild probe = BuildGroundProbeOrigin();
+        if (!probe.Ok)
+        {
+            return;
+        }
+
+        float rayLen = Mathf.Max(_nearGroundRayDistance, 4f);
+        RaycastHit2D hit = Physics2D.Raycast(probe.Origin, Vector2.down, rayLen, _groundMask);
+        if (hit.collider == null)
+        {
+            return;
+        }
+
+        if (hit.collider.transform.IsChildOf(transform))
+        {
+            return;
+        }
+
+        if (!IsGroundLayer(hit.collider.gameObject.layer))
+        {
+            return;
+        }
+
+        float targetFeetY = hit.point.y + 0.02f + _groundProbeFootBiasWorld;
+        float deltaY = targetFeetY - probe.Origin.y;
+        Vector2 p = _rigidbody2D.position;
+        p.y += deltaY;
+        _rigidbody2D.position = p;
+        Vector2 v = _rigidbody2D.linearVelocity;
+        v.y = 0f;
+        _rigidbody2D.linearVelocity = v;
+    }
+
+    private bool EvaluateGroundHits(RaycastHit2D[] hits)
+    {
         for (int i = 0; i < hits.Length; i++)
         {
             Collider2D hitCollider = hits[i].collider;
@@ -468,7 +876,6 @@ public class Paratrooper : MonoBehaviour
                 continue;
             }
 
-            // Ignore this paratrooper's own colliders (root + all children body-part hitboxes).
             if (hitCollider.transform.IsChildOf(transform))
             {
                 continue;
@@ -485,40 +892,260 @@ public class Paratrooper : MonoBehaviour
         return false;
     }
 
-    private bool IsNearGround()
+    /// <summary>
+    /// World point for downward Ground probes: optional feet anchor, else lowest solid collider on the rigidbody.
+    /// </summary>
+    private bool TryGetGroundProbeWorldOrigin(out Vector2 origin)
     {
-        if (_mainCollider2D == null)
+        GroundProbeBuild b = BuildGroundProbeOrigin();
+        origin = b.Origin;
+        return b.Ok;
+    }
+
+    private bool ShouldUseGroundProbeAnchor()
+    {
+        if (_groundProbeAnchor == null)
         {
             return false;
         }
 
-        Bounds bounds = _mainCollider2D.bounds;
-        Vector2 origin = new Vector2(bounds.center.x, bounds.min.y + 0.01f);
-        float rayLength = Mathf.Max(_groundCheckDistance, _nearGroundRayDistance);
-        RaycastHit2D[] hits = Physics2D.RaycastAll(origin, Vector2.down, rayLength, _groundMask);
-
-        for (int i = 0; i < hits.Length; i++)
+        if (_groundProbeAnchor == transform)
         {
-            Collider2D hitCollider = hits[i].collider;
-            if (hitCollider == null)
-            {
-                continue;
-            }
-
-            if (hitCollider.transform.IsChildOf(transform))
-            {
-                continue;
-            }
-
-            if (!IsGroundLayer(hitCollider.gameObject.layer))
-            {
-                continue;
-            }
-
             return true;
         }
 
-        return false;
+        if (!_groundProbeAnchor.IsChildOf(transform))
+        {
+            return false;
+        }
+
+        if (_rigidbody2D == null)
+        {
+            return true;
+        }
+
+        float dx = Mathf.Abs(_groundProbeAnchor.position.x - _rigidbody2D.position.x);
+        return dx <= Mathf.Max(0.01f, _groundProbeAnchorMaxHorizontalDriftFromRb);
+    }
+
+    private GroundProbeBuild BuildGroundProbeOrigin()
+    {
+        if (ShouldUseGroundProbeAnchor())
+        {
+            Vector3 p = _groundProbeAnchor.position;
+            Vector2 origin = new Vector2(p.x, p.y + 0.01f + _groundProbeFootBiasWorld);
+            return GroundProbeBuild.FromAnchor(origin);
+        }
+
+        if (_groundProbeAnchor != null && !_warnedGroundProbeAnchorRejected)
+        {
+            _warnedGroundProbeAnchorRejected = true;
+            Debug.LogWarning(
+                "[Paratrooper_V2] Ground probe anchor is set but ignored (not a child of this paratrooper, or X drift " +
+                $"from Rigidbody2D exceeds {_groundProbeAnchorMaxHorizontalDriftFromRb:F2}). Using collider / rigidbody fallbacks.");
+        }
+
+        float probeX = _rigidbody2D != null ? _rigidbody2D.position.x : transform.position.x;
+        float lowestMinY = float.PositiveInfinity;
+        int solidCount = 0;
+        int written = 0;
+
+        if (_rigidbody2D != null && _attachedCollidersScratch != null)
+        {
+            written = _rigidbody2D.GetAttachedColliders(_attachedCollidersScratch);
+            int totalAttached = _rigidbody2D.attachedColliderCount;
+            if ((written < 0 || totalAttached > _attachedCollidersScratch.Length) && !_warnedAttachedColliderBufferTruncation)
+            {
+                _warnedAttachedColliderBufferTruncation = true;
+                Debug.LogWarning(
+                    $"[Paratrooper_V2] Rigidbody2D has {totalAttached} attached colliders but scratch length is {_attachedCollidersScratch.Length} " +
+                    $"(GetAttachedColliders returned {written}). Raise '{nameof(_groundAttachedColliderProbeCapacity)}' so Ground probes use every hitbox.");
+            }
+
+            if (written > 0)
+            {
+                for (int i = 0; i < written; i++)
+                {
+                    Collider2D c = _attachedCollidersScratch[i];
+                    if (c == null || !c.enabled || c.isTrigger)
+                    {
+                        continue;
+                    }
+
+                    solidCount++;
+                    lowestMinY = Mathf.Min(lowestMinY, c.bounds.min.y);
+                }
+            }
+        }
+
+        if (float.IsPositiveInfinity(lowestMinY) && _mainCollider2D != null)
+        {
+            lowestMinY = _mainCollider2D.bounds.min.y;
+            solidCount = Mathf.Max(1, solidCount);
+            float y = lowestMinY + 0.01f + _groundProbeFootBiasWorld;
+            return GroundProbeBuild.FromMainCollider(new Vector2(probeX, y), lowestMinY);
+        }
+
+        if (float.IsPositiveInfinity(lowestMinY) && written > 0 && _attachedCollidersScratch != null)
+        {
+            for (int i = 0; i < written; i++)
+            {
+                Collider2D c = _attachedCollidersScratch[i];
+                if (c == null || !c.enabled)
+                {
+                    continue;
+                }
+
+                lowestMinY = Mathf.Min(lowestMinY, c.bounds.min.y);
+            }
+        }
+
+        if (!float.IsPositiveInfinity(lowestMinY))
+        {
+            float y = lowestMinY + 0.01f + _groundProbeFootBiasWorld;
+            return GroundProbeBuild.FromAttachedLowest(new Vector2(probeX, y), lowestMinY, solidCount);
+        }
+
+        if (_rigidbody2D != null)
+        {
+            Vector2 fallback = new Vector2(probeX, _rigidbody2D.position.y + 0.01f + _groundProbeFootBiasWorld);
+            return GroundProbeBuild.FromRigidbodyPosition(fallback);
+        }
+
+        return GroundProbeBuild.Failed;
+    }
+
+    private bool ShouldEmitGroundProbeDebug()
+    {
+        if (!_debugGroundProbeLogs)
+        {
+            return false;
+        }
+
+        if (_debugGroundProbeLogOnlyWhenGlideOrLand && _stateMachine != null)
+        {
+            StickmanBodyState s = _stateMachine.CurrentState;
+            if (s != StickmanBodyState.Glide && s != StickmanBodyState.GlideDie && s != StickmanBodyState.Land)
+            {
+                return false;
+            }
+        }
+
+        float t = Time.unscaledTime;
+        if (t - _lastGroundProbeDebugUnscaledTime < Mathf.Max(0.05f, _debugGroundProbeLogIntervalSeconds))
+        {
+            return false;
+        }
+
+        _lastGroundProbeDebugUnscaledTime = t;
+        return true;
+    }
+
+    private void MaybeLogGroundProbeFailure(string probeName, GroundProbeBuild probe)
+    {
+        if (!ShouldEmitGroundProbeDebug())
+        {
+            return;
+        }
+
+        string state = _stateMachine != null ? _stateMachine.CurrentState.ToString() : "?";
+        Debug.Log(
+            $"[Paratrooper_V2 GroundDbg] {name} probe={probeName} state={state} " +
+            $"origin=FAILED mask={_groundMask.value} ({FormatLayerMaskLayers(_groundMask)}) " +
+            $"groundLayer={_groundLayer} landingPointLayer={_landingPointLayer} " +
+            $"rbPos={FormatVec(_rigidbody2D != null ? (Vector2)_rigidbody2D.position : default)} " +
+            $"lossyScaleY={transform.lossyScale.y:F3}");
+    }
+
+    private void MaybeLogGroundProbe(string probeName, in GroundProbeBuild probe, float rayLength, RaycastHit2D[] hits, bool passes)
+    {
+        if (!ShouldEmitGroundProbeDebug())
+        {
+            return;
+        }
+
+        string state = _stateMachine != null ? _stateMachine.CurrentState.ToString() : "?";
+        float vy = _rigidbody2D != null ? _rigidbody2D.linearVelocity.y : float.NaN;
+        string src = probe.Source.ToString();
+        string lowest =
+            float.IsNaN(probe.DebugLowestSolidMinYWorld) ? "n/a" : $"{probe.DebugLowestSolidMinYWorld:F4}";
+        string anchorPos =
+            _groundProbeAnchor != null ? FormatVec(_groundProbeAnchor.position) : "null";
+
+        StringBuilder hitSummary = new StringBuilder();
+        int listed = 0;
+        const int maxList = 6;
+        for (int i = 0; i < hits.Length && listed < maxList; i++)
+        {
+            Collider2D hc = hits[i].collider;
+            if (hc == null)
+            {
+                continue;
+            }
+
+            bool self = hc.transform.IsChildOf(transform);
+            bool ground = IsGroundLayer(hc.gameObject.layer);
+            string why =
+                self ? "self" :
+                !ground ? $"layer={hc.gameObject.layer}({LayerMask.LayerToName(hc.gameObject.layer)})" :
+                "GROUND_OK";
+            hitSummary.Append(
+                $" | hit[{listed}] {hc.name} dist={hits[i].distance:F3} {why}");
+            listed++;
+        }
+
+        if (hits.Length == 0)
+        {
+            hitSummary.Append(" | no hits (mask empty or clear line)");
+        }
+        else if (hits.Length > maxList)
+        {
+            hitSummary.Append($" | …+{hits.Length - maxList} more");
+        }
+
+        Debug.Log(
+            $"[Paratrooper_V2 GroundDbg] {name} probe={probeName} state={state} pass={passes} " +
+            $"originSrc={src} origin={FormatVec(probe.Origin)} rayLen={rayLength:F3} bias={_groundProbeFootBiasWorld:F3} " +
+            $"lowestSolidMinY={lowest} solidCount={probe.DebugSolidColliderCount} anchorPos={anchorPos} " +
+            $"transform.pos={FormatVec(transform.position)} rb.pos={FormatVec(_rigidbody2D != null ? (Vector2)_rigidbody2D.position : default)} " +
+            $"rb.vy={vy:F3} mask={_groundMask.value} ({FormatLayerMaskLayers(_groundMask)}){hitSummary}");
+    }
+
+    private static string FormatVec(Vector2 v)
+    {
+        return $"({v.x:F3},{v.y:F3})";
+    }
+
+    private static string FormatVec(Vector3 v)
+    {
+        return $"({v.x:F3},{v.y:F3},{v.z:F3})";
+    }
+
+    private static string FormatLayerMaskLayers(LayerMask mask)
+    {
+        if (mask.value == 0)
+        {
+            return "none";
+        }
+
+        var sb = new StringBuilder();
+        for (int i = 0; i < 32; i++)
+        {
+            if ((mask.value & (1 << i)) == 0)
+            {
+                continue;
+            }
+
+            string layerName = LayerMask.LayerToName(i);
+            if (sb.Length > 0)
+            {
+                sb.Append(',');
+            }
+
+            sb.Append(string.IsNullOrEmpty(layerName) ? $"#{i}" : layerName);
+        }
+
+        return sb.Length == 0 ? "none" : sb.ToString();
     }
 
     private bool IsGroundLayer(int layer)
@@ -528,7 +1155,17 @@ public class Paratrooper : MonoBehaviour
             _groundLayer = LayerMask.NameToLayer("Ground");
         }
 
-        return layer == _groundLayer;
+        if (_landingPointLayer < 0)
+        {
+            _landingPointLayer = LayerMask.NameToLayer("LandingPoint");
+        }
+
+        if (_groundLayer >= 0 && layer == _groundLayer)
+        {
+            return true;
+        }
+
+        return _landingPointLayer >= 0 && layer == _landingPointLayer;
     }
 
     private void ValidateBodyPartSetup()
