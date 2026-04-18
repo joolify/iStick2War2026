@@ -906,11 +906,11 @@ public class Paratrooper : MonoBehaviour
         float skin = Mathf.Max(0.01f, _deathFallGroundSkin);
         float targetFeetY = surfaceY + skin;
         float deltaY = targetFeetY - probe.Origin.y;
+        bool glideDie = s == StickmanBodyState.GlideDie;
+
         if (deltaY <= 0.001f)
         {
-            // Already aligned to Ground via prior snaps — but we only get physics contact Land in rare setups.
-            // Without this, GlideDie stays forever and the ground impact Spine clip never runs.
-            if (s == StickmanBodyState.GlideDie)
+            if (glideDie)
             {
                 TryGlideDieToLandWhenProbeGrounded();
             }
@@ -928,15 +928,15 @@ public class Paratrooper : MonoBehaviour
             _rigidbody2D.linearVelocity = v;
         }
 
-        if (s == StickmanBodyState.GlideDie)
+        if (glideDie)
         {
             TryGlideDieToLandWhenProbeGrounded();
         }
     }
 
     /// <summary>
-    /// When death-fall clamp finds real Ground under the feet, move gameplay to <see cref="StickmanBodyState.Land"/> so
-    /// the view can play the fall-down-back impact trio (not only when Unity fires collision/trigger callbacks).
+    /// GlideDie often never gets collision callbacks with Ground; the death-fall clamp still places feet on the surface.
+    /// Enter <see cref="StickmanBodyState.Land"/> so the view can play the ground impact clip.
     /// </summary>
     private void TryGlideDieToLandWhenProbeGrounded()
     {
@@ -945,7 +945,11 @@ public class Paratrooper : MonoBehaviour
             return;
         }
 
-        Debug.Log("[Paratrooper_V2] GlideDie grounded (death-fall probe) -> Land before ground impact anim.");
+        if (_debugGroundProbeLogs)
+        {
+            Debug.Log("[Paratrooper_V2] GlideDie grounded (death-fall probe) -> Land.");
+        }
+
         _stateMachine.ChangeState(StickmanBodyState.Land);
     }
 
@@ -999,7 +1003,11 @@ public class Paratrooper : MonoBehaviour
             return;
         }
 
-        Debug.Log("[Paratrooper_V2] GlideDie touched Ground surface (physics) -> Land before ground impact anim.");
+        if (_debugGroundProbeLogs)
+        {
+            Debug.Log("[Paratrooper_V2] GlideDie grounded (physics contact) -> Land.");
+        }
+
         _stateMachine.ChangeState(StickmanBodyState.Land);
     }
 

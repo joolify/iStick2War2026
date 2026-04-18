@@ -56,10 +56,7 @@ public class ParatrooperModel_V2 : MonoBehaviour
     /// </summary>
     public bool pendingDieAfterLandAnim;
 
-    /// <summary>
-    /// When true, <see cref="StickmanBodyState.Die"/> should not start a new Spine clip — the randomized
-    /// land-fall-down-back impact was already played on <see cref="StickmanBodyState.Land"/> after <see cref="StickmanBodyState.GlideDie"/>.
-    /// </summary>
+    /// <summary>Skip a second ground-death clip: impact already ran on <see cref="StickmanBodyState.Land"/> after <see cref="StickmanBodyState.GlideDie"/>.</summary>
     public bool suppressDieAnimationFromAirborneImpact;
 
     public Dictionary<BodyPartType, float> damageMultipliers;
