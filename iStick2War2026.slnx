@@ -4,6 +4,7 @@
   <Project Path="spine-csharp.csproj" />
   <Project Path="iStick2War.EditModeTests.csproj" />
   <Project Path="spine-unity.csproj" />
+  <Project Path="iStick2War.PlayModeTests.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
 </Solution>

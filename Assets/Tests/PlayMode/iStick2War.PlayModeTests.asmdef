@@ -1,0 +1,19 @@
+{
+    "name": "iStick2War.PlayModeTests",
+    "rootNamespace": "iStick2War.Tests.PlayMode",
+    "references": [
+        "UnityEngine.TestRunner",
+        "iStick2War.Game"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
