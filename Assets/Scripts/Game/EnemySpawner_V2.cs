@@ -376,6 +376,13 @@ namespace iStick2War_V2
                 return;
             }
 
+            // Prefab root may be saved inactive (children still show as activeSelf in YAML but do not render).
+            // Deferring Awake breaks InitializeDependencies / snap logic and leaves the unit invisible.
+            if (!spawned.gameObject.activeSelf)
+            {
+                spawned.gameObject.SetActive(true);
+            }
+
             int spawnSeq = ++_paratrooperDebugSpawnSeq;
 
             // Ensure each drop starts with deterministic physics and cannot inherit stray prefab velocity.
@@ -746,7 +753,17 @@ namespace iStick2War_V2
         public bool IsWaveCleared()
         {
             PruneInactiveTrackedDeaths();
-            bool allSpawned = _spawnRoutineFinished || _spawnedCount >= _targetSpawnCount;
+
+            // BeginWave failed (null prefab / config) leaves target 0 — never report "cleared" or waves end instantly.
+            if (_targetSpawnCount <= 0)
+            {
+                return false;
+            }
+
+            // Require BOTH: spawn coroutine finished AND every scheduled drop produced a paratrooper.
+            // Old logic used (_spawnRoutineFinished || _spawnedCount >= target), which was true when
+            // target==0 (0 >= 0) and when the routine finished before delayed drops spawned anyone.
+            bool allSpawned = _spawnRoutineFinished && _spawnedCount >= _targetSpawnCount;
             return allSpawned
                 && _pendingDelayedDropCoroutines == 0
                 && _trackedDeaths.Count == 0;

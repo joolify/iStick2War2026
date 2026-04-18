@@ -1,3 +1,4 @@
+using Assets.Scripts.Components;
 using iStick2War;
 using Spine;
 using Spine.Unity;
@@ -81,6 +82,8 @@ public class ParatrooperView_V2 : MonoBehaviour
     private Dictionary<StickmanBodyState, string> animationMap;
 
     private ParatrooperStateMachine_V2 _stateMachine;
+    private ParatrooperModel_V2 _model;
+    private ParatrooperController_V2 _controller;
     public Bone _crossHairBone;
     public Bone _aimPointBone;
 
@@ -111,11 +114,16 @@ public class ParatrooperView_V2 : MonoBehaviour
     [SerializeField] private float _gibWorldZ = 0f;
     [SerializeField] private string _gibPhysicsLayerName = "";
 
-    public void Initialize(ParatrooperStateMachine_V2 stateMachine)
+    public void Initialize(
+        ParatrooperStateMachine_V2 stateMachine,
+        ParatrooperModel_V2 model,
+        ParatrooperController_V2 controller)
     {
         _skeletonAnimation = GetComponent<SkeletonAnimation>();
 
         _stateMachine = stateMachine;
+        _model = model;
+        _controller = controller;
 
         _stateMachine.OnStateChanged += HandleStateChanged;
         ResolveAimBones();
@@ -130,6 +138,16 @@ public class ParatrooperView_V2 : MonoBehaviour
     private void HandleStateChanged(StickmanBodyState from, StickmanBodyState to)
     {
         _lastStateBeforeChange = from;
+        // View subscribes before Paratrooper; a Die transition may be corrected to GlideDie in the same event.
+        // If we play ground death here first, we hide the parachute and show the wrong clip. Always use glide
+        // death visuals when dying from parachute deploy/glide.
+        if (to == StickmanBodyState.Die &&
+            (from == StickmanBodyState.Glide || from == StickmanBodyState.Deploy))
+        {
+            PlayAnimation(StickmanBodyState.GlideDie);
+            return;
+        }
+
         PlayAnimation(to);
     }
 
@@ -173,15 +191,23 @@ public class ParatrooperView_V2 : MonoBehaviour
         int trackIndex = 0;
         bool loop = false;
         bool isDeathState = state == StickmanBodyState.Die || state == StickmanBodyState.GlideDie;
-        if (!isDeathState)
+        bool landAfterAirborneDeath =
+            state == StickmanBodyState.Land && _lastStateBeforeChange == StickmanBodyState.GlideDie;
+
+        if (!isDeathState && !landAfterAirborneDeath)
         {
             _suppressParachuteVisuals = false;
         }
 
         if (_deathAnimationLocked && !isDeathState)
         {
-            LogAnimation($"[ParatrooperView_V2] Ignored animation state {state} because death animation is locked.");
-            return;
+            if (!landAfterAirborneDeath)
+            {
+                LogAnimation($"[ParatrooperView_V2] Ignored animation state {state} because death animation is locked.");
+                return;
+            }
+
+            _deathAnimationLocked = false;
         }
 
         // Map state → animation
@@ -199,6 +225,14 @@ public class ParatrooperView_V2 : MonoBehaviour
                 trackIndex = 1;
                 break;
             case StickmanBodyState.Die:
+                if (_model != null && _model.suppressDieAnimationFromAirborneImpact)
+                {
+                    _model.suppressDieAnimationFromAirborneImpact = false;
+                    LogAnimation(
+                        "[ParatrooperView_V2] Die animation skipped — ground impact clip already played on Land after GlideDie.");
+                    return;
+                }
+
                 nextAnimation = GetRandomGroundDeathAnimation();
                 loop = false;
                 trackIndex = 0;
@@ -218,7 +252,30 @@ public class ParatrooperView_V2 : MonoBehaviour
             case StickmanBodyState.Land:
                 // Full-body clip on track 0 (same idea as death). Glide lives on track 1 only in V2; leaving Land on
                 // track 1 can fail to replace the visible pose depending on track mix / setup pose.
-                if (_landAnim != null && _landAnim.Animation != null)
+                if (landAfterAirborneDeath)
+                {
+                    AnimationReferenceAsset impactRef = GetRandomGroundDeathAnimation();
+                    nextAnimation = impactRef != null ? impactRef.Animation : null;
+                    trackIndex = 0;
+                    loop = false;
+                    if (nextAnimation == null && _landAnim != null && _landAnim.Animation != null)
+                    {
+                        nextAnimation = _landAnim.Animation;
+                    }
+
+                    if (nextAnimation == null)
+                    {
+                        if (_landAnim != null)
+                        {
+                            Debug.LogError(
+                                "[ParatrooperView_V2] Airborne death impact: no ground-death or land animation resolved. Falling back to glide.");
+                        }
+
+                        nextAnimation = _glideAnim != null ? _glideAnim.Animation : null;
+                        trackIndex = 1;
+                    }
+                }
+                else if (_landAnim != null && _landAnim.Animation != null)
                 {
                     nextAnimation = _landAnim.Animation;
                     trackIndex = 0;
@@ -305,8 +362,38 @@ public class ParatrooperView_V2 : MonoBehaviour
                 _skeletonAnimation.LateUpdate();
             }
         }
+        else if (landAfterAirborneDeath)
+        {
+            _deathAnimationLocked = true;
+            ForceApplyAnimationFirstFrame(nextAnimation);
+            _suppressParachuteVisuals = true;
+            HideParachuteVisualsForGroundDeath();
+            _skeletonAnimation.LateUpdate();
+            if (trackEntry != null && _controller != null)
+            {
+                trackEntry.Complete -= OnGlideDieGroundImpactLandClipComplete;
+                trackEntry.Complete += OnGlideDieGroundImpactLandClipComplete;
+            }
+        }
+
         LogAnimation($"[ParatrooperView_V2] SetAnimation track={trackIndex}, state={state}, clip={nextAnimation.Name}, loop={loop}");
         LogActiveTracks($"after SetAnimation ({state})");
+    }
+
+    /// <summary>
+    /// Fall-down-back impact clips may omit the same Spine event as <c>E_land</c>; mirror <see cref="AnimationEventType.LandFinished"/> so the controller can enter <see cref="StickmanBodyState.Die"/>.
+    /// </summary>
+    private void OnGlideDieGroundImpactLandClipComplete(TrackEntry trackEntry)
+    {
+        if (trackEntry != null)
+        {
+            trackEntry.Complete -= OnGlideDieGroundImpactLandClipComplete;
+        }
+
+        if (_controller != null)
+        {
+            _controller.OnAnimationEvent(AnimationEventType.LandFinished);
+        }
     }
 
     private AnimationReferenceAsset GetRandomGroundDeathAnimation()

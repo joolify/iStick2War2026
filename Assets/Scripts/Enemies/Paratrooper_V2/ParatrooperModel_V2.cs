@@ -50,6 +50,18 @@ public class ParatrooperModel_V2 : MonoBehaviour
 
     public StickmanBodyState currentState;
 
+    /// <summary>
+    /// When true, LandFinished (Spine event) should go to Die instead of Shoot — used after GlideDie reaches Ground
+    /// and plays the land clip before ground death.
+    /// </summary>
+    public bool pendingDieAfterLandAnim;
+
+    /// <summary>
+    /// When true, <see cref="StickmanBodyState.Die"/> should not start a new Spine clip — the randomized
+    /// land-fall-down-back impact was already played on <see cref="StickmanBodyState.Land"/> after <see cref="StickmanBodyState.GlideDie"/>.
+    /// </summary>
+    public bool suppressDieAnimationFromAirborneImpact;
+
     public Dictionary<BodyPartType, float> damageMultipliers;
 
     void Awake()

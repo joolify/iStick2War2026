@@ -45,6 +45,10 @@ namespace iStick2War_V2
         [Header("Waves")]
         [SerializeField] private List<WaveConfig_V2> _waves = new List<WaveConfig_V2>();
         [SerializeField] private float _prepareDurationSeconds = 2f;
+        [Tooltip(
+            "When EnemySpawner is used, waves end only when the spawner reports cleared (all drops + kills). " +
+            "WaveConfig duration no longer cuts the wave short. This is a last-resort timeout if the spawner never clears.")]
+        [SerializeField] private float _waveSpawnerStuckFailSafeSeconds = 300f;
 
         [Header("Economy")]
         [SerializeField] private int _startingCurrency = 100;
@@ -72,6 +76,7 @@ namespace iStick2War_V2
         private WaveLoopState_V2 _state = WaveLoopState_V2.Preparing;
         private int _waveIndex;
         private float _stateEndTime;
+        private float _waveSpawnerFailSafeEndTime;
         private int _currency;
         private int _bunkerHealth;
         private int _bunkerMaxHealthRuntime;
@@ -620,9 +625,22 @@ namespace iStick2War_V2
                 return;
             }
 
-            if (_enemySpawner != null && _enemySpawner.IsWaveCleared())
+            if (_enemySpawner != null)
             {
-                CompleteWave();
+                if (_enemySpawner.IsWaveCleared())
+                {
+                    CompleteWave();
+                    return;
+                }
+
+                if (Time.time >= _waveSpawnerFailSafeEndTime)
+                {
+                    Log(
+                        "Wave force-completed (fail-safe): EnemySpawner did not report cleared before stuck timeout. " +
+                        "Increase _waveSpawnerStuckFailSafeSeconds or fix spawner if this triggers in normal play.");
+                    CompleteWave();
+                }
+
                 return;
             }
 
@@ -677,12 +695,19 @@ namespace iStick2War_V2
             SetState(WaveLoopState_V2.InWave);
             SetCameraFollowEnabled(true);
             _stateEndTime = Time.time + wave.WaveDurationSeconds;
+            float failSafeBasis = Mathf.Max(
+                _waveSpawnerStuckFailSafeSeconds,
+                wave.WaveDurationSeconds * 2f + 60f);
+            _waveSpawnerFailSafeEndTime = Time.time + failSafeBasis;
             _enemiesKilledThisWave = 0;
             if (_enemySpawner != null)
             {
                 _enemySpawner.BeginWave(wave, ReportEnemyKilled);
             }
-            Log($"Wave {CurrentWaveNumber} started. enemies={wave.EnemyCount}, duration={wave.WaveDurationSeconds:0.0}s");
+            Log(
+                $"Wave {CurrentWaveNumber} started. enemies={wave.EnemyCount}, " +
+                $"configDuration={wave.WaveDurationSeconds:0.0}s (not used as hard cap when spawner active), " +
+                $"spawnerFailSafe={failSafeBasis:0.0}s");
         }
 
         private void EnterGameOverState()

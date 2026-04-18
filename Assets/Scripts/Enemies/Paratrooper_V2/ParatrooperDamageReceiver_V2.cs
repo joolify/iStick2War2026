@@ -45,6 +45,7 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
 
     private ParatrooperModel_V2 _model;
     private ParatrooperStateMachine_V2 _stateMachine;
+    private Paratrooper _paratrooper;
     private bool _deathStateSent;
     public event System.Action<Vector2, float> OnExploded;
 
@@ -52,6 +53,7 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
     {
         _model = GetComponentInParent<ParatrooperModel_V2>();
         _stateMachine = GetComponentInParent<ParatrooperStateMachine_V2>();
+        _paratrooper = GetComponentInParent<Paratrooper>();
     }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -121,9 +123,8 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
                 }
                 else
                 {
-                    var currentState = _stateMachine.CurrentState;
-                    bool isAirborne = currentState == StickmanBodyState.Glide || currentState == StickmanBodyState.Deploy;
-                    _stateMachine.ChangeState(isAirborne ? StickmanBodyState.GlideDie : StickmanBodyState.Die);
+                    bool useAirborneDeath = _paratrooper != null && _paratrooper.ShouldUseAirborneDeathFlow();
+                    _stateMachine.ChangeState(useAirborneDeath ? StickmanBodyState.GlideDie : StickmanBodyState.Die);
                 }
             }
         }

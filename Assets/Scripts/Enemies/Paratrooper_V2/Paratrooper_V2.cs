@@ -96,6 +96,10 @@ View reacts visually
      */
 namespace iStick2War_V2
 {
+/// <summary>
+/// Runs LateUpdate after default Spine components so feet/bone-based ground probes match the current pose.
+/// </summary>
+[DefaultExecutionOrder(500)]
 public class Paratrooper : MonoBehaviour
 {
     [Header("Core Systems")]
@@ -129,6 +133,10 @@ public class Paratrooper : MonoBehaviour
     [SerializeField] private float _glideMinFallSpeed = 0.5f;
     [SerializeField] private float _glideDeathMaxFallSpeed = 4.75f;
     [SerializeField] private LayerMask _groundMask = 0;
+    [Tooltip(
+        "Optional: the BoxCollider2D (or any Collider2D) on your Ground GameObject. When set, landing / near-ground " +
+        "raycasts only count hits on this collider (or same GameObject). When null, any Ground or LandingPoint layer hit counts.")]
+    [SerializeField] private Collider2D _groundSurfaceCollider;
     [SerializeField] private float _groundCheckDistance = 0.08f;
     [Tooltip("How far below the feet we look for Ground when switching Glide → Land (larger = earlier landing).")]
     [SerializeField] private float _nearGroundRayDistance = 3f;
@@ -137,8 +145,9 @@ public class Paratrooper : MonoBehaviour
         "instead of collider bounds — avoids Spine mesh vs BoundingBox mismatch without adding extra physics colliders.")]
     [SerializeField] private Transform _groundProbeAnchor;
     [Tooltip(
-        "If the anchor is not parented under this paratrooper, or its X drifts farther than this from the Rigidbody2D " +
-        "(e.g. wrong scene reference / stale bone), it is ignored so probes use collider or rigidbody fallbacks.")]
+        "When the anchor is a child, probes use Rigidbody2D X + anchor Y only if |anchor.x - rb.x| is at most this. " +
+        "Larger drift means the bone is mis-parented or not tracking the body — the anchor is ignored and collider / RB " +
+        "probes are used instead (avoids huge vertical snap errors on Land / Die).")]
     [SerializeField] private float _groundProbeAnchorMaxHorizontalDriftFromRb = 4f;
     [Tooltip(
         "Ground probes use the lowest enabled non-trigger collider on this Rigidbody2D (Spine BoundingBoxFollower " +
@@ -162,6 +171,25 @@ public class Paratrooper : MonoBehaviour
         "Assign if bunker sandbags / props still use Default or another layer and block falling.")]
     [SerializeField] private LayerMask _airborneRigidbodyExtraExcludeLayers;
 
+    [Header("Death fall vs Ground")]
+    [Tooltip(
+        "Bounding-box colliders are often triggers only, so the RB does not collide with Ground. While GlideDie/Die " +
+        "and falling, raycast down and MovePosition up so the probe/feet stay on the surface instead of tunneling.")]
+    [SerializeField] private bool _clampDeathFallToGround = true;
+    [SerializeField] private float _deathFallClampUpCast = 4f;
+    [SerializeField] private float _deathFallClampRayLength = 48f;
+    [SerializeField] private float _deathFallGroundSkin = 0.04f;
+    [Tooltip(
+        "Only snap upward when probe feet are at most this far above the raycast hit (world Y). Larger false " +
+        "positives from FixedUpdate + stale bones made GlideDie look like near-ground the same frame; this also " +
+        "blocks correcting while still high above the surface.")]
+    [SerializeField] private float _deathFallClampMaxFeetClearanceFromHit = 6f;
+    [Tooltip(
+        "Stricter cap while in GlideDie only. The general death clamp uses a large window so corpses catch Ground " +
+        "from high above; that same window pulled dying paratroopers onto the surface mid-air and triggered Land, " +
+        "cutting off _glideDeathAnim. Keep this small (near contact distance).")]
+    [SerializeField] private float _glideDieDeathClampMaxFeetClearanceFromHit = 0.35f;
+
     [Header("Collider Debug")]
     [SerializeField] private bool _enableColliderSummaryLog = true;
     [SerializeField] private float _colliderSummaryIntervalSeconds = 2f;
@@ -178,6 +206,7 @@ public class Paratrooper : MonoBehaviour
     private bool _warnedAttachedColliderBufferTruncation;
     private float _lastGroundProbeDebugUnscaledTime = float.NegativeInfinity;
     private bool _warnedGroundProbeAnchorRejected;
+    private bool _warnedGroundProbeAnchorHorizontalDrift;
     private float _airborneGravityScaleCached;
     private bool _airborneGravityScaleCachedValid;
 
@@ -413,13 +442,16 @@ public class Paratrooper : MonoBehaviour
     /// </summary>
     public void SnapSpawnAlignmentToRequestedWorld(Vector3 requestedWorldPosition)
     {
-        Vector3 referenceWorld = transform.position;
-        if (_skeletonAnimation != null)
+        // Spawner passes the same world XY used for Instantiate(..., worldPosition, ...). Always reconcile this
+        // transform (composition root) to that point. Basing the delta only on SkeletonAnimation / RB world
+        // positions could skip the move when those refs already sit near the drop (e.g. Spine timing) while the
+        // root stayed at a stale prefab pose — logs showed requestedPos ≈ mount but root/rb ≈ (0.4, 1.7).
+        if (_rigidbody2D == null)
         {
-            referenceWorld = _skeletonAnimation.transform.position;
+            _rigidbody2D = GetComponent<Rigidbody2D>();
         }
 
-        Vector3 delta = requestedWorldPosition - referenceWorld;
+        Vector3 delta = requestedWorldPosition - transform.position;
         delta.z = 0f;
         if (delta.sqrMagnitude < 1e-10f)
         {
@@ -429,7 +461,14 @@ public class Paratrooper : MonoBehaviour
         transform.position += delta;
         if (_rigidbody2D != null)
         {
-            _rigidbody2D.position = (Vector2)transform.position;
+            if (_rigidbody2D.gameObject == gameObject)
+            {
+                _rigidbody2D.position = (Vector2)transform.position;
+            }
+            else
+            {
+                _rigidbody2D.position += (Vector2)delta;
+            }
         }
     }
 
@@ -484,7 +523,7 @@ public class Paratrooper : MonoBehaviour
         _controller.Initialize(_model, _stateMachine, _damageReceiver, _weaponSystem);
 
         // 5. Init View
-        _view.Initialize(_stateMachine);
+        _view.Initialize(_stateMachine, _model, _controller);
 
         // 6. Init DeathHandler
         _deathHandler.Initialize(_stateMachine);
@@ -543,8 +582,35 @@ public class Paratrooper : MonoBehaviour
     {
         Debug.Log($"HandleStateChanged: State changed: {from} → {to}");
 
+        if (_model != null)
+        {
+            if (to == StickmanBodyState.Shoot || to == StickmanBodyState.Die || to == StickmanBodyState.GlideDie)
+            {
+                _model.pendingDieAfterLandAnim = false;
+                if (to == StickmanBodyState.Shoot || to == StickmanBodyState.GlideDie)
+                {
+                    _model.suppressDieAnimationFromAirborneImpact = false;
+                }
+            }
+
+            if (to == StickmanBodyState.Land && from == StickmanBodyState.GlideDie)
+            {
+                _model.pendingDieAfterLandAnim = true;
+                _model.suppressDieAnimationFromAirborneImpact = true;
+            }
+        }
+
         // Safety: if death is requested while still in the air, force airborne death state first.
-        // This guarantees GlideDeath animation before ground impact animation.
+        // This guarantees GlideDeath animation (_glideDeathAnim) before any ground death clip.
+        // Deploy/Glide: always glide-death — IsGrounded() can wrongly report true near the surface while parachuting.
+        if (to == StickmanBodyState.Die &&
+            (from == StickmanBodyState.Glide || from == StickmanBodyState.Deploy))
+        {
+            Debug.Log($"[Paratrooper_V2] Converted Die -> GlideDie (from parachute state {from}).");
+            _stateMachine.ChangeState(StickmanBodyState.GlideDie);
+            return;
+        }
+
         // Important: when coming from ground-combat states, keep ground death even if IsGrounded()
         // has a one-frame false negative.
         bool wasGroundCombatState =
@@ -563,9 +629,19 @@ public class Paratrooper : MonoBehaviour
             return;
         }
 
+        if (to == StickmanBodyState.GlideDie && _rigidbody2D != null)
+        {
+            _rigidbody2D.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+        }
+
         UpdateAirborneBunkerCollisionExclusion(to);
 
         if (to == StickmanBodyState.Land && (from == StickmanBodyState.Glide || from == StickmanBodyState.GlideDie))
+        {
+            SnapRigidbodyToGroundUnderProbe();
+        }
+
+        if (to == StickmanBodyState.Die && from == StickmanBodyState.GlideDie)
         {
             SnapRigidbodyToGroundUnderProbe();
         }
@@ -626,6 +702,18 @@ public class Paratrooper : MonoBehaviour
         }
 
         bits |= _airborneRigidbodyExtraExcludeLayers.value;
+
+        // Never exclude walkable surface: GlideDie must still collide / receive triggers with Ground.
+        if (_groundLayer >= 0)
+        {
+            bits &= ~(1 << _groundLayer);
+        }
+
+        if (_landingPointLayer >= 0)
+        {
+            bits &= ~(1 << _landingPointLayer);
+        }
+
         return bits;
     }
 
@@ -660,7 +748,6 @@ public class Paratrooper : MonoBehaviour
         _controller.Tick(Time.deltaTime);
         ApplyGlideAirMovement();
         HandleNearGroundLandingTransition();
-        HandleGlideDeathLandingTransition();
 
         if (_enableColliderSummaryLog && Time.time >= _nextColliderSummaryTime)
         {
@@ -672,6 +759,10 @@ public class Paratrooper : MonoBehaviour
     private void LateUpdate()
     {
         ApplyGroundedCombatPhysicsSuppression();
+        if (_clampDeathFallToGround)
+        {
+            ClampFeetAboveGroundDuringDeathFall();
+        }
     }
 
     /// <summary>
@@ -733,9 +824,9 @@ public class Paratrooper : MonoBehaviour
         {
             velocity.y = -maxFallSpeed;
         }
-        else if (!isGlideDeath)
+        else
         {
-            // Prevent deploy/glide from stalling at y=0 when gravity is neutralized by animation/state changes.
+            // Prevent deploy/glide/glide-death from stalling mid-air when vy is cleared (clamp, animation, etc.).
             float minFall = Mathf.Min(Mathf.Max(0f, _glideMinFallSpeed), maxFallSpeed);
             if (velocity.y > -minFall)
             {
@@ -752,19 +843,110 @@ public class Paratrooper : MonoBehaviour
         _rigidbody2D.linearVelocity = velocity;
     }
 
-    private void HandleGlideDeathLandingTransition()
+    /// <summary>
+    /// Keeps corpse / glide-death from falling through Ground when only trigger hitboxes exist on the RB.
+    /// </summary>
+    private void ClampFeetAboveGroundDuringDeathFall()
+    {
+        if (_rigidbody2D == null || _stateMachine == null)
+        {
+            return;
+        }
+
+        StickmanBodyState s = _stateMachine.CurrentState;
+        if (s != StickmanBodyState.GlideDie && s != StickmanBodyState.Die)
+        {
+            return;
+        }
+
+        if (_rigidbody2D.bodyType != RigidbodyType2D.Dynamic)
+        {
+            return;
+        }
+
+        if (_rigidbody2D.linearVelocity.y > 2f)
+        {
+            return;
+        }
+
+        GroundProbeBuild probe = BuildGroundProbeOrigin();
+        if (!probe.Ok)
+        {
+            return;
+        }
+
+        float padding = Mathf.Max(0f, _deathFallClampUpCast);
+        float rayLen = Mathf.Max(_nearGroundRayDistance, _deathFallClampRayLength);
+        Vector2 castStart = probe.Origin + Vector2.up * padding;
+        RaycastHit2D hit = Physics2D.Raycast(castStart, Vector2.down, rayLen + padding, _groundMask);
+        if (hit.collider == null || !IsUsableGroundCollider(hit.collider))
+        {
+            return;
+        }
+
+        float surfaceY = GetStandFeetSurfaceYWorld(hit, probe.Origin.x);
+        float feetClearance = probe.Origin.y - surfaceY;
+        float maxClearance =
+            s == StickmanBodyState.GlideDie
+                ? Mathf.Max(0.05f, _glideDieDeathClampMaxFeetClearanceFromHit)
+                : Mathf.Max(0.05f, _deathFallClampMaxFeetClearanceFromHit);
+        if (feetClearance > maxClearance)
+        {
+            return;
+        }
+
+        // First hit along a long ray can be a platform / ceiling / wrong collider above the real floor. When the probe
+        // is far below that hit's stand plane (large negative clearance), we must not snap upward — that froze GlideDie
+        // mid-air with vy=0 after a multi-meter teleport.
+        if (feetClearance < -maxClearance)
+        {
+            return;
+        }
+
+        float skin = Mathf.Max(0.01f, _deathFallGroundSkin);
+        float targetFeetY = surfaceY + skin;
+        float deltaY = targetFeetY - probe.Origin.y;
+        if (deltaY <= 0.001f)
+        {
+            // Already aligned to Ground via prior snaps — but we only get physics contact Land in rare setups.
+            // Without this, GlideDie stays forever and the ground impact Spine clip never runs.
+            if (s == StickmanBodyState.GlideDie)
+            {
+                TryGlideDieToLandWhenProbeGrounded();
+            }
+
+            return;
+        }
+
+        Vector2 p = _rigidbody2D.position;
+        p.y += deltaY;
+        _rigidbody2D.position = p;
+        Vector2 v = _rigidbody2D.linearVelocity;
+        if (v.y < 0f)
+        {
+            v.y = 0f;
+            _rigidbody2D.linearVelocity = v;
+        }
+
+        if (s == StickmanBodyState.GlideDie)
+        {
+            TryGlideDieToLandWhenProbeGrounded();
+        }
+    }
+
+    /// <summary>
+    /// When death-fall clamp finds real Ground under the feet, move gameplay to <see cref="StickmanBodyState.Land"/> so
+    /// the view can play the fall-down-back impact trio (not only when Unity fires collision/trigger callbacks).
+    /// </summary>
+    private void TryGlideDieToLandWhenProbeGrounded()
     {
         if (_stateMachine == null || _stateMachine.CurrentState != StickmanBodyState.GlideDie)
         {
             return;
         }
 
-        if (!IsGrounded())
-        {
-            return;
-        }
-
-        _stateMachine.ChangeState(StickmanBodyState.Die);
+        Debug.Log("[Paratrooper_V2] GlideDie grounded (death-fall probe) -> Land before ground impact anim.");
+        _stateMachine.ChangeState(StickmanBodyState.Land);
     }
 
     private void HandleNearGroundLandingTransition()
@@ -774,12 +956,14 @@ public class Paratrooper : MonoBehaviour
             return;
         }
 
-        if (!IsNearGround())
+        // IsNearGround() uses a long ray and switched Glide→Land while the trooper was still visibly high; that let
+        // LandFinished enter Shoot (_shootingMP40Anim) before a mid-air kill resolved as ground death. Match real land.
+        if (!IsGrounded())
         {
             return;
         }
 
-        Debug.Log("[Paratrooper_V2] Near Ground detected by raycast -> switching Glide to Land.");
+        Debug.Log("[Paratrooper_V2] Grounded probe passed -> switching Glide to Land.");
         _stateMachine.ChangeState(StickmanBodyState.Land);
     }
 
@@ -810,13 +994,13 @@ public class Paratrooper : MonoBehaviour
             return;
         }
 
-        if (!IsGroundLayer(collider.gameObject.layer))
+        if (!IsUsableGroundCollider(collider))
         {
             return;
         }
 
-        Debug.Log("[Paratrooper_V2] GlideDie hit Ground layer -> switching to Die.");
-        _stateMachine.ChangeState(StickmanBodyState.Die);
+        Debug.Log("[Paratrooper_V2] GlideDie touched Ground surface (physics) -> Land before ground impact anim.");
+        _stateMachine.ChangeState(StickmanBodyState.Land);
     }
 
     private bool IsGrounded()
@@ -834,6 +1018,32 @@ public class Paratrooper : MonoBehaviour
 
         MaybeLogGroundProbe("IsGrounded", in probe, rayLength, hits, grounded);
         return grounded;
+    }
+
+    /// <summary>
+    /// Used by <see cref="ParatrooperDamageReceiver_V2"/> so lethal hits use <see cref="StickmanBodyState.GlideDie"/>
+    /// (and <c>_glideDeathAnim</c>) whenever the unit is still in parachute / glide flow or not grounded.
+    /// </summary>
+    public bool ShouldUseAirborneDeathFlow()
+    {
+        if (_stateMachine == null)
+        {
+            return false;
+        }
+
+        StickmanBodyState s = _stateMachine.CurrentState;
+        if (s == StickmanBodyState.Glide || s == StickmanBodyState.Deploy || s == StickmanBodyState.GlideDie)
+        {
+            return true;
+        }
+
+        if (s == StickmanBodyState.Shoot || s == StickmanBodyState.Run || s == StickmanBodyState.Idle)
+        {
+            return false;
+        }
+
+        // Land or other: if we're not actually on Ground yet, prefer glide death over ground-fall clips.
+        return !IsGrounded();
     }
 
     private bool IsNearGround()
@@ -882,12 +1092,13 @@ public class Paratrooper : MonoBehaviour
             return;
         }
 
-        if (!IsGroundLayer(hit.collider.gameObject.layer))
+        if (!IsUsableGroundCollider(hit.collider))
         {
             return;
         }
 
-        float targetFeetY = hit.point.y + 0.02f + _groundProbeFootBiasWorld;
+        float surfaceY = GetStandFeetSurfaceYWorld(hit, probe.Origin.x);
+        float targetFeetY = surfaceY + 0.02f + _groundProbeFootBiasWorld;
         float deltaY = targetFeetY - probe.Origin.y;
         Vector2 p = _rigidbody2D.position;
         p.y += deltaY;
@@ -912,7 +1123,7 @@ public class Paratrooper : MonoBehaviour
                 continue;
             }
 
-            if (!IsGroundLayer(hitCollider.gameObject.layer))
+            if (!IsUsableGroundCollider(hitCollider))
             {
                 continue;
             }
@@ -921,6 +1132,41 @@ public class Paratrooper : MonoBehaviour
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// When <see cref="_groundSurfaceCollider"/> is set, only that collider (or its GameObject) counts as floor.
+    /// Otherwise any collider on Ground or LandingPoint layers (see <see cref="IsGroundLayer"/>) counts.
+    /// </summary>
+    private bool IsUsableGroundCollider(Collider2D c)
+    {
+        if (c == null)
+        {
+            return false;
+        }
+
+        if (_groundSurfaceCollider != null)
+        {
+            return c == _groundSurfaceCollider || c.gameObject == _groundSurfaceCollider.gameObject;
+        }
+
+        return IsGroundLayer(c.gameObject.layer);
+    }
+
+    /// <summary>
+    /// World Y of the ground surface under <paramref name="probeXWorld"/>; prefers the collider shell over raw
+    /// <see cref="RaycastHit2D.point"/> so BoxCollider2D / polygon contact stays consistent with the probe column.
+    /// </summary>
+    private static float GetStandFeetSurfaceYWorld(RaycastHit2D hit, float probeXWorld)
+    {
+        if (hit.collider == null)
+        {
+            return hit.point.y;
+        }
+
+        float belowY = hit.collider.bounds.min.y - 2f;
+        Vector2 fromBelow = new Vector2(probeXWorld, belowY);
+        return hit.collider.ClosestPoint(fromBelow).y;
     }
 
     /// <summary>
@@ -933,47 +1179,44 @@ public class Paratrooper : MonoBehaviour
         return b.Ok;
     }
 
-    private bool ShouldUseGroundProbeAnchor()
-    {
-        if (_groundProbeAnchor == null)
-        {
-            return false;
-        }
-
-        if (_groundProbeAnchor == transform)
-        {
-            return true;
-        }
-
-        if (!_groundProbeAnchor.IsChildOf(transform))
-        {
-            return false;
-        }
-
-        if (_rigidbody2D == null)
-        {
-            return true;
-        }
-
-        float dx = Mathf.Abs(_groundProbeAnchor.position.x - _rigidbody2D.position.x);
-        return dx <= Mathf.Max(0.01f, _groundProbeAnchorMaxHorizontalDriftFromRb);
-    }
-
     private GroundProbeBuild BuildGroundProbeOrigin()
     {
-        if (ShouldUseGroundProbeAnchor())
+        if (_groundProbeAnchor != null)
         {
-            Vector3 p = _groundProbeAnchor.position;
-            Vector2 origin = new Vector2(p.x, p.y + 0.01f + _groundProbeFootBiasWorld);
-            return GroundProbeBuild.FromAnchor(origin);
-        }
+            if (_groundProbeAnchor == transform)
+            {
+                Vector3 p = _groundProbeAnchor.position;
+                Vector2 origin = new Vector2(p.x, p.y + 0.01f + _groundProbeFootBiasWorld);
+                return GroundProbeBuild.FromAnchor(origin);
+            }
 
-        if (_groundProbeAnchor != null && !_warnedGroundProbeAnchorRejected)
-        {
-            _warnedGroundProbeAnchorRejected = true;
-            Debug.LogWarning(
-                "[Paratrooper_V2] Ground probe anchor is set but ignored (not a child of this paratrooper, or X drift " +
-                $"from Rigidbody2D exceeds {_groundProbeAnchorMaxHorizontalDriftFromRb:F2}). Using collider / rigidbody fallbacks.");
+            if (_groundProbeAnchor.IsChildOf(transform))
+            {
+                float anchorProbeX = _rigidbody2D != null ? _rigidbody2D.position.x : transform.position.x;
+                float dx = Mathf.Abs(_groundProbeAnchor.position.x - anchorProbeX);
+                float maxDrift = Mathf.Max(0.01f, _groundProbeAnchorMaxHorizontalDriftFromRb);
+                if (dx <= maxDrift)
+                {
+                    float y = _groundProbeAnchor.position.y + 0.01f + _groundProbeFootBiasWorld;
+                    return GroundProbeBuild.FromAnchor(new Vector2(anchorProbeX, y));
+                }
+
+                if (!_warnedGroundProbeAnchorHorizontalDrift)
+                {
+                    _warnedGroundProbeAnchorHorizontalDrift = true;
+                    Debug.LogWarning(
+                        "[Paratrooper_V2] Ground probe anchor has excessive horizontal drift vs Rigidbody2D; ignoring " +
+                        "anchor for Ground probes (feet bone may be wrong or not under this character). Using collider / RB " +
+                        $"fallback instead (drift={dx:F2}, max={maxDrift:F2}).");
+                }
+            }
+            else if (!_warnedGroundProbeAnchorRejected)
+            {
+                _warnedGroundProbeAnchorRejected = true;
+                Debug.LogWarning(
+                    "[Paratrooper_V2] Ground probe anchor is set but ignored (not a child of this paratrooper). " +
+                    "Using collider / rigidbody fallbacks.");
+            }
         }
 
         float probeX = _rigidbody2D != null ? _rigidbody2D.position.x : transform.position.x;
