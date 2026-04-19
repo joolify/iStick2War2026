@@ -54,6 +54,13 @@ namespace iStick2War_V2
                 return false;
             }
 
+            // Already equipped — callers must treat this as a no-op so we do not reset
+            // reload state every frame (e.g. AutoHero_V2 re-selecting Bazooka while aiming).
+            if (_activeIndex == idx)
+            {
+                return false;
+            }
+
             _activeIndex = idx;
             return true;
         }
@@ -61,6 +68,11 @@ namespace iStick2War_V2
         public bool SetActiveBySlot(int zeroBasedSlot)
         {
             if (zeroBasedSlot < 0 || zeroBasedSlot >= _weapons.Count)
+            {
+                return false;
+            }
+
+            if (_activeIndex == zeroBasedSlot)
             {
                 return false;
             }
@@ -122,6 +134,36 @@ namespace iStick2War_V2
         public bool ContainsWeaponType(WeaponType weaponType)
         {
             return FindIndexByType(weaponType) >= 0;
+        }
+
+        public bool TryGetWeaponStateByType(WeaponType weaponType, out HeroWeaponRuntimeState_V2 state)
+        {
+            state = null;
+            int idx = FindIndexByType(weaponType);
+            if (idx < 0)
+            {
+                return false;
+            }
+
+            state = _weapons[idx];
+            return true;
+        }
+
+        /// <summary>First inventory slot (loadout order) that still has magazine or reserve rounds.</summary>
+        public bool TryGetFirstWeaponIndexWithAmmo(out int index)
+        {
+            for (int i = 0; i < _weapons.Count; i++)
+            {
+                HeroWeaponRuntimeState_V2 w = _weapons[i];
+                if (w != null && (w.CurrentAmmo > 0 || w.CurrentReserveAmmo > 0))
+                {
+                    index = i;
+                    return true;
+                }
+            }
+
+            index = -1;
+            return false;
         }
 
         private int FindIndexByType(WeaponType weaponType)

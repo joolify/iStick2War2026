@@ -289,6 +289,33 @@ namespace iStick2War_V2
             return !isDisabled && !_model.isDead && _inventory.ContainsWeaponType(weaponType);
         }
 
+        /// <summary>True if that weapon is in the loadout and has rounds in mag or reserve (reload possible).</summary>
+        public bool HasUsableAmmoForWeaponType(WeaponType weaponType)
+        {
+            if (isDisabled || _model.isDead || !_inventory.TryGetWeaponStateByType(weaponType, out HeroWeaponRuntimeState_V2 state))
+            {
+                return false;
+            }
+
+            return state.CurrentAmmo > 0 || state.CurrentReserveAmmo > 0;
+        }
+
+        /// <summary>Switches to the first unlocked weapon that still has ammo (loadout order).</summary>
+        public bool TrySwitchToAnyWeaponWithAmmo()
+        {
+            if (isDisabled || _model.isDead)
+            {
+                return false;
+            }
+
+            if (!_inventory.TryGetFirstWeaponIndexWithAmmo(out int idx))
+            {
+                return false;
+            }
+
+            return TrySwitchActiveWeapon(() => _inventory.SetActiveBySlot(idx));
+        }
+
         public bool UnlockWeapon(HeroWeaponDefinition_V2 definition, bool autoEquip = false)
         {
             if (definition == null)

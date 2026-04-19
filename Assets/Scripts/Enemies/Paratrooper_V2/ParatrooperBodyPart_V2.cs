@@ -80,6 +80,22 @@ public class ParatrooperBodyPart_V2 : MonoBehaviour
         {
             Debug.LogWarning($"[ParatrooperBodyPart_V2] No Collider2D on '{gameObject.name}'. This body part cannot be hit by raycast.");
         }
+
+        // Cache while still parented: death visuals may reparent hitboxes (e.g. SetParent(null)), which breaks
+        // GetComponentInParent for later queries (AutoHero overlap / aim filtering).
+        if (_model == null)
+        {
+            _model = GetComponentInParent<ParatrooperModel_V2>();
+        }
+    }
+
+    /// <summary>
+    /// True if this hitbox belongs to a living paratrooper. Uses Awake-cached model so it stays valid after
+    /// reparent-at-death; callers must not treat missing model as alive.
+    /// </summary>
+    public bool IsLivingCharacterForTargeting()
+    {
+        return _model != null && !_model.IsDead();
     }
 
     private void OnEnable()

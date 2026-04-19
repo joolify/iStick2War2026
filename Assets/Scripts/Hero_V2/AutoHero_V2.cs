@@ -22,6 +22,10 @@ namespace iStick2War_V2
         [SerializeField] private float _enemySearchRadius = 90f;
         [SerializeField] private float _shootIfEnemyWithinWeaponRangeFactor = 1f;
         [SerializeField] private float _bazookaPreferWithinHorizontal = 42f;
+        [Tooltip(
+            "When true, any Paratrooper body hitbox in the search radius wins over the helicopter. " +
+            "Otherwise the single nearest EnemyBodyPart collider is used (aircraft often steals the aim).")]
+        [SerializeField] private bool _prioritizeInfantryOverAircraft = true;
 
         [Header("Bunker")]
         [SerializeField] [Range(0.05f, 0.95f)] private float _lowHealthEnterBunkerFraction = 0.35f;
@@ -333,12 +337,18 @@ namespace iStick2War_V2
                 ? _model.currentWeaponDefinition.Range
                 : 40f;
             float maxShootDist = weaponRange * Mathf.Max(0.1f, _shootIfEnemyWithinWeaponRangeFactor);
+            float verticalSlack = IsParatrooperCollider(target) ? 1.35f : 0.85f;
             bool inRange =
                 hasTarget &&
                 Mathf.Abs(aimPoint.x - heroPos.x) <= maxShootDist &&
-                Mathf.Abs(aimPoint.y - heroPos.y) <= maxShootDist * 0.85f;
+                Mathf.Abs(aimPoint.y - heroPos.y) <= maxShootDist * verticalSlack;
 
-            bool shootHeld = inRange && !wantBunker;
+            // Do not hold fire when the active weapon is completely dry: HeroController_V2 requires a release to
+            // clear _outOfAmmoLatched after a dry-fire; holding shoot forever would soft-lock shooting.
+            bool canHoldFire =
+                _model.currentAmmo > 0 || _model.currentReserveAmmo > 0;
+
+            bool shootHeld = inRange && !wantBunker && canHoldFire;
             bool reload = _hero.ShouldShowReloadPrompt();
 
             _view.SetAutoAimWorldOverride(hasTarget ? aimPoint : heroPos + Vector2.right * 6f);
@@ -353,15 +363,56 @@ namespace iStick2War_V2
             }
 
             float horiz = Mathf.Abs(enemyPos.x - heroPos.x);
-            if (horiz <= _bazookaPreferWithinHorizontal && _hero.HasUnlockedWeaponOfType(WeaponType.Bazooka))
+            bool wantBazookaRange = horiz <= _bazookaPreferWithinHorizontal;
+            bool wantCarbineRange = horiz > _bazookaPreferWithinHorizontal * 1.15f;
+
+            bool bazookaAmmo =
+                _hero.HasUnlockedWeaponOfType(WeaponType.Bazooka) &&
+                _hero.HasUsableAmmoForWeaponType(WeaponType.Bazooka);
+            bool carbineAmmo =
+                _hero.HasUnlockedWeaponOfType(WeaponType.Carbine) &&
+                _hero.HasUsableAmmoForWeaponType(WeaponType.Carbine);
+
+            if (wantBazookaRange)
             {
-                _hero.TrySwitchToWeaponType(WeaponType.Bazooka);
+                if (bazookaAmmo)
+                {
+                    _hero.TrySwitchToWeaponType(WeaponType.Bazooka);
+                    return;
+                }
+
+                if (carbineAmmo)
+                {
+                    _hero.TrySwitchToWeaponType(WeaponType.Carbine);
+                    return;
+                }
+
+                _hero.TrySwitchToAnyWeaponWithAmmo();
                 return;
             }
 
-            if (horiz > _bazookaPreferWithinHorizontal * 1.15f && _hero.HasUnlockedWeaponOfType(WeaponType.Carbine))
+            if (wantCarbineRange)
             {
-                _hero.TrySwitchToWeaponType(WeaponType.Carbine);
+                if (carbineAmmo)
+                {
+                    _hero.TrySwitchToWeaponType(WeaponType.Carbine);
+                    return;
+                }
+
+                if (bazookaAmmo)
+                {
+                    _hero.TrySwitchToWeaponType(WeaponType.Bazooka);
+                    return;
+                }
+
+                _hero.TrySwitchToAnyWeaponWithAmmo();
+                return;
+            }
+
+            // Hysteresis band: do not bounce weapons, but escape a totally dry current weapon.
+            if (!_hero.HasUsableAmmoForWeaponType(_model.currentWeaponType))
+            {
+                _hero.TrySwitchToAnyWeaponWithAmmo();
             }
         }
 
@@ -383,8 +434,13 @@ namespace iStick2War_V2
                 return null;
             }
 
-            Collider2D best = null;
-            float bestDist = float.MaxValue;
+            Collider2D bestAny = null;
+            float bestAnyDist = float.MaxValue;
+            Collider2D bestInfantry = null;
+            float bestInfantryDist = float.MaxValue;
+            Collider2D bestAircraft = null;
+            float bestAircraftDist = float.MaxValue;
+
             for (int i = 0; i < count; i++)
             {
                 Collider2D c = _overlapBuffer[i];
@@ -393,16 +449,97 @@ namespace iStick2War_V2
                     continue;
                 }
 
+                bool isParatrooper = IsParatrooperCollider(c);
+                if (isParatrooper && !IsViableParatrooperTarget(c))
+                {
+                    continue;
+                }
+
                 Vector2 p = c.bounds.center;
                 float d = (p - from).sqrMagnitude;
-                if (d < bestDist)
+                if (d < bestAnyDist)
                 {
-                    bestDist = d;
-                    best = c;
+                    bestAnyDist = d;
+                    bestAny = c;
+                }
+
+                if (isParatrooper)
+                {
+                    if (d < bestInfantryDist)
+                    {
+                        bestInfantryDist = d;
+                        bestInfantry = c;
+                    }
+                }
+                else if (IsAircraftCollider(c))
+                {
+                    if (d < bestAircraftDist)
+                    {
+                        bestAircraftDist = d;
+                        bestAircraft = c;
+                    }
                 }
             }
 
-            return best;
+            if (_prioritizeInfantryOverAircraft && bestInfantry != null)
+            {
+                return bestInfantry;
+            }
+
+            if (bestInfantry != null && bestAircraft != null)
+            {
+                return bestInfantryDist <= bestAircraftDist ? bestInfantry : bestAircraft;
+            }
+
+            if (bestInfantry != null)
+            {
+                return bestInfantry;
+            }
+
+            if (bestAircraft != null)
+            {
+                return bestAircraft;
+            }
+
+            return bestAny;
+        }
+
+        private static bool IsParatrooperCollider(Collider2D c)
+        {
+            if (c == null)
+            {
+                return false;
+            }
+
+            return c.GetComponent<ParatrooperBodyPart_V2>() != null ||
+                   c.GetComponentInParent<ParatrooperBodyPart_V2>() != null;
+        }
+
+        /// <summary>
+        /// Dead paratroopers often keep EnemyBodyPart colliders during ragdoll/ground clips; overlap would otherwise
+        /// keep aiming at the corpse while a new paratrooper spawns at nearly the same X.
+        /// </summary>
+        private static bool IsViableParatrooperTarget(Collider2D c)
+        {
+            ParatrooperBodyPart_V2 part =
+                c.GetComponent<ParatrooperBodyPart_V2>() ?? c.GetComponentInParent<ParatrooperBodyPart_V2>();
+            if (part == null)
+            {
+                return false;
+            }
+
+            return part.IsLivingCharacterForTargeting();
+        }
+
+        private static bool IsAircraftCollider(Collider2D c)
+        {
+            if (c == null)
+            {
+                return false;
+            }
+
+            return c.GetComponent<AircraftHealth_V2>() != null ||
+                   c.GetComponentInParent<AircraftHealth_V2>() != null;
         }
 
         private static Vector2? TryGetBunkerInteriorWorldPoint()

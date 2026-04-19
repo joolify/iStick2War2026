@@ -160,6 +160,13 @@ namespace iStick2War_V2
 
         private void HandleCombat()
         {
+            // Programmatic weapon switches (e.g. AutoHero_V2) bypass HandleWeaponSwitchInput, so _outOfAmmoLatched
+            // can stay true after a dry-fire on the previous weapon even when the new weapon has a loaded magazine.
+            if (_outOfAmmoLatched && _model.currentAmmo > 0)
+            {
+                _outOfAmmoLatched = false;
+            }
+
             if (_model.isReloadPressed && _weaponSystem.CanReload())
             {
                 _isShootLoopActive = false;

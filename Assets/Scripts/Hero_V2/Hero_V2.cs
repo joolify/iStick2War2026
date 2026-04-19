@@ -396,5 +396,15 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
         {
             return _weaponSystem != null && _weaponSystem.HasUnlockedWeaponOfType(weaponType);
         }
+
+        public bool HasUsableAmmoForWeaponType(WeaponType weaponType)
+        {
+            return _weaponSystem != null && _weaponSystem.HasUsableAmmoForWeaponType(weaponType);
+        }
+
+        public bool TrySwitchToAnyWeaponWithAmmo()
+        {
+            return _weaponSystem != null && _weaponSystem.TrySwitchToAnyWeaponWithAmmo();
+        }
     }
 }
