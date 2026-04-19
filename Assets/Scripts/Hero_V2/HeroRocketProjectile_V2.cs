@@ -21,6 +21,15 @@ namespace iStick2War_V2
         [SerializeField] private GameObject _explosionEffectPrefab;
         [SerializeField] private float _explosionEffectLifetime = 1.5f;
         [SerializeField] private bool _debugExplosion = false;
+        [Header("Explosion vs camera")]
+        [Tooltip(
+            "When enabled, explosion damage only applies if the blast center is on-screen and each hit's " +
+            "closest point to the center lies inside this camera's view. Prevents off-screen enemies from " +
+            "receiving bazooka knockback/damage from a visible hit. If unset, uses Camera.main.")]
+        [SerializeField] private bool _clipExplosionDamageToCamera = true;
+        [SerializeField] private Camera _explosionVisibilityCamera;
+        [Tooltip("Inset inside the camera rect (world units) so edge hits are still valid.")]
+        [SerializeField] private float _explosionCameraRectInset = 0.02f;
 
         private float _damage;
         private float _explosionDamageVsAircraft;
@@ -136,6 +145,22 @@ namespace iStick2War_V2
             StopRocketMotion();
 
             Vector2 explosionCenter = transform.position;
+            Camera clipCam = ResolveExplosionClipCamera();
+            if (_clipExplosionDamageToCamera &&
+                clipCam != null &&
+                !IsWorldPointVisibleForExplosionDamage(clipCam, explosionCenter))
+            {
+                if (_debugExplosion)
+                {
+                    Debug.Log(
+                        "[HeroRocketProjectile_V2] Explosion center off-screen; skipping all explosion damage " +
+                        $"(center={explosionCenter}).");
+                }
+
+                Destroy(gameObject);
+                return;
+            }
+
             Collider2D[] hits = Physics2D.OverlapCircleAll(explosionCenter, Mathf.Max(0.1f, _explosionRadius), _explosionMask);
             HashSet<ParatrooperDamageReceiver_V2> damagedParatroopers = new HashSet<ParatrooperDamageReceiver_V2>();
             HashSet<Explodable> damagedExplodables = new HashSet<Explodable>();
@@ -149,7 +174,15 @@ namespace iStick2War_V2
                     continue;
                 }
 
-                float dist = Vector2.Distance(explosionCenter, hit.bounds.ClosestPoint(explosionCenter));
+                Vector2 closestOnHit = hit.bounds.ClosestPoint(explosionCenter);
+                if (_clipExplosionDamageToCamera &&
+                    clipCam != null &&
+                    !IsWorldPointVisibleForExplosionDamage(clipCam, closestOnHit))
+                {
+                    continue;
+                }
+
+                float dist = Vector2.Distance(explosionCenter, closestOnHit);
                 float normalized = Mathf.Clamp01(dist / Mathf.Max(0.1f, _explosionRadius));
                 float damageMultiplier = Mathf.Lerp(1f, Mathf.Clamp01(_minFalloffMultiplier), normalized);
                 float finalDamage = Mathf.Max(0f, _damage * damageMultiplier);
@@ -203,6 +236,44 @@ namespace iStick2War_V2
             }
 
             Destroy(gameObject);
+        }
+
+        private Camera ResolveExplosionClipCamera()
+        {
+            if (_explosionVisibilityCamera != null)
+            {
+                return _explosionVisibilityCamera;
+            }
+
+            return Camera.main;
+        }
+
+        /// <summary>
+        /// True if <paramref name="world"/> lies inside the clip camera's view (orthographic rect with inset, else frustum AABB test).
+        /// </summary>
+        private bool IsWorldPointVisibleForExplosionDamage(Camera cam, Vector2 world)
+        {
+            if (cam == null || !cam.isActiveAndEnabled)
+            {
+                return true;
+            }
+
+            if (cam.orthographic)
+            {
+                float halfH = cam.orthographicSize;
+                float halfW = halfH * cam.aspect;
+                Vector3 c = cam.transform.position;
+                float inset = Mathf.Min(_explosionCameraRectInset, Mathf.Max(0f, Mathf.Min(halfW, halfH) - 0.001f));
+                float minX = c.x - halfW + inset;
+                float maxX = c.x + halfW - inset;
+                float minY = c.y - halfH + inset;
+                float maxY = c.y + halfH - inset;
+                return world.x >= minX && world.x <= maxX && world.y >= minY && world.y <= maxY;
+            }
+
+            Plane[] planes = GeometryUtility.CalculateFrustumPlanes(cam);
+            var b = new Bounds(new Vector3(world.x, world.y, cam.transform.position.z), new Vector3(0.05f, 0.05f, 0.25f));
+            return GeometryUtility.TestPlanesAABB(planes, b);
         }
 
         private void SpawnExplosionEffect()

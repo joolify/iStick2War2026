@@ -119,7 +119,12 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
                 {
                     float force = Mathf.Max(2f, info.ExplosionForce);
                     OnExploded?.Invoke(info.HitPoint, force);
-                    _stateMachine.ChangeState(StickmanBodyState.Die);
+                    // Must match non-explosive lethal path: going Deploy/Glide → Die makes HandleStateChanged try
+                    // Die → GlideDie, but the machine is already in Die and blocks that transition, so
+                    // ParatrooperDeathHandler_V2.Die() never runs and wave tracking never clears.
+                    bool useAirborneDeath = _paratrooper != null && _paratrooper.ShouldUseAirborneDeathFlow();
+                    _stateMachine.ChangeState(
+                        useAirborneDeath ? StickmanBodyState.GlideDie : StickmanBodyState.Die);
                 }
                 else
                 {
