@@ -19,6 +19,9 @@ namespace iStick2War_V2
         [SerializeField] private WaveManager_V2 _waveManager;
 
         [Header("Combat")]
+        [Tooltip("If set, only colliders whose world bounds intersect this camera's view frustum are targeted or shot. " +
+                 "If empty, uses Camera.main (the usual MainCamera with FollowCamera).")]
+        [SerializeField] private Camera _shootVisibilityCamera;
         [SerializeField] private float _enemySearchRadius = 90f;
         [SerializeField] private float _shootIfEnemyWithinWeaponRangeFactor = 1f;
         [SerializeField] private float _bazookaPreferWithinHorizontal = 42f;
@@ -35,12 +38,16 @@ namespace iStick2War_V2
 
         [Header("Telemetry (optional)")]
         [SerializeField] private bool _logShopAndWave;
+        [Tooltip("While InWave, logs periodically when no EnemyBodyPart target is chosen (helps diagnose last-wave soft locks).")]
+        [SerializeField] private bool _logWaveCombatWhenNoTarget;
+        [SerializeField] private float _logWaveCombatWhenNoTargetIntervalSeconds = 2f;
 
         private readonly Collider2D[] _overlapBuffer = new Collider2D[64];
         private int _enemyBodyPartLayer = -1;
         private WaveLoopState_V2 _lastWaveState = WaveLoopState_V2.Preparing;
         private int _shopPhasesCompleted;
         private bool _shopExitScheduledThisVisit;
+        private float _nextWaveCombatNoTargetLogUnscaledTime;
 
         private void Awake()
         {
@@ -314,9 +321,26 @@ namespace iStick2War_V2
                 hpRatio < _lowHealthEnterBunkerFraction &&
                 !inside;
 
-            Collider2D target = FindNearestEnemyCollider(heroPos);
+            Plane[] shootFrustumPlanes = TryGetShootVisibilityFrustumPlanes();
+            Collider2D target = FindNearestEnemyCollider(heroPos, shootFrustumPlanes);
             Vector2 aimPoint = heroPos + Vector2.right * 8f;
             bool hasTarget = false;
+
+            if (_logWaveCombatWhenNoTarget &&
+                _waveManager != null &&
+                _waveManager.State == WaveLoopState_V2.InWave &&
+                target == null &&
+                Time.unscaledTime >= _nextWaveCombatNoTargetLogUnscaledTime)
+            {
+                _nextWaveCombatNoTargetLogUnscaledTime =
+                    Time.unscaledTime + Mathf.Max(0.25f, _logWaveCombatWhenNoTargetIntervalSeconds);
+                Camera visCam = _shootVisibilityCamera != null ? _shootVisibilityCamera : Camera.main;
+                Debug.Log(
+                    "[AutoHero_V2] InWave: no EnemyBodyPart target after overlap + filters " +
+                    $"(wave={_waveManager.CurrentWaveNumber}, hero={heroPos}, " +
+                    $"shootFrustum={(shootFrustumPlanes != null ? "active" : "inactive")}, " +
+                    $"visCam={(visCam != null ? visCam.name : "null")})");
+            }
 
             if (target != null)
             {
@@ -348,7 +372,12 @@ namespace iStick2War_V2
             bool canHoldFire =
                 _model.currentAmmo > 0 || _model.currentReserveAmmo > 0;
 
-            bool shootHeld = inRange && !wantBunker && canHoldFire;
+            bool targetShootableOnCamera =
+                target == null ||
+                shootFrustumPlanes == null ||
+                GeometryUtility.TestPlanesAABB(shootFrustumPlanes, target.bounds);
+
+            bool shootHeld = inRange && !wantBunker && canHoldFire && targetShootableOnCamera;
             bool reload = _hero.ShouldShowReloadPrompt();
 
             _view.SetAutoAimWorldOverride(hasTarget ? aimPoint : heroPos + Vector2.right * 6f);
@@ -416,7 +445,23 @@ namespace iStick2War_V2
             }
         }
 
-        private Collider2D FindNearestEnemyCollider(Vector2 from)
+        private static Plane[] TryGetShootVisibilityFrustumPlanes(Camera cam)
+        {
+            if (cam == null || !cam.isActiveAndEnabled)
+            {
+                return null;
+            }
+
+            return GeometryUtility.CalculateFrustumPlanes(cam);
+        }
+
+        private Plane[] TryGetShootVisibilityFrustumPlanes()
+        {
+            Camera cam = _shootVisibilityCamera != null ? _shootVisibilityCamera : Camera.main;
+            return TryGetShootVisibilityFrustumPlanes(cam);
+        }
+
+        private Collider2D FindNearestEnemyCollider(Vector2 from, Plane[] shootFrustumPlanes)
         {
             if (_enemyBodyPartLayer < 0)
             {
@@ -451,6 +496,12 @@ namespace iStick2War_V2
 
                 bool isParatrooper = IsParatrooperCollider(c);
                 if (isParatrooper && !IsViableParatrooperTarget(c))
+                {
+                    continue;
+                }
+
+                if (shootFrustumPlanes != null &&
+                    !GeometryUtility.TestPlanesAABB(shootFrustumPlanes, c.bounds))
                 {
                     continue;
                 }

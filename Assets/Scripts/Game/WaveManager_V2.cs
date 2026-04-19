@@ -637,7 +637,7 @@ namespace iStick2War_V2
                 if (Time.time >= _waveSpawnerFailSafeEndTime)
                 {
                     Log(
-                        "Wave force-completed (fail-safe): EnemySpawner did not report cleared before stuck timeout. " +
+                        $"Wave {CurrentWaveNumber} force-completed (fail-safe): EnemySpawner did not report cleared before stuck timeout. " +
                         "Increase _waveSpawnerStuckFailSafeSeconds or fix spawner if this triggers in normal play.");
                     CompleteWave();
                 }
@@ -703,7 +703,7 @@ namespace iStick2War_V2
             _enemiesKilledThisWave = 0;
             if (_enemySpawner != null)
             {
-                _enemySpawner.BeginWave(wave, ReportEnemyKilled);
+                _enemySpawner.BeginWave(wave, ReportEnemyKilled, CurrentWaveNumber);
             }
             Log(
                 $"Wave {CurrentWaveNumber} started. enemies={wave.EnemyCount}, " +

@@ -125,6 +125,8 @@ namespace iStick2War_V2
         private bool _spawnRoutineFinished;
         private bool _isWaveActive;
         private int _waveSessionId;
+        /// <summary>1-based wave index from <see cref="WaveManager_V2.CurrentWaveNumber"/> for debug logs; 0 if unset.</summary>
+        private int _waveNumberForDiagnostics;
         private WaveConfig_V2 _activeWaveConfig;
         private static bool _loggedFrustumPaddingClamp;
         private bool _loggedMissingParatrooperMountOnce;
@@ -145,7 +147,7 @@ namespace iStick2War_V2
             }
         }
 
-        public void BeginWave(WaveConfig_V2 config, Action onEnemyKilled)
+        public void BeginWave(WaveConfig_V2 config, Action onEnemyKilled, int waveNumberForLogs = 0)
         {
             StopWave();
             if (config == null || _paratrooperPrefab == null)
@@ -155,6 +157,7 @@ namespace iStick2War_V2
 
             _isWaveActive = true;
             _waveSessionId++;
+            _waveNumberForDiagnostics = Mathf.Max(0, waveNumberForLogs);
             _activeWaveConfig = config;
             _onEnemyKilled = onEnemyKilled;
             _targetSpawnCount = Mathf.Max(0, config.EnemyCount);
@@ -173,6 +176,7 @@ namespace iStick2War_V2
         public void StopWave()
         {
             _isWaveActive = false;
+            _waveNumberForDiagnostics = 0;
             _activeWaveConfig = null;
             if (_spawnRoutine != null)
             {
@@ -496,7 +500,8 @@ namespace iStick2War_V2
                     if (_debugAnchorSpawnDiagnostics)
                     {
                         Debug.Log(
-                            "[EnemySpawner_V2] Paratrooper drop cancelled: aircraft destroyed before drop could happen.");
+                            "[EnemySpawner_V2] Paratrooper drop cancelled: aircraft destroyed before drop could happen. " +
+                            FormatWaveDiagSuffix());
                     }
                     yield break;
                 }
@@ -547,6 +552,7 @@ namespace iStick2War_V2
             {
                 Debug.Log(
                     "[EnemySpawner_V2] Paratrooper mount sample\n" +
+                    FormatWaveDiagLine() +
                     $"  aircraft='{aircraft.name}' aircraftPos={aircraft.transform.position}\n" +
                     $"  mountName='{mount.name}' mountPos={mount.position}\n" +
                     $"  offset={_paratrooperOffsetFromMount} finalDropPos={p}");
@@ -636,6 +642,7 @@ namespace iStick2War_V2
 
             Debug.Log(
                 "[EnemySpawner_V2] Paratrooper spawn snapshot\n" +
+                FormatWaveDiagLine() +
                 $"  id={spawnSeq} phase={phase} side={(fromLeft ? "LEFT" : "RIGHT")} state={stateLabel}\n" +
                 $"  requestedPos={requestedSpawnPos} inside={reqInside}\n" +
                 $"  actualTransformPos={actualTransformPos} inside={actualInside}\n" +
@@ -695,6 +702,27 @@ namespace iStick2War_V2
             return Mathf.Min(Mathf.Max(0f, rawInset), limit);
         }
 
+        private string FormatWaveNumberLabel()
+        {
+            return _waveNumberForDiagnostics > 0 ? _waveNumberForDiagnostics.ToString() : "(unknown)";
+        }
+
+        /// <summary>Indented line for multi-line debug blocks (mount sample, spawn snapshot, drop decision).</summary>
+        private string FormatWaveDiagLine()
+        {
+            return
+                $"  wave={FormatWaveNumberLabel()} targetSpawn={_targetSpawnCount} spawned={_spawnedCount} " +
+                $"pendingDrops={_pendingDelayedDropCoroutines} trackedLiving={_trackedDeaths.Count} session={_waveSessionId}\n";
+        }
+
+        /// <summary>Single-line suffix for short log messages.</summary>
+        private string FormatWaveDiagSuffix()
+        {
+            return
+                $"wave={FormatWaveNumberLabel()} targetSpawn={_targetSpawnCount} spawned={_spawnedCount} " +
+                $"pendingDrops={_pendingDelayedDropCoroutines} trackedLiving={_trackedDeaths.Count} session={_waveSessionId}";
+        }
+
         private void LogParatrooperDropDecision(string reason, Vector3 aircraftPos, Vector3 mountDropPos, bool fromLeft)
         {
             if (!_debugAnchorSpawnDiagnostics)
@@ -707,6 +735,7 @@ namespace iStick2War_V2
             {
                 Debug.Log(
                     "[EnemySpawner_V2] Paratrooper drop decision\n" +
+                    FormatWaveDiagLine() +
                     $"  reason={reason}, side={(fromLeft ? "LEFT" : "RIGHT")}\n" +
                     $"  aircraftPos={aircraftPos}, mountDropPos={mountDropPos}\n" +
                     "  cam=(missing or non-orthographic)");
@@ -732,6 +761,7 @@ namespace iStick2War_V2
 
             Debug.Log(
                 "[EnemySpawner_V2] Paratrooper drop decision\n" +
+                FormatWaveDiagLine() +
                 $"  reason={reason}, side={(fromLeft ? "LEFT" : "RIGHT")}\n" +
                 $"  cam='{cam.name}' camPos={c} orthoSize={halfHeight:0.###} halfWidth={halfWidth:0.###} visibleInset={inset:0.###}\n" +
                 $"  visibleRectX=[{minX:0.###}..{maxX:0.###}] visibleRectY=[{minY:0.###}..{maxY:0.###}]\n" +
