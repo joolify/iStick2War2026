@@ -80,6 +80,7 @@ namespace iStick2War_V2
         private HeroDeathHandler_V2 _deathHandler;
         private WaveManager_V2 _cachedWaveManager;
         private int _heroRigidbodyBunkerExcludeBits;
+        private AutoHero_V2 _autoHero;
 
         private void Awake()
         {
@@ -160,6 +161,11 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
         {
             float dt = Time.deltaTime;
 
+            if (_autoHero != null && _autoHero.isActiveAndEnabled)
+            {
+                _autoHero.TickBeforeHeroFrame(dt);
+            }
+
             _input.Tick();
 
             _controller.Tick(dt);
@@ -184,6 +190,7 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
         {
             _input = GetComponent<HeroInput_V2>();
             _spineEventForwarder = GetComponent<HeroSpineEventForwarder_V2>();
+            _autoHero = GetComponent<AutoHero_V2>();
         }
 
         private void CreateSystems()
@@ -378,6 +385,16 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
 
             // Show prompt when magazine is empty but there is reserve ammo to reload from.
             return _model.currentAmmo <= 0 && _model.currentReserveAmmo > 0;
+        }
+
+        public bool TrySwitchToWeaponType(WeaponType weaponType)
+        {
+            return _weaponSystem != null && _weaponSystem.TrySwitchToWeaponType(weaponType);
+        }
+
+        public bool HasUnlockedWeaponOfType(WeaponType weaponType)
+        {
+            return _weaponSystem != null && _weaponSystem.HasUnlockedWeaponOfType(weaponType);
         }
     }
 }

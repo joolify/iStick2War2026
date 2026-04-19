@@ -72,6 +72,9 @@ namespace iStick2War_V2
 
         private Vector2 _touchPos;
 
+        /// <summary>When set, replaces mouse/touch aim for crosshair and facing (used by <see cref="AutoHero_V2"/>).</summary>
+        private Vector2? _overrideAimWorld;
+
         [SerializeField] private Camera _cam;
 
         private bool _isInitialized;
@@ -173,11 +176,32 @@ namespace iStick2War_V2
             if (IsDead())
                 return;
 
-            FaceMouse();
-
-            _touchPos = new Vector2(Camera.main.ScreenToWorldPoint(Input.mousePosition).x, Camera.main.ScreenToWorldPoint(Input.mousePosition).y);
-
+            _touchPos = ResolveAimWorldPoint();
+            FaceTowardWorldX(_touchPos);
             SetCrosshair(_touchPos);
+        }
+
+        /// <summary>Optional world-space aim target for automated playtests.</summary>
+        public void SetAutoAimWorldOverride(Vector2? worldPoint)
+        {
+            _overrideAimWorld = worldPoint;
+        }
+
+        private Vector2 ResolveAimWorldPoint()
+        {
+            if (_overrideAimWorld.HasValue)
+            {
+                return _overrideAimWorld.Value;
+            }
+
+            Camera cam = _cam != null ? _cam : Camera.main;
+            if (cam == null)
+            {
+                return transform.position;
+            }
+
+            Vector3 w = cam.ScreenToWorldPoint(Input.mousePosition);
+            return new Vector2(w.x, w.y);
         }
 
         private void OnDestroy()
@@ -362,18 +386,27 @@ namespace iStick2War_V2
             _crossHairBone.SetLocalPosition(skeletonSpacePoint);
         }
 
-        void FaceMouse()
+        private void FaceTowardWorldX(Vector2 worldTarget)
         {
             if (IsDead())
             {
                 return;
             }
 
-            // Desktop-only cursor flip. Mobile/touch uses different aim handling.
+            // Desktop-only cursor flip. Mobile/touch uses different aim handling unless bot override is active.
 #if (UNITY_IPHONE || UNITY_ANDROID) && !UNITY_EDITOR
-            return;
-#else
-            Vector3 delta = _cam.ScreenToWorldPoint(Input.mousePosition) - transform.position;
+            if (!_overrideAimWorld.HasValue)
+            {
+                return;
+            }
+#endif
+            Camera cam = _cam != null ? _cam : Camera.main;
+            if (cam == null)
+            {
+                return;
+            }
+
+            Vector3 delta = new Vector3(worldTarget.x, worldTarget.y, transform.position.z) - transform.position;
 
             if (delta.x > 0f && !_facingRight)
             {
@@ -385,7 +418,6 @@ namespace iStick2War_V2
                 _skeletonAnimation.Skeleton.ScaleX *= -1f;
                 _facingRight = false;
             }
-#endif
         }
 
         private bool IsDead()

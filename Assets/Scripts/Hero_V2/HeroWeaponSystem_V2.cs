@@ -274,6 +274,21 @@ namespace iStick2War_V2
             return TrySwitchActiveWeapon(() => _inventory.SetActiveBySlot(slotIndex));
         }
 
+        public bool TrySwitchToWeaponType(WeaponType weaponType)
+        {
+            if (isDisabled || _model.isDead)
+            {
+                return false;
+            }
+
+            return TrySwitchActiveWeapon(() => _inventory.SetActiveByType(weaponType));
+        }
+
+        public bool HasUnlockedWeaponOfType(WeaponType weaponType)
+        {
+            return !isDisabled && !_model.isDead && _inventory.ContainsWeaponType(weaponType);
+        }
+
         public bool UnlockWeapon(HeroWeaponDefinition_V2 definition, bool autoEquip = false)
         {
             if (definition == null)

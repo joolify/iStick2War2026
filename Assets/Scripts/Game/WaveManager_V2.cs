@@ -100,6 +100,7 @@ namespace iStick2War_V2
         public int Currency => _currency;
         public int BunkerHealth => _bunkerHealth;
         public int BunkerMaxHealth => _bunkerMaxHealthRuntime;
+        public ShopPanel_V2 ShopPanel => _shopPanel;
 
         /// <summary>
         /// Call from <see cref="MainMenu_V2"/> after Play: shows <c>Wave N</c> for <see cref="_topBarWaveTextVisibleSeconds"/>, then fades out.

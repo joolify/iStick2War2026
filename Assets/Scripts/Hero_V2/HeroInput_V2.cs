@@ -60,10 +60,46 @@ namespace iStick2War_V2
         public bool ShootBuffered; // Om shoot-input är buffrad
 
         // -------------------------
+        // BOT (AutoHero_V2): injected before keyboard read when enabled
+        // -------------------------
+        private bool _botDriving;
+        private Vector2 _botMove;
+        private bool _botShootHeld;
+        private bool _botReloadPressed;
+
+        /// <summary>When true, <see cref="Tick"/> uses the last bot frame instead of Unity input.</summary>
+        public void SetBotDriving(bool enabled)
+        {
+            _botDriving = enabled;
+        }
+
+        /// <summary>Call each frame before <see cref="Tick"/> while bot is active.</summary>
+        public void SetBotFrame(Vector2 move, bool shootHeld, bool reloadPressed)
+        {
+            _botMove = move;
+            _botShootHeld = shootHeld;
+            _botReloadPressed = reloadPressed;
+        }
+
+        // -------------------------
         // UPDATE (called by Hero_V2 MonoBehaviour)
         // -------------------------
         public void Tick()
         {
+            if (_botDriving)
+            {
+                MoveInput = _botMove.sqrMagnitude > 0.0001f ? _botMove.normalized : Vector2.zero;
+                IsShootingPressed = false;
+                IsShootingHeld = _botShootHeld;
+                IsShootingReleased = false;
+                IsReloadPressed = _botReloadPressed;
+                IsSwitchNextWeaponPressed = false;
+                IsSwitchPreviousWeaponPressed = false;
+                DirectWeaponSlot = -1;
+                IsJumpPressed = false;
+                return;
+            }
+
             ReadMovement();
             ReadCombatInput();
         }

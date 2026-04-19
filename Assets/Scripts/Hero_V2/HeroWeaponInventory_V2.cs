@@ -119,6 +119,11 @@ namespace iStick2War_V2
             return true;
         }
 
+        public bool ContainsWeaponType(WeaponType weaponType)
+        {
+            return FindIndexByType(weaponType) >= 0;
+        }
+
         private int FindIndexByType(WeaponType weaponType)
         {
             for (int i = 0; i < _weapons.Count; i++)
