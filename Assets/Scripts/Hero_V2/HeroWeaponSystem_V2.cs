@@ -49,6 +49,11 @@ namespace iStick2War_V2
         private float lastShootTime;
         private float _reloadEndTime;
         private bool _isReloading;
+
+        /// <summary>weaponType, isProjectile, rayHit (meaningless when isProjectile).</summary>
+        public event System.Action<WeaponType, bool, bool> OnCommittedAttack;
+
+        public event System.Action<WeaponType> OnReloadCompleted;
         private readonly HeroShotResolver_V2 _shotResolver = new HeroShotResolver_V2();
 
         public HeroWeaponSystem_V2(
@@ -107,6 +112,7 @@ namespace iStick2War_V2
             ConsumeAmmo(1);
 
             shotResult = _shotResolver.ResolveShot(shotContext);
+            OnCommittedAttack?.Invoke(_model.currentWeaponType, false, shotResult.DidHit);
             LogWeapon($"[HeroWeaponSystem_V2] Shoot OK. didHit={shotResult.DidHit}, finalPos={shotResult.FinalPos}, ammoLeft={_model.currentAmmo}");
             return true;
         }
@@ -150,8 +156,10 @@ namespace iStick2War_V2
                 return;
             }
 
+            WeaponType weaponForReload = _model.currentWeaponType;
             _isReloading = false;
             RefillAmmo();
+            OnReloadCompleted?.Invoke(weaponForReload);
             LogWeapon($"[HeroWeaponSystem_V2] Reload complete. ammo={_model.currentAmmo}/{_model.maxAmmo}");
         }
 
@@ -252,6 +260,7 @@ namespace iStick2War_V2
                 Object.Destroy(projectileObject, definition.ProjectileLifetime);
             }
 
+            OnCommittedAttack?.Invoke(_model.currentWeaponType, true, false);
             LogWeapon($"[HeroWeaponSystem_V2] Projectile shot. weapon={definition.WeaponType}, ammoLeft={_model.currentAmmo}");
             return true;
         }

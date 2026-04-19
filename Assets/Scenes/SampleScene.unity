@@ -4070,6 +4070,7 @@ GameObject:
   m_Component:
   - component: {fileID: 796613715}
   - component: {fileID: 796613714}
+  - component: {fileID: 796613716}
   m_Layer: 11
   m_Name: GameLoop V2
   m_TagString: Untagged
@@ -4148,6 +4149,22 @@ Transform:
   - {fileID: 1791534824}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &796613716
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 796613713}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4fd6e626e6440494c93377da0e5f90c3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.WaveRunTelemetry_V2
+  _waveManager: {fileID: 796613714}
+  _telemetryEnabled: 1
+  _fileNamePrefix: wave_run
+  _logFilePathOnce: 1
 --- !u!1 &805326341
 GameObject:
   m_ObjectHideFlags: 0
@@ -5508,7 +5525,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1193300240}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 657bf09dca1ffa1499aea9a7d3a50913, type: 3}
   m_Name: 
@@ -7220,6 +7237,8 @@ MonoBehaviour:
   _useCachedVisualScaleWhenParentedToCamera: 1
   _debugShopPanelLogs: 1
   _debugShopNavigationLogs: 1
+  _carouselPreviewObjectsRoot: {fileID: 0}
+  _reparentLooseRootPreviewByExactName: shop_bazookaRocket
 --- !u!4 &1714380459
 Transform:
   m_ObjectHideFlags: 0

@@ -316,6 +316,9 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
             return _model != null && _model.currentHealth >= _model.maxHealth;
         }
 
+        /// <summary>Raised after successful healing (shop or other systems).</summary>
+        public event Action<int> OnHealed;
+
         public void Heal(int amount)
         {
             if (_model == null || amount <= 0)
@@ -324,7 +327,16 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
             }
 
             _model.Heal(amount);
+            OnHealed?.Invoke(amount);
         }
+
+        /// <summary>For telemetry / tools; non-null after <see cref="Awake"/>.</summary>
+        public HeroDamageReceiver_V2 DamageReceiver => _damageReceiver;
+
+        /// <summary>For telemetry / tools; non-null after <see cref="Awake"/>.</summary>
+        public HeroWeaponSystem_V2 WeaponSystem => _weaponSystem;
+
+        public WeaponType CurrentWeaponType => _model != null ? _model.currentWeaponType : WeaponType.Colt45;
 
         public bool IsDead()
         {

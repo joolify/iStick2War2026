@@ -101,6 +101,9 @@ namespace iStick2War_V2
         public int BunkerHealth => _bunkerHealth;
         public int BunkerMaxHealth => _bunkerMaxHealthRuntime;
         public ShopPanel_V2 ShopPanel => _shopPanel;
+        public Hero_V2 Hero => _hero;
+        /// <summary>Kill counter for the active wave (reset when a new wave starts).</summary>
+        public int EnemiesKilledThisWave => _enemiesKilledThisWave;
 
         /// <summary>
         /// Call from <see cref="MainMenu_V2"/> after Play: shows <c>Wave N</c> for <see cref="_topBarWaveTextVisibleSeconds"/>, then fades out.
@@ -134,6 +137,7 @@ namespace iStick2War_V2
 
             _bunkerHealth = Mathf.Max(0, _bunkerHealth - amount);
             Log($"Bunker took {amount} damage. hp={_bunkerHealth}/{_bunkerMaxHealthRuntime}");
+            WaveRunTelemetry_V2.NotifyBunkerDamageTaken(amount);
             EmitMetaChanged();
         }
 
@@ -337,6 +341,7 @@ namespace iStick2War_V2
             _hero.Heal(_healthPurchaseAmount);
             _healthPurchasesThisRun++;
             Log($"Health purchased (+{_healthPurchaseAmount}) for {cost}.");
+            WaveRunTelemetry_V2.NotifyShopPurchase("health_pack_top_bar", cost);
             EmitMetaChanged();
             return true;
         }
@@ -369,6 +374,7 @@ namespace iStick2War_V2
                     _hero.Heal(heal);
                     _healthPurchasesThisRun++;
                     Log($"Health purchased (+{heal}) for {healthCost}.");
+                    WaveRunTelemetry_V2.NotifyShopPurchase("HealthPack", healthCost);
                     EmitMetaChanged();
                     return true;
 
@@ -387,6 +393,7 @@ namespace iStick2War_V2
                     int repair = offer.BunkerRepairAmount > 0 ? offer.BunkerRepairAmount : _bunkerRepairAmount;
                     _bunkerHealth = Mathf.Min(_bunkerMaxHealthRuntime, _bunkerHealth + repair);
                     Log($"Bunker repaired (+{repair}) for {repairCost}. hp={_bunkerHealth}/{_bunkerMaxHealthRuntime}");
+                    WaveRunTelemetry_V2.NotifyShopPurchase("BunkerRepair", repairCost);
                     EmitMetaChanged();
                     return true;
 
@@ -424,6 +431,7 @@ namespace iStick2War_V2
                     _bunkerMaxUpgradesThisRun++;
                     Log(
                         $"Bunker max upgraded (+{delta} max) for {maxCost}. hp={_bunkerHealth}/{_bunkerMaxHealthRuntime}");
+                    WaveRunTelemetry_V2.NotifyShopPurchase("BunkerMaxUpgrade", maxCost);
                     EmitMetaChanged();
                     return true;
 
@@ -452,6 +460,7 @@ namespace iStick2War_V2
                     }
 
                     Log($"Weapon unlocked: {offer.Weapon.DisplayName} for {weaponCost}.");
+                    WaveRunTelemetry_V2.NotifyShopPurchase("WeaponUnlock", weaponCost);
                     EmitMetaChanged();
                     return true;
 
@@ -485,6 +494,7 @@ namespace iStick2War_V2
                     }
 
                     Log($"Ammo refilled: {offer.Weapon.DisplayName} for {ammoCost}.");
+                    WaveRunTelemetry_V2.NotifyShopPurchase("AmmoRefill", ammoCost);
                     EmitMetaChanged();
                     return true;
 
@@ -543,6 +553,7 @@ namespace iStick2War_V2
             _bunkerHealth = Mathf.Min(_bunkerMaxHealthRuntime, _bunkerHealth + _bunkerRepairAmount);
             Log(
                 $"Bunker repaired (+{_bunkerRepairAmount}) for {_bunkerRepairCost}. hp={_bunkerHealth}/{_bunkerMaxHealthRuntime}");
+            WaveRunTelemetry_V2.NotifyShopPurchase("bunker_repair_top_bar", _bunkerRepairCost);
             EmitMetaChanged();
             return true;
         }
