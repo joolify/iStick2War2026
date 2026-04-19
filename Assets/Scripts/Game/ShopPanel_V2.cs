@@ -36,6 +36,16 @@ namespace iStick2War_V2
         [SerializeField] private bool _useCachedVisualScaleWhenParentedToCamera = true;
         [SerializeField] private bool _debugShopPanelLogs = false;
         [SerializeField] private bool _debugShopNavigationLogs = true;
+        [Header("Offer previews (carousel)")]
+        [Tooltip(
+            "Parent transform for 3D/2D weapon preview objects. When set, every direct child is deactivated first, " +
+            "then the selected offer's PreviewObject is activated — so stray previews under this root never stay on-screen. " +
+            "If empty, tries Transform.Find(\"Weapons\") under Visual Root.")]
+        [SerializeField] private Transform _carouselPreviewObjectsRoot;
+        [Tooltip(
+            "If a scene object with this exact name sits at the root of a loaded scene (not parented under the carousel root), " +
+            "it is reparented under the carousel root once (typical: shop_bazookaRocket left as a loose instance). Leave empty to disable.")]
+        [SerializeField] private string _reparentLooseRootPreviewByExactName = "shop_bazookaRocket";
 
         private WaveManager_V2 _waveManager;
         private bool _hasCachedVisualRootTransform;
@@ -50,6 +60,7 @@ namespace iStick2War_V2
         private int _offerIndex;
         private readonly List<Canvas> _resolvedShopUiCanvases = new List<Canvas>();
         private bool _didResolveShopUiCanvases;
+        private bool _didReparentLooseShopPreview;
 
         /// <summary>Carousel rows configured in the Inspector (read-only for bots / tools).</summary>
         public IReadOnlyList<ShopOfferConfig_V2> ConfiguredShopOffers =>
@@ -66,6 +77,7 @@ namespace iStick2War_V2
 
             MaybeDetachFromScaledParent();
             CacheVisualRootTransform();
+            EnsureLooseShopPreviewReparentedOnce();
             Refresh();
         }
 
@@ -109,6 +121,7 @@ namespace iStick2War_V2
             SetText(_buyButtonText, _buyButtonDefaultLabel);
             SetText(_healthCostText, $"Heal cost: {_waveManager.GetHealthPurchaseCost()}");
             SetText(_bunkerCostText, $"Repair cost: {_waveManager.GetBunkerRepairCost()}");
+            EnsureLooseShopPreviewReparentedOnce();
             RefreshOfferSelection();
         }
 
@@ -234,6 +247,19 @@ namespace iStick2War_V2
             SetText(_offerTitleText, offer.DisplayName);
             SetText(_offerSubtitleText, BuildOfferSubtitle(offer));
 
+            Transform carouselRoot = ResolveCarouselPreviewObjectsRoot();
+            if (carouselRoot != null)
+            {
+                for (int c = 0; c < carouselRoot.childCount; c++)
+                {
+                    Transform child = carouselRoot.GetChild(c);
+                    if (child != null)
+                    {
+                        child.gameObject.SetActive(false);
+                    }
+                }
+            }
+
             for (int i = 0; i < _shopOffers.Count; i++)
             {
                 GameObject preview = _shopOffers[i].PreviewObject;
@@ -244,6 +270,94 @@ namespace iStick2War_V2
             }
 
             SetBuyButtonLabel(ResolveBuyButtonLabel(offer));
+        }
+
+        private Transform ResolveCarouselPreviewObjectsRoot()
+        {
+            if (_carouselPreviewObjectsRoot != null)
+            {
+                return _carouselPreviewObjectsRoot;
+            }
+
+            if (_visualRoot == null)
+            {
+                return null;
+            }
+
+            return _visualRoot.Find("Weapons");
+        }
+
+        private void EnsureLooseShopPreviewReparentedOnce()
+        {
+            if (_didReparentLooseShopPreview)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_reparentLooseRootPreviewByExactName))
+            {
+                _didReparentLooseShopPreview = true;
+                return;
+            }
+
+            Transform carouselRoot = ResolveCarouselPreviewObjectsRoot();
+            if (carouselRoot == null)
+            {
+                _didReparentLooseShopPreview = true;
+                return;
+            }
+
+            Transform loose = FindLoadedSceneRootTransformByExactName(_reparentLooseRootPreviewByExactName.Trim());
+            if (loose == null || loose == carouselRoot || IsDescendantOf(loose, carouselRoot))
+            {
+                _didReparentLooseShopPreview = true;
+                return;
+            }
+
+            loose.SetParent(carouselRoot, true);
+            loose.gameObject.SetActive(false);
+            _didReparentLooseShopPreview = true;
+
+            if (_debugShopPanelLogs)
+            {
+                Debug.Log(
+                    $"[ShopPanel_V2] Reparented loose preview '{loose.name}' under '{carouselRoot.name}' for carousel exclusivity.");
+            }
+        }
+
+        private static Transform FindLoadedSceneRootTransformByExactName(string exactName)
+        {
+            Transform[] transforms = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                Transform t = transforms[i];
+                if (t == null || t.name != exactName || t.parent != null)
+                {
+                    continue;
+                }
+
+                if (!t.gameObject.scene.IsValid() || !t.gameObject.scene.isLoaded)
+                {
+                    continue;
+                }
+
+                return t;
+            }
+
+            return null;
+        }
+
+        private static bool IsDescendantOf(Transform node, Transform ancestor)
+        {
+            for (Transform walk = node; walk != null; walk = walk.parent)
+            {
+                if (walk == ancestor)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private string BuildOfferSubtitle(ShopOfferConfig_V2 offer)

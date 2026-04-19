@@ -35,6 +35,12 @@ namespace iStick2War_V2
 
         [Header("Shop")]
         [SerializeField] private int _maxShopPurchasesPerShopVisit = 24;
+        [Tooltip(
+            "Extra ScoreOffer priority when the Bazooka shop refill applies and the hero has no rounds in mag or reserve.")]
+        [SerializeField] private int _shopScoreBonusBazookaAmmoWhenDry = 30_000;
+        [Tooltip(
+            "Extra priority when Bazooka refill applies but the hero still has some Bazooka ammo (top-up before other buys).")]
+        [SerializeField] private int _shopScoreBonusBazookaAmmoTopUp = 12_000;
 
         [Header("Telemetry (optional)")]
         [SerializeField] private bool _logShopAndWave;
@@ -291,7 +297,22 @@ namespace iStick2War_V2
                 case ShopOfferKind_V2.WeaponUnlock:
                     return 10_000 + Mathf.Clamp(o.Cost, 0, 5_000);
                 case ShopOfferKind_V2.AmmoRefill:
-                    return 4_000 + Mathf.Clamp(o.Cost, 0, 2_000);
+                {
+                    int baseScore = 4_000 + Mathf.Clamp(o.Cost, 0, 2_000);
+                    if (o.Weapon != null &&
+                        o.Weapon.WeaponType == WeaponType.Bazooka &&
+                        _hero.HasUnlockedWeaponOfType(WeaponType.Bazooka))
+                    {
+                        if (!_hero.HasUsableAmmoForWeaponType(WeaponType.Bazooka))
+                        {
+                            return baseScore + Mathf.Max(0, _shopScoreBonusBazookaAmmoWhenDry);
+                        }
+
+                        return baseScore + Mathf.Max(0, _shopScoreBonusBazookaAmmoTopUp);
+                    }
+
+                    return baseScore;
+                }
                 case ShopOfferKind_V2.HealthPack:
                 {
                     int urgency = Mathf.RoundToInt((1f - Mathf.Clamp01(hpRatio)) * 6_000f);

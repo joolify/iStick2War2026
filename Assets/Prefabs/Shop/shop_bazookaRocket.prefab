@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &3893698407395813190
+--- !u!1 &3230008884262578901
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,38 +8,38 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1979452218820421135}
-  - component: {fileID: 5746693914713848770}
+  - component: {fileID: 5540722930920100185}
+  - component: {fileID: 7413176046758883165}
   m_Layer: 14
-  m_Name: bazooka_temp
+  m_Name: shop_bazookaRocket
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &1979452218820421135
+--- !u!4 &5540722930920100185
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3893698407395813190}
+  m_GameObject: {fileID: 3230008884262578901}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.01, y: 2.4, z: 0}
-  m_LocalScale: {x: 3.1886396, y: 3.3138316, z: 1.9800804}
+  m_LocalPosition: {x: -2.54, y: 1.6, z: 0}
+  m_LocalScale: {x: 1.5943198, y: 1.6569158, z: 1.9800804}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!212 &5746693914713848770
+--- !u!212 &7413176046758883165
 SpriteRenderer:
   serializedVersion: 2
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3893698407395813190}
+  m_GameObject: {fileID: 3230008884262578901}
   m_Enabled: 1
   m_CastShadows: 0
   m_ReceiveShadows: 0
@@ -81,12 +81,12 @@ SpriteRenderer:
   m_SortingLayer: 13
   m_SortingOrder: 10
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -7227783451421195894, guid: ca8bfd4c6cf49df4a8044df7f26d7c33, type: 3}
+  m_Sprite: {fileID: 4001408961456842790, guid: 939721df5daf0854f9523fb098e26878, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 4.05, y: 0.71}
+  m_Size: {x: 1.34, y: 0.4}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
