@@ -38,6 +38,13 @@ namespace iStick2War_V2
         [SerializeField] [Range(8, 400)]
         private int _bunkerHpSamplesMaxPerWave = 200;
 
+        [Header("Bunker sustained pressure (InWave)")]
+        [Tooltip(
+            "While InWave, bunkerPressureTimeSec accumulates unscaled time when bunkerHp/maxHp is strictly below this ratio. " +
+            "Separate from bunkerCriticalLow (different threshold).")]
+        [SerializeField] [Range(0.05f, 0.99f)]
+        private float _bunkerPressureHpRatioThreshold = 0.8f;
+
         private string _sessionId;
         private string _filePath;
         private WaveLoopState_V2 _lastState;
@@ -74,6 +81,7 @@ namespace iStick2War_V2
         private float _minBunkerHpRatioThisWave;
         private List<BunkerHpSamplePoint> _bunkerHpSamplesThisWave;
         private float _nextBunkerSampleRealtime;
+        private float _bunkerLowPressureTimeUnscaledDuringWave;
 
         [Serializable]
         private sealed class BunkerHpSamplePoint
@@ -111,6 +119,9 @@ namespace iStick2War_V2
 
             public float bunkerHpSampleIntervalSecUsed;
             public int bunkerHpSamplesMaxPerWaveUsed;
+
+            /// <summary>Clamped ratio threshold for <see cref="TelemetryEvent.bunkerPressureTimeSec"/> (Inspector echo).</summary>
+            public float bunkerPressureHpRatioThresholdUsed;
 
             public TelemetryEvent[] events;
         }
@@ -165,10 +176,16 @@ namespace iStick2War_V2
             public bool heroDead;
 
             /// <summary>
-            /// Rough per-wave pressure score (only meaningful on <c>wave_cleared</c>; otherwise 0).
-            /// Higher = more damage taken and/or longer fight with kills.
+            /// Rough burst-ish scalar: meaningful on <c>wave_cleared</c> and on <c>run_end</c> when GameOver occurs during
+            /// InWave (same formula and accumulators as the aborted wave). Otherwise 0.
             /// </summary>
             public float waveStressScore;
+
+            /// <summary>
+            /// Unscaled seconds in InWave with bunkerHp/maxHp strictly below root bunkerPressureHpRatioThresholdUsed
+            /// (sustained low-bunker pressure). Meaningful on wave_cleared and run_end after abort during InWave; 0 otherwise.
+            /// </summary>
+            public float bunkerPressureTimeSec;
 
             /// <summary>
             /// Minimum bunkerHp/bunkerMaxHp observed during the InWave just ended; -1 if not applicable.
@@ -233,6 +250,7 @@ namespace iStick2War_V2
             }
 
             TickBunkerHpCurveTracking();
+            TickBunkerPressureAccumulation();
 
             Hero_V2 hero = FindHero();
             if (hero != null && _waveManager.IsHeroInsideBunker(hero))
@@ -276,6 +294,23 @@ namespace iStick2War_V2
                         bunkerHpRatio = r
                     });
                 _nextBunkerSampleRealtime += interval;
+            }
+        }
+
+        private void TickBunkerPressureAccumulation()
+        {
+            if (_waveManager == null)
+            {
+                return;
+            }
+
+            int mx = Mathf.Max(1, _waveManager.BunkerMaxHealth);
+            int hp = _waveManager.BunkerHealth;
+            float ratio = hp / (float)mx;
+            float thr = Mathf.Clamp(_bunkerPressureHpRatioThreshold, 0.05f, 0.99f);
+            if (ratio < thr)
+            {
+                _bunkerLowPressureTimeUnscaledDuringWave += Time.unscaledDeltaTime;
             }
         }
 
@@ -546,6 +581,7 @@ namespace iStick2War_V2
             _rayMissesDuringWave = 0;
             _projectileLaunchesDuringWave = 0;
             _reloadsDuringWave = 0;
+            _bunkerLowPressureTimeUnscaledDuringWave = 0f;
         }
 
         private void ResetBunkerHpCurveForWave()
@@ -641,7 +677,9 @@ namespace iStick2War_V2
             float fracUsed = Mathf.Clamp(_bunkerCriticalHpFraction, 0.02f, 0.5f);
             bool bunkerCriticalLow = ComputeBunkerCriticalLowStatic(bunkerHpSnap, bunkerMaxSnap, fracUsed);
             bool heroDeadSnap = h != null && h.IsDead();
-            float waveStress = kind == "wave_cleared"
+            bool includeWaveStressForEndedInWave =
+                kind == "wave_cleared" || (kind == "run_end" && runEndIncludeAbortWaveBunkerCurve);
+            float waveStress = includeWaveStressForEndedInWave
                 ? ComputeWaveStressScore(
                     _bunkerDamageTakenDuringWave,
                     _heroDamageTakenDuringWave,
@@ -663,6 +701,12 @@ namespace iStick2War_V2
                 bunkerSamples = _bunkerHpSamplesThisWave != null && _bunkerHpSamplesThisWave.Count > 0
                     ? _bunkerHpSamplesThisWave.ToArray()
                     : Array.Empty<BunkerHpSamplePoint>();
+            }
+
+            float bunkerPressureTimeForRow = 0f;
+            if (kind == "wave_cleared" || (kind == "run_end" && runEndIncludeAbortWaveBunkerCurve))
+            {
+                bunkerPressureTimeForRow = _bunkerLowPressureTimeUnscaledDuringWave;
             }
 
             return new TelemetryEvent
@@ -701,6 +745,7 @@ namespace iStick2War_V2
                 bunkerCriticalLow = bunkerCriticalLow,
                 heroDead = heroDeadSnap,
                 waveStressScore = waveStress,
+                bunkerPressureTimeSec = bunkerPressureTimeForRow,
                 minBunkerHpRatioThisWave = minBunkerRatio,
                 bunkerHpSamples = bunkerSamples
             };
@@ -879,6 +924,8 @@ namespace iStick2War_V2
             int sampleMax = Mathf.Clamp(_bunkerHpSamplesMaxPerWave, 8, 400);
             root.bunkerHpSampleIntervalSecUsed = sampleInt;
             root.bunkerHpSamplesMaxPerWaveUsed = sampleMax;
+            float pressureThrUsed = Mathf.Clamp(_bunkerPressureHpRatioThreshold, 0.05f, 0.99f);
+            root.bunkerPressureHpRatioThresholdUsed = pressureThrUsed;
             root._comment =
                 "iStick2War wave-run telemetry (JSON). Root contains _comment, glossary, bunkerCriticalHpFractionUsed, and events[]. " +
                 "Each object in events[] shares the same property names; meaning depends on events[].kind. " +
@@ -891,14 +938,16 @@ namespace iStick2War_V2
                 " (see glossary; threshold from WaveRunTelemetry_V2 Inspector, echoed as bunkerCriticalHpFractionUsed). " +
                 "Bunker HP curve: wave_cleared rows include minBunkerHpRatioThisWave and bunkerHpSamples[]; run_end rows " +
                 "include the same when GameOver occurs during InWave (fatal wave has no wave_cleared row). Sampling interval " +
-                "and cap are bunkerHpSampleIntervalSecUsed / bunkerHpSamplesMaxPerWaveUsed on the root.";
-            root.glossary = BuildTelemetryGlossary(bunkerFracUsed, sampleInt, sampleMax);
+                "and cap are bunkerHpSampleIntervalSecUsed / bunkerHpSamplesMaxPerWaveUsed on the root. " +
+                "bunkerPressureTimeSec (wave_cleared / applicable run_end) uses bunkerPressureHpRatioThresholdUsed on the root.";
+            root.glossary = BuildTelemetryGlossary(bunkerFracUsed, sampleInt, sampleMax, pressureThrUsed);
         }
 
         private static TelemetryGlossary BuildTelemetryGlossary(
             float bunkerCriticalHpFractionUsed,
             float bunkerHpSampleIntervalSecUsed,
-            int bunkerHpSamplesMaxPerWaveUsed)
+            int bunkerHpSamplesMaxPerWaveUsed,
+            float bunkerPressureHpRatioThresholdUsed)
         {
             return new TelemetryGlossary
             {
@@ -1079,8 +1128,25 @@ namespace iStick2War_V2
                     {
                         property = "waveStressScore",
                         meaning =
-                            "Only meaningful on wave_cleared: rough pressure scalar (bunker+hero damage, kills, duration). " +
-                            "0 on other kinds. For comparing waves, not a tuned design 'difficulty tier'."
+                            "wave_cleared, and run_end after abort during InWave: same burst-ish scalar (bunker+hero damage, kills, " +
+                            "small duration term using that row's waveDurationSec). 0 on other kinds. Complements bunkerPressureTimeSec " +
+                            "(sustained low-bunker time), not a full 'feel' model."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "bunkerPressureTimeSec",
+                        meaning =
+                            "wave_cleared, and run_end after abort during InWave: unscaled seconds spent InWave while " +
+                            "bunkerHp/bunkerMaxHp was strictly below root.bunkerPressureHpRatioThresholdUsed (" +
+                            bunkerPressureHpRatioThresholdUsed.ToString("0.###", CultureInfo.InvariantCulture) +
+                            " in this file). 0 on other kinds. Measures sustained cover pressure, not damage spikes alone."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "bunkerPressureHpRatioThresholdUsed (root)",
+                        meaning =
+                            "Inspector echo: bunker HP ratio below which bunkerPressureTimeSec accumulates (WaveRunTelemetry_V2 " +
+                            "_bunkerPressureHpRatioThreshold, clamped 0.05–0.99). Distinct from bunkerCriticalHpFractionUsed."
                     },
                     new TelemetryGlossaryEntry
                     {
