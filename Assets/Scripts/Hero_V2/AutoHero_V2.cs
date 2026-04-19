@@ -11,6 +11,9 @@ namespace iStick2War_V2
     [DisallowMultipleComponent]
     public sealed class AutoHero_V2 : MonoBehaviour
     {
+        [Header("Test profile")]
+        [SerializeField] private AutoHeroTestProfileKind_V2 _testProfile = AutoHeroTestProfileKind_V2.Perfect;
+
         [Header("References (optional — resolved at runtime if empty)")]
         [SerializeField] private Hero_V2 _hero;
         [SerializeField] private HeroModel_V2 _model;
@@ -55,6 +58,17 @@ namespace iStick2War_V2
         private bool _shopExitScheduledThisVisit;
         private float _nextWaveCombatNoTargetLogUnscaledTime;
 
+        // --- Test profile: aim noise (world units), resampled on a timer ---
+        private Vector2 _aimNoiseOffset;
+        private float _nextAimNoiseResampleUnscaled;
+
+        // --- Test profile: first-frame delay when shoot conditions become true ---
+        private bool _lastRawShootHeld;
+        private float _shootEngageAllowedAfterUnscaled;
+
+        /// <summary>Active preset for balance/telemetry runs (Inspector).</summary>
+        public AutoHeroTestProfileKind_V2 TestProfile => _testProfile;
+
         private void Awake()
         {
             CacheReferences();
@@ -64,6 +78,8 @@ namespace iStick2War_V2
         private void OnDisable()
         {
             _shopExitScheduledThisVisit = false;
+            _lastRawShootHeld = false;
+            _shootEngageAllowedAfterUnscaled = 0f;
             if (_input != null)
             {
                 _input.SetBotDriving(false);
@@ -369,6 +385,12 @@ namespace iStick2War_V2
                 hasTarget = true;
             }
 
+            RefreshAimNoiseForProfile(hasTarget);
+            if (hasTarget && _testProfile != AutoHeroTestProfileKind_V2.Perfect)
+            {
+                aimPoint += _aimNoiseOffset;
+            }
+
             MaybeSelectWeaponForThreat(heroPos, aimPoint, hasTarget);
 
             Vector2 move = Vector2.zero;
@@ -378,10 +400,29 @@ namespace iStick2War_V2
                 move = new Vector2(dx > 0.08f ? 1f : dx < -0.08f ? -1f : 0f, 0f);
             }
 
+            if (_testProfile == AutoHeroTestProfileKind_V2.Struggling && move.sqrMagnitude > 0.0001f)
+            {
+                move += new Vector2(0f, Random.Range(-0.35f, 0.35f));
+                if (move.sqrMagnitude > 1.0001f)
+                {
+                    move.Normalize();
+                }
+            }
+
             float weaponRange = _model.currentWeaponDefinition != null
                 ? _model.currentWeaponDefinition.Range
                 : 40f;
-            float maxShootDist = weaponRange * Mathf.Max(0.1f, _shootIfEnemyWithinWeaponRangeFactor);
+            float rangeFactor = Mathf.Max(0.1f, _shootIfEnemyWithinWeaponRangeFactor);
+            if (_testProfile == AutoHeroTestProfileKind_V2.Struggling)
+            {
+                rangeFactor *= 0.82f;
+            }
+            else if (_testProfile == AutoHeroTestProfileKind_V2.HumanLike)
+            {
+                rangeFactor *= 0.92f;
+            }
+
+            float maxShootDist = weaponRange * rangeFactor;
             float verticalSlack = IsParatrooperCollider(target) ? 1.35f : 0.85f;
             bool inRange =
                 hasTarget &&
@@ -398,16 +439,71 @@ namespace iStick2War_V2
                 shootFrustumPlanes == null ||
                 GeometryUtility.TestPlanesAABB(shootFrustumPlanes, target.bounds);
 
-            bool shootHeld = inRange && !wantBunker && canHoldFire && targetShootableOnCamera;
+            bool rawShootHeld = inRange && !wantBunker && canHoldFire && targetShootableOnCamera;
+            bool shootHeld = ApplyProfileToShootHeld(rawShootHeld);
             bool reload = _hero.ShouldShowReloadPrompt();
 
             _view.SetAutoAimWorldOverride(hasTarget ? aimPoint : heroPos + Vector2.right * 6f);
             _input.SetBotFrame(move, shootHeld, reload);
         }
 
+        private void RefreshAimNoiseForProfile(bool hasTarget)
+        {
+            if (_testProfile == AutoHeroTestProfileKind_V2.Perfect || !hasTarget)
+            {
+                _aimNoiseOffset = Vector2.zero;
+                return;
+            }
+
+            if (Time.unscaledTime >= _nextAimNoiseResampleUnscaled)
+            {
+                float radius = _testProfile == AutoHeroTestProfileKind_V2.Struggling
+                    ? Random.Range(1.1f, 2.6f)
+                    : Random.Range(0.35f, 1.05f);
+                _aimNoiseOffset = Random.insideUnitCircle * radius;
+                _nextAimNoiseResampleUnscaled =
+                    Time.unscaledTime + Random.Range(0.14f, 0.42f);
+            }
+        }
+
+        private bool ApplyProfileToShootHeld(bool rawShootHeld)
+        {
+            if (_testProfile == AutoHeroTestProfileKind_V2.Perfect)
+            {
+                _lastRawShootHeld = rawShootHeld;
+                return rawShootHeld;
+            }
+
+            if (!rawShootHeld)
+            {
+                _lastRawShootHeld = false;
+                return false;
+            }
+
+            if (!_lastRawShootHeld)
+            {
+                float minDelay = _testProfile == AutoHeroTestProfileKind_V2.HumanLike ? 0.05f : 0.14f;
+                float maxDelay = _testProfile == AutoHeroTestProfileKind_V2.HumanLike ? 0.2f : 0.48f;
+                _shootEngageAllowedAfterUnscaled = Time.unscaledTime + Random.Range(minDelay, maxDelay);
+            }
+
+            _lastRawShootHeld = true;
+            return Time.unscaledTime >= _shootEngageAllowedAfterUnscaled;
+        }
+
         private void MaybeSelectWeaponForThreat(Vector2 heroPos, Vector2 enemyPos, bool hasTarget)
         {
             if (!hasTarget)
+            {
+                return;
+            }
+
+            float skipOptimalWeaponChance = _testProfile == AutoHeroTestProfileKind_V2.Struggling
+                ? 0.38f
+                : _testProfile == AutoHeroTestProfileKind_V2.HumanLike
+                    ? 0.1f
+                    : 0f;
+            if (skipOptimalWeaponChance > 0f && Random.value < skipOptimalWeaponChance)
             {
                 return;
             }

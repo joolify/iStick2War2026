@@ -92,6 +92,8 @@ namespace iStick2War_V2
             public int bunkerHpWaveStart;
             public int currencyWaveStart;
             public string weaponType;
+            /// <summary><see cref="AutoHeroTestProfileKind_V2"/> on the hero when present; empty if no bot / disabled.</summary>
+            public string autoHeroTestProfile;
         }
 
         private void Awake()
@@ -437,6 +439,7 @@ namespace iStick2War_V2
             int heroMax = h != null ? h.GetMaxHealth() : -1;
             string weaponLabel = h != null ? h.GetCurrentWeaponDisplayName() : "";
             string weaponTypeStr = h != null ? h.CurrentWeaponType.ToString() : "";
+            string autoHeroProfile = ResolveAutoHeroTestProfileLabel(h);
 
             return new TelemetryEvent
             {
@@ -467,8 +470,25 @@ namespace iStick2War_V2
                 heroHpWaveStart = _heroHpAtWaveStart,
                 bunkerHpWaveStart = _bunkerHpAtWaveStart,
                 currencyWaveStart = _currencyAtWaveStart,
-                weaponType = weaponTypeStr
+                weaponType = weaponTypeStr,
+                autoHeroTestProfile = autoHeroProfile
             };
+        }
+
+        private static string ResolveAutoHeroTestProfileLabel(Hero_V2 hero)
+        {
+            if (hero == null)
+            {
+                return "";
+            }
+
+            AutoHero_V2 bot = hero.GetComponent<AutoHero_V2>();
+            if (bot == null || !bot.isActiveAndEnabled)
+            {
+                return "";
+            }
+
+            return bot.TestProfile.ToString();
         }
 
         private void WriteRunEnd(WaveLoopState_V2 previousState)

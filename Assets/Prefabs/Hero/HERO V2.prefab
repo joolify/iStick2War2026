@@ -124,7 +124,7 @@ Transform:
   m_GameObject: {fileID: 6203903255503756008}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.3, y: -2.28, z: 0}
+  m_LocalPosition: {x: -0.95, y: -2.86, z: 0}
   m_LocalScale: {x: 0.5, y: 0.5, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -166,7 +166,6 @@ MeshRenderer:
   - {fileID: 2100000, guid: 4f7f09270b298e34ea2a22e21c5fad4c, type: 2}
   - {fileID: 2100000, guid: e050c904119847043afec7d5b6ed2746, type: 2}
   - {fileID: 2100000, guid: 4f7f09270b298e34ea2a22e21c5fad4c, type: 2}
-  - {fileID: 2100000, guid: e050c904119847043afec7d5b6ed2746, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -185,8 +184,8 @@ MeshRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 2062274835
-  m_SortingLayer: 6
+  m_SortingLayerID: -369295279
+  m_SortingLayer: 11
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
@@ -230,7 +229,7 @@ MonoBehaviour:
   physicsMovementRelativeTo: {fileID: 0}
   updateTiming: 1
   unscaledTime: 0
-  _animationName: 
+  _animationName: H/colt_idle
   loop: 1
   timeScale: 1
 --- !u!114 &8349641459453035569
@@ -246,7 +245,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Hero_V2.HeroView_V2
   _skeletonAnimation: {fileID: 1003368673528517041}
-  aimPointBoneName: thompson-aim
+  aimPointBoneName: colt45-aim
   crossHairBoneName: crosshair
   _cam: {fileID: 0}
   _fallbackWeaponDefinition: {fileID: 11400000, guid: 6558c37908f5c664f915fa7c826ae5c7, type: 2}
@@ -275,6 +274,7 @@ GameObject:
   - component: {fileID: 8181619668035624711}
   - component: {fileID: 94037326130104598}
   - component: {fileID: 949627040663818886}
+  - component: {fileID: 3453683051127376714}
   m_Layer: 6
   m_Name: HERO V2
   m_TagString: Untagged
@@ -314,6 +314,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Hero_V2.Hero_V2
   _debugLifecycleLogs: 0
   _debugDamageLogs: 0
+  _excludeBunkerLayerFromHeroRigidbodyContacts: 1
   _model: {fileID: 5383291416438822190}
   _view: {fileID: 8349641459453035569}
   _skeletonAnimation: {fileID: 1003368673528517041}
@@ -380,7 +381,7 @@ BoxCollider2D:
   m_UsedByEffector: 0
   m_CompositeOperation: 0
   m_CompositeOrder: 0
-  m_Offset: {x: 2.3586164, y: -1.6886327}
+  m_Offset: {x: -0.8542435, y: -2.19751}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0, y: 0}
@@ -390,7 +391,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 0.9042883, y: 1.6152912}
+  m_Size: {x: 0.8422687, y: 1.3731008}
   m_EdgeRadius: 0
 --- !u!50 &94037326130104598
 Rigidbody2D:
@@ -434,6 +435,36 @@ MonoBehaviour:
   shootStartedEventName: start_shoot
   shootFinishedEventName: stop_shoot
   _debugEventLogs: 0
+--- !u!114 &3453683051127376714
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7159943630526338291}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 657bf09dca1ffa1499aea9a7d3a50913, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.AutoHero_V2
+  _testProfile: 1
+  _hero: {fileID: 8158568889302826421}
+  _model: {fileID: 5383291416438822190}
+  _view: {fileID: 8349641459453035569}
+  _input: {fileID: 5676783497327898619}
+  _waveManager: {fileID: 0}
+  _shootVisibilityCamera: {fileID: 0}
+  _enemySearchRadius: 90
+  _shootIfEnemyWithinWeaponRangeFactor: 1
+  _bazookaPreferWithinHorizontal: 42
+  _prioritizeInfantryOverAircraft: 1
+  _lowHealthEnterBunkerFraction: 0.35
+  _maxShopPurchasesPerShopVisit: 24
+  _shopScoreBonusBazookaAmmoWhenDry: 30000
+  _shopScoreBonusBazookaAmmoTopUp: 12000
+  _logShopAndWave: 0
+  _logWaveCombatWhenNoTarget: 0
+  _logWaveCombatWhenNoTargetIntervalSeconds: 2
 --- !u!1 &7697533572169241141
 GameObject:
   m_ObjectHideFlags: 0
