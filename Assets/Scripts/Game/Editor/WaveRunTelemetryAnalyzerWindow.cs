@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using UnityEditor;
@@ -31,6 +32,12 @@ namespace iStick2War_V2.Editor
 
         private const string PrefSuppressOnboarding = "iStick2War.WaveTelemetryAnalyzer.SuppressOnboardingBunkerFlags";
         private const string PrefOnboardingMaxWave = "iStick2War.WaveTelemetryAnalyzer.OnboardingMaxWaveInclusive";
+        private const string PrefBatchFolder = "iStick2War.WaveTelemetryAnalyzer.BatchFolder";
+        private const string PrefBatchRecursive = "iStick2War.WaveTelemetryAnalyzer.BatchRecursive";
+        private const string PrefBatchWaveRunFilenameOnly = "iStick2War.WaveTelemetryAnalyzer.BatchWaveRunFilenameOnly";
+        private const string PrefBatchSceneProfileSubstr = "iStick2War.WaveTelemetryAnalyzer.BatchSceneProfileSubstr";
+        private const string PrefBatchAutoHeroSubstr = "iStick2War.WaveTelemetryAnalyzer.BatchAutoHeroSubstr";
+        private const string PrefBatchMaxAgeHours = "iStick2War.WaveTelemetryAnalyzer.BatchMaxAgeHours";
 
         /// <summary>Swedish v1 heuristic legend shown at top of report and in UI before first analysis.</summary>
         private static readonly string AnalyzerIntroSv =
@@ -54,6 +61,13 @@ namespace iStick2War_V2.Editor
             "(så tidiga vågor inte feltolkas som balans-/retention-signaler).";
 
         private string _jsonPath = "";
+        private string _batchFolderPath = "";
+        private bool _batchRecursive;
+        private bool _batchWaveRunFilenameOnly;
+        private string _batchSceneProfileSubstr = "";
+        private string _batchAutoHeroSubstr = "";
+        private int _batchMaxAgeHours;
+        private bool _showBatchOptionsFoldout = true;
         private Vector2 _scroll;
         private string _report = "";
         private bool _showIntroFoldout = true;
@@ -80,6 +94,18 @@ namespace iStick2War_V2.Editor
 
             _suppressOnboardingBunkerFlags = EditorPrefs.GetBool(PrefSuppressOnboarding, true);
             _onboardingMaxWaveInclusive = Mathf.Max(0, EditorPrefs.GetInt(PrefOnboardingMaxWave, 2));
+
+            _batchFolderPath = EditorPrefs.GetString(PrefBatchFolder, "");
+            if (string.IsNullOrEmpty(_batchFolderPath))
+            {
+                _batchFolderPath = Path.Combine(Application.persistentDataPath, "iStick2WarTelemetry");
+            }
+
+            _batchRecursive = EditorPrefs.GetBool(PrefBatchRecursive, false);
+            _batchWaveRunFilenameOnly = EditorPrefs.GetBool(PrefBatchWaveRunFilenameOnly, false);
+            _batchSceneProfileSubstr = EditorPrefs.GetString(PrefBatchSceneProfileSubstr, "");
+            _batchAutoHeroSubstr = EditorPrefs.GetString(PrefBatchAutoHeroSubstr, "");
+            _batchMaxAgeHours = Mathf.Max(0, EditorPrefs.GetInt(PrefBatchMaxAgeHours, 0));
         }
 
         private void OnGUI()
@@ -123,6 +149,79 @@ namespace iStick2War_V2.Editor
             }
 
             EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.Space(6);
+            EditorGUILayout.LabelField("Batch — många JSON (samma heuristik som «Analyze»)", EditorStyles.boldLabel);
+            EditorGUILayout.BeginHorizontal();
+            _batchFolderPath = EditorGUILayout.TextField("Telemetry folder", _batchFolderPath);
+            if (GUILayout.Button("Browse…", GUILayout.Width(80)))
+            {
+                string start = Directory.Exists(_batchFolderPath)
+                    ? _batchFolderPath
+                    : Application.persistentDataPath;
+                string d = EditorUtility.OpenFolderPanel("Wave telemetry folder (batch)", start, "");
+                if (!string.IsNullOrEmpty(d))
+                {
+                    _batchFolderPath = d;
+                    EditorPrefs.SetString(PrefBatchFolder, _batchFolderPath);
+                }
+            }
+
+            if (GUILayout.Button("Summarize folder", GUILayout.Width(120)))
+            {
+                RunBatchSummary();
+            }
+
+            if (GUILayout.Button("Kopiera rapport", GUILayout.Width(100)) && !string.IsNullOrEmpty(_report))
+            {
+                EditorGUIUtility.systemCopyBuffer = _report;
+                _lastMessageType = MessageType.Info;
+                _lastMessage = "Rapport kopierad till urklipp.";
+            }
+
+            EditorGUILayout.EndHorizontal();
+
+            _showBatchOptionsFoldout = EditorGUILayout.Foldout(_showBatchOptionsFoldout, "Batch — filter & alternativ", true);
+            if (_showBatchOptionsFoldout)
+            {
+                EditorGUI.BeginChangeCheck();
+                _batchRecursive = EditorGUILayout.ToggleLeft(
+                    "Inkludera undermappar (rekursivt)",
+                    _batchRecursive);
+                _batchWaveRunFilenameOnly = EditorGUILayout.ToggleLeft(
+                    "Bara filer som börjar med wave_run_ (stödjer *.json i mappen)",
+                    _batchWaveRunFilenameOnly);
+                _batchSceneProfileSubstr = EditorGUILayout.TextField(
+                    "Scene profile innehåller (tomt = alla)",
+                    _batchSceneProfileSubstr);
+                _batchAutoHeroSubstr = EditorGUILayout.TextField(
+                    "AutoHero-profil innehåller (tomt = alla)",
+                    _batchAutoHeroSubstr);
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.PrefixLabel("Max filålder (h)");
+                _batchMaxAgeHours = Mathf.Max(0, EditorGUILayout.IntField(_batchMaxAgeHours, GUILayout.Width(64)));
+                EditorGUILayout.LabelField("0 = ingen gräns (alla filer)", EditorStyles.miniLabel);
+                EditorGUILayout.EndHorizontal();
+                if (EditorGUI.EndChangeCheck())
+                {
+                    EditorPrefs.SetBool(PrefBatchRecursive, _batchRecursive);
+                    EditorPrefs.SetBool(PrefBatchWaveRunFilenameOnly, _batchWaveRunFilenameOnly);
+                    EditorPrefs.SetString(PrefBatchSceneProfileSubstr, _batchSceneProfileSubstr ?? "");
+                    EditorPrefs.SetString(PrefBatchAutoHeroSubstr, _batchAutoHeroSubstr ?? "");
+                    EditorPrefs.SetInt(PrefBatchMaxAgeHours, _batchMaxAgeHours);
+                }
+
+                EditorGUILayout.HelpBox(
+                    "Filter: substring match (skiftlägesokänslig) mot session_begin (fallback: första rad med värde). " +
+                    "«Max filålder»: endast filer ändrade inom senaste N timmarna (UTC).",
+                    MessageType.None);
+            }
+            else
+            {
+                EditorGUILayout.HelpBox(
+                    "Samma v1-flaggor som enkelfil. Öppna foldout för rekursiv sökning, wave_run_-filter, profilfilter, filålder, per-fil-tabell, histogram, rad-% flaggor.",
+                    MessageType.None);
+            }
 
             if (!string.IsNullOrEmpty(_lastMessage))
             {
@@ -314,6 +413,647 @@ namespace iStick2War_V2.Editor
             _report = sb.ToString();
             _lastMessageType = MessageType.Info;
             _lastMessage = "Analysis complete.";
+        }
+
+        private void RunBatchSummary()
+        {
+            _lastMessage = "";
+            _report = "";
+
+            if (string.IsNullOrWhiteSpace(_batchFolderPath) || !Directory.Exists(_batchFolderPath))
+            {
+                _lastMessageType = MessageType.Error;
+                _lastMessage = "Batch-mapp finns inte. Välj mapp med wave_run_*.json.";
+                return;
+            }
+
+            var search = _batchRecursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+            string[] files = Directory.GetFiles(_batchFolderPath, "*.json", search);
+            Array.Sort(files, StringComparer.OrdinalIgnoreCase);
+
+            int batchRuns = 0;
+            int readOrParseFailed = 0;
+            int emptyEvents = 0;
+            int skippedByFilter = 0;
+            var skipReasonCount = new Dictionary<string, int>(StringComparer.Ordinal);
+            int runsWithRunEnd = 0;
+            int runsWithoutRunEnd = 0;
+            var deathWaves = new List<int>(files.Length);
+            var deathEndReasons = new Dictionary<string, int>(StringComparer.Ordinal);
+            var deathWaveHistogram = new Dictionary<int, int>();
+            var flagRunCount = new Dictionary<string, int>(StringComparer.Ordinal);
+            var flagRowCount = new Dictionary<string, int>(StringComparer.Ordinal);
+            int totalWaveEndRows = 0;
+            var minRatioWave2 = new List<float>(files.Length);
+            var minRatioByWave = new Dictionary<int, List<float>>();
+            for (int w = 1; w <= 12; w++)
+            {
+                minRatioByWave[w] = new List<float>(8);
+            }
+
+            var perFileLines = new List<string>(Math.Max(8, files.Length));
+            var sceneProfilesSeen = new HashSet<string>(StringComparer.Ordinal);
+            var autoHeroSeen = new HashSet<string>(StringComparer.Ordinal);
+            int onboardMax = Mathf.Max(0, _onboardingMaxWaveInclusive);
+            string sceneFilter = (_batchSceneProfileSubstr ?? "").Trim();
+            string heroFilter = (_batchAutoHeroSubstr ?? "").Trim();
+            double? maxAge = _batchMaxAgeHours > 0 ? _batchMaxAgeHours : (double?)null;
+
+            foreach (string path in files)
+            {
+                string fn = Path.GetFileName(path);
+                if (_batchWaveRunFilenameOnly &&
+                    !fn.StartsWith("wave_run_", StringComparison.OrdinalIgnoreCase))
+                {
+                    skippedByFilter++;
+                    BatchIncrement(skipReasonCount, "filnamn (ej wave_run_)");
+                    continue;
+                }
+
+                if (maxAge.HasValue)
+                {
+                    double hours = (DateTime.UtcNow - File.GetLastWriteTimeUtc(path)).TotalHours;
+                    if (hours > maxAge.Value)
+                    {
+                        skippedByFilter++;
+                        BatchIncrement(skipReasonCount, "filålder");
+                        continue;
+                    }
+                }
+
+                string text;
+                try
+                {
+                    text = File.ReadAllText(path);
+                }
+                catch
+                {
+                    readOrParseFailed++;
+                    continue;
+                }
+
+                TelemetryFileRootDto root;
+                try
+                {
+                    root = JsonUtility.FromJson<TelemetryFileRootDto>(text);
+                }
+                catch
+                {
+                    readOrParseFailed++;
+                    continue;
+                }
+
+                if (root == null || root.events == null || root.events.Length == 0)
+                {
+                    emptyEvents++;
+                    continue;
+                }
+
+                TryGetSessionMeta(root.events, out string sessionId, out string sceneProfileId, out string autoHeroProfile);
+                if (!string.IsNullOrEmpty(sceneProfileId))
+                {
+                    sceneProfilesSeen.Add(sceneProfileId);
+                }
+
+                if (!string.IsNullOrEmpty(autoHeroProfile))
+                {
+                    autoHeroSeen.Add(autoHeroProfile);
+                }
+
+                if (!string.IsNullOrEmpty(sceneFilter) &&
+                    (string.IsNullOrEmpty(sceneProfileId) ||
+                     sceneProfileId.IndexOf(sceneFilter, StringComparison.OrdinalIgnoreCase) < 0))
+                {
+                    skippedByFilter++;
+                    BatchIncrement(skipReasonCount, "scene profile");
+                    continue;
+                }
+
+                if (!string.IsNullOrEmpty(heroFilter) &&
+                    (string.IsNullOrEmpty(autoHeroProfile) ||
+                     autoHeroProfile.IndexOf(heroFilter, StringComparison.OrdinalIgnoreCase) < 0))
+                {
+                    skippedByFilter++;
+                    BatchIncrement(skipReasonCount, "AutoHero");
+                    continue;
+                }
+
+                float pressureThr = root.bunkerPressureHpRatioThresholdUsed > 0.001f
+                    ? root.bunkerPressureHpRatioThresholdUsed
+                    : 0.8f;
+
+                var waveEndRows = new List<TelemetryEventDto>(root.events.Length);
+                foreach (TelemetryEventDto e in root.events)
+                {
+                    if (e == null || string.IsNullOrEmpty(e.kind))
+                    {
+                        continue;
+                    }
+
+                    if (e.kind == "wave_cleared" || e.kind == "run_end")
+                    {
+                        waveEndRows.Add(e);
+                    }
+                }
+
+                if (waveEndRows.Count == 0)
+                {
+                    emptyEvents++;
+                    continue;
+                }
+
+                var flagsThisRun = new HashSet<string>(StringComparer.Ordinal);
+                WaveChainPrev chainPrev = default;
+                int maxWaveCleared = 0;
+                for (int wi = 0; wi < waveEndRows.Count; wi++)
+                {
+                    TelemetryEventDto ev = waveEndRows[wi];
+                    TelemetryEventDto nextWaveEndRow =
+                        wi + 1 < waveEndRows.Count ? waveEndRows[wi + 1] : null;
+                    List<string> flags = EvaluateFlags(
+                        ev,
+                        _suppressOnboardingBunkerFlags,
+                        onboardMax,
+                        pressureThr,
+                        chainPrev,
+                        nextWaveEndRow);
+                    foreach (string f in flags)
+                    {
+                        flagsThisRun.Add(f);
+                    }
+
+                    totalWaveEndRows++;
+                    foreach (string f in flags)
+                    {
+                        BatchIncrement(flagRowCount, f);
+                    }
+
+                    if (ev.kind == "wave_cleared")
+                    {
+                        maxWaveCleared = Mathf.Max(maxWaveCleared, ev.wave);
+                        if (ev.wave == 2 &&
+                            ev.minBunkerHpRatioThisWave >= 0f &&
+                            ev.minBunkerHpRatioThisWave <= 1f)
+                        {
+                            minRatioWave2.Add(ev.minBunkerHpRatioThisWave);
+                        }
+
+                        if (ev.wave >= 1 &&
+                            ev.wave <= 12 &&
+                            ev.minBunkerHpRatioThisWave >= 0f &&
+                            ev.minBunkerHpRatioThisWave <= 1f &&
+                            minRatioByWave.TryGetValue(ev.wave, out List<float> bucket))
+                        {
+                            bucket.Add(ev.minBunkerHpRatioThisWave);
+                        }
+                    }
+
+                    chainPrev = new WaveChainPrev(ev.wave, ev.minBunkerHpRatioThisWave, ev.bunkerBreached);
+                }
+
+                TelemetryEventDto lastRunEnd = null;
+                for (int i = waveEndRows.Count - 1; i >= 0; i--)
+                {
+                    if (waveEndRows[i].kind == "run_end")
+                    {
+                        lastRunEnd = waveEndRows[i];
+                        break;
+                    }
+                }
+
+                int deathWave = -1;
+                if (lastRunEnd != null)
+                {
+                    deathWave = lastRunEnd.wave;
+                    runsWithRunEnd++;
+                    deathWaves.Add(deathWave);
+                    BatchIncrement(deathWaveHistogram, deathWave);
+                    string er = string.IsNullOrEmpty(lastRunEnd.endReason) ? "(tom)" : lastRunEnd.endReason;
+                    BatchIncrement(deathEndReasons, er);
+                }
+                else
+                {
+                    runsWithoutRunEnd++;
+                }
+
+                foreach (string f in flagsThisRun)
+                {
+                    BatchIncrement(flagRunCount, f);
+                }
+
+                double sessionDur = 0.0;
+                if (root.events.Length >= 2)
+                {
+                    TelemetryEventDto a = root.events[0];
+                    TelemetryEventDto b = root.events[root.events.Length - 1];
+                    if (a != null && b != null)
+                    {
+                        sessionDur = b.realtimeSinceStartup - a.realtimeSinceStartup;
+                    }
+                }
+
+                string flagsJoined = flagsThisRun.Count > 0 ? string.Join(";", flagsThisRun) : "(inga)";
+                string deathText = deathWave >= 0 ? deathWave.ToString(CultureInfo.InvariantCulture) : "—";
+                string tsvLine =
+                    $"{fn}\t{sessionId}\t{sceneProfileId}\t{autoHeroProfile}\t{deathText}\t{maxWaveCleared}\t{sessionDur:0.#}\t{flagsJoined}";
+                perFileLines.Add(tsvLine);
+
+                batchRuns++;
+            }
+
+            EditorPrefs.SetString(PrefBatchFolder, _batchFolderPath);
+
+            var sb = new StringBuilder(8192);
+            sb.AppendLine("BATCH — wave telemetry (v1-heuristik, offline)");
+            sb.AppendLine();
+            sb.AppendLine($"Mapp: {_batchFolderPath}");
+            sb.AppendLine($"Sökning: {(_batchRecursive ? "rekursiv" : "endast vald mapp")}");
+            sb.AppendLine($"Filmatch: *.json{(_batchWaveRunFilenameOnly ? "; namn måste börja med wave_run_" : "")}");
+            if (_batchMaxAgeHours > 0)
+            {
+                sb.AppendLine($"Max filålder: senaste {_batchMaxAgeHours} h (UTC ändringstid)");
+            }
+
+            if (!string.IsNullOrEmpty(sceneFilter))
+            {
+                sb.AppendLine($"Filter scene profile (substring): «{sceneFilter}»");
+            }
+
+            if (!string.IsNullOrEmpty(heroFilter))
+            {
+                sb.AppendLine($"Filter AutoHero (substring): «{heroFilter}»");
+            }
+
+            sb.AppendLine(
+                "Onboarding-filter: " +
+                (_suppressOnboardingBunkerFlags
+                    ? $"aktiv för våg ≤ {onboardMax} (samma som enkelfils «Analyze»)"
+                    : "av"));
+            sb.AppendLine();
+            sb.AppendLine($"JSON-filer matchade (*.json): {files.Length}");
+            sb.AppendLine($"Hoppade över (filter): {skippedByFilter}");
+            if (skippedByFilter > 0 && skipReasonCount.Count > 0)
+            {
+                foreach (KeyValuePair<string, int> kv in BatchSortedPairs(skipReasonCount))
+                {
+                    sb.AppendLine($"  • {kv.Key}: {kv.Value}");
+                }
+            }
+
+            sb.AppendLine($"Lyckade körningar (parse OK, events, efter filter): {batchRuns}");
+            sb.AppendLine($"Läs/parse-fel: {readOrParseFailed}");
+            sb.AppendLine($"Tom events[] / inga wave-rader: {emptyEvents}");
+            sb.AppendLine();
+
+            if (sceneProfilesSeen.Count > 0)
+            {
+                var sp = new List<string>(sceneProfilesSeen);
+                sp.Sort(StringComparer.OrdinalIgnoreCase);
+                sb.AppendLine("--- sceneProfileId i batch (unika) ---");
+                sb.AppendLine(string.Join(", ", sp));
+                sb.AppendLine();
+            }
+
+            if (autoHeroSeen.Count > 0)
+            {
+                var ah = new List<string>(autoHeroSeen);
+                ah.Sort(StringComparer.OrdinalIgnoreCase);
+                sb.AppendLine("--- autoHeroTestProfile i batch (unika) ---");
+                sb.AppendLine(string.Join(", ", ah));
+                sb.AppendLine();
+            }
+
+            if (batchRuns == 0)
+            {
+                sb.AppendLine("Ingen giltig data — inget att sammanfatta.");
+                _report = sb.ToString();
+                _lastMessageType = MessageType.Warning;
+                _lastMessage = "Batch: 0 runs.";
+                return;
+            }
+
+            sb.AppendLine("--- Game over (sista run_end i filen) ---");
+            sb.AppendLine($"Körningar med run_end: {runsWithRunEnd} ({100f * runsWithRunEnd / batchRuns:0.#} %)");
+            sb.AppendLine($"Körningar utan run_end: {runsWithoutRunEnd} ({100f * runsWithoutRunEnd / batchRuns:0.#} %)");
+            if (deathWaves.Count > 0)
+            {
+                float meanDw = MeanInt(deathWaves);
+                float medDw = MedianInt(deathWaves);
+                float sdDw = StdDevInt(deathWaves);
+                int minDw = MinInt(deathWaves);
+                int maxDw = MaxInt(deathWaves);
+                sb.AppendLine(
+                    $"Fail-våg (run_end.wave): medel {meanDw:0.##}, median {medDw:0.##}, std.avvik. {sdDw:0.##}, min {minDw}, max {maxDw}");
+                sb.AppendLine();
+                sb.AppendLine("Histogram (antal körningar per fail-våg):");
+                foreach (KeyValuePair<int, int> kv in BatchSortedIntKeys(deathWaveHistogram))
+                {
+                    float pct = 100f * kv.Value / deathWaves.Count;
+                    sb.AppendLine($"  våg {kv.Key}: {kv.Value} ({pct:0.#} % av run_end-körningar)");
+                }
+            }
+            else
+            {
+                sb.AppendLine("Ingen run_end i någon fil (t.ex. bara session_quit).");
+            }
+
+            if (deathEndReasons.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("--- endReason (sista run_end) ---");
+                int totalEr = 0;
+                foreach (int c in deathEndReasons.Values)
+                {
+                    totalEr += c;
+                }
+
+                foreach (KeyValuePair<string, int> kv in BatchSortedPairs(deathEndReasons))
+                {
+                    sb.AppendLine($"  {kv.Key}: {kv.Value} ({100f * kv.Value / Mathf.Max(1, totalEr):0.#} %)");
+                }
+            }
+
+            sb.AppendLine();
+            sb.AppendLine("--- minBunkerHpRatioThisWave på wave_cleared wave=2 ---");
+            if (minRatioWave2.Count > 0)
+            {
+                sb.AppendLine($"Antal körningar med wave=2-rad: {minRatioWave2.Count}");
+                sb.AppendLine($"Snitt: {MeanFloat(minRatioWave2):0.###}, median: {MedianFloat(minRatioWave2):0.###}");
+            }
+            else
+            {
+                sb.AppendLine("Ingen wave_cleared wave=2 i batch.");
+            }
+
+            sb.AppendLine();
+            sb.AppendLine("--- minBunkerHpRatioThisWave (wave_cleared) per våg 1–8 — snitt / median / n ---");
+            for (int w = 1; w <= 8; w++)
+            {
+                if (!minRatioByWave.TryGetValue(w, out List<float> bucket) || bucket.Count == 0)
+                {
+                    continue;
+                }
+
+                sb.AppendLine(
+                    $"  wave {w}: n={bucket.Count}, snitt={MeanFloat(bucket):0.###}, median={MedianFloat(bucket):0.###}");
+            }
+
+            sb.AppendLine();
+            sb.AppendLine("--- Flaggor: andel körningar (minst en gång per session) ---");
+            foreach (string flag in BatchSortedKeys(flagRunCount))
+            {
+                int n = flagRunCount[flag];
+                sb.AppendLine($"{flag}: {100f * n / batchRuns:0.#} % ({n}/{batchRuns})");
+            }
+
+            if (totalWaveEndRows > 0 && flagRowCount.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("--- Flaggor: andel wave_cleared/run_end-rader (aggregerat över alla körningar) ---");
+                foreach (string flag in BatchSortedKeys(flagRowCount))
+                {
+                    int n = flagRowCount[flag];
+                    sb.AppendLine($"{flag}: {100f * n / totalWaveEndRows:0.#} % ({n}/{totalWaveEndRows} rader)");
+                }
+            }
+
+            sb.AppendLine();
+            sb.AppendLine("--- Per fil (TSV — klistra i Excel) ---");
+            sb.AppendLine("fil\tsessionId\tsceneProfileId\tautoHero\tfailWave\tmaxWaveCleared\tsessionSec\tflags");
+            foreach (string line in perFileLines)
+            {
+                sb.AppendLine(line);
+            }
+
+            _report = sb.ToString();
+            _lastMessageType = MessageType.Info;
+            _lastMessage = $"Batch klar: {batchRuns} körningar, {files.Length} json-filer, {skippedByFilter} hoppade (filter).";
+        }
+
+        private static void TryGetSessionMeta(
+            TelemetryEventDto[] events,
+            out string sessionId,
+            out string sceneProfileId,
+            out string autoHeroProfile)
+        {
+            sessionId = "";
+            sceneProfileId = "";
+            autoHeroProfile = "";
+            if (events == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < events.Length; i++)
+            {
+                TelemetryEventDto e = events[i];
+                if (e == null || e.kind != "session_begin")
+                {
+                    continue;
+                }
+
+                if (!string.IsNullOrEmpty(e.sessionId))
+                {
+                    sessionId = e.sessionId;
+                }
+
+                if (!string.IsNullOrEmpty(e.sceneProfileId))
+                {
+                    sceneProfileId = e.sceneProfileId;
+                }
+
+                if (!string.IsNullOrEmpty(e.autoHeroTestProfile))
+                {
+                    autoHeroProfile = e.autoHeroTestProfile;
+                }
+
+                return;
+            }
+
+            for (int i = 0; i < events.Length; i++)
+            {
+                TelemetryEventDto e = events[i];
+                if (e == null)
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrEmpty(sessionId) && !string.IsNullOrEmpty(e.sessionId))
+                {
+                    sessionId = e.sessionId;
+                }
+
+                if (string.IsNullOrEmpty(sceneProfileId) && !string.IsNullOrEmpty(e.sceneProfileId))
+                {
+                    sceneProfileId = e.sceneProfileId;
+                }
+
+                if (string.IsNullOrEmpty(autoHeroProfile) && !string.IsNullOrEmpty(e.autoHeroTestProfile))
+                {
+                    autoHeroProfile = e.autoHeroTestProfile;
+                }
+            }
+        }
+
+        private static void BatchIncrement(Dictionary<string, int> dict, string key)
+        {
+            if (!dict.TryGetValue(key, out int c))
+            {
+                c = 0;
+            }
+
+            dict[key] = c + 1;
+        }
+
+        private static void BatchIncrement(Dictionary<int, int> dict, int key)
+        {
+            if (!dict.TryGetValue(key, out int c))
+            {
+                c = 0;
+            }
+
+            dict[key] = c + 1;
+        }
+
+        private static List<KeyValuePair<string, int>> BatchSortedPairs(Dictionary<string, int> dict)
+        {
+            var list = new List<KeyValuePair<string, int>>(dict);
+            list.Sort((a, b) => string.Compare(a.Key, b.Key, StringComparison.OrdinalIgnoreCase));
+            return list;
+        }
+
+        private static List<string> BatchSortedKeys(Dictionary<string, int> dict)
+        {
+            var keys = new List<string>(dict.Keys);
+            keys.Sort(StringComparer.Ordinal);
+            return keys;
+        }
+
+        private static List<KeyValuePair<int, int>> BatchSortedIntKeys(Dictionary<int, int> dict)
+        {
+            var list = new List<KeyValuePair<int, int>>(dict);
+            list.Sort((a, b) => a.Key.CompareTo(b.Key));
+            return list;
+        }
+
+        private static float StdDevInt(List<int> values)
+        {
+            if (values == null || values.Count < 2)
+            {
+                return 0f;
+            }
+
+            float m = MeanInt(values);
+            double s2 = 0.0;
+            for (int i = 0; i < values.Count; i++)
+            {
+                double d = values[i] - m;
+                s2 += d * d;
+            }
+
+            return (float)Math.Sqrt(s2 / values.Count);
+        }
+
+        private static int MinInt(List<int> values)
+        {
+            if (values == null || values.Count == 0)
+            {
+                return 0;
+            }
+
+            int m = values[0];
+            for (int i = 1; i < values.Count; i++)
+            {
+                m = Mathf.Min(m, values[i]);
+            }
+
+            return m;
+        }
+
+        private static int MaxInt(List<int> values)
+        {
+            if (values == null || values.Count == 0)
+            {
+                return 0;
+            }
+
+            int m = values[0];
+            for (int i = 1; i < values.Count; i++)
+            {
+                m = Mathf.Max(m, values[i]);
+            }
+
+            return m;
+        }
+
+        private static float MedianFloat(List<float> values)
+        {
+            if (values == null || values.Count == 0)
+            {
+                return float.NaN;
+            }
+
+            var copy = new List<float>(values);
+            copy.Sort();
+            int n = copy.Count;
+            int m = n / 2;
+            if ((n & 1) == 1)
+            {
+                return copy[m];
+            }
+
+            return 0.5f * (copy[m - 1] + copy[m]);
+        }
+
+        private static float MeanInt(List<int> values)
+        {
+            if (values == null || values.Count == 0)
+            {
+                return float.NaN;
+            }
+
+            double s = 0;
+            for (int i = 0; i < values.Count; i++)
+            {
+                s += values[i];
+            }
+
+            return (float)(s / values.Count);
+        }
+
+        private static float MedianInt(List<int> values)
+        {
+            if (values == null || values.Count == 0)
+            {
+                return float.NaN;
+            }
+
+            var copy = new List<int>(values);
+            copy.Sort();
+            int n = copy.Count;
+            int m = n / 2;
+            if ((n & 1) == 1)
+            {
+                return copy[m];
+            }
+
+            return 0.5f * (copy[m - 1] + copy[m]);
+        }
+
+        private static float MeanFloat(List<float> values)
+        {
+            if (values == null || values.Count == 0)
+            {
+                return float.NaN;
+            }
+
+            double s = 0;
+            for (int i = 0; i < values.Count; i++)
+            {
+                s += values[i];
+            }
+
+            return (float)(s / values.Count);
         }
 
         private static float ComputeBunkerStartHpRatio01(TelemetryEventDto ev)
