@@ -44,6 +44,9 @@ namespace iStick2War_V2
 
         [Header("Waves")]
         [SerializeField] private List<WaveConfig_V2> _waves = new List<WaveConfig_V2>();
+        [Tooltip("Optional global multipliers per wave number (multiplied onto each WaveConfig_V2). Leave unassigned for identity scaling.")]
+        [SerializeField]
+        private WaveBalanceConfig_V2 _waveBalanceConfig;
         [SerializeField] private float _prepareDurationSeconds = 2f;
         [Tooltip(
             "When EnemySpawner is used, waves end only when the spawner reports cleared (all drops + kills). " +
@@ -91,6 +94,8 @@ namespace iStick2War_V2
         private Coroutine _deferredTopBarWaveIntroRoutine;
         private Color _topBarWaveTextBaseColor = Color.white;
         private bool _topBarWaveTextBaseColorCached;
+        private WaveRunScalingSnapshot _scalingForActiveWave;
+        private bool _hasScalingForActiveWave;
 
         public event Action<WaveLoopState_V2> OnStateChanged;
         public event Action<int, int, int> OnMetaChanged;
@@ -104,6 +109,21 @@ namespace iStick2War_V2
         public Hero_V2 Hero => _hero;
         /// <summary>Kill counter for the active wave (reset when a new wave starts).</summary>
         public int EnemiesKilledThisWave => _enemiesKilledThisWave;
+
+        /// <summary>
+        /// Last scaling snapshot for the wave that entered <see cref="WaveLoopState_V2.InWave"/> (still valid in Shop until the next wave starts).
+        /// </summary>
+        public bool TryGetScalingSnapshotForTelemetry(out WaveRunScalingSnapshot snapshot)
+        {
+            if (!_hasScalingForActiveWave)
+            {
+                snapshot = default;
+                return false;
+            }
+
+            snapshot = _scalingForActiveWave;
+            return true;
+        }
 
         /// <summary>
         /// Call from <see cref="MainMenu_V2"/> after Play: shows <c>Wave N</c> for <see cref="_topBarWaveTextVisibleSeconds"/>, then fades out.
@@ -681,7 +701,10 @@ namespace iStick2War_V2
                 _enemySpawner.StopWave();
             }
 
-            _currency += wave.WaveRewardCurrency;
+            int reward = _hasScalingForActiveWave
+                ? _scalingForActiveWave.EffectiveWaveRewardCurrency
+                : wave.WaveRewardCurrency;
+            _currency += reward;
             SetState(WaveLoopState_V2.Shop);
             SetCameraFollowEnabled(false);
             if (_shopPanel != null)
@@ -689,7 +712,7 @@ namespace iStick2War_V2
                 _shopPanel.Show();
                 _shopPanel.Refresh();
             }
-            Log($"Wave {CurrentWaveNumber} cleared. reward={wave.WaveRewardCurrency}, currency={_currency}");
+            Log($"Wave {CurrentWaveNumber} cleared. reward={reward}, currency={_currency}");
             EmitMetaChanged();
         }
 
@@ -717,14 +740,55 @@ namespace iStick2War_V2
                 wave.WaveDurationSeconds * 2f + 60f);
             _waveSpawnerFailSafeEndTime = Time.time + failSafeBasis;
             _enemiesKilledThisWave = 0;
+            _scalingForActiveWave = BuildScalingSnapshot(wave, CurrentWaveNumber);
+            _hasScalingForActiveWave = true;
             if (_enemySpawner != null)
             {
-                _enemySpawner.BeginWave(wave, ReportEnemyKilled, CurrentWaveNumber);
+                _enemySpawner.BeginWave(
+                    wave,
+                    ReportEnemyKilled,
+                    CurrentWaveNumber,
+                    _scalingForActiveWave.EffectiveEnemyHpMultiplier,
+                    _scalingForActiveWave.EffectiveEnemyDamageMultiplier,
+                    _scalingForActiveWave.EffectiveSpawnIntervalSeconds);
             }
             Log(
                 $"Wave {CurrentWaveNumber} started. enemies={wave.EnemyCount}, " +
                 $"configDuration={wave.WaveDurationSeconds:0.0}s (not used as hard cap when spawner active), " +
                 $"spawnerFailSafe={failSafeBasis:0.0}s");
+        }
+
+        private WaveRunScalingSnapshot BuildScalingSnapshot(WaveConfig_V2 wave, int waveNumberOneBased)
+        {
+            WaveBalanceWaveRow balance = _waveBalanceConfig != null
+                ? _waveBalanceConfig.ResolveRowForWave(waveNumberOneBased)
+                : WaveBalanceWaveRow.Identity;
+            string version = _waveBalanceConfig != null ? _waveBalanceConfig.ScalingVersion : "none";
+
+            float cfgHp = wave.EnemyHealthMultiplier;
+            float cfgDmg = wave.EnemyDamageMultiplier;
+            float cfgInterval = wave.SpawnIntervalSeconds;
+            int cfgReward = wave.WaveRewardCurrency;
+
+            float effHp = cfgHp * balance.enemyHpMultiplier;
+            float effDmg = cfgDmg * balance.enemyDamageMultiplier;
+            float effInterval = cfgInterval / balance.spawnRateMultiplier;
+            int effReward = Mathf.Max(0, Mathf.RoundToInt(cfgReward * balance.waveRewardMultiplier));
+
+            return new WaveRunScalingSnapshot(
+                scalingVersion: version,
+                balanceEnemyHpMultiplier: balance.enemyHpMultiplier,
+                balanceEnemyDamageMultiplier: balance.enemyDamageMultiplier,
+                balanceSpawnRateMultiplier: balance.spawnRateMultiplier,
+                balanceWaveRewardMultiplier: balance.waveRewardMultiplier,
+                configEnemyHpMultiplier: cfgHp,
+                configEnemyDamageMultiplier: cfgDmg,
+                configSpawnIntervalSeconds: cfgInterval,
+                configWaveRewardCurrency: cfgReward,
+                effectiveEnemyHpMultiplier: effHp,
+                effectiveEnemyDamageMultiplier: effDmg,
+                effectiveSpawnIntervalSeconds: effInterval,
+                effectiveWaveRewardCurrency: effReward);
         }
 
         private void EnterGameOverState()

@@ -128,6 +128,9 @@ namespace iStick2War_V2
         /// <summary>1-based wave index from <see cref="WaveManager_V2.CurrentWaveNumber"/> for debug logs; 0 if unset.</summary>
         private int _waveNumberForDiagnostics;
         private WaveConfig_V2 _activeWaveConfig;
+        private float _runtimeEnemyHealthMultiplier = 1f;
+        private float _runtimeEnemyDamageMultiplier = 1f;
+        private float _runtimeSpawnIntervalSeconds = 1f;
         private static bool _loggedFrustumPaddingClamp;
         private bool _loggedMissingParatrooperMountOnce;
         private int _paratrooperDebugSpawnSeq;
@@ -147,7 +150,13 @@ namespace iStick2War_V2
             }
         }
 
-        public void BeginWave(WaveConfig_V2 config, Action onEnemyKilled, int waveNumberForLogs = 0)
+        public void BeginWave(
+            WaveConfig_V2 config,
+            Action onEnemyKilled,
+            int waveNumberForLogs = 0,
+            float enemyHealthMultiplier = -1f,
+            float enemyDamageMultiplier = -1f,
+            float spawnIntervalSeconds = -1f)
         {
             StopWave();
             if (config == null || _paratrooperPrefab == null)
@@ -159,6 +168,15 @@ namespace iStick2War_V2
             _waveSessionId++;
             _waveNumberForDiagnostics = Mathf.Max(0, waveNumberForLogs);
             _activeWaveConfig = config;
+            _runtimeEnemyHealthMultiplier = enemyHealthMultiplier > 0f
+                ? enemyHealthMultiplier
+                : config.EnemyHealthMultiplier;
+            _runtimeEnemyDamageMultiplier = enemyDamageMultiplier > 0f
+                ? enemyDamageMultiplier
+                : config.EnemyDamageMultiplier;
+            _runtimeSpawnIntervalSeconds = spawnIntervalSeconds > 0f
+                ? spawnIntervalSeconds
+                : config.SpawnIntervalSeconds;
             _onEnemyKilled = onEnemyKilled;
             _targetSpawnCount = Mathf.Max(0, config.EnemyCount);
             _spawnedCount = 0;
@@ -209,7 +227,7 @@ namespace iStick2War_V2
         private IEnumerator SpawnRoutine(WaveConfig_V2 config)
         {
             int toSpawn = config.EnemyCount;
-            float interval = config.SpawnIntervalSeconds;
+            float interval = _runtimeSpawnIntervalSeconds;
             int waveSession = _waveSessionId;
             for (int i = 0; i < toSpawn; i++)
             {
@@ -417,8 +435,8 @@ namespace iStick2War_V2
             if (_activeWaveConfig != null)
             {
                 spawned.ApplyWaveDifficultyMultipliers(
-                    _activeWaveConfig.EnemyHealthMultiplier,
-                    _activeWaveConfig.EnemyDamageMultiplier);
+                    _runtimeEnemyHealthMultiplier,
+                    _runtimeEnemyDamageMultiplier);
             }
 
             _spawnedCount++;

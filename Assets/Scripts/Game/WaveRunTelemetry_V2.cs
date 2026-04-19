@@ -82,6 +82,8 @@ namespace iStick2War_V2
         private List<BunkerHpSamplePoint> _bunkerHpSamplesThisWave;
         private float _nextBunkerSampleRealtime;
         private float _bunkerLowPressureTimeUnscaledDuringWave;
+        private float _bunkerLowPressureTimeAfterFirstDamageUnscaledDuringWave;
+        private bool _bunkerDamageReceivedThisWave;
 
         [Serializable]
         private sealed class BunkerHpSamplePoint
@@ -124,6 +126,44 @@ namespace iStick2War_V2
             public float bunkerPressureHpRatioThresholdUsed;
 
             public TelemetryEvent[] events;
+        }
+
+        [Serializable]
+        private sealed class TelemetryWaveScaling
+        {
+            public string scalingVersion;
+            public float balanceEnemyHpMultiplier;
+            public float balanceEnemyDamageMultiplier;
+            public float balanceSpawnRateMultiplier;
+            public float balanceWaveRewardMultiplier;
+            public float configEnemyHpMultiplier;
+            public float configEnemyDamageMultiplier;
+            public float configSpawnIntervalSeconds;
+            public int configWaveRewardCurrency;
+            public float effectiveEnemyHpMultiplier;
+            public float effectiveEnemyDamageMultiplier;
+            public float effectiveSpawnIntervalSeconds;
+            public int effectiveWaveRewardCurrency;
+
+            public static TelemetryWaveScaling FromSnapshot(WaveRunScalingSnapshot s)
+            {
+                return new TelemetryWaveScaling
+                {
+                    scalingVersion = s.ScalingVersion ?? "",
+                    balanceEnemyHpMultiplier = s.BalanceEnemyHpMultiplier,
+                    balanceEnemyDamageMultiplier = s.BalanceEnemyDamageMultiplier,
+                    balanceSpawnRateMultiplier = s.BalanceSpawnRateMultiplier,
+                    balanceWaveRewardMultiplier = s.BalanceWaveRewardMultiplier,
+                    configEnemyHpMultiplier = s.ConfigEnemyHpMultiplier,
+                    configEnemyDamageMultiplier = s.ConfigEnemyDamageMultiplier,
+                    configSpawnIntervalSeconds = s.ConfigSpawnIntervalSeconds,
+                    configWaveRewardCurrency = s.ConfigWaveRewardCurrency,
+                    effectiveEnemyHpMultiplier = s.EffectiveEnemyHpMultiplier,
+                    effectiveEnemyDamageMultiplier = s.EffectiveEnemyDamageMultiplier,
+                    effectiveSpawnIntervalSeconds = s.EffectiveSpawnIntervalSeconds,
+                    effectiveWaveRewardCurrency = s.EffectiveWaveRewardCurrency
+                };
+            }
         }
 
         [Serializable]
@@ -183,9 +223,15 @@ namespace iStick2War_V2
 
             /// <summary>
             /// Unscaled seconds in InWave with bunkerHp/maxHp strictly below root bunkerPressureHpRatioThresholdUsed
-            /// (sustained low-bunker pressure). Meaningful on wave_cleared and run_end after abort during InWave; 0 otherwise.
+            /// (includes time spent already low from prior wave / shop state). wave_cleared and run_end abort; 0 otherwise.
             /// </summary>
             public float bunkerPressureTimeSec;
+
+            /// <summary>
+            /// Same threshold as bunkerPressureTimeSec, but only counts time after the first bunker damage event this InWave
+            /// (NotifyBunkerDamageTaken). Separates carried-in low cover from pressure driven by new hits. 0 if no bunker damage.
+            /// </summary>
+            public float bunkerPressureTimeAfterFirstDamageSec;
 
             /// <summary>
             /// Minimum bunkerHp/bunkerMaxHp observed during the InWave just ended; -1 if not applicable.
@@ -198,6 +244,12 @@ namespace iStick2War_V2
             /// or run_end after an abort during InWave (same sampling as wave_cleared).
             /// </summary>
             public BunkerHpSamplePoint[] bunkerHpSamples;
+
+            /// <summary>
+            /// Non-empty only on wave_cleared / run_end (abort): JSON from <see cref="TelemetryWaveScaling"/> via JsonUtility.
+            /// Empty on other kinds (avoids Unity JsonUtility emitting empty nested objects for session_begin / session_quit).
+            /// </summary>
+            public string waveScalingJson;
         }
 
         private void Awake()
@@ -310,7 +362,12 @@ namespace iStick2War_V2
             float thr = Mathf.Clamp(_bunkerPressureHpRatioThreshold, 0.05f, 0.99f);
             if (ratio < thr)
             {
-                _bunkerLowPressureTimeUnscaledDuringWave += Time.unscaledDeltaTime;
+                float dt = Time.unscaledDeltaTime;
+                _bunkerLowPressureTimeUnscaledDuringWave += dt;
+                if (_bunkerDamageReceivedThisWave)
+                {
+                    _bunkerLowPressureTimeAfterFirstDamageUnscaledDuringWave += dt;
+                }
             }
         }
 
@@ -364,6 +421,7 @@ namespace iStick2War_V2
             }
 
             _bunkerDamageTakenDuringWave += Mathf.Max(0, amount);
+            _bunkerDamageReceivedThisWave = true;
         }
 
         private void RegisterShopPurchase(string offerKind, int currencySpent)
@@ -582,6 +640,8 @@ namespace iStick2War_V2
             _projectileLaunchesDuringWave = 0;
             _reloadsDuringWave = 0;
             _bunkerLowPressureTimeUnscaledDuringWave = 0f;
+            _bunkerLowPressureTimeAfterFirstDamageUnscaledDuringWave = 0f;
+            _bunkerDamageReceivedThisWave = false;
         }
 
         private void ResetBunkerHpCurveForWave()
@@ -704,9 +764,25 @@ namespace iStick2War_V2
             }
 
             float bunkerPressureTimeForRow = 0f;
+            float bunkerPressureAfterFirstDamageForRow = 0f;
             if (kind == "wave_cleared" || (kind == "run_end" && runEndIncludeAbortWaveBunkerCurve))
             {
                 bunkerPressureTimeForRow = _bunkerLowPressureTimeUnscaledDuringWave;
+                bunkerPressureAfterFirstDamageForRow = _bunkerLowPressureTimeAfterFirstDamageUnscaledDuringWave;
+            }
+
+            string waveScalingJson = "";
+            if ((kind == "wave_cleared" || (kind == "run_end" && runEndIncludeAbortWaveBunkerCurve)) &&
+                _waveManager != null &&
+                _waveManager.TryGetScalingSnapshotForTelemetry(out WaveRunScalingSnapshot scalingSnap))
+            {
+                TelemetryWaveScaling scalingObj = TelemetryWaveScaling.FromSnapshot(scalingSnap);
+                waveScalingJson = JsonUtility.ToJson(scalingObj);
+            }
+
+            if (kind == "session_begin" || kind == "session_quit")
+            {
+                waveScalingJson = "";
             }
 
             return new TelemetryEvent
@@ -746,8 +822,10 @@ namespace iStick2War_V2
                 heroDead = heroDeadSnap,
                 waveStressScore = waveStress,
                 bunkerPressureTimeSec = bunkerPressureTimeForRow,
+                bunkerPressureTimeAfterFirstDamageSec = bunkerPressureAfterFirstDamageForRow,
                 minBunkerHpRatioThisWave = minBunkerRatio,
-                bunkerHpSamples = bunkerSamples
+                bunkerHpSamples = bunkerSamples,
+                waveScalingJson = waveScalingJson
             };
         }
 
@@ -903,6 +981,11 @@ namespace iStick2War_V2
                     TelemetryEvent row = list[i];
                     row.bunkerBreached = row.bunkerHp == 0;
                     row.bunkerCriticalLow = ComputeBunkerCriticalLowStatic(row.bunkerHp, row.bunkerMaxHp, fracUsed);
+                    if (row != null &&
+                        (row.kind == "session_begin" || row.kind == "session_quit"))
+                    {
+                        row.waveScalingJson = "";
+                    }
                 }
 
                 root.events = list.ToArray();
@@ -939,7 +1022,10 @@ namespace iStick2War_V2
                 "Bunker HP curve: wave_cleared rows include minBunkerHpRatioThisWave and bunkerHpSamples[]; run_end rows " +
                 "include the same when GameOver occurs during InWave (fatal wave has no wave_cleared row). Sampling interval " +
                 "and cap are bunkerHpSampleIntervalSecUsed / bunkerHpSamplesMaxPerWaveUsed on the root. " +
-                "bunkerPressureTimeSec (wave_cleared / applicable run_end) uses bunkerPressureHpRatioThresholdUsed on the root.";
+                "bunkerPressureTimeSec / bunkerPressureTimeAfterFirstDamageSec (wave_cleared / applicable run_end) use " +
+                "bunkerPressureHpRatioThresholdUsed on the root. " +
+                "waveScalingJson (non-empty on wave_cleared / applicable run_end) holds JsonUtility JSON for scaling; " +
+                "empty on session_begin / session_quit.";
             root.glossary = BuildTelemetryGlossary(bunkerFracUsed, sampleInt, sampleMax, pressureThrUsed);
         }
 
@@ -1130,7 +1216,7 @@ namespace iStick2War_V2
                         meaning =
                             "wave_cleared, and run_end after abort during InWave: same burst-ish scalar (bunker+hero damage, kills, " +
                             "small duration term using that row's waveDurationSec). 0 on other kinds. Complements bunkerPressureTimeSec " +
-                            "(sustained low-bunker time), not a full 'feel' model."
+                            "and bunkerPressureTimeAfterFirstDamageSec (sustained low-bunker time), not a full 'feel' model."
                     },
                     new TelemetryGlossaryEntry
                     {
@@ -1139,7 +1225,16 @@ namespace iStick2War_V2
                             "wave_cleared, and run_end after abort during InWave: unscaled seconds spent InWave while " +
                             "bunkerHp/bunkerMaxHp was strictly below root.bunkerPressureHpRatioThresholdUsed (" +
                             bunkerPressureHpRatioThresholdUsed.ToString("0.###", CultureInfo.InvariantCulture) +
-                            " in this file). 0 on other kinds. Measures sustained cover pressure, not damage spikes alone."
+                            " in this file). 0 on other kinds. Includes time already under the threshold before any new bunker " +
+                            "damage this wave (e.g. low HP carried in from shop). Compare bunkerPressureTimeAfterFirstDamageSec."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "bunkerPressureTimeAfterFirstDamageSec",
+                        meaning =
+                            "wave_cleared, and run_end after abort during InWave: same threshold as bunkerPressureTimeSec, but " +
+                            "only counts unscaled time after the first ApplyBunkerDamage notification this InWave. 0 if no bunker " +
+                            "damage occurred. Use with bunkerPressureTimeSec to separate carried-in low cover from pressure after hits."
                     },
                     new TelemetryGlossaryEntry
                     {
@@ -1173,6 +1268,15 @@ namespace iStick2War_V2
                         property = "bunkerHpSampleIntervalSecUsed / bunkerHpSamplesMaxPerWaveUsed (root)",
                         meaning =
                             "Echo of Inspector settings used when writing bunkerHpSamples for wave_cleared and applicable run_end rows."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "waveScalingJson (string on row, optional)",
+                        meaning =
+                            "Non-empty on wave_cleared or run_end after abort during InWave: JsonUtility JSON of the scaling " +
+                            "snapshot (scalingVersion labels WaveBalanceConfig_V2; balance* / config* / effective* as documented). " +
+                            "Parse with JsonUtility into your DTO. Empty string on session_begin / session_quit and other kinds. " +
+                            "Replaces a nested object field so Unity JsonUtility does not emit bogus empty objects on those rows."
                     }
                 }
             };
@@ -1202,6 +1306,17 @@ namespace iStick2War_V2
                 if (root.events == null)
                 {
                     root.events = Array.Empty<TelemetryEvent>();
+                }
+                else
+                {
+                    foreach (TelemetryEvent ev in root.events)
+                    {
+                        if (ev != null &&
+                            (ev.kind == "session_begin" || ev.kind == "session_quit"))
+                        {
+                            ev.waveScalingJson = "";
+                        }
+                    }
                 }
 
                 return root;
