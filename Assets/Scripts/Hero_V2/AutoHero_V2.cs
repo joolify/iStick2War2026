@@ -73,6 +73,15 @@ namespace iStick2War_V2
         {
             CacheReferences();
             _enemyBodyPartLayer = LayerMask.NameToLayer("EnemyBodyPart");
+            ApplySceneGameplayBotOverride();
+        }
+
+        private void ApplySceneGameplayBotOverride()
+        {
+            if (GameplaySceneRules_V2.TryGetAutoHeroOverride(out AutoHeroTestProfileKind_V2 kind))
+            {
+                _testProfile = kind;
+            }
         }
 
         private void OnDisable()
@@ -284,6 +293,11 @@ namespace iStick2War_V2
 
         private bool IsOfferApplicable(WaveManager_V2 wave, ShopOfferConfig_V2 o)
         {
+            if (GameplaySceneRules_V2.IsShopOfferBlocked(o))
+            {
+                return false;
+            }
+
             switch (o.Kind)
             {
                 case ShopOfferKind_V2.HealthPack:
@@ -495,6 +509,20 @@ namespace iStick2War_V2
         {
             if (!hasTarget)
             {
+                return;
+            }
+
+            if (GameplaySceneRules_V2.IsColtOnlyRun())
+            {
+                if (_hero.HasUsableAmmoForWeaponType(WeaponType.Colt45))
+                {
+                    _hero.TrySwitchToWeaponType(WeaponType.Colt45);
+                }
+                else
+                {
+                    _hero.TrySwitchToAnyWeaponWithAmmo();
+                }
+
                 return;
             }
 

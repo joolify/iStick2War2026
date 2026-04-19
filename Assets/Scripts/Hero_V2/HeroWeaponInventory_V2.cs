@@ -1,5 +1,5 @@
-using iStick2War;
 using System.Collections.Generic;
+using iStick2War;
 
 namespace iStick2War_V2
 {
@@ -177,6 +177,45 @@ namespace iStick2War_V2
             }
 
             return -1;
+        }
+
+        /// <summary>Removes any weapon whose type is not in <paramref name="allowed"/>; keeps order of remaining entries.</summary>
+        public void RemoveAllExcept(HashSet<WeaponType> allowed)
+        {
+            if (allowed == null || allowed.Count == 0)
+            {
+                return;
+            }
+
+            WeaponType preferredActive = WeaponType.Colt45;
+            if (_activeIndex >= 0 && _activeIndex < _weapons.Count && _weapons[_activeIndex].Definition != null)
+            {
+                preferredActive = _weapons[_activeIndex].Definition.WeaponType;
+            }
+
+            for (int i = _weapons.Count - 1; i >= 0; i--)
+            {
+                WeaponType t = _weapons[i].Definition != null ? _weapons[i].Definition.WeaponType : default;
+                if (!allowed.Contains(t))
+                {
+                    _weapons.RemoveAt(i);
+                }
+            }
+
+            if (_weapons.Count == 0)
+            {
+                _activeIndex = -1;
+                return;
+            }
+
+            int keepIdx = FindIndexByType(preferredActive);
+            if (keepIdx >= 0 && allowed.Contains(preferredActive))
+            {
+                _activeIndex = keepIdx;
+                return;
+            }
+
+            _activeIndex = 0;
         }
     }
 }

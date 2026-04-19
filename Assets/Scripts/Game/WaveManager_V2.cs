@@ -356,6 +356,11 @@ namespace iStick2War_V2
                 return false;
             }
 
+            if (GameplaySceneRules_V2.IsShopOfferBlocked(offer))
+            {
+                return false;
+            }
+
             switch (offer.Kind)
             {
                 case ShopOfferKind_V2.HealthPack:

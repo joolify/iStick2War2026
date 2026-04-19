@@ -1,6 +1,6 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 using iStick2War;
-using System.Collections.Generic;
 
 namespace iStick2War_V2
 {
@@ -352,6 +352,20 @@ namespace iStick2War_V2
         public bool HasWeaponUnlocked(HeroWeaponDefinition_V2 definition)
         {
             return definition != null && _inventory.HasWeapon(definition);
+        }
+
+        /// <summary>Scene profile: drop weapons not in <paramref name="allowed"/> and sync model to active weapon.</summary>
+        public void RestrictInventoryToAllowedWeaponTypes(IReadOnlyList<WeaponType> allowed)
+        {
+            if (allowed == null || allowed.Count == 0 || isDisabled || _model.isDead)
+            {
+                return;
+            }
+
+            var keep = new HashSet<WeaponType>(allowed);
+            _inventory.RemoveAllExcept(keep);
+            _isReloading = false;
+            ApplyActiveWeaponToModel();
         }
 
         public bool IsMagazineFullForWeapon(HeroWeaponDefinition_V2 definition)

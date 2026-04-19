@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using UnityEngine;
 using iStick2War;
@@ -20,6 +21,22 @@ namespace iStick2War_V2
         [SerializeField] private bool _telemetryEnabled = true;
         [SerializeField] private string _fileNamePrefix = "wave_run";
         [SerializeField] private bool _logFilePathOnce = true;
+
+        [Header("Derived bunker flags")]
+        [Tooltip(
+            "bunkerCriticalLow is true when snapshot bunkerHp/maxHp is <= this fraction and bunkerHp > 0. " +
+            "bunkerBreached remains strictly bunkerHp == 0.")]
+        [SerializeField] [Range(0.02f, 0.5f)]
+        private float _bunkerCriticalHpFraction = 0.1f;
+
+        [Header("Bunker HP curve (InWave only)")]
+        [Tooltip("How often to append a bunkerHpSamples[] point while InWave (realtime seconds).")]
+        [SerializeField] [Range(0.05f, 5f)]
+        private float _bunkerHpSampleIntervalSec = 0.5f;
+
+        [Tooltip("Cap samples per wave to keep JSON size bounded.")]
+        [SerializeField] [Range(8, 400)]
+        private int _bunkerHpSamplesMaxPerWave = 200;
 
         private string _sessionId;
         private string _filePath;
@@ -54,9 +71,47 @@ namespace iStick2War_V2
         private int _intermissionShopPurchaseCount;
         private int _intermissionShopCurrencySpent;
 
+        private float _minBunkerHpRatioThisWave;
+        private List<BunkerHpSamplePoint> _bunkerHpSamplesThisWave;
+        private float _nextBunkerSampleRealtime;
+
+        [Serializable]
+        private sealed class BunkerHpSamplePoint
+        {
+            /// <summary>Seconds since this wave entered InWave (matches <see cref="TelemetryEvent.waveDurationSec"/> basis).</summary>
+            public float waveTimeSecSinceInWaveRealtime;
+            public int bunkerHp;
+            public int bunkerMaxHp;
+            public float bunkerHpRatio;
+        }
+
+        [Serializable]
+        private sealed class TelemetryGlossaryEntry
+        {
+            public string property;
+            public string meaning;
+        }
+
+        [Serializable]
+        private sealed class TelemetryGlossary
+        {
+            public string title;
+            public TelemetryGlossaryEntry[] entries;
+        }
+
         [Serializable]
         private sealed class TelemetryFileRoot
         {
+            /// <summary>Human-readable overview; safe for consumers to ignore when parsing <c>events</c>.</summary>
+            public string _comment;
+            public TelemetryGlossary glossary;
+
+            /// <summary>Clamped fraction used for <see cref="TelemetryEvent.bunkerCriticalLow"/> on each event in this file.</summary>
+            public float bunkerCriticalHpFractionUsed;
+
+            public float bunkerHpSampleIntervalSecUsed;
+            public int bunkerHpSamplesMaxPerWaveUsed;
+
             public TelemetryEvent[] events;
         }
 
@@ -94,6 +149,38 @@ namespace iStick2War_V2
             public string weaponType;
             /// <summary><see cref="AutoHeroTestProfileKind_V2"/> on the hero when present; empty if no bot / disabled.</summary>
             public string autoHeroTestProfile;
+
+            /// <summary><see cref="GameplaySceneRules_V2.ProfileId"/> when a scene profile applier is active; empty otherwise.</summary>
+            public string sceneProfileId;
+
+            /// <summary>True when <see cref="bunkerHp"/> snapshot is &lt;= 0 (cover breached).</summary>
+            public bool bunkerBreached;
+
+            /// <summary>
+            /// True when bunker is still alive but low: 0 &lt; bunkerHp &lt;= bunkerMaxHp × fraction (see root bunkerCriticalHpFractionUsed).
+            /// </summary>
+            public bool bunkerCriticalLow;
+
+            /// <summary>True when hero is dead at snapshot (see <see cref="run_end"/> / <see cref="session_quit"/>).</summary>
+            public bool heroDead;
+
+            /// <summary>
+            /// Rough per-wave pressure score (only meaningful on <c>wave_cleared</c>; otherwise 0).
+            /// Higher = more damage taken and/or longer fight with kills.
+            /// </summary>
+            public float waveStressScore;
+
+            /// <summary>
+            /// Minimum bunkerHp/bunkerMaxHp observed during the InWave just ended; -1 if not applicable.
+            /// Filled on wave_cleared and on run_end when GameOver happens during InWave (no wave_cleared row for that wave).
+            /// </summary>
+            public float minBunkerHpRatioThisWave;
+
+            /// <summary>
+            /// Sampled bunker HP during InWave (see root bunkerHpSampleIntervalSecUsed); empty unless kind is wave_cleared,
+            /// or run_end after an abort during InWave (same sampling as wave_cleared).
+            /// </summary>
+            public BunkerHpSamplePoint[] bunkerHpSamples;
         }
 
         private void Awake()
@@ -145,10 +232,50 @@ namespace iStick2War_V2
                 return;
             }
 
+            TickBunkerHpCurveTracking();
+
             Hero_V2 hero = FindHero();
             if (hero != null && _waveManager.IsHeroInsideBunker(hero))
             {
                 _timeInBunkerUnscaledDuringWave += Time.unscaledDeltaTime;
+            }
+        }
+
+        private void TickBunkerHpCurveTracking()
+        {
+            if (_bunkerHpSamplesThisWave == null)
+            {
+                return;
+            }
+
+            int maxHp = Mathf.Max(1, _waveManager.BunkerMaxHealth);
+            int hp = _waveManager.BunkerHealth;
+            float ratio = hp / (float)maxHp;
+            if (_minBunkerHpRatioThisWave < 0f)
+            {
+                _minBunkerHpRatioThisWave = ratio;
+            }
+            else
+            {
+                _minBunkerHpRatioThisWave = Mathf.Min(_minBunkerHpRatioThisWave, ratio);
+            }
+
+            float interval = Mathf.Max(0.05f, _bunkerHpSampleIntervalSec);
+            while (Time.realtimeSinceStartup >= _nextBunkerSampleRealtime &&
+                   _bunkerHpSamplesThisWave.Count < _bunkerHpSamplesMaxPerWave)
+            {
+                int mx = Mathf.Max(1, _waveManager.BunkerMaxHealth);
+                int h = _waveManager.BunkerHealth;
+                float r = h / (float)mx;
+                _bunkerHpSamplesThisWave.Add(
+                    new BunkerHpSamplePoint
+                    {
+                        waveTimeSecSinceInWaveRealtime = Mathf.Max(0f, _nextBunkerSampleRealtime - _waveStartedRealtime),
+                        bunkerHp = h,
+                        bunkerMaxHp = mx,
+                        bunkerHpRatio = r
+                    });
+                _nextBunkerSampleRealtime += interval;
             }
         }
 
@@ -382,6 +509,7 @@ namespace iStick2War_V2
                 _waveStartedRealtime = Time.realtimeSinceStartup;
                 ResetWaveCombatAccumulators();
                 SnapshotWaveStartEconomy();
+                ResetBunkerHpCurveForWave();
                 // Hero reference may point at an inactive duplicate; re-resolve before combat hooks.
                 SubscribeHeroIfPossible();
             }
@@ -389,6 +517,7 @@ namespace iStick2War_V2
             if (_lastState == WaveLoopState_V2.InWave && newState == WaveLoopState_V2.Shop)
             {
                 float duration = Mathf.Max(0f, Time.realtimeSinceStartup - _waveStartedRealtime);
+                FinalizeBunkerHpCurveForWaveEnd(duration);
                 AppendEvent(
                     BuildTelemetryEvent(
                         "wave_cleared",
@@ -419,6 +548,70 @@ namespace iStick2War_V2
             _reloadsDuringWave = 0;
         }
 
+        private void ResetBunkerHpCurveForWave()
+        {
+            _bunkerHpSamplesThisWave = new List<BunkerHpSamplePoint>(Mathf.Min(64, _bunkerHpSamplesMaxPerWave));
+            _minBunkerHpRatioThisWave = -1f;
+            if (_waveManager == null)
+            {
+                return;
+            }
+
+            int mx = Mathf.Max(1, _waveManager.BunkerMaxHealth);
+            int hp = _waveManager.BunkerHealth;
+            float ratio = hp / (float)mx;
+            _minBunkerHpRatioThisWave = ratio;
+            _bunkerHpSamplesThisWave.Add(
+                new BunkerHpSamplePoint
+                {
+                    waveTimeSecSinceInWaveRealtime = 0f,
+                    bunkerHp = hp,
+                    bunkerMaxHp = mx,
+                    bunkerHpRatio = ratio
+                });
+            _nextBunkerSampleRealtime =
+                Time.realtimeSinceStartup + Mathf.Max(0.05f, _bunkerHpSampleIntervalSec);
+        }
+
+        private void FinalizeBunkerHpCurveForWaveEnd(float waveDurationRealtimeSec)
+        {
+            if (_waveManager == null || _bunkerHpSamplesThisWave == null)
+            {
+                return;
+            }
+
+            int mx = Mathf.Max(1, _waveManager.BunkerMaxHealth);
+            int hp = _waveManager.BunkerHealth;
+            float ratio = hp / (float)mx;
+            if (_minBunkerHpRatioThisWave < 0f)
+            {
+                _minBunkerHpRatioThisWave = ratio;
+            }
+            else
+            {
+                _minBunkerHpRatioThisWave = Mathf.Min(_minBunkerHpRatioThisWave, ratio);
+            }
+
+            float endT = Mathf.Max(0f, waveDurationRealtimeSec);
+            if (_bunkerHpSamplesThisWave.Count >= _bunkerHpSamplesMaxPerWave)
+            {
+                return;
+            }
+
+            BunkerHpSamplePoint last = _bunkerHpSamplesThisWave[_bunkerHpSamplesThisWave.Count - 1];
+            if (Mathf.Abs(last.waveTimeSecSinceInWaveRealtime - endT) > 0.02f)
+            {
+                _bunkerHpSamplesThisWave.Add(
+                    new BunkerHpSamplePoint
+                    {
+                        waveTimeSecSinceInWaveRealtime = endT,
+                        bunkerHp = hp,
+                        bunkerMaxHp = mx,
+                        bunkerHpRatio = ratio
+                    });
+            }
+        }
+
         private void SnapshotWaveStartEconomy()
         {
             Hero_V2 h = FindHero();
@@ -432,7 +625,8 @@ namespace iStick2War_V2
             int wave,
             float waveDurationSec,
             int enemiesKilled,
-            string endReason)
+            string endReason,
+            bool runEndIncludeAbortWaveBunkerCurve = false)
         {
             Hero_V2 h = FindHero();
             int heroHp = h != null ? h.GetCurrentHealth() : -1;
@@ -440,6 +634,36 @@ namespace iStick2War_V2
             string weaponLabel = h != null ? h.GetCurrentWeaponDisplayName() : "";
             string weaponTypeStr = h != null ? h.CurrentWeaponType.ToString() : "";
             string autoHeroProfile = ResolveAutoHeroTestProfileLabel(h);
+            string sceneProfileIdValue = GameplaySceneRules_V2.IsActive ? GameplaySceneRules_V2.ProfileId : "";
+            int bunkerHpSnap = _waveManager != null ? _waveManager.BunkerHealth : -1;
+            int bunkerMaxSnap = _waveManager != null ? _waveManager.BunkerMaxHealth : -1;
+            bool bunkerBreached = bunkerHpSnap == 0;
+            float fracUsed = Mathf.Clamp(_bunkerCriticalHpFraction, 0.02f, 0.5f);
+            bool bunkerCriticalLow = ComputeBunkerCriticalLowStatic(bunkerHpSnap, bunkerMaxSnap, fracUsed);
+            bool heroDeadSnap = h != null && h.IsDead();
+            float waveStress = kind == "wave_cleared"
+                ? ComputeWaveStressScore(
+                    _bunkerDamageTakenDuringWave,
+                    _heroDamageTakenDuringWave,
+                    enemiesKilled,
+                    waveDurationSec)
+                : 0f;
+
+            float minBunkerRatio = -1f;
+            BunkerHpSamplePoint[] bunkerSamples = Array.Empty<BunkerHpSamplePoint>();
+            if (kind == "wave_cleared" || (kind == "run_end" && runEndIncludeAbortWaveBunkerCurve))
+            {
+                minBunkerRatio = _minBunkerHpRatioThisWave >= 0f
+                    ? Mathf.Clamp01(_minBunkerHpRatioThisWave)
+                    : Mathf.Clamp01(
+                        bunkerMaxSnap > 0 && bunkerHpSnap >= 0
+                            ? bunkerHpSnap / (float)Mathf.Max(1, bunkerMaxSnap)
+                            : 1f);
+
+                bunkerSamples = _bunkerHpSamplesThisWave != null && _bunkerHpSamplesThisWave.Count > 0
+                    ? _bunkerHpSamplesThisWave.ToArray()
+                    : Array.Empty<BunkerHpSamplePoint>();
+            }
 
             return new TelemetryEvent
             {
@@ -450,8 +674,8 @@ namespace iStick2War_V2
                 waveDurationSec = waveDurationSec,
                 heroHp = heroHp,
                 heroMaxHp = heroMax,
-                bunkerHp = _waveManager != null ? _waveManager.BunkerHealth : -1,
-                bunkerMaxHp = _waveManager != null ? _waveManager.BunkerMaxHealth : -1,
+                bunkerHp = bunkerHpSnap,
+                bunkerMaxHp = bunkerMaxSnap,
                 currency = _waveManager != null ? _waveManager.Currency : -1,
                 enemiesKilled = enemiesKilled,
                 weapon = weaponLabel,
@@ -471,8 +695,38 @@ namespace iStick2War_V2
                 bunkerHpWaveStart = _bunkerHpAtWaveStart,
                 currencyWaveStart = _currencyAtWaveStart,
                 weaponType = weaponTypeStr,
-                autoHeroTestProfile = autoHeroProfile
+                autoHeroTestProfile = autoHeroProfile,
+                sceneProfileId = sceneProfileIdValue,
+                bunkerBreached = bunkerBreached,
+                bunkerCriticalLow = bunkerCriticalLow,
+                heroDead = heroDeadSnap,
+                waveStressScore = waveStress,
+                minBunkerHpRatioThisWave = minBunkerRatio,
+                bunkerHpSamples = bunkerSamples
             };
+        }
+
+        private static bool ComputeBunkerCriticalLowStatic(int bunkerHp, int bunkerMaxHp, float bunkerCriticalHpFractionClamped)
+        {
+            if (bunkerHp <= 0 || bunkerMaxHp <= 0)
+            {
+                return false;
+            }
+
+            return bunkerHp <= bunkerMaxHp * bunkerCriticalHpFractionClamped + 1e-4f;
+        }
+
+        /// <summary>Single scalar for sorting/graphing waves; not a game-design "difficulty tier".</summary>
+        private static float ComputeWaveStressScore(
+            int bunkerDamage,
+            int heroDamage,
+            int enemiesKilled,
+            float waveDurationSec)
+        {
+            return bunkerDamage +
+                   heroDamage +
+                   enemiesKilled * 0.35f +
+                   Mathf.Max(0f, waveDurationSec) * 0.05f;
         }
 
         private static string ResolveAutoHeroTestProfileLabel(Hero_V2 hero)
@@ -500,13 +754,22 @@ namespace iStick2War_V2
 
             _runEndWritten = true;
             string reason = ResolveGameOverReason(previousState);
+            bool abortDuringInWave = previousState == WaveLoopState_V2.InWave;
+            float inWaveDurationSec = 0f;
+            if (abortDuringInWave)
+            {
+                inWaveDurationSec = Mathf.Max(0f, Time.realtimeSinceStartup - _waveStartedRealtime);
+                FinalizeBunkerHpCurveForWaveEnd(inWaveDurationSec);
+            }
+
             AppendEvent(
                 BuildTelemetryEvent(
                     "run_end",
                     wave: _waveManager.CurrentWaveNumber,
-                    waveDurationSec: 0f,
+                    waveDurationSec: inWaveDurationSec,
                     enemiesKilled: _waveManager.EnemiesKilledThisWave,
-                    endReason: reason));
+                    endReason: reason,
+                    runEndIncludeAbortWaveBunkerCurve: abortDuringInWave));
         }
 
         private string ResolveGameOverReason(WaveLoopState_V2 previousState)
@@ -589,7 +852,16 @@ namespace iStick2War_V2
                 TelemetryFileRoot root = ReadRootOrNew();
                 var list = new List<TelemetryEvent>(root.events ?? Array.Empty<TelemetryEvent>());
                 list.Add(payload);
+                float fracUsed = Mathf.Clamp(_bunkerCriticalHpFraction, 0.02f, 0.5f);
+                for (int i = 0; i < list.Count; i++)
+                {
+                    TelemetryEvent row = list[i];
+                    row.bunkerBreached = row.bunkerHp == 0;
+                    row.bunkerCriticalLow = ComputeBunkerCriticalLowStatic(row.bunkerHp, row.bunkerMaxHp, fracUsed);
+                }
+
                 root.events = list.ToArray();
+                ApplyTelemetryDocumentation(root);
                 string json = JsonUtility.ToJson(root, prettyPrint: true);
                 File.WriteAllText(_filePath, json);
             }
@@ -597,6 +869,247 @@ namespace iStick2War_V2
             {
                 Debug.LogWarning($"[WaveRunTelemetry_V2] Failed to write telemetry: {ex.Message}");
             }
+        }
+
+        private void ApplyTelemetryDocumentation(TelemetryFileRoot root)
+        {
+            float bunkerFracUsed = Mathf.Clamp(_bunkerCriticalHpFraction, 0.02f, 0.5f);
+            root.bunkerCriticalHpFractionUsed = bunkerFracUsed;
+            float sampleInt = Mathf.Clamp(_bunkerHpSampleIntervalSec, 0.05f, 5f);
+            int sampleMax = Mathf.Clamp(_bunkerHpSamplesMaxPerWave, 8, 400);
+            root.bunkerHpSampleIntervalSecUsed = sampleInt;
+            root.bunkerHpSamplesMaxPerWaveUsed = sampleMax;
+            root._comment =
+                "iStick2War wave-run telemetry (JSON). Root contains _comment, glossary, bunkerCriticalHpFractionUsed, and events[]. " +
+                "Each object in events[] shares the same property names; meaning depends on events[].kind. " +
+                "Numeric snapshots are taken when the row is written (Unity Time.realtimeSinceStartup). " +
+                "Per-wave combat counters reset when a new InWave phase starts; wave_cleared attributes the " +
+                "just-finished wave. JsonUtility omits optional empty strings on some Unity versions; booleans " +
+                "default to false when absent on read. " +
+                "bunkerBreached means bunkerHp==0 at snapshot; bunkerCriticalLow means 0<bunkerHp<=bunkerMaxHp×" +
+                bunkerFracUsed.ToString("0.###", CultureInfo.InvariantCulture) +
+                " (see glossary; threshold from WaveRunTelemetry_V2 Inspector, echoed as bunkerCriticalHpFractionUsed). " +
+                "Bunker HP curve: wave_cleared rows include minBunkerHpRatioThisWave and bunkerHpSamples[]; run_end rows " +
+                "include the same when GameOver occurs during InWave (fatal wave has no wave_cleared row). Sampling interval " +
+                "and cap are bunkerHpSampleIntervalSecUsed / bunkerHpSamplesMaxPerWaveUsed on the root.";
+            root.glossary = BuildTelemetryGlossary(bunkerFracUsed, sampleInt, sampleMax);
+        }
+
+        private static TelemetryGlossary BuildTelemetryGlossary(
+            float bunkerCriticalHpFractionUsed,
+            float bunkerHpSampleIntervalSecUsed,
+            int bunkerHpSamplesMaxPerWaveUsed)
+        {
+            return new TelemetryGlossary
+            {
+                title = "Wave run telemetry — property reference (shared by all rows in events[])",
+                entries = new[]
+                {
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "kind",
+                        meaning =
+                            "Row type: session_begin (run start), wave_cleared (wave finished → shop), " +
+                            "run_end (GameOver), session_quit (app/editor quit without GameOver)."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "sessionId",
+                        meaning = "Unique id (hex string without dashes) for this JSON file / play session."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "realtimeSinceStartup",
+                        meaning = "Seconds since Unity started when this row was written."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "wave",
+                        meaning =
+                            "1-based wave number from WaveManager at write time. session_begin uses current wave; " +
+                            "wave_cleared uses the wave that just ended; session_quit may show next wave if quit mid-flow."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "waveDurationSec",
+                        meaning =
+                            "For wave_cleared: real-time seconds spent in InWave for that wave. For run_end when GameOver " +
+                            "happens during InWave: same basis for the aborted wave (aligns bunkerHpSamples[].waveTimeSecSinceInWaveRealtime). " +
+                            "0 otherwise."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "heroHp / heroMaxHp",
+                        meaning = "Hero current and max HP at snapshot (from resolved Hero_V2)."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "bunkerHp / bunkerMaxHp",
+                        meaning = "Bunker current and max HP at snapshot (WaveManager)."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "currency",
+                        meaning = "Player currency at snapshot (WaveManager)."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "enemiesKilled",
+                        meaning = "Kill counter for the wave when kind is wave_cleared; from WaveManager.EnemiesKilledThisWave."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "weapon",
+                        meaning = "Display name of hero's current weapon at snapshot."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "weaponType",
+                        meaning = "Enum name of current WeaponType at snapshot."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "endReason",
+                        meaning =
+                            "For run_end: why GameOver (e.g. hero_death, wave_config_missing_or_empty). " +
+                            "For session_quit: editor_or_app_quit. Usually empty for session_begin / wave_cleared."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "damageTakenHero",
+                        meaning =
+                            "Damage applied to hero during the current InWave (via DamageReceiver), reset on next InWave."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "healingHero",
+                        meaning = "Healing received during current InWave (hero Heal), reset on next InWave."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "damageTakenBunker",
+                        meaning =
+                            "Bunker damage during current InWave (WaveManager.ApplyBunkerDamage → NotifyBunkerDamageTaken), " +
+                            "reset on next InWave."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "timeInBunkerSec",
+                        meaning =
+                            "Unscaled seconds hero was inside bunker zone (WaveManager.IsHeroInsideBunker) during InWave; " +
+                            "reset on next InWave."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "shotsFired",
+                        meaning =
+                            "Committed attacks in InWave: each ray shot or projectile launch increments once (WeaponSystem events)."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "rayHits / rayMisses",
+                        meaning =
+                            "Ray weapon only: hit vs miss on committed ray shot. Projectiles do not increment these (see projectileLaunches)."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "projectileLaunches",
+                        meaning = "Projectile weapon commits (e.g. bazooka) during InWave."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "reloads",
+                        meaning = "Reload completions during InWave (WeaponSystem OnReloadCompleted)."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "shopPurchasesPrior / shopCurrencySpentPrior",
+                        meaning =
+                            "Shop intermission before the wave that just cleared: purchase count and currency spent " +
+                            "(attributed on wave_cleared when leaving Shop → Preparing)."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "heroHpWaveStart / bunkerHpWaveStart / currencyWaveStart",
+                        meaning = "Snapshot at start of InWave for that wave (also filled on session_begin for first-row consistency)."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "autoHeroTestProfile",
+                        meaning =
+                            "AutoHero_V2 test profile name when bot is active (Perfect, HumanLike, Struggling); empty if no bot."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "sceneProfileId",
+                        meaning =
+                            "GameplaySceneRules_V2.ProfileId when GameplaySceneProfileApplier_V2 is active (built-in or asset); " +
+                            "empty when no scene profile. Describes shop/weapon policy for the run (e.g. Colt-only benchmark)."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "bunkerBreached",
+                        meaning =
+                            "True only if bunkerHp snapshot is exactly 0 (cover breached). Distinct from bunkerCriticalLow: " +
+                            "low non-zero HP (e.g. 5/275) is not breached."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "bunkerCriticalLow (inside each events[] row)",
+                        meaning =
+                            "True when 0 < bunkerHp <= bunkerMaxHp × bunkerCriticalHpFractionUsed (root). " +
+                            "Flags critically low bunker without requiring HP==0. False when bunkerHp<=0 (use bunkerBreached) " +
+                            "or when current HP ratio is above the fraction. This file's fraction is " +
+                            bunkerCriticalHpFractionUsed.ToString("0.###", CultureInfo.InvariantCulture) +
+                            " (same as root.bunkerCriticalHpFractionUsed; set on WaveRunTelemetry_V2 in Inspector)."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "bunkerCriticalHpFractionUsed (root object, sibling of events[])",
+                        meaning =
+                            "Clamped copy of WaveRunTelemetry_V2._bunkerCriticalHpFraction (Inspector, 0.02–0.5) used for " +
+                            "bunkerCriticalLow on every row in this file; repeated on each write so JSON stays self-describing."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "heroDead",
+                        meaning = "True if hero is dead at snapshot (IsDead())."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "waveStressScore",
+                        meaning =
+                            "Only meaningful on wave_cleared: rough pressure scalar (bunker+hero damage, kills, duration). " +
+                            "0 on other kinds. For comparing waves, not a tuned design 'difficulty tier'."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "minBunkerHpRatioThisWave",
+                        meaning =
+                            "wave_cleared, and run_end after abort during InWave: minimum of bunkerHp/bunkerMaxHp seen during " +
+                            "that InWave (every frame), including end snapshot; clamped 0–1. -1 on other kinds. Captures " +
+                            "'how low cover got' even when waveStressScore is modest."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "bunkerHpSamples[]",
+                        meaning =
+                            "wave_cleared, and run_end after abort during InWave: periodic samples while InWave. Each point: " +
+                            "waveTimeSecSinceInWaveRealtime (same clock as waveDurationSec), bunkerHp, bunkerMaxHp, bunkerHpRatio. " +
+                            "Interval/cap on root: bunkerHpSampleIntervalSecUsed=" +
+                            bunkerHpSampleIntervalSecUsed.ToString("0.###", CultureInfo.InvariantCulture) +
+                            "s, bunkerHpSamplesMaxPerWaveUsed=" +
+                            bunkerHpSamplesMaxPerWaveUsed.ToString(CultureInfo.InvariantCulture) +
+                            " (WaveRunTelemetry_V2 Inspector)."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "bunkerHpSampleIntervalSecUsed / bunkerHpSamplesMaxPerWaveUsed (root)",
+                        meaning =
+                            "Echo of Inspector settings used when writing bunkerHpSamples for wave_cleared and applicable run_end rows."
+                    }
+                }
+            };
         }
 
         private TelemetryFileRoot ReadRootOrNew()

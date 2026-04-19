@@ -418,5 +418,16 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
         {
             return _weaponSystem != null && _weaponSystem.TrySwitchToAnyWeaponWithAmmo();
         }
+
+        /// <summary>Used by <see cref="GameplaySceneProfileApplier_V2"/> (e.g. Colt-only runs) after hero systems exist.</summary>
+        public void ApplySceneWeaponAllowlist(IReadOnlyList<WeaponType> allowedWeaponTypes)
+        {
+            if (_weaponSystem == null || allowedWeaponTypes == null || allowedWeaponTypes.Count == 0)
+            {
+                return;
+            }
+
+            _weaponSystem.RestrictInventoryToAllowedWeaponTypes(allowedWeaponTypes);
+        }
     }
 }
