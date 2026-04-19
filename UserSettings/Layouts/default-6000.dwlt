@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 1920
     height: 1109
   m_ShowMode: 4
-  m_Title: Console
+  m_Title: Scene
   m_RootView: {fileID: 2}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -73,7 +73,7 @@ MonoBehaviour:
     height: 36
   m_MinSize: {x: 50, y: 50}
   m_MaxSize: {x: 4000, y: 4000}
-  m_ActualView: {fileID: 12}
+  m_ActualView: {fileID: 13}
 --- !u!114 &4
 MonoBehaviour:
   m_ObjectHideFlags: 52
@@ -119,7 +119,7 @@ MonoBehaviour:
   m_MinSize: {x: 300, y: 112}
   m_MaxSize: {x: 24288, y: 16192}
   vertical: 0
-  controlID: 8168
+  controlID: 95
   draggingID: 0
 --- !u!114 &6
 MonoBehaviour:
@@ -140,12 +140,12 @@ MonoBehaviour:
     serializedVersion: 2
     x: 0
     y: 0
-    width: 1534
+    width: 1535
     height: 1053
   m_MinSize: {x: 200, y: 112}
   m_MaxSize: {x: 16192, y: 16192}
   vertical: 1
-  controlID: 8110
+  controlID: 17
   draggingID: 0
 --- !u!114 &7
 MonoBehaviour:
@@ -166,12 +166,12 @@ MonoBehaviour:
     serializedVersion: 2
     x: 0
     y: 0
-    width: 1534
-    height: 685
+    width: 1535
+    height: 524
   m_MinSize: {x: 200, y: 56}
   m_MaxSize: {x: 16192, y: 8096}
   vertical: 0
-  controlID: 8087
+  controlID: 18
   draggingID: 0
 --- !u!114 &8
 MonoBehaviour:
@@ -191,12 +191,12 @@ MonoBehaviour:
     x: 0
     y: 0
     width: 482
-    height: 685
+    height: 524
   m_MinSize: {x: 201, y: 226}
   m_MaxSize: {x: 4001, y: 4026}
-  m_ActualView: {fileID: 14}
+  m_ActualView: {fileID: 15}
   m_Panes:
-  - {fileID: 14}
+  - {fileID: 15}
   m_Selected: 0
   m_LastSelected: 0
 --- !u!114 &9
@@ -216,14 +216,14 @@ MonoBehaviour:
     serializedVersion: 2
     x: 482
     y: 0
-    width: 1052
-    height: 685
+    width: 1053
+    height: 524
   m_MinSize: {x: 202, y: 226}
   m_MaxSize: {x: 4002, y: 4026}
-  m_ActualView: {fileID: 15}
+  m_ActualView: {fileID: 16}
   m_Panes:
-  - {fileID: 15}
   - {fileID: 16}
+  - {fileID: 17}
   m_Selected: 0
   m_LastSelected: 1
 --- !u!114 &10
@@ -242,17 +242,18 @@ MonoBehaviour:
   m_Position:
     serializedVersion: 2
     x: 0
-    y: 685
-    width: 1534
-    height: 368
+    y: 524
+    width: 1535
+    height: 529
   m_MinSize: {x: 101, y: 126}
   m_MaxSize: {x: 4001, y: 4026}
-  m_ActualView: {fileID: 17}
+  m_ActualView: {fileID: 18}
   m_Panes:
-  - {fileID: 13}
-  - {fileID: 17}
+  - {fileID: 14}
+  - {fileID: 18}
+  - {fileID: 12}
   m_Selected: 1
-  m_LastSelected: 0
+  m_LastSelected: 2
 --- !u!114 &11
 MonoBehaviour:
   m_ObjectHideFlags: 52
@@ -268,18 +269,1906 @@ MonoBehaviour:
   m_Children: []
   m_Position:
     serializedVersion: 2
-    x: 1534
+    x: 1535
     y: 0
-    width: 386
+    width: 385
     height: 1053
   m_MinSize: {x: 276, y: 76}
   m_MaxSize: {x: 4001, y: 4026}
-  m_ActualView: {fileID: 18}
+  m_ActualView: {fileID: 19}
   m_Panes:
-  - {fileID: 18}
+  - {fileID: 19}
   m_Selected: 0
   m_LastSelected: 0
 --- !u!114 &12
+MonoBehaviour:
+  m_ObjectHideFlags: 52
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 13401, guid: 0000000000000000e000000000000000, type: 0}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEditor.TestRunner.dll::UnityEditor.TestTools.TestRunner.TestRunnerWindow
+  m_MinSize: {x: 50, y: 50}
+  m_MaxSize: {x: 4000, y: 4000}
+  m_TitleContent:
+    m_Text: Test Runner
+    m_Image: {fileID: 0}
+    m_Tooltip: Test framework for running Edit mode and Play mode tests in Unity.
+      Part of the com.unity.test-framework package.
+    m_TextWithWhitespace: "Test Runner\u200B"
+  m_Pos:
+    serializedVersion: 2
+    x: 0
+    y: 552
+    width: 1534
+    height: 554
+  m_SerializedDataModeController:
+    m_DataMode: 0
+    m_PreferredDataMode: 0
+    m_SupportedDataModes: 
+    isAutomatic: 1
+  m_ViewDataDictionary: {fileID: 0}
+  m_OverlayCanvas:
+    m_LastAppliedPresetName: Default
+    m_SaveData: []
+    m_ContainerData: []
+    m_DynamicPanelContainerData: []
+    m_OverlaysVisible: 1
+    m_DynamicPanelBehavior: 0
+  m_Spl:
+    ID: 4251
+    splitterInitialOffset: 0
+    currentActiveSplitter: -1
+    realSizes:
+    - 363
+    - 121
+    relativeSizes:
+    - 0.75
+    - 0.25
+    minSizes:
+    - 32
+    - 32
+    maxSizes:
+    - 0
+    - 0
+    lastTotalSize: 484
+    splitSize: 6
+    xOffset: 0
+    m_Version: 1
+    oldRealSizes: 
+    oldMinSizes: 
+    oldMaxSizes: 
+    oldSplitSize: 0
+  m_TestTypeToolbarIndex: 1
+  m_TestListGUIs:
+  - m_Window: {fileID: 12}
+    runProgress:
+      RunGuid: 48613c23-d315-4de2-956e-fe6348a632d7
+      ExecutionSettings:
+        m_TargetPlatform: 0
+        m_HasTargetPlatform: 0
+        filter:
+          testMode: 0
+          testNames: []
+          groupNames: []
+          categoryNames: []
+          assemblyNames: []
+        filters:
+        - testMode: 2
+          testNames: []
+          groupNames: []
+          categoryNames: []
+          assemblyNames: []
+        runSynchronously: 0
+        playerHeartbeatTimeout: 600
+        orderedTestNames: []
+        ignoreTests: []
+        featureFlags:
+          fileCleanUpCheck: 0
+          requiresSplashScreen: 0
+          strictDomainReload: 0
+          disableNestedEnumeratorBugfix: 0
+        randomOrderSeed: 0
+      HasFinished: 1
+      Progress: 0.9999999
+      CurrentStepName: Unlock Reload Assemblies
+      CurrentStageName: 
+    m_NewResultList:
+    - id: 1000
+      uniqueId: '[iStick2War2026][suite]'
+      name: iStick2War2026
+      fullName: iStick2War2026
+      resultStatus: 1
+      duration: 0.0293444
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 
+      parentUniqueId: 
+    - id: 1075
+      uniqueId: '[iStick2War.EditModeTests.dll][suite]'
+      name: iStick2War.EditModeTests.dll
+      fullName: C:/repos/iStick2War2026/Library/ScriptAssemblies/iStick2War.EditModeTests.dll
+      resultStatus: 1
+      duration: 0.0293444
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1000
+      parentUniqueId: '[iStick2War2026][suite]'
+    - id: 1076
+      uniqueId: 'iStick2War.EditModeTests.dll/[iStick2War][suite]'
+      name: iStick2War
+      fullName: iStick2War
+      resultStatus: 1
+      duration: 0.0293444
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1075
+      parentUniqueId: '[iStick2War.EditModeTests.dll][suite]'
+    - id: 1077
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/[Tests][suite]'
+      name: Tests
+      fullName: iStick2War.Tests
+      resultStatus: 1
+      duration: 0.0293444
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1076
+      parentUniqueId: 'iStick2War.EditModeTests.dll/[iStick2War][suite]'
+    - id: 1078
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode][suite]'
+      name: EditMode
+      fullName: iStick2War.Tests.EditMode
+      resultStatus: 1
+      duration: 0.0293444
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1077
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/[Tests][suite]'
+    - id: 1001
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.AircraftHealth_V2Tests][suite]'
+      name: AircraftHealth_V2Tests
+      fullName: iStick2War.Tests.EditMode.AircraftHealth_V2Tests
+      resultStatus: 1
+      duration: 0.0030378
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1078
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode][suite]'
+    - id: 1002
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/AircraftHealth_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.AircraftHealth_V2Tests.ApplyDamage_IgnoresNonPositive]'
+      name: ApplyDamage_IgnoresNonPositive
+      fullName: iStick2War.Tests.EditMode.AircraftHealth_V2Tests.ApplyDamage_IgnoresNonPositive
+      resultStatus: 1
+      duration: 0.0026242
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.AircraftHealth_V2Tests][suite]'
+    - id: 1003
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/AircraftHealth_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.AircraftHealth_V2Tests.ApplyDamage_ReducesCurrentHealth]'
+      name: ApplyDamage_ReducesCurrentHealth
+      fullName: iStick2War.Tests.EditMode.AircraftHealth_V2Tests.ApplyDamage_ReducesCurrentHealth
+      resultStatus: 1
+      duration: 0.0002429
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.AircraftHealth_V2Tests][suite]'
+    - id: 1004
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/AircraftHealth_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.AircraftHealth_V2Tests.ApplyDamage_WhenAlreadyDead_DoesNothing]'
+      name: ApplyDamage_WhenAlreadyDead_DoesNothing
+      fullName: iStick2War.Tests.EditMode.AircraftHealth_V2Tests.ApplyDamage_WhenAlreadyDead_DoesNothing
+      resultStatus: 1
+      duration: 0.0001707
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.AircraftHealth_V2Tests][suite]'
+    - id: 1005
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HealthStatsTests][suite]'
+      name: HealthStatsTests
+      fullName: iStick2War.Tests.EditMode.HealthStatsTests
+      resultStatus: 1
+      duration: 0.0018586
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1078
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode][suite]'
+    - id: 1003
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HealthStatsTests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HealthStatsTests.CurHealth_ClampsToMax]'
+      name: CurHealth_ClampsToMax
+      fullName: iStick2War.Tests.EditMode.HealthStatsTests.CurHealth_ClampsToMax
+      resultStatus: 1
+      duration: 0.0010841
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HealthStatsTests][suite]'
+    - id: 1004
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HealthStatsTests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HealthStatsTests.CurHealth_DoesNotGoBelowZero]'
+      name: CurHealth_DoesNotGoBelowZero
+      fullName: iStick2War.Tests.EditMode.HealthStatsTests.CurHealth_DoesNotGoBelowZero
+      resultStatus: 1
+      duration: 0.0004479
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HealthStatsTests][suite]'
+    - id: 1002
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HealthStatsTests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HealthStatsTests.Init_SetsCurrentToMax]'
+      name: Init_SetsCurrentToMax
+      fullName: iStick2War.Tests.EditMode.HealthStatsTests.Init_SetsCurrentToMax
+      resultStatus: 1
+      duration: 0.0003266
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HealthStatsTests][suite]'
+    - id: 1009
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroModel_V2Tests][suite]'
+      name: HeroModel_V2Tests
+      fullName: iStick2War.Tests.EditMode.HeroModel_V2Tests
+      resultStatus: 1
+      duration: 0.0032545
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1078
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode][suite]'
+    - id: 1007
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroModel_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroModel_V2Tests.ConsumeAmmo_ClampsAtZero]'
+      name: ConsumeAmmo_ClampsAtZero
+      fullName: iStick2War.Tests.EditMode.HeroModel_V2Tests.ConsumeAmmo_ClampsAtZero
+      resultStatus: 1
+      duration: 0.0006925
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroModel_V2Tests][suite]'
+    - id: 1006
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroModel_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroModel_V2Tests.Heal_DoesNothing_WhenDead]'
+      name: Heal_DoesNothing_WhenDead
+      fullName: iStick2War.Tests.EditMode.HeroModel_V2Tests.Heal_DoesNothing_WhenDead
+      resultStatus: 1
+      duration: 0.0007003
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroModel_V2Tests][suite]'
+    - id: 1005
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroModel_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroModel_V2Tests.Heal_IncreasesHealth_UpToMax]'
+      name: Heal_IncreasesHealth_UpToMax
+      fullName: iStick2War.Tests.EditMode.HeroModel_V2Tests.Heal_IncreasesHealth_UpToMax
+      resultStatus: 1
+      duration: 0.0003182
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroModel_V2Tests][suite]'
+    - id: 1008
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroModel_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroModel_V2Tests.SetAmmoState_ClampsToMaxValues]'
+      name: SetAmmoState_ClampsToMaxValues
+      fullName: iStick2War.Tests.EditMode.HeroModel_V2Tests.SetAmmoState_ClampsToMaxValues
+      resultStatus: 1
+      duration: 0.0004739
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroModel_V2Tests][suite]'
+    - id: 1004
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroModel_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroModel_V2Tests.TakeDamage_DoesNothing_WhenAlreadyDead]'
+      name: TakeDamage_DoesNothing_WhenAlreadyDead
+      fullName: iStick2War.Tests.EditMode.HeroModel_V2Tests.TakeDamage_DoesNothing_WhenAlreadyDead
+      resultStatus: 1
+      duration: 0.0003238
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroModel_V2Tests][suite]'
+    - id: 1003
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroModel_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroModel_V2Tests.TakeDamage_ReachingZero_SetsDead_AndClampsHealth]'
+      name: TakeDamage_ReachingZero_SetsDead_AndClampsHealth
+      fullName: iStick2War.Tests.EditMode.HeroModel_V2Tests.TakeDamage_ReachingZero_SetsDead_AndClampsHealth
+      resultStatus: 1
+      duration: 0.0004279
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroModel_V2Tests][suite]'
+    - id: 1002
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroModel_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroModel_V2Tests.TakeDamage_ReducesCurrentHealth]'
+      name: TakeDamage_ReducesCurrentHealth
+      fullName: iStick2War.Tests.EditMode.HeroModel_V2Tests.TakeDamage_ReducesCurrentHealth
+      resultStatus: 1
+      duration: 0.0003179
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroModel_V2Tests][suite]'
+    - id: 1017
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroMovementSystem_V2Tests][suite]'
+      name: HeroMovementSystem_V2Tests
+      fullName: iStick2War.Tests.EditMode.HeroMovementSystem_V2Tests
+      resultStatus: 1
+      duration: 0.0046775
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1078
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode][suite]'
+    - id: 1020
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroMovementSystem_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroMovementSystem_V2Tests.Disable_ZerosModelVelocity]'
+      name: Disable_ZerosModelVelocity
+      fullName: iStick2War.Tests.EditMode.HeroMovementSystem_V2Tests.Disable_ZerosModelVelocity
+      resultStatus: 1
+      duration: 0.0036275
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1017
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroMovementSystem_V2Tests][suite]'
+    - id: 1019
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroMovementSystem_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroMovementSystem_V2Tests.Move_WhenDisabled_DoesNotTranslate]'
+      name: Move_WhenDisabled_DoesNotTranslate
+      fullName: iStick2War.Tests.EditMode.HeroMovementSystem_V2Tests.Move_WhenDisabled_DoesNotTranslate
+      resultStatus: 1
+      duration: 0.0006229
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1017
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroMovementSystem_V2Tests][suite]'
+    - id: 1018
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroMovementSystem_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroMovementSystem_V2Tests.Move_WithoutRigidbody_TranslatesWhenEnabled]'
+      name: Move_WithoutRigidbody_TranslatesWhenEnabled
+      fullName: iStick2War.Tests.EditMode.HeroMovementSystem_V2Tests.Move_WithoutRigidbody_TranslatesWhenEnabled
+      resultStatus: 1
+      duration: 0.0004271
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1017
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroMovementSystem_V2Tests][suite]'
+    - id: 1021
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroStateMachine_V2Tests][suite]'
+      name: HeroStateMachine_V2Tests
+      fullName: iStick2War.Tests.EditMode.HeroStateMachine_V2Tests
+      resultStatus: 1
+      duration: 0.0023769
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1078
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode][suite]'
+    - id: 1025
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroStateMachine_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroStateMachine_V2Tests.ChangeState_FromDead_IsBlocked]'
+      name: ChangeState_FromDead_IsBlocked
+      fullName: iStick2War.Tests.EditMode.HeroStateMachine_V2Tests.ChangeState_FromDead_IsBlocked
+      resultStatus: 1
+      duration: 0.0008024
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1021
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroStateMachine_V2Tests][suite]'
+    - id: 1027
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroStateMachine_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroStateMachine_V2Tests.ChangeState_ReloadingToShooting_IsBlocked]'
+      name: ChangeState_ReloadingToShooting_IsBlocked
+      fullName: iStick2War.Tests.EditMode.HeroStateMachine_V2Tests.ChangeState_ReloadingToShooting_IsBlocked
+      resultStatus: 1
+      duration: 0.0002818
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1021
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroStateMachine_V2Tests][suite]'
+    - id: 1024
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroStateMachine_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroStateMachine_V2Tests.ChangeState_SameState_DoesNothing]'
+      name: ChangeState_SameState_DoesNothing
+      fullName: iStick2War.Tests.EditMode.HeroStateMachine_V2Tests.ChangeState_SameState_DoesNothing
+      resultStatus: 1
+      duration: 0.0002924
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1021
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroStateMachine_V2Tests][suite]'
+    - id: 1028
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroStateMachine_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroStateMachine_V2Tests.ChangeState_ShootingToReloading_IsAllowed]'
+      name: ChangeState_ShootingToReloading_IsAllowed
+      fullName: iStick2War.Tests.EditMode.HeroStateMachine_V2Tests.ChangeState_ShootingToReloading_IsAllowed
+      resultStatus: 1
+      duration: 0.0001601
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1021
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroStateMachine_V2Tests][suite]'
+    - id: 1026
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroStateMachine_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroStateMachine_V2Tests.ChangeState_ToDead_IsAlwaysAllowed]'
+      name: ChangeState_ToDead_IsAlwaysAllowed
+      fullName: iStick2War.Tests.EditMode.HeroStateMachine_V2Tests.ChangeState_ToDead_IsAlwaysAllowed
+      resultStatus: 1
+      duration: 0.0001602
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1021
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroStateMachine_V2Tests][suite]'
+    - id: 1023
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroStateMachine_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroStateMachine_V2Tests.ChangeState_UpdatesCurrentState]'
+      name: ChangeState_UpdatesCurrentState
+      fullName: iStick2War.Tests.EditMode.HeroStateMachine_V2Tests.ChangeState_UpdatesCurrentState
+      resultStatus: 1
+      duration: 0.0001012
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1021
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroStateMachine_V2Tests][suite]'
+    - id: 1029
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroStateMachine_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroStateMachine_V2Tests.ForceState_BypassesTransitionRules]'
+      name: ForceState_BypassesTransitionRules
+      fullName: iStick2War.Tests.EditMode.HeroStateMachine_V2Tests.ForceState_BypassesTransitionRules
+      resultStatus: 1
+      duration: 0.0001332
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1021
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroStateMachine_V2Tests][suite]'
+    - id: 1030
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroStateMachine_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroStateMachine_V2Tests.OnStateChanged_FiresWithPreviousAndNew]'
+      name: OnStateChanged_FiresWithPreviousAndNew
+      fullName: iStick2War.Tests.EditMode.HeroStateMachine_V2Tests.OnStateChanged_FiresWithPreviousAndNew
+      resultStatus: 1
+      duration: 0.0003523
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1021
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroStateMachine_V2Tests][suite]'
+    - id: 1022
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroStateMachine_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroStateMachine_V2Tests.StartsInIdle]'
+      name: StartsInIdle
+      fullName: iStick2War.Tests.EditMode.HeroStateMachine_V2Tests.StartsInIdle
+      resultStatus: 1
+      duration: 0.0000933
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1021
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroStateMachine_V2Tests][suite]'
+    - id: 1031
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests][suite]'
+      name: HeroWeaponSystem_V2Tests
+      fullName: iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests
+      resultStatus: 1
+      duration: 0.0056103
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1078
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode][suite]'
+    - id: 1015
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroWeaponSystem_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.AfterDisable_CannotShootOrReload]'
+      name: AfterDisable_CannotShootOrReload
+      fullName: iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.AfterDisable_CannotShootOrReload
+      resultStatus: 1
+      duration: 0.0010923
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1009
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests][suite]'
+    - id: 1003
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroWeaponSystem_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.CanReload_IsFalse_WhenMagazineFullAndReserveAvailable]'
+      name: CanReload_IsFalse_WhenMagazineFullAndReserveAvailable
+      fullName: iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.CanReload_IsFalse_WhenMagazineFullAndReserveAvailable
+      resultStatus: 1
+      duration: 0.0003918
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests][suite]'
+    - id: 1014
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroWeaponSystem_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.CanReload_IsFalse_WhenReserveIsZero]'
+      name: CanReload_IsFalse_WhenReserveIsZero
+      fullName: iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.CanReload_IsFalse_WhenReserveIsZero
+      resultStatus: 1
+      duration: 0.0003051
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1009
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests][suite]'
+    - id: 1013
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroWeaponSystem_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.CanReload_IsTrue_WhenMagazineNotFull_AndReserveAvailable]'
+      name: CanReload_IsTrue_WhenMagazineNotFull_AndReserveAvailable
+      fullName: iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.CanReload_IsTrue_WhenMagazineNotFull_AndReserveAvailable
+      resultStatus: 1
+      duration: 0.0001851
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1009
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests][suite]'
+    - id: 1002
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroWeaponSystem_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.CanShoot_IsFalse_WhenHeroDead]'
+      name: CanShoot_IsFalse_WhenHeroDead
+      fullName: iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.CanShoot_IsFalse_WhenHeroDead
+      resultStatus: 1
+      duration: 0.000184
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests][suite]'
+    - id: 1004
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroWeaponSystem_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.CanShoot_IsFalse_WhenMagazineEmpty]'
+      name: CanShoot_IsFalse_WhenMagazineEmpty
+      fullName: iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.CanShoot_IsFalse_WhenMagazineEmpty
+      resultStatus: 1
+      duration: 0.0001928
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests][suite]'
+    - id: 1020
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroWeaponSystem_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.EmptyLoadout_CannotShoot]'
+      name: EmptyLoadout_CannotShoot
+      fullName: iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.EmptyLoadout_CannotShoot
+      resultStatus: 1
+      duration: 0.0003482
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1009
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests][suite]'
+    - id: 1016
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroWeaponSystem_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.StartReload_SetsReloading_WhenAllowed]'
+      name: StartReload_SetsReloading_WhenAllowed
+      fullName: iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.StartReload_SetsReloading_WhenAllowed
+      resultStatus: 1
+      duration: 0.0002407
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1009
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests][suite]'
+    - id: 1021
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroWeaponSystem_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.TryRefillMagazineForWeapon_ReturnsFalse_WhenMagazineAlreadyFull]'
+      name: TryRefillMagazineForWeapon_ReturnsFalse_WhenMagazineAlreadyFull
+      fullName: iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.TryRefillMagazineForWeapon_ReturnsFalse_WhenMagazineAlreadyFull
+      resultStatus: 1
+      duration: 0.0004527
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1009
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests][suite]'
+    - id: 1017
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroWeaponSystem_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.TrySwitchToNextWeapon_ReturnsFalse_WhenSingleWeaponInLoadout]'
+      name: TrySwitchToNextWeapon_ReturnsFalse_WhenSingleWeaponInLoadout
+      fullName: iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.TrySwitchToNextWeapon_ReturnsFalse_WhenSingleWeaponInLoadout
+      resultStatus: 1
+      duration: 0.0003459
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1009
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests][suite]'
+    - id: 1018
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroWeaponSystem_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.TrySwitchToNextWeapon_SwitchesModelWeapon_WhenMultipleInLoadout]'
+      name: TrySwitchToNextWeapon_SwitchesModelWeapon_WhenMultipleInLoadout
+      fullName: iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.TrySwitchToNextWeapon_SwitchesModelWeapon_WhenMultipleInLoadout
+      resultStatus: 1
+      duration: 0.0006538
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1009
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests][suite]'
+    - id: 1023
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroWeaponSystem_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.TrySwitchToPreviousWeapon_CyclesBack_WhenMultipleInLoadout]'
+      name: TrySwitchToPreviousWeapon_CyclesBack_WhenMultipleInLoadout
+      fullName: iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.TrySwitchToPreviousWeapon_CyclesBack_WhenMultipleInLoadout
+      resultStatus: 1
+      duration: 0.0005562
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1009
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests][suite]'
+    - id: 1019
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroWeaponSystem_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.UnlockWeapon_ReturnsTrue_WhenNew_AndFalse_WhenAlreadyPresent]'
+      name: UnlockWeapon_ReturnsTrue_WhenNew_AndFalse_WhenAlreadyPresent
+      fullName: iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.UnlockWeapon_ReturnsTrue_WhenNew_AndFalse_WhenAlreadyPresent
+      resultStatus: 1
+      duration: 0.0003734
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1009
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests][suite]'
+    - id: 1022
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/HeroWeaponSystem_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.UnlockWeapon_WithAutoEquip_SwitchesActiveWeapon]'
+      name: UnlockWeapon_WithAutoEquip_SwitchesActiveWeapon
+      fullName: iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests.UnlockWeapon_WithAutoEquip_SwitchesActiveWeapon
+      resultStatus: 1
+      duration: 0.0002883
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1009
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.HeroWeaponSystem_V2Tests][suite]'
+    - id: 1046
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperModel_V2Tests][suite]'
+      name: ParatrooperModel_V2Tests
+      fullName: iStick2War.Tests.EditMode.ParatrooperModel_V2Tests
+      resultStatus: 1
+      duration: 0.0022503
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1078
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode][suite]'
+    - id: 1049
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/ParatrooperModel_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperModel_V2Tests.ApplyDamage_ReducesHealth_AndClampsAtZero]'
+      name: ApplyDamage_ReducesHealth_AndClampsAtZero
+      fullName: iStick2War.Tests.EditMode.ParatrooperModel_V2Tests.ApplyDamage_ReducesHealth_AndClampsAtZero
+      resultStatus: 1
+      duration: 0.0006161
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1046
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperModel_V2Tests][suite]'
+    - id: 1047
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/ParatrooperModel_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperModel_V2Tests.ApplyWaveHealthMultiplier_IgnoresNonPositiveAndOne]'
+      name: ApplyWaveHealthMultiplier_IgnoresNonPositiveAndOne
+      fullName: iStick2War.Tests.EditMode.ParatrooperModel_V2Tests.ApplyWaveHealthMultiplier_IgnoresNonPositiveAndOne
+      resultStatus: 1
+      duration: 0.0003569
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1046
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperModel_V2Tests][suite]'
+    - id: 1048
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/ParatrooperModel_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperModel_V2Tests.ApplyWaveHealthMultiplier_ScalesHealth]'
+      name: ApplyWaveHealthMultiplier_ScalesHealth
+      fullName: iStick2War.Tests.EditMode.ParatrooperModel_V2Tests.ApplyWaveHealthMultiplier_ScalesHealth
+      resultStatus: 1
+      duration: 0.0002034
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1046
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperModel_V2Tests][suite]'
+    - id: 1051
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/ParatrooperModel_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperModel_V2Tests.GetMultiplier_ReturnsOne_WhenPartNotInTable]'
+      name: GetMultiplier_ReturnsOne_WhenPartNotInTable
+      fullName: iStick2War.Tests.EditMode.ParatrooperModel_V2Tests.GetMultiplier_ReturnsOne_WhenPartNotInTable
+      resultStatus: 1
+      duration: 0.0002837
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1046
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperModel_V2Tests][suite]'
+    - id: 1052
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/ParatrooperModel_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperModel_V2Tests.GetMultiplier_UsesDamageProfile_ForHead]'
+      name: GetMultiplier_UsesDamageProfile_ForHead
+      fullName: iStick2War.Tests.EditMode.ParatrooperModel_V2Tests.GetMultiplier_UsesDamageProfile_ForHead
+      resultStatus: 1
+      duration: 0.0005779
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1046
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperModel_V2Tests][suite]'
+    - id: 1050
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/ParatrooperModel_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperModel_V2Tests.IsDead_WhenHealthZeroOrLess]'
+      name: IsDead_WhenHealthZeroOrLess
+      fullName: iStick2War.Tests.EditMode.ParatrooperModel_V2Tests.IsDead_WhenHealthZeroOrLess
+      resultStatus: 1
+      duration: 0.0002123
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1046
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperModel_V2Tests][suite]'
+    - id: 1053
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperStateMachine_V2Tests][suite]'
+      name: ParatrooperStateMachine_V2Tests
+      fullName: iStick2War.Tests.EditMode.ParatrooperStateMachine_V2Tests
+      resultStatus: 1
+      duration: 0.0019217
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1078
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode][suite]'
+    - id: 1056
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/ParatrooperStateMachine_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperStateMachine_V2Tests.ChangeState_FromDie_IsBlocked]'
+      name: ChangeState_FromDie_IsBlocked
+      fullName: iStick2War.Tests.EditMode.ParatrooperStateMachine_V2Tests.ChangeState_FromDie_IsBlocked
+      resultStatus: 1
+      duration: 0.0010989
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1053
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperStateMachine_V2Tests][suite]'
+    - id: 1055
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/ParatrooperStateMachine_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperStateMachine_V2Tests.ChangeState_UpdatesCurrentState]'
+      name: ChangeState_UpdatesCurrentState
+      fullName: iStick2War.Tests.EditMode.ParatrooperStateMachine_V2Tests.ChangeState_UpdatesCurrentState
+      resultStatus: 1
+      duration: 0.0002493
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1053
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperStateMachine_V2Tests][suite]'
+    - id: 1054
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/ParatrooperStateMachine_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperStateMachine_V2Tests.Initialize_SetsIdle_OnModelAndMachine]'
+      name: Initialize_SetsIdle_OnModelAndMachine
+      fullName: iStick2War.Tests.EditMode.ParatrooperStateMachine_V2Tests.Initialize_SetsIdle_OnModelAndMachine
+      resultStatus: 1
+      duration: 0.0002223
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1053
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperStateMachine_V2Tests][suite]'
+    - id: 1057
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/ParatrooperStateMachine_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperStateMachine_V2Tests.OnStateChanged_FiresOnTransition]'
+      name: OnStateChanged_FiresOnTransition
+      fullName: iStick2War.Tests.EditMode.ParatrooperStateMachine_V2Tests.OnStateChanged_FiresOnTransition
+      resultStatus: 1
+      duration: 0.0003512
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1053
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperStateMachine_V2Tests][suite]'
+    - id: 1058
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperWeaponSystem_V2Tests][suite]'
+      name: ParatrooperWeaponSystem_V2Tests
+      fullName: iStick2War.Tests.EditMode.ParatrooperWeaponSystem_V2Tests
+      resultStatus: 1
+      duration: 0.0013169
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1078
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode][suite]'
+    - id: 1030
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/ParatrooperWeaponSystem_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperWeaponSystem_V2Tests.ApplyWaveDamageMultiplier_IgnoresApproximatelyOne]'
+      name: ApplyWaveDamageMultiplier_IgnoresApproximatelyOne
+      fullName: iStick2War.Tests.EditMode.ParatrooperWeaponSystem_V2Tests.ApplyWaveDamageMultiplier_IgnoresApproximatelyOne
+      resultStatus: 1
+      duration: 0.0007656
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1028
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperWeaponSystem_V2Tests][suite]'
+    - id: 1029
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/ParatrooperWeaponSystem_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperWeaponSystem_V2Tests.ApplyWaveDamageMultiplier_IgnoresNonPositive]'
+      name: ApplyWaveDamageMultiplier_IgnoresNonPositive
+      fullName: iStick2War.Tests.EditMode.ParatrooperWeaponSystem_V2Tests.ApplyWaveDamageMultiplier_IgnoresNonPositive
+      resultStatus: 1
+      duration: 0.000291
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1028
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperWeaponSystem_V2Tests][suite]'
+    - id: 1031
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/ParatrooperWeaponSystem_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperWeaponSystem_V2Tests.ApplyWaveDamageMultiplier_ScalesAndRounds_AndFloorsAtOne]'
+      name: ApplyWaveDamageMultiplier_ScalesAndRounds_AndFloorsAtOne
+      fullName: iStick2War.Tests.EditMode.ParatrooperWeaponSystem_V2Tests.ApplyWaveDamageMultiplier_ScalesAndRounds_AndFloorsAtOne
+      resultStatus: 1
+      duration: 0.0002603
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1028
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ParatrooperWeaponSystem_V2Tests][suite]'
+    - id: 1062
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ShopOfferConfig_V2Tests][suite]'
+      name: ShopOfferConfig_V2Tests
+      fullName: iStick2War.Tests.EditMode.ShopOfferConfig_V2Tests
+      resultStatus: 1
+      duration: 0.0016342
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1078
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode][suite]'
+    - id: 1036
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/ShopOfferConfig_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ShopOfferConfig_V2Tests.Cost_IsNotNegative]'
+      name: Cost_IsNotNegative
+      fullName: iStick2War.Tests.EditMode.ShopOfferConfig_V2Tests.Cost_IsNotNegative
+      resultStatus: 1
+      duration: 0.0003203
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1032
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ShopOfferConfig_V2Tests][suite]'
+    - id: 1035
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/ShopOfferConfig_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ShopOfferConfig_V2Tests.DisplayName_FallsBackToKindName_WhenNoOverride]'
+      name: DisplayName_FallsBackToKindName_WhenNoOverride
+      fullName: iStick2War.Tests.EditMode.ShopOfferConfig_V2Tests.DisplayName_FallsBackToKindName_WhenNoOverride
+      resultStatus: 1
+      duration: 0.0004276
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1032
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ShopOfferConfig_V2Tests][suite]'
+    - id: 1034
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/ShopOfferConfig_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ShopOfferConfig_V2Tests.DisplayName_FallsBackToWeaponDisplayName_ForWeaponUnlock]'
+      name: DisplayName_FallsBackToWeaponDisplayName_ForWeaponUnlock
+      fullName: iStick2War.Tests.EditMode.ShopOfferConfig_V2Tests.DisplayName_FallsBackToWeaponDisplayName_ForWeaponUnlock
+      resultStatus: 1
+      duration: 0.0004358
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1032
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ShopOfferConfig_V2Tests][suite]'
+    - id: 1033
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/ShopOfferConfig_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ShopOfferConfig_V2Tests.DisplayName_UsesSerializedName_WhenNonEmpty]'
+      name: DisplayName_UsesSerializedName_WhenNonEmpty
+      fullName: iStick2War.Tests.EditMode.ShopOfferConfig_V2Tests.DisplayName_UsesSerializedName_WhenNonEmpty
+      resultStatus: 1
+      duration: 0.0001592
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1032
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ShopOfferConfig_V2Tests][suite]'
+    - id: 1037
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/ShopOfferConfig_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ShopOfferConfig_V2Tests.HealthAndBunkerAmounts_AreNotNegative]'
+      name: HealthAndBunkerAmounts_AreNotNegative
+      fullName: iStick2War.Tests.EditMode.ShopOfferConfig_V2Tests.HealthAndBunkerAmounts_AreNotNegative
+      resultStatus: 1
+      duration: 0.0002913
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1032
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.ShopOfferConfig_V2Tests][suite]'
+    - id: 1068
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.WaveConfig_V2Tests][suite]'
+      name: WaveConfig_V2Tests
+      fullName: iStick2War.Tests.EditMode.WaveConfig_V2Tests
+      resultStatus: 1
+      duration: 0.0014057
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1078
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode][suite]'
+    - id: 1043
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/WaveConfig_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.WaveConfig_V2Tests.BomberPassCount_IsNotNegative]'
+      name: BomberPassCount_IsNotNegative
+      fullName: iStick2War.Tests.EditMode.WaveConfig_V2Tests.BomberPassCount_IsNotNegative
+      resultStatus: 1
+      duration: 0.0004968
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1038
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.WaveConfig_V2Tests][suite]'
+    - id: 1039
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/WaveConfig_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.WaveConfig_V2Tests.EnemyCount_IsAtLeastOne]'
+      name: EnemyCount_IsAtLeastOne
+      fullName: iStick2War.Tests.EditMode.WaveConfig_V2Tests.EnemyCount_IsAtLeastOne
+      resultStatus: 1
+      duration: 0.0002082
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1038
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.WaveConfig_V2Tests][suite]'
+    - id: 1042
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/WaveConfig_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.WaveConfig_V2Tests.EnemyMultipliers_AreClampedLow]'
+      name: EnemyMultipliers_AreClampedLow
+      fullName: iStick2War.Tests.EditMode.WaveConfig_V2Tests.EnemyMultipliers_AreClampedLow
+      resultStatus: 1
+      duration: 0.0002468
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1038
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.WaveConfig_V2Tests][suite]'
+    - id: 1041
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/WaveConfig_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.WaveConfig_V2Tests.SpawnIntervalSeconds_IsAtLeastPointOne]'
+      name: SpawnIntervalSeconds_IsAtLeastPointOne
+      fullName: iStick2War.Tests.EditMode.WaveConfig_V2Tests.SpawnIntervalSeconds_IsAtLeastPointOne
+      resultStatus: 1
+      duration: 0.0001602
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1038
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.WaveConfig_V2Tests][suite]'
+    - id: 1040
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/WaveConfig_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.WaveConfig_V2Tests.WaveDurationSeconds_IsAtLeastOne]'
+      name: WaveDurationSeconds_IsAtLeastOne
+      fullName: iStick2War.Tests.EditMode.WaveConfig_V2Tests.WaveDurationSeconds_IsAtLeastOne
+      resultStatus: 1
+      duration: 0.0001505
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1038
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.WaveConfig_V2Tests][suite]'
+    - id: 1044
+      uniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/WaveConfig_V2Tests/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.WaveConfig_V2Tests.WaveRewardCurrency_IsNotNegative]'
+      name: WaveRewardCurrency_IsNotNegative
+      fullName: iStick2War.Tests.EditMode.WaveConfig_V2Tests.WaveRewardCurrency_IsNotNegative
+      resultStatus: 1
+      duration: 0.0001432
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1038
+      parentUniqueId: 'iStick2War.EditModeTests.dll/iStick2War/Tests/EditMode/[iStick2War.EditModeTests][iStick2War.Tests.EditMode.WaveConfig_V2Tests][suite]'
+    m_ResultText: TryRefillMagazineForWeapon_ReturnsFalse_WhenMagazineAlreadyFull
+      (0.000s)
+    m_ResultStacktrace: 
+    m_TestListState:
+      scrollPos: {x: 0, y: 45}
+      m_SelectedIDs: 949b0157
+      m_LastClickedID: 1459723156
+      m_ExpandedIDs: 798df98aba92dfb462d4ebbbbe1e3ad49595e0da7da47aefcd9fdefb2fb5033a85506e72ffffff7f
+      m_RenameOverlay:
+        m_UserAcceptedRename: 0
+        m_Name: 
+        m_OriginalName: 
+        m_EditFieldRect:
+          serializedVersion: 2
+          x: 0
+          y: 0
+          width: 0
+          height: 0
+        m_UserData: 0
+        m_IsWaitingForDelay: 0
+        m_IsRenaming: 0
+        m_OriginalEventType: 11
+        m_IsRenamingFilename: 0
+        m_TrimLeadingAndTrailingWhitespace: 0
+        m_ClientGUIView: {fileID: 0}
+      m_SearchString: 
+    m_TestRunnerUIFilter:
+      PassedHidden: 0
+      FailedHidden: 0
+      NotRunHidden: 0
+      m_SearchString: 
+      selectedCategories: []
+      availableCategories:
+      - Uncategorized
+    m_SelectedOption: 0
+  - m_Window: {fileID: 12}
+    runProgress:
+      RunGuid: 48613c23-d315-4de2-956e-fe6348a632d7
+      ExecutionSettings:
+        m_TargetPlatform: 0
+        m_HasTargetPlatform: 0
+        filter:
+          testMode: 0
+          testNames: []
+          groupNames: []
+          categoryNames: []
+          assemblyNames: []
+        filters:
+        - testMode: 2
+          testNames: []
+          groupNames: []
+          categoryNames: []
+          assemblyNames: []
+        runSynchronously: 0
+        playerHeartbeatTimeout: 600
+        orderedTestNames: []
+        ignoreTests: []
+        featureFlags:
+          fileCleanUpCheck: 0
+          requiresSplashScreen: 0
+          strictDomainReload: 0
+          disableNestedEnumeratorBugfix: 0
+        randomOrderSeed: 0
+      HasFinished: 1
+      Progress: 0.9999999
+      CurrentStepName: Unlock Reload Assemblies
+      CurrentStageName: 
+    m_NewResultList:
+    - id: 1000
+      uniqueId: '[iStick2War2026][suite]'
+      name: iStick2War2026
+      fullName: iStick2War2026
+      resultStatus: 1
+      duration: 7.8270087
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 
+      parentUniqueId: 
+    - id: 1010
+      uniqueId: '[iStick2War.PlayModeTests.dll][suite]'
+      name: iStick2War.PlayModeTests.dll
+      fullName: C:/repos/iStick2War2026/Library/ScriptAssemblies/iStick2War.PlayModeTests.dll
+      resultStatus: 1
+      duration: 7.8270087
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1000
+      parentUniqueId: '[iStick2War2026][suite]'
+    - id: 1011
+      uniqueId: 'iStick2War.PlayModeTests.dll/[iStick2War][suite]'
+      name: iStick2War
+      fullName: iStick2War
+      resultStatus: 1
+      duration: 7.8270087
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1010
+      parentUniqueId: '[iStick2War.PlayModeTests.dll][suite]'
+    - id: 1012
+      uniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/[Tests][suite]'
+      name: Tests
+      fullName: iStick2War.Tests
+      resultStatus: 1
+      duration: 7.8270087
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1011
+      parentUniqueId: 'iStick2War.PlayModeTests.dll/[iStick2War][suite]'
+    - id: 1013
+      uniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/Tests/[iStick2War.PlayModeTests][iStick2War.Tests.PlayMode][suite]'
+      name: PlayMode
+      fullName: iStick2War.Tests.PlayMode
+      resultStatus: 1
+      duration: 7.8270087
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1012
+      parentUniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/[Tests][suite]'
+    - id: 1001
+      uniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/Tests/PlayMode/[iStick2War.PlayModeTests][iStick2War.Tests.PlayMode.SampleSceneIntegrationTests][suite]'
+      name: SampleSceneIntegrationTests
+      fullName: iStick2War.Tests.PlayMode.SampleSceneIntegrationTests
+      resultStatus: 1
+      duration: 7.8270087
+      messages: 
+      output: 
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 1
+      categories: []
+      parentId: 1013
+      parentUniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/Tests/[iStick2War.PlayModeTests][iStick2War.Tests.PlayMode][suite]'
+    - id: 1009
+      uniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/Tests/PlayMode/SampleSceneIntegrationTests/[iStick2War.PlayModeTests][iStick2War.Tests.PlayMode.SampleSceneIntegrationTests.MainMenu_PausesTime_OnBoot_HandlePlay_ResumesTime]'
+      name: MainMenu_PausesTime_OnBoot_HandlePlay_ResumesTime
+      fullName: iStick2War.Tests.PlayMode.SampleSceneIntegrationTests.MainMenu_PausesTime_OnBoot_HandlePlay_ResumesTime
+      resultStatus: 1
+      duration: 5.1402764
+      messages: 
+      output: "[EnemySpawner_V2] --- Anchor diagnostics (Awake) ---\n  autoBindByName=True,
+        snapSpawnsToCameraViewEdges=False, _useFrustumOffscreenSpawnWhenNoAnchors=True\n 
+        spawnCamera='MainCamera'\n  If snap is ON: anchor spawns clamp to the visible
+        frustum edges (moving camera). If anchors are empty: off-screen spawn uses
+        frustum left/right + horizontal margin.\n  Optional auto-bind names: 'spawnPointLeft',
+        'spawnPointRight'\r\n[EnemySpawner_V2] Anchor array LEFT: (empty).\r\n[EnemySpawner_V2]
+        Anchor array RIGHT: (empty).\r\n[ShopPanel_V2] Resolved shop UI canvases:
+        1\r\n[ShopPanel_V2] SetVisualComponentsVisible=False\r\n"
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/Tests/PlayMode/[iStick2War.PlayModeTests][iStick2War.Tests.PlayMode.SampleSceneIntegrationTests][suite]'
+    - id: 1006
+      uniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/Tests/PlayMode/SampleSceneIntegrationTests/[iStick2War.PlayModeTests][iStick2War.Tests.PlayMode.SampleSceneIntegrationTests.SampleScene_ContainsBunkerComponents]'
+      name: SampleScene_ContainsBunkerComponents
+      fullName: iStick2War.Tests.PlayMode.SampleSceneIntegrationTests.SampleScene_ContainsBunkerComponents
+      resultStatus: 1
+      duration: 0.4344353
+      messages: 
+      output: "[EnemySpawner_V2] --- Anchor diagnostics (Awake) ---\n  autoBindByName=True,
+        snapSpawnsToCameraViewEdges=False, _useFrustumOffscreenSpawnWhenNoAnchors=True\n 
+        spawnCamera='MainCamera'\n  If snap is ON: anchor spawns clamp to the visible
+        frustum edges (moving camera). If anchors are empty: off-screen spawn uses
+        frustum left/right + horizontal margin.\n  Optional auto-bind names: 'spawnPointLeft',
+        'spawnPointRight'\r\n[EnemySpawner_V2] Anchor array LEFT: (empty).\r\n[EnemySpawner_V2]
+        Anchor array RIGHT: (empty).\r\n[ShopPanel_V2] Resolved shop UI canvases:
+        1\r\n[ShopPanel_V2] SetVisualComponentsVisible=False\r\n"
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/Tests/PlayMode/[iStick2War.PlayModeTests][iStick2War.Tests.PlayMode.SampleSceneIntegrationTests][suite]'
+    - id: 1005
+      uniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/Tests/PlayMode/SampleSceneIntegrationTests/[iStick2War.PlayModeTests][iStick2War.Tests.PlayMode.SampleSceneIntegrationTests.SampleScene_ContainsCoreV2Roots]'
+      name: SampleScene_ContainsCoreV2Roots
+      fullName: iStick2War.Tests.PlayMode.SampleSceneIntegrationTests.SampleScene_ContainsCoreV2Roots
+      resultStatus: 1
+      duration: 0.4167595
+      messages: 
+      output: "[EnemySpawner_V2] --- Anchor diagnostics (Awake) ---\n  autoBindByName=True,
+        snapSpawnsToCameraViewEdges=False, _useFrustumOffscreenSpawnWhenNoAnchors=True\n 
+        spawnCamera='MainCamera'\n  If snap is ON: anchor spawns clamp to the visible
+        frustum edges (moving camera). If anchors are empty: off-screen spawn uses
+        frustum left/right + horizontal margin.\n  Optional auto-bind names: 'spawnPointLeft',
+        'spawnPointRight'\r\n[EnemySpawner_V2] Anchor array LEFT: (empty).\r\n[EnemySpawner_V2]
+        Anchor array RIGHT: (empty).\r\n[ShopPanel_V2] Resolved shop UI canvases:
+        1\r\n[ShopPanel_V2] SetVisualComponentsVisible=False\r\n"
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/Tests/PlayMode/[iStick2War.PlayModeTests][iStick2War.Tests.PlayMode.SampleSceneIntegrationTests][suite]'
+    - id: 1003
+      uniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/Tests/PlayMode/SampleSceneIntegrationTests/[iStick2War.PlayModeTests][iStick2War.Tests.PlayMode.SampleSceneIntegrationTests.SampleScene_ContainsWaveManager]'
+      name: SampleScene_ContainsWaveManager
+      fullName: iStick2War.Tests.PlayMode.SampleSceneIntegrationTests.SampleScene_ContainsWaveManager
+      resultStatus: 1
+      duration: 0.3811352
+      messages: 
+      output: "[EnemySpawner_V2] --- Anchor diagnostics (Awake) ---\n  autoBindByName=True,
+        snapSpawnsToCameraViewEdges=False, _useFrustumOffscreenSpawnWhenNoAnchors=True\n 
+        spawnCamera='MainCamera'\n  If snap is ON: anchor spawns clamp to the visible
+        frustum edges (moving camera). If anchors are empty: off-screen spawn uses
+        frustum left/right + horizontal margin.\n  Optional auto-bind names: 'spawnPointLeft',
+        'spawnPointRight'\r\n[EnemySpawner_V2] Anchor array LEFT: (empty).\r\n[EnemySpawner_V2]
+        Anchor array RIGHT: (empty).\r\n[ShopPanel_V2] Resolved shop UI canvases:
+        1\r\n[ShopPanel_V2] SetVisualComponentsVisible=False\r\n"
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/Tests/PlayMode/[iStick2War.PlayModeTests][iStick2War.Tests.PlayMode.SampleSceneIntegrationTests][suite]'
+    - id: 1007
+      uniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/Tests/PlayMode/SampleSceneIntegrationTests/[iStick2War.PlayModeTests][iStick2War.Tests.PlayMode.SampleSceneIntegrationTests.SampleScene_HasEventSystem_ForUI]'
+      name: SampleScene_HasEventSystem_ForUI
+      fullName: iStick2War.Tests.PlayMode.SampleSceneIntegrationTests.SampleScene_HasEventSystem_ForUI
+      resultStatus: 1
+      duration: 0.3565133
+      messages: 
+      output: "[EnemySpawner_V2] --- Anchor diagnostics (Awake) ---\n  autoBindByName=True,
+        snapSpawnsToCameraViewEdges=False, _useFrustumOffscreenSpawnWhenNoAnchors=True\n 
+        spawnCamera='MainCamera'\n  If snap is ON: anchor spawns clamp to the visible
+        frustum edges (moving camera). If anchors are empty: off-screen spawn uses
+        frustum left/right + horizontal margin.\n  Optional auto-bind names: 'spawnPointLeft',
+        'spawnPointRight'\r\n[EnemySpawner_V2] Anchor array LEFT: (empty).\r\n[EnemySpawner_V2]
+        Anchor array RIGHT: (empty).\r\n[ShopPanel_V2] Resolved shop UI canvases:
+        1\r\n[ShopPanel_V2] SetVisualComponentsVisible=False\r\n"
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/Tests/PlayMode/[iStick2War.PlayModeTests][iStick2War.Tests.PlayMode.SampleSceneIntegrationTests][suite]'
+    - id: 1002
+      uniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/Tests/PlayMode/SampleSceneIntegrationTests/[iStick2War.PlayModeTests][iStick2War.Tests.PlayMode.SampleSceneIntegrationTests.SampleScene_Loads_And_HasMainCamera]'
+      name: SampleScene_Loads_And_HasMainCamera
+      fullName: iStick2War.Tests.PlayMode.SampleSceneIntegrationTests.SampleScene_Loads_And_HasMainCamera
+      resultStatus: 1
+      duration: 0.3541203
+      messages: 
+      output: "[EnemySpawner_V2] --- Anchor diagnostics (Awake) ---\n  autoBindByName=True,
+        snapSpawnsToCameraViewEdges=False, _useFrustumOffscreenSpawnWhenNoAnchors=True\n 
+        spawnCamera='MainCamera'\n  If snap is ON: anchor spawns clamp to the visible
+        frustum edges (moving camera). If anchors are empty: off-screen spawn uses
+        frustum left/right + horizontal margin.\n  Optional auto-bind names: 'spawnPointLeft',
+        'spawnPointRight'\r\n[EnemySpawner_V2] Anchor array LEFT: (empty).\r\n[EnemySpawner_V2]
+        Anchor array RIGHT: (empty).\r\n[ShopPanel_V2] Resolved shop UI canvases:
+        1\r\n[ShopPanel_V2] SetVisualComponentsVisible=False\r\n"
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/Tests/PlayMode/[iStick2War.PlayModeTests][iStick2War.Tests.PlayMode.SampleSceneIntegrationTests][suite]'
+    - id: 1004
+      uniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/Tests/PlayMode/SampleSceneIntegrationTests/[iStick2War.PlayModeTests][iStick2War.Tests.PlayMode.SampleSceneIntegrationTests.SampleScene_TimeAdvances_OverSeveralFrames]'
+      name: SampleScene_TimeAdvances_OverSeveralFrames
+      fullName: iStick2War.Tests.PlayMode.SampleSceneIntegrationTests.SampleScene_TimeAdvances_OverSeveralFrames
+      resultStatus: 1
+      duration: 0.3852985
+      messages: 
+      output: "[EnemySpawner_V2] --- Anchor diagnostics (Awake) ---\n  autoBindByName=True,
+        snapSpawnsToCameraViewEdges=False, _useFrustumOffscreenSpawnWhenNoAnchors=True\n 
+        spawnCamera='MainCamera'\n  If snap is ON: anchor spawns clamp to the visible
+        frustum edges (moving camera). If anchors are empty: off-screen spawn uses
+        frustum left/right + horizontal margin.\n  Optional auto-bind names: 'spawnPointLeft',
+        'spawnPointRight'\r\n[EnemySpawner_V2] Anchor array LEFT: (empty).\r\n[EnemySpawner_V2]
+        Anchor array RIGHT: (empty).\r\n[ShopPanel_V2] Resolved shop UI canvases:
+        1\r\n[ShopPanel_V2] SetVisualComponentsVisible=False\r\n"
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/Tests/PlayMode/[iStick2War.PlayModeTests][iStick2War.Tests.PlayMode.SampleSceneIntegrationTests][suite]'
+    - id: 1008
+      uniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/Tests/PlayMode/SampleSceneIntegrationTests/[iStick2War.PlayModeTests][iStick2War.Tests.PlayMode.SampleSceneIntegrationTests.WaveManager_StartsInPreparing_WithConsistentEconomy]'
+      name: WaveManager_StartsInPreparing_WithConsistentEconomy
+      fullName: iStick2War.Tests.PlayMode.SampleSceneIntegrationTests.WaveManager_StartsInPreparing_WithConsistentEconomy
+      resultStatus: 1
+      duration: 0.3584701
+      messages: 
+      output: "[EnemySpawner_V2] --- Anchor diagnostics (Awake) ---\n  autoBindByName=True,
+        snapSpawnsToCameraViewEdges=False, _useFrustumOffscreenSpawnWhenNoAnchors=True\n 
+        spawnCamera='MainCamera'\n  If snap is ON: anchor spawns clamp to the visible
+        frustum edges (moving camera). If anchors are empty: off-screen spawn uses
+        frustum left/right + horizontal margin.\n  Optional auto-bind names: 'spawnPointLeft',
+        'spawnPointRight'\r\n[EnemySpawner_V2] Anchor array LEFT: (empty).\r\n[EnemySpawner_V2]
+        Anchor array RIGHT: (empty).\r\n[ShopPanel_V2] Resolved shop UI canvases:
+        1\r\n[ShopPanel_V2] SetVisualComponentsVisible=False\r\n"
+      stacktrace: 
+      notRunnable: 0
+      ignoredOrSkipped: 0
+      description: 
+      isSuite: 0
+      categories:
+      - Uncategorized
+      parentId: 1001
+      parentUniqueId: 'iStick2War.PlayModeTests.dll/iStick2War/Tests/PlayMode/[iStick2War.PlayModeTests][iStick2War.Tests.PlayMode.SampleSceneIntegrationTests][suite]'
+    m_ResultText: "SampleScene_ContainsCoreV2Roots (0.417s)\n---\n[EnemySpawner_V2]
+      --- Anchor diagnostics (Awake) ---\n  autoBindByName=True, snapSpawnsToCameraViewEdges=False,
+      _useFrustumOffscreenSpawnWhenNoAnchors=True\n  spawnCamera='MainCamera'\n 
+      If snap is ON: anchor spawns clamp to the visible frustum edges (moving camera).
+      If anchors are empty: off-screen spawn uses frustum left/right + horizontal
+      margin.\n  Optional auto-bind names: 'spawnPointLeft', 'spawnPointRight'\r\n[EnemySpawner_V2]
+      Anchor array LEFT: (empty).\r\n[EnemySpawner_V2] Anchor array RIGHT: (empty).\r\n[ShopPanel_V2]
+      Resolved shop UI canvases: 1\r\n[ShopPanel_V2] SetVisualComponentsVisible=False"
+    m_ResultStacktrace: 
+    m_TestListState:
+      scrollPos: {x: 0, y: 0}
+      m_SelectedIDs: 0372906b
+      m_LastClickedID: 1804628483
+      m_ExpandedIDs: 518318a37da47aefad5ca1f05b7becf418395b7617e58a7cffffff7f
+      m_RenameOverlay:
+        m_UserAcceptedRename: 0
+        m_Name: 
+        m_OriginalName: 
+        m_EditFieldRect:
+          serializedVersion: 2
+          x: 0
+          y: 0
+          width: 0
+          height: 0
+        m_UserData: 0
+        m_IsWaitingForDelay: 0
+        m_IsRenaming: 0
+        m_OriginalEventType: 11
+        m_IsRenamingFilename: 0
+        m_TrimLeadingAndTrailingWhitespace: 0
+        m_ClientGUIView: {fileID: 0}
+      m_SearchString: 
+    m_TestRunnerUIFilter:
+      PassedHidden: 0
+      FailedHidden: 0
+      NotRunHidden: 0
+      m_SearchString: 
+      selectedCategories: []
+      availableCategories:
+      - Uncategorized
+    m_SelectedOption: 0
+  - m_Window: {fileID: 0}
+    runProgress:
+      RunGuid: 48613c23-d315-4de2-956e-fe6348a632d7
+      ExecutionSettings:
+        m_TargetPlatform: 0
+        m_HasTargetPlatform: 0
+        filter:
+          testMode: 0
+          testNames: []
+          groupNames: []
+          categoryNames: []
+          assemblyNames: []
+        filters:
+        - testMode: 2
+          testNames: []
+          groupNames: []
+          categoryNames: []
+          assemblyNames: []
+        runSynchronously: 0
+        playerHeartbeatTimeout: 600
+        orderedTestNames: []
+        ignoreTests: []
+        featureFlags:
+          fileCleanUpCheck: 0
+          requiresSplashScreen: 0
+          strictDomainReload: 0
+          disableNestedEnumeratorBugfix: 0
+        randomOrderSeed: 0
+      HasFinished: 1
+      Progress: 0.9999999
+      CurrentStepName: Unlock Reload Assemblies
+      CurrentStageName: 
+    m_NewResultList: []
+    m_ResultText: 
+    m_ResultStacktrace: 
+    m_TestListState:
+      scrollPos: {x: 0, y: 0}
+      m_SelectedIDs: 
+      m_LastClickedID: 0
+      m_ExpandedIDs: 
+      m_RenameOverlay:
+        m_UserAcceptedRename: 0
+        m_Name: 
+        m_OriginalName: 
+        m_EditFieldRect:
+          serializedVersion: 2
+          x: 0
+          y: 0
+          width: 0
+          height: 0
+        m_UserData: 0
+        m_IsWaitingForDelay: 0
+        m_IsRenaming: 0
+        m_OriginalEventType: 11
+        m_IsRenamingFilename: 0
+        m_TrimLeadingAndTrailingWhitespace: 0
+        m_ClientGUIView: {fileID: 0}
+      m_SearchString: 
+    m_TestRunnerUIFilter:
+      PassedHidden: 0
+      FailedHidden: 0
+      NotRunHidden: 0
+      m_SearchString: 
+      selectedCategories: []
+      availableCategories: []
+    m_SelectedOption: 0
+--- !u!114 &13
 MonoBehaviour:
   m_ObjectHideFlags: 52
   m_CorrespondingSourceObject: {fileID: 0}
@@ -545,7 +2434,7 @@ MonoBehaviour:
     m_DynamicPanelContainerData: []
     m_OverlaysVisible: 1
     m_DynamicPanelBehavior: 0
---- !u!114 &13
+--- !u!114 &14
 MonoBehaviour:
   m_ObjectHideFlags: 52
   m_CorrespondingSourceObject: {fileID: 0}
@@ -594,7 +2483,7 @@ MonoBehaviour:
     m_SkipHidden: 0
     m_SearchArea: 1
     m_Folders:
-    - Assets/Data/WaveManager/Waves01to10
+    - Assets/Prefabs/Paratrooper
     m_Globs: []
     m_ProductIds: 
     m_AnyWithAssetOrigin: 0
@@ -604,22 +2493,25 @@ MonoBehaviour:
   m_ViewMode: 1
   m_StartGridSize: 64
   m_LastFolders:
-  - Assets/Data/WaveManager/Waves01to10
+  - Assets/Prefabs/Paratrooper
   m_LastFoldersGridSize: -1
   m_LastProjectPath: C:\repos\iStick2War2026
   m_LockTracker:
     m_IsLocked: 0
   m_LastLocalAssetsSearchArea: 1
   m_FolderTreeState:
-    scrollPos: {x: 0, y: 120}
+    scrollPos: {x: 0, y: 114}
     m_SelectedIDs:
-    - m_Data: 162934
+    - m_Data: 54448
     m_LastClickedID:
-      m_Data: 162934
+      m_Data: 54448
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 48476
-    - m_Data: 1000000000
+    - m_Data: 50702
+    - m_Data: 50704
+    - m_Data: 50706
+    - m_Data: 50708
+    - m_Data: 50710
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -653,8 +2545,11 @@ MonoBehaviour:
       m_Data: 0
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 48476
-    - m_Data: 1000000000
+    - m_Data: 50702
+    - m_Data: 50704
+    - m_Data: 50706
+    - m_Data: 50708
+    - m_Data: 50710
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -683,10 +2578,10 @@ MonoBehaviour:
       m_ResourceFile: 
   m_ListAreaState:
     m_SelectedInstanceIDs:
-    - m_Data: 51880
+    - m_Data: 49396
     m_LastClickedEntityId:
-      m_Data: 51880
-    m_HadKeyboardFocusLastEvent: 1
+      m_Data: 49396
+    m_HadKeyboardFocusLastEvent: 0
     m_ExpandedInstanceIDs: []
     m_RenameOverlay:
       m_UserAcceptedRename: 0
@@ -718,7 +2613,7 @@ MonoBehaviour:
     m_GridSize: 64
   m_SkipHiddenPackages: 0
   m_DirectoriesAreaWidth: 207
---- !u!114 &14
+--- !u!114 &15
 MonoBehaviour:
   m_ObjectHideFlags: 52
   m_CorrespondingSourceObject: {fileID: 0}
@@ -742,7 +2637,7 @@ MonoBehaviour:
     x: 0
     y: 24
     width: 481
-    height: 659
+    height: 498
   m_SerializedDataModeController:
     m_DataMode: 0
     m_PreferredDataMode: 0
@@ -758,34 +2653,14 @@ MonoBehaviour:
     m_DynamicPanelBehavior: 0
   m_SceneHierarchy:
     m_TreeViewState:
-      scrollPos: {x: 0, y: 0}
+      scrollPos: {x: 0, y: 80}
       m_SelectedIDs: []
       m_LastClickedID:
         m_Data: 0
       m_ExpandedIDs:
-      - m_Data: -201156
-      - m_Data: -201120
-      - m_Data: -200920
-      - m_Data: -200884
-      - m_Data: -120172
-      - m_Data: -117276
-      - m_Data: -98524
-      - m_Data: -96016
-      - m_Data: -93390
-      - m_Data: -62088
-      - m_Data: -55266
-      - m_Data: -7300
-      - m_Data: -7264
-      - m_Data: -7260
-      - m_Data: -7256
       - m_Data: -1600
-      - m_Data: 51824
-      - m_Data: 51852
-      - m_Data: 51880
-      - m_Data: 51976
-      - m_Data: 52066
-      - m_Data: 52082
-      - m_Data: 52118
+      - m_Data: 49194
+      - m_Data: 49232
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -812,7 +2687,7 @@ MonoBehaviour:
       m_IsLocked: 0
     m_CurrentSortingName: TransformSorting
   m_WindowGUID: 4c969a2b90040154d917609493e03593
---- !u!114 &15
+--- !u!114 &16
 MonoBehaviour:
   m_ObjectHideFlags: 52
   m_CorrespondingSourceObject: {fileID: 0}
@@ -835,8 +2710,8 @@ MonoBehaviour:
     serializedVersion: 2
     x: 483
     y: 24
-    width: 1050
-    height: 659
+    width: 1051
+    height: 498
   m_SerializedDataModeController:
     m_DataMode: 0
     m_PreferredDataMode: 0
@@ -1323,9 +3198,9 @@ MonoBehaviour:
   m_AudioPlay: 0
   m_DebugDrawModesUseInteractiveLightBakingData: 0
   m_Position:
-    m_Target: {x: 0.36, y: -1.23, z: 0}
+    m_Target: {x: 0.09039254, y: 1.3744723, z: 0.022158165}
     speed: 2
-    m_Value: {x: 0.36, y: -1.23, z: 0}
+    m_Value: {x: 0.09039254, y: 1.3744723, z: 0.022158165}
   m_RenderMode: 0
   m_CameraMode:
     drawMode: 0
@@ -1376,9 +3251,9 @@ MonoBehaviour:
     speed: 2
     m_Value: {x: 0, y: 0, z: 0, w: 1}
   m_Size:
-    m_Target: 10
+    m_Target: 7.7841897
     speed: 2
-    m_Value: 10
+    m_Value: 7.7841897
   m_Ortho:
     m_Target: 1
     speed: 2
@@ -1399,7 +3274,7 @@ MonoBehaviour:
   m_LastSceneViewRotation: {x: -0.08717229, y: 0.89959055, z: -0.21045254, w: -0.3726226}
   m_LastSceneViewOrtho: 0
   m_Viewpoint:
-    m_SceneView: {fileID: 15}
+    m_SceneView: {fileID: 16}
     m_CameraOverscanSettings:
       m_Opacity: 50
       m_Scale: 1
@@ -1412,7 +3287,7 @@ MonoBehaviour:
     name: Contributors / Receivers
     section: Lighting
   m_ViewIsLockedToObject: 0
---- !u!114 &16
+--- !u!114 &17
 MonoBehaviour:
   m_ObjectHideFlags: 52
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1435,8 +3310,8 @@ MonoBehaviour:
     serializedVersion: 2
     x: 482
     y: 79
-    width: 1050
-    height: 659
+    width: 1051
+    height: 498
   m_SerializedDataModeController:
     m_DataMode: 0
     m_PreferredDataMode: 0
@@ -1458,7 +3333,7 @@ MonoBehaviour:
   m_ShowGizmos: 0
   m_TargetDisplay: 0
   m_ClearColor: {r: 0, g: 0, b: 0, a: 0}
-  m_TargetSize: {x: 1050, y: 638}
+  m_TargetSize: {x: 848, y: 477}
   m_TextureFilterMode: 0
   m_TextureHideFlags: 61
   m_RenderIMGUI: 1
@@ -1467,16 +3342,16 @@ MonoBehaviour:
   m_VSyncEnabled: 0
   m_Gizmos: 0
   m_Stats: 0
-  m_SelectedSizes: 00000000000000000000000000000000000000000000000000000000000000000000000000000000
+  m_SelectedSizes: 01000000000000000000000000000000000000000000000000000000000000000000000000000000
   m_ZoomArea:
     m_HRangeLocked: 0
     m_VRangeLocked: 0
     hZoomLockedByDefault: 0
     vZoomLockedByDefault: 0
-    m_HBaseRangeMin: -525
-    m_HBaseRangeMax: 525
-    m_VBaseRangeMin: -319
-    m_VBaseRangeMax: 319
+    m_HBaseRangeMin: -424
+    m_HBaseRangeMax: 424
+    m_VBaseRangeMin: -238.5
+    m_VBaseRangeMax: 238.5
     m_HAllowExceedBaseRangeMin: 1
     m_HAllowExceedBaseRangeMax: 1
     m_VAllowExceedBaseRangeMin: 1
@@ -1494,30 +3369,30 @@ MonoBehaviour:
       serializedVersion: 2
       x: 0
       y: 21
-      width: 1050
-      height: 638
+      width: 1051
+      height: 477
     m_Scale: {x: 1, y: 1}
-    m_Translation: {x: 525, y: 319}
+    m_Translation: {x: 525.5, y: 238.5}
     m_MarginLeft: 0
     m_MarginRight: 0
     m_MarginTop: 0
     m_MarginBottom: 0
     m_LastShownAreaInsideMargins:
       serializedVersion: 2
-      x: -525
-      y: -319
-      width: 1050
-      height: 638
+      x: -525.5
+      y: -238.5
+      width: 1051
+      height: 477
     m_MinimalGUI: 1
   m_defaultScale: 1
-  m_LastWindowPixelSize: {x: 1050, y: 659}
+  m_LastWindowPixelSize: {x: 1051, y: 498}
   m_ClearInEditMode: 1
   m_NoCameraWarning: 1
   m_LowResolutionForAspectRatios: 01000000000000000000
   m_XRRenderMode: 0
   m_RenderTexture: {fileID: 0}
   m_showToolbar: 1
---- !u!114 &17
+--- !u!114 &18
 MonoBehaviour:
   m_ObjectHideFlags: 52
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1539,9 +3414,9 @@ MonoBehaviour:
   m_Pos:
     serializedVersion: 2
     x: 0
-    y: 709
-    width: 1533
-    height: 342
+    y: 548
+    width: 1534
+    height: 503
   m_SerializedDataModeController:
     m_DataMode: 0
     m_PreferredDataMode: 0
@@ -1555,7 +3430,7 @@ MonoBehaviour:
     m_DynamicPanelContainerData: []
     m_OverlaysVisible: 1
     m_DynamicPanelBehavior: 0
---- !u!114 &18
+--- !u!114 &19
 MonoBehaviour:
   m_ObjectHideFlags: 52
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1576,9 +3451,9 @@ MonoBehaviour:
     m_TextWithWhitespace: "Inspector\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 1535
+    x: 1536
     y: 24
-    width: 385
+    width: 384
     height: 1027
   m_SerializedDataModeController:
     m_DataMode: 0
