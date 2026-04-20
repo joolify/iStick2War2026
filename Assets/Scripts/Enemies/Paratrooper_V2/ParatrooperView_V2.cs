@@ -94,6 +94,7 @@ public class ParatrooperView_V2 : MonoBehaviour
     public AnimationReferenceAsset _deployAnim;
     public AnimationReferenceAsset _glideAnim;
     public AnimationReferenceAsset _landAnim;
+    public AnimationReferenceAsset _grenadeAnim;
     public AnimationReferenceAsset _glideDeathAnim;
     public AnimationReferenceAsset _landFallDownBackAnim;
     public AnimationReferenceAsset _landFallDownBack2Anim;
@@ -250,6 +251,11 @@ public class ParatrooperView_V2 : MonoBehaviour
                 nextAnimation = _shootingMP40Anim != null ? _shootingMP40Anim : _glideAnim;
                 loop = true;
                 trackIndex = 1;
+                break;
+            case StickmanBodyState.Grenade:
+                nextAnimation = _grenadeAnim != null ? _grenadeAnim : _shootingMP40Anim;
+                loop = false;
+                trackIndex = 0;
                 break;
             case StickmanBodyState.Run:
                 // Temporary fallback while dedicated clips for these states are migrated.

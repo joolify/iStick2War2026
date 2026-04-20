@@ -1,0 +1,120 @@
+using UnityEngine;
+
+namespace iStick2War_V2
+{
+    [RequireComponent(typeof(Collider2D))]
+    public sealed class PotatomasherProjectile_V2 : MonoBehaviour
+    {
+        [SerializeField] private Rigidbody2D _rigidbody2D;
+        [SerializeField] private float _gravityScale = 1.75f;
+        [SerializeField] private GameObject _explosionEffectPrefab;
+        [SerializeField] private float _explosionEffectLifetime = 1.2f;
+
+        private float _fuseSeconds = 2.25f;
+        private int _damage = 24;
+        private float _radius = 1.6f;
+        private bool _hasExploded;
+
+        public void Initialize(Vector2 initialVelocity, float fuseSeconds, int damage, float explosionRadius)
+        {
+            _fuseSeconds = Mathf.Max(0.1f, fuseSeconds);
+            _damage = Mathf.Max(1, damage);
+            _radius = Mathf.Max(0.1f, explosionRadius);
+
+            if (_rigidbody2D == null)
+            {
+                _rigidbody2D = GetComponent<Rigidbody2D>();
+            }
+
+            if (_rigidbody2D != null)
+            {
+                _rigidbody2D.gravityScale = _gravityScale;
+                _rigidbody2D.linearVelocity = initialVelocity;
+            }
+
+            CancelInvoke(nameof(ExplodeFromFuse));
+            Invoke(nameof(ExplodeFromFuse), _fuseSeconds);
+        }
+
+        private void Awake()
+        {
+            if (_rigidbody2D == null)
+            {
+                _rigidbody2D = GetComponent<Rigidbody2D>();
+            }
+        }
+
+        private void Start()
+        {
+            if (!IsInvoking(nameof(ExplodeFromFuse)))
+            {
+                Invoke(nameof(ExplodeFromFuse), _fuseSeconds);
+            }
+        }
+
+        private void OnCollisionEnter2D(Collision2D collision)
+        {
+            if (collision == null || _hasExploded)
+            {
+                return;
+            }
+
+            Explode();
+        }
+
+        private void OnTriggerEnter2D(Collider2D other)
+        {
+            if (_hasExploded || other == null)
+            {
+                return;
+            }
+
+            if (other.GetComponentInParent<Paratrooper>() != null)
+            {
+                return;
+            }
+
+            Explode();
+        }
+
+        private void ExplodeFromFuse()
+        {
+            Explode();
+        }
+
+        private void Explode()
+        {
+            if (_hasExploded)
+            {
+                return;
+            }
+
+            _hasExploded = true;
+            Vector2 center = transform.position;
+
+            WaveManager_V2 waveManager = FindAnyObjectByType<WaveManager_V2>();
+            if (waveManager != null)
+            {
+                waveManager.ApplyBunkerDamage(_damage);
+            }
+
+            Hero_V2 hero = FindAnyObjectByType<Hero_V2>();
+            if (hero != null && !hero.IsDead())
+            {
+                float heroDist = Vector2.Distance(center, hero.transform.position);
+                if (heroDist <= _radius)
+                {
+                    hero.ReceiveDamage(_damage);
+                }
+            }
+
+            if (_explosionEffectPrefab != null)
+            {
+                GameObject fx = Instantiate(_explosionEffectPrefab, transform.position, Quaternion.identity);
+                Destroy(fx, Mathf.Max(0.05f, _explosionEffectLifetime));
+            }
+
+            Destroy(gameObject);
+        }
+    }
+}

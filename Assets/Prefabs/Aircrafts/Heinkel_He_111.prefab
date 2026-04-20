@@ -10,7 +10,8 @@ GameObject:
   m_Component:
   - component: {fileID: 4965945026059035458}
   - component: {fileID: 4891448948448305050}
-  m_Layer: 0
+  - component: {fileID: 1448144096713418943}
+  m_Layer: 16
   m_Name: Heinkel_He_111
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -26,10 +27,11 @@ Transform:
   m_GameObject: {fileID: 8930508886528286439}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4.3763514, y: 0.73909855, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalPosition: {x: -3.1207228, y: -1.1679952, z: 0}
+  m_LocalScale: {x: 0.5, y: 0.5, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 5053498953683407277}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &4891448948448305050
@@ -79,9 +81,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 2015292705
   m_SortingLayer: 7
-  m_SortingOrder: 0
+  m_SortingOrder: 10
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 4117517358356996433, guid: 0a6fb0015bd923f42bfaa0f0936feb17, type: 3}
+  m_Sprite: {fileID: 4130640169021434097, guid: 79be7cba12d30e445ab99ac923d3fc53, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -91,3 +93,53 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!114 &1448144096713418943
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8930508886528286439}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fb6914ac4d6cb0044aabde83a08788cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.Bombplane_V2
+  _bombProjectilePrefab: {fileID: -6090124734264886313, guid: 3423af3f32db2d043bc526446c57f17f, type: 3}
+  _bombDropMount: {fileID: 5053498953683407277}
+  _bombDropIntervalSeconds: 1.25
+  _maxBombsPerPass: 4
+  _bombDamage: 30
+  _bombExplosionRadius: 2
+  _debugBombLogs: 1
+--- !u!1 &8943450202271958201
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5053498953683407277}
+  m_Layer: 16
+  m_Name: BombDropMount
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5053498953683407277
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8943450202271958201}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.59, y: -0.7, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4965945026059035458}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}

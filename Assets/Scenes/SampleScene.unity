@@ -3667,17 +3667,6 @@ Transform:
   - {fileID: 2065613634}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &656041270 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 8349641459453035569, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-  m_PrefabInstance: {fileID: 1640422542864705052}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 583491fc54b4fca4c8cd20d03e57e28c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Hero_V2.HeroView_V2
 --- !u!1 &679969733
 GameObject:
   m_ObjectHideFlags: 0
@@ -4071,6 +4060,7 @@ GameObject:
   - component: {fileID: 796613715}
   - component: {fileID: 796613714}
   - component: {fileID: 796613716}
+  - component: {fileID: 796613717}
   m_Layer: 11
   m_Name: GameLoop V2
   m_TagString: Untagged
@@ -4117,6 +4107,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: a0000000000000000000000000000008, type: 2}
   - {fileID: 11400000, guid: a0000000000000000000000000000009, type: 2}
   - {fileID: 11400000, guid: a000000000000000000000000000000a, type: 2}
+  _waveBalanceConfig: {fileID: 11400000, guid: c654136f170170b469a9225ad796ae5a, type: 2}
   _prepareDurationSeconds: 2
   _waveSpawnerStuckFailSafeSeconds: 300
   _startingCurrency: 100
@@ -4165,6 +4156,24 @@ MonoBehaviour:
   _telemetryEnabled: 1
   _fileNamePrefix: wave_run
   _logFilePathOnce: 1
+  _bunkerCriticalHpFraction: 0.1
+  _bunkerHpSampleIntervalSec: 0.5
+  _bunkerHpSamplesMaxPerWave: 200
+  _bunkerPressureHpRatioThreshold: 0.8
+--- !u!114 &796613717
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 796613713}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c93eb184d329dc45a0937e33b346419, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.GameplaySceneProfileApplier_V2
+  _customProfile: {fileID: 0}
+  _builtinPreset: 4
 --- !u!1 &805326341
 GameObject:
   m_ObjectHideFlags: 0
@@ -5507,57 +5516,6 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 7159943630526338291, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
   m_PrefabInstance: {fileID: 1640422542864705052}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1193300242 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 5383291416438822190, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-  m_PrefabInstance: {fileID: 1640422542864705052}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1193300240}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b8651bdd75f3b18468279f5831c178e3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Hero_V2.HeroModel_V2
---- !u!114 &1193300243
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1193300240}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 657bf09dca1ffa1499aea9a7d3a50913, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.AutoHero_V2
-  _hero: {fileID: 150875445}
-  _model: {fileID: 1193300242}
-  _view: {fileID: 656041270}
-  _input: {fileID: 1193300244}
-  _waveManager: {fileID: 796613714}
-  _shootVisibilityCamera: {fileID: 330585545}
-  _enemySearchRadius: 90
-  _shootIfEnemyWithinWeaponRangeFactor: 1
-  _bazookaPreferWithinHorizontal: 42
-  _prioritizeInfantryOverAircraft: 1
-  _lowHealthEnterBunkerFraction: 0.35
-  _maxShopPurchasesPerShopVisit: 24
-  _shopScoreBonusBazookaAmmoWhenDry: 30000
-  _shopScoreBonusBazookaAmmoTopUp: 12000
-  _logShopAndWave: 0
-  _logWaveCombatWhenNoTarget: 0
-  _logWaveCombatWhenNoTargetIntervalSeconds: 2
---- !u!114 &1193300244 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 5676783497327898619, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-  m_PrefabInstance: {fileID: 1640422542864705052}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1193300240}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f0462032c10845e408deb7226987fcf8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Hero_V2.HeroInput_V2
 --- !u!1 &1227363692
 GameObject:
   m_ObjectHideFlags: 0
@@ -9841,89 +9799,38 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 1003368673528517041, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-      propertyPath: _animationName
-      value: H/colt_idle
-      objectReference: {fileID: 0}
-    - target: {fileID: 1080077976991037039, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-      propertyPath: m_SortingLayer
-      value: 11
-      objectReference: {fileID: 0}
-    - target: {fileID: 1080077976991037039, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-      propertyPath: m_SortingLayerID
-      value: -369295279
-      objectReference: {fileID: 0}
     - target: {fileID: 1080077976991037039, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: m_Materials.Array.size
       value: 3
       objectReference: {fileID: 0}
+    - target: {fileID: 1080077976991037039, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: 'm_Materials.Array.data[3]'
+      value: 
+      objectReference: {fileID: 2100000, guid: e050c904119847043afec7d5b6ed2746, type: 2}
+    - target: {fileID: 3453683051127376714, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: _testProfile
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 3453683051127376714, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: _waveManager
+      value: 
+      objectReference: {fileID: 796613714}
+    - target: {fileID: 3453683051127376714, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: _shootVisibilityCamera
+      value: 
+      objectReference: {fileID: 330585545}
     - target: {fileID: 7159943630526338291, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: m_Name
       value: HERO V2
-      objectReference: {fileID: 0}
-    - target: {fileID: 8181619668035624711, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-      propertyPath: m_Size.x
-      value: 0.8422687
-      objectReference: {fileID: 0}
-    - target: {fileID: 8181619668035624711, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-      propertyPath: m_Size.y
-      value: 1.3731008
-      objectReference: {fileID: 0}
-    - target: {fileID: 8181619668035624711, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-      propertyPath: m_Offset.x
-      value: -0.8542435
-      objectReference: {fileID: 0}
-    - target: {fileID: 8181619668035624711, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-      propertyPath: m_Offset.y
-      value: -2.19751
-      objectReference: {fileID: 0}
-    - target: {fileID: 8271757112210747490, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -0.95
-      objectReference: {fileID: 0}
-    - target: {fileID: 8271757112210747490, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: -2.86
       objectReference: {fileID: 0}
     - target: {fileID: 8349641459453035569, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: _cam
       value: 
       objectReference: {fileID: 330585545}
-    - target: {fileID: 8349641459453035569, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-      propertyPath: _aimColt45Anim
-      value: 
-      objectReference: {fileID: 11400000, guid: ab4b26a7a7af82c4ab660381c463999f, type: 2}
-    - target: {fileID: 8349641459453035569, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-      propertyPath: _runColt45Anim
-      value: 
-      objectReference: {fileID: 11400000, guid: e9fb59b4455bf304f84fe605a7bf587e, type: 2}
-    - target: {fileID: 8349641459453035569, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-      propertyPath: _idleColt45Anim
-      value: 
-      objectReference: {fileID: 11400000, guid: 7b5f81dbc87307c48b3212165e3d6861, type: 2}
-    - target: {fileID: 8349641459453035569, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-      propertyPath: _jumpColt45Anim
-      value: 
-      objectReference: {fileID: 11400000, guid: e5bd9e53db0377f418e9779e736e9b2f, type: 2}
-    - target: {fileID: 8349641459453035569, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-      propertyPath: aimPointBoneName
-      value: colt45-aim
-      objectReference: {fileID: 0}
-    - target: {fileID: 8349641459453035569, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-      propertyPath: _reloadColt45Anim
-      value: 
-      objectReference: {fileID: 11400000, guid: fb907fc0399d30949aaac6d6daad3667, type: 2}
-    - target: {fileID: 8349641459453035569, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-      propertyPath: _shootingColt45Anim
-      value: 
-      objectReference: {fileID: 11400000, guid: f5971723526693f4c8028fa8ad4ac5f5, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 7159943630526338291, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1193300243}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
 --- !u!1001 &1754843463416854595
 PrefabInstance:

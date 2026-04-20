@@ -41,6 +41,14 @@ namespace iStick2War_V2
         [SerializeField] private float _range = 100f;
         [SerializeField] private int _baseDamage = 9;
         [SerializeField] private LayerMask _whatToHit = 0;
+        [Header("Grenade (Potatomasher)")]
+        [SerializeField] private GameObject _potatomasherProjectilePrefab;
+        [SerializeField] private Transform _grenadeThrowPoint;
+        [SerializeField] private float _grenadeThrowSpeed = 7.5f;
+        [SerializeField] private float _grenadeFuseSeconds = 2.25f;
+        [SerializeField] private int _grenadeBaseDamage = 24;
+        [SerializeField] private float _grenadeExplosionRadius = 1.6f;
+        [SerializeField] private float _grenadeCooldown = 3.25f;
         [Header("Bunker cover")]
         [Tooltip("Colliders on this mask should use BunkerHitbox_V2 (e.g. bunkerFront). Tries layer 'Bunker' when unset.")]
         [SerializeField] private LayerMask _bunkerShotBlockMask;
@@ -73,6 +81,7 @@ namespace iStick2War_V2
         [SerializeField] private bool _preferUrpUnlitLineMaterial = true;
 
         private float _lastFireTime = -999f;
+        private float _lastGrenadeTime = -999f;
         private Coroutine _lineCoroutine;
         private int _lineSortingLayerId = -1;
         private Collider2D _cachedHeroCollider;
@@ -154,6 +163,82 @@ namespace iStick2War_V2
             if (_model.currentState == iStick2War.StickmanBodyState.Die || _model.currentState == iStick2War.StickmanBodyState.GlideDie)
                 return false;
 
+            return true;
+        }
+
+        public bool CanThrowGrenade()
+        {
+            if (_model == null)
+            {
+                return false;
+            }
+
+            if (_potatomasherProjectilePrefab == null)
+            {
+                return false;
+            }
+
+            if (Time.time < _lastGrenadeTime + Mathf.Max(0.1f, _grenadeCooldown))
+            {
+                return false;
+            }
+
+            if (_model.currentState == iStick2War.StickmanBodyState.Die ||
+                _model.currentState == iStick2War.StickmanBodyState.GlideDie)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        public bool TryThrowGrenadeAtHero()
+        {
+            if (!CanThrowGrenade())
+            {
+                return false;
+            }
+
+            if (_heroModel == null)
+            {
+                _heroModel = FindAnyObjectByType<HeroModel_V2>();
+            }
+
+            if (_heroModel == null || _heroModel.isDead)
+            {
+                return false;
+            }
+
+            Transform spawnPoint = _grenadeThrowPoint != null ? _grenadeThrowPoint : (_firePoint != null ? _firePoint : transform);
+            Vector2 origin = spawnPoint.position;
+            Vector2 target = GetHeroCombatAimWorldPoint();
+            Vector2 toTarget = target - origin;
+            if (toTarget.sqrMagnitude < 0.0001f)
+            {
+                toTarget = Vector2.right;
+            }
+
+            Vector2 throwVelocity = toTarget.normalized * Mathf.Max(0.1f, _grenadeThrowSpeed);
+            GameObject projectileGo = Instantiate(_potatomasherProjectilePrefab, origin, Quaternion.identity);
+            PotatomasherProjectile_V2 projectile = projectileGo.GetComponent<PotatomasherProjectile_V2>();
+            if (projectile != null)
+            {
+                projectile.Initialize(
+                    throwVelocity,
+                    Mathf.Max(0.5f, _grenadeFuseSeconds),
+                    Mathf.Max(1, _grenadeBaseDamage),
+                    Mathf.Max(0.2f, _grenadeExplosionRadius));
+            }
+            else
+            {
+                Rigidbody2D rb = projectileGo.GetComponent<Rigidbody2D>();
+                if (rb != null)
+                {
+                    rb.linearVelocity = throwVelocity;
+                }
+            }
+
+            _lastGrenadeTime = Time.time;
             return true;
         }
 

@@ -51,6 +51,9 @@ namespace iStick2War_V2
         [Header("Aircraft (optional)")]
         [Tooltip("e.g. Fa_223_Drache — instantiated at the chosen left/right spawn anchor when anchors are used.")]
         [SerializeField] private GameObject _aircraftPrefab;
+        [Tooltip("Optional bomber pass prefab (Bombplane_V2 + AircraftHealth_V2). Spawned by WaveConfig.BomberPassCount.")]
+        [SerializeField] private GameObject _bomberPrefab;
+        [SerializeField] private float _bomberPassIntervalSeconds = 4.5f;
         [SerializeField] private float _aircraftAutoDestroySeconds = 8f;
         [Tooltip("Child transform name on aircraft used as paratrooper drop origin (recommended: place at helicopter door center).")]
         [SerializeField] private string _paratrooperMountChildName = "ParatrooperDoorMount";
@@ -117,6 +120,7 @@ namespace iStick2War_V2
         [SerializeField] private bool _debugAnchorSpawnDiagnostics = true;
 
         private readonly HashSet<ParatrooperDeathHandler_V2> _trackedDeaths = new HashSet<ParatrooperDeathHandler_V2>();
+        private readonly HashSet<AircraftHealth_V2> _trackedAircraftDeaths = new HashSet<AircraftHealth_V2>();
         private readonly List<GameObject> _spawnedAircraftInstances = new List<GameObject>();
         private Coroutine _spawnRoutine;
         private Action _onEnemyKilled;
@@ -183,11 +187,15 @@ namespace iStick2War_V2
             _spawnRoutineFinished = false;
             _pendingDelayedDropCoroutines = 0;
             _spawnRoutine = StartCoroutine(SpawnRoutine(config));
-            if (config.BomberPassCount > 0 && _debugSpawnLogs)
+            if (config.BomberPassCount > 0 && _bomberPrefab != null)
+            {
+                StartCoroutine(SpawnBomberPassRoutine(config.BomberPassCount, _runtimeSpawnIntervalSeconds));
+            }
+            else if (config.BomberPassCount > 0 && _debugSpawnLogs)
             {
                 Debug.Log(
                     "[EnemySpawner_V2] This wave requests " + config.BomberPassCount +
-                    " bomber pass(es); bomber spawn is not implemented yet (helicopter paratrooper drops still run).");
+                    " bomber pass(es) but no bomber prefab is assigned.");
             }
         }
 
@@ -212,6 +220,14 @@ namespace iStick2War_V2
                 }
             }
             _trackedDeaths.Clear();
+            foreach (AircraftHealth_V2 aircraftHealth in _trackedAircraftDeaths)
+            {
+                if (aircraftHealth != null)
+                {
+                    aircraftHealth.OnDestroyed -= HandleTrackedAircraftDestroyed;
+                }
+            }
+            _trackedAircraftDeaths.Clear();
             _onEnemyKilled = null;
             _targetSpawnCount = 0;
             _spawnedCount = 0;
@@ -245,6 +261,36 @@ namespace iStick2War_V2
 
             _spawnRoutine = null;
             _spawnRoutineFinished = true;
+        }
+
+        private IEnumerator SpawnBomberPassRoutine(int bomberPasses, float basedOnSpawnIntervalSeconds)
+        {
+            int waveSession = _waveSessionId;
+            int count = Mathf.Max(0, bomberPasses);
+            if (count == 0)
+            {
+                yield break;
+            }
+
+            float interval = Mathf.Max(0.5f, _bomberPassIntervalSeconds);
+            if (basedOnSpawnIntervalSeconds > 0f)
+            {
+                interval = Mathf.Max(0.5f, Mathf.Max(_bomberPassIntervalSeconds, basedOnSpawnIntervalSeconds * 1.25f));
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                if (!_isWaveActive || waveSession != _waveSessionId)
+                {
+                    yield break;
+                }
+
+                SpawnOneBomberPass(i);
+                if (i < count - 1)
+                {
+                    yield return new WaitForSeconds(interval);
+                }
+            }
         }
 
         private void SpawnOne(int spawnIndexInWave)
@@ -378,6 +424,85 @@ namespace iStick2War_V2
 
                 SpawnParatrooper(paratrooperWorldPosition, usedAnchorSpawn, fromLeft, aircraft);
                 return;
+            }
+        }
+
+        private void SpawnOneBomberPass(int spawnIndexInWave)
+        {
+            if (!_isWaveActive || _bomberPrefab == null)
+            {
+                return;
+            }
+
+            bool fromLeft;
+            Vector3 rawWorldForLog;
+            Vector3 aircraftWorldPos;
+            Quaternion aircraftRotation;
+            Transform anchor = null;
+
+            if (TryGetSpawnAnchor(out anchor, out fromLeft))
+            {
+                rawWorldForLog = anchor.position;
+                aircraftWorldPos = AdjustAnchorSpawnWorldPosition(rawWorldForLog, fromLeft);
+                aircraftRotation = anchor.rotation;
+            }
+            else if (TryComputeOffscreenFrustumSpawn(out fromLeft, out rawWorldForLog, out aircraftWorldPos))
+            {
+                aircraftRotation = Quaternion.identity;
+            }
+            else
+            {
+                return;
+            }
+
+            float stagger = Mathf.Max(0f, _aircraftSameWaveApproachAxisStagger);
+            if (stagger > 0f && spawnIndexInWave > 0)
+            {
+                Vector3 furtherOutside = fromLeft ? Vector3.left : Vector3.right;
+                aircraftWorldPos += furtherOutside * (spawnIndexInWave * stagger);
+            }
+
+            GameObject bomber = Instantiate(_bomberPrefab, aircraftWorldPos, aircraftRotation);
+            if (bomber == null)
+            {
+                return;
+            }
+
+            ApplyAircraftFacing(bomber, fromLeft);
+            ApplyAircraftSpriteSorting(bomber);
+            _spawnedAircraftInstances.Add(bomber);
+
+            if (_aircraftEnableHorizontalFlight && _aircraftHorizontalFlySpeed > 0f)
+            {
+                AircraftFlyAcrossScreen_V2 flight = bomber.GetComponent<AircraftFlyAcrossScreen_V2>();
+                if (flight == null)
+                {
+                    flight = bomber.AddComponent<AircraftFlyAcrossScreen_V2>();
+                }
+
+                flight.BeginFlight(
+                    fromLeft,
+                    _aircraftHorizontalFlySpeed,
+                    _spawnCamera,
+                    _aircraftFlyOffscreenMarginWorld,
+                    _aircraftFlightMaxLifetimeSeconds,
+                    _invertAircraftFlightDirectionX);
+            }
+            else if (_aircraftAutoDestroySeconds > 0f)
+            {
+                Destroy(bomber, _aircraftAutoDestroySeconds);
+            }
+
+            Bombplane_V2 bombplane = bomber.GetComponent<Bombplane_V2>();
+            if (bombplane != null)
+            {
+                bombplane.BeginBombRun();
+            }
+
+            AircraftHealth_V2 aircraftHealth = bomber.GetComponent<AircraftHealth_V2>();
+            if (aircraftHealth != null && _trackedAircraftDeaths.Add(aircraftHealth))
+            {
+                aircraftHealth.OnDestroyed += HandleTrackedAircraftDestroyed;
             }
         }
 
@@ -798,6 +923,17 @@ namespace iStick2War_V2
             _onEnemyKilled?.Invoke();
         }
 
+        private void HandleTrackedAircraftDestroyed(AircraftHealth_V2 aircraftHealth)
+        {
+            if (aircraftHealth != null)
+            {
+                aircraftHealth.OnDestroyed -= HandleTrackedAircraftDestroyed;
+                _trackedAircraftDeaths.Remove(aircraftHealth);
+            }
+
+            _onEnemyKilled?.Invoke();
+        }
+
         public bool IsWaveCleared()
         {
             PruneInactiveTrackedDeaths();
@@ -814,7 +950,8 @@ namespace iStick2War_V2
             bool allSpawned = _spawnRoutineFinished && _spawnedCount >= _targetSpawnCount;
             return allSpawned
                 && _pendingDelayedDropCoroutines == 0
-                && _trackedDeaths.Count == 0;
+                && _trackedDeaths.Count == 0
+                && _trackedAircraftDeaths.Count == 0;
         }
 
         private void PruneInactiveTrackedDeaths()

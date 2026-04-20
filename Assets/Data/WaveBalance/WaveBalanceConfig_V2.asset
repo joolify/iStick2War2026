@@ -13,4 +13,8 @@ MonoBehaviour:
   m_Name: WaveBalanceConfig_V2
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.WaveBalanceConfig_V2
   _scalingVersion: default
-  _rows: []
+  _rows:
+  - enemyHpMultiplier: 1
+    enemyDamageMultiplier: 1
+    spawnRateMultiplier: 1
+    waveRewardMultiplier: 1

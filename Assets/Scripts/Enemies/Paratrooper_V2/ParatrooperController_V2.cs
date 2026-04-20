@@ -27,6 +27,8 @@ public class ParatrooperController_V2 : MonoBehaviour
     ParatrooperDamageReceiver_V2 _damageReceiver;
     ParatrooperWeaponSystem_V2 _weaponSystem;
     private bool _isShootWindowOpen;
+    [Header("Ground combat behavior")]
+    [SerializeField] [Range(0f, 1f)] private float _grenadeChanceAfterLanding = 0.35f;
 
     /// <summary>True while Spine shoot window is open (read keeps field from CS0414).</summary>
     internal bool IsShootWindowOpen => _isShootWindowOpen;
@@ -81,7 +83,9 @@ public class ParatrooperController_V2 : MonoBehaviour
                 }
                 else
                 {
-                    _stateMachine.ChangeState(StickmanBodyState.Shoot);
+                    bool canGrenade = _weaponSystem != null && _weaponSystem.CanThrowGrenade();
+                    bool shouldGrenade = canGrenade && UnityEngine.Random.value <= Mathf.Clamp01(_grenadeChanceAfterLanding);
+                    _stateMachine.ChangeState(shouldGrenade ? StickmanBodyState.Grenade : StickmanBodyState.Shoot);
                 }
 
                 break;
@@ -94,6 +98,18 @@ public class ParatrooperController_V2 : MonoBehaviour
                 break;
             case AnimationEventType.ShootFinished:
                 _isShootWindowOpen = false;
+                break;
+            case AnimationEventType.GrenadeThrow:
+                if (_stateMachine.CurrentState == StickmanBodyState.Grenade && _weaponSystem != null)
+                {
+                    _weaponSystem.TryThrowGrenadeAtHero();
+                }
+                break;
+            case AnimationEventType.GrenadeFinished:
+                if (_stateMachine.CurrentState == StickmanBodyState.Grenade)
+                {
+                    _stateMachine.ChangeState(StickmanBodyState.Shoot);
+                }
                 break;
         }
     }
