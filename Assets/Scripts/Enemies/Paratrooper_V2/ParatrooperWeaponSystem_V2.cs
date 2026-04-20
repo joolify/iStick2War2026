@@ -50,9 +50,9 @@ namespace iStick2War_V2
         [SerializeField] private Transform _grenadeThrowPoint;
         [SpineBone(dataField: "_skeletonAnimation")]
         [SerializeField] private string _grenadeBoneName = "grenadeBone";
-        [SerializeField] private float _grenadeThrowSpeed = 18f;
+        [SerializeField] private float _grenadeThrowSpeed = 12.6f;
         [Tooltip("Hard minimum throw speed used at runtime (protects against stale prefab overrides).")]
-        [SerializeField] private float _minimumRuntimeGrenadeThrowSpeed = 18f;
+        [SerializeField] private float _minimumRuntimeGrenadeThrowSpeed = 12.6f;
         [SerializeField] private float _grenadeFuseSeconds = 2.25f;
         [SerializeField] private int _grenadeBaseDamage = 24;
         [SerializeField] private float _grenadeExplosionRadius = 1.6f;

@@ -76,6 +76,9 @@ TagManager:
   - name: Hero
     uniqueID: 3925672017
     locked: 0
+  - name: Bombs
+    uniqueID: 658309371
+    locked: 0
   - name: BunkerFront
     uniqueID: 34275681
     locked: 0

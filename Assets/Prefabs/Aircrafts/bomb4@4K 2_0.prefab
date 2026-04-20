@@ -157,8 +157,12 @@ MonoBehaviour:
   _lifetimeSeconds: 9
   _damage: 30
   _explosionRadius: 1.9
-  _explosionEffectPrefab: {fileID: 0}
+  _explosionEffectPrefab: {fileID: 103486838786112517, guid: 2935c48982d1ad24a930f228ee4ce589, type: 3}
   _explosionEffectLifetime: 1.4
+  _triggerImpactLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  _debugImpactLogs: 0
 --- !u!50 &-4997147919533644140
 Rigidbody2D:
   serializedVersion: 5
