@@ -479,8 +479,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9367c41fae11d584c85b13945bae7fd1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperController_V2
-  _grenadeChanceAfterLanding: 0.35
-  _debugGrenadeOnlyMode: 1
+  _tryImmediateGrenadeOnLand: 1
+  _forcedGrenadeDelayAfterLandingSeconds: 1.25
+  _grenadeToShootFallbackSeconds: 0.9
+  _debugGrenadeOnlyMode: 0
 --- !u!114 &5122995855953606031
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -589,10 +591,14 @@ MonoBehaviour:
   _grenadeThrowPoint: {fileID: 0}
   _grenadeBoneName: grenadeBone
   _grenadeThrowSpeed: 7.5
+  _minimumRuntimeGrenadeThrowSpeed: 12.6
   _grenadeFuseSeconds: 2.25
   _grenadeBaseDamage: 24
   _grenadeExplosionRadius: 1.6
   _grenadeCooldown: 3.25
+  _useBallisticGrenadeAim: 1
+  _preferHighArcGrenadeThrow: 1
+  _minHorizontalSpeedRatio: 0.35
   _debugGrenadeThrowLogs: 1
   _bunkerShotBlockMask:
     serializedVersion: 2

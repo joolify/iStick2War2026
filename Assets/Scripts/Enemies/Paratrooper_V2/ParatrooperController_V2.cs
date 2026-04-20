@@ -27,8 +27,15 @@ public class ParatrooperController_V2 : MonoBehaviour
     ParatrooperDamageReceiver_V2 _damageReceiver;
     ParatrooperWeaponSystem_V2 _weaponSystem;
     private bool _isShootWindowOpen;
+    private float _forcedShootFallbackAtTime = -1f;
+    private float _forcedGrenadeAttemptAtTime = -1f;
     [Header("Ground combat behavior")]
-    [SerializeField] [Range(0f, 1f)] private float _grenadeChanceAfterLanding = 0.35f;
+    [Tooltip("If true, try to start grenade immediately when landing (if possible).")]
+    [SerializeField] private bool _tryImmediateGrenadeOnLand = true;
+    [Tooltip("Fallback delay: if no grenade started on landing, force one grenade attempt after this many seconds.")]
+    [SerializeField] private float _forcedGrenadeDelayAfterLandingSeconds = 1.25f;
+    [Tooltip("Failsafe: if grenade finished event is missed, force transition to Shoot after this many seconds.")]
+    [SerializeField] private float _grenadeToShootFallbackSeconds = 0.9f;
     [Header("Debug")]
     [Tooltip("When enabled, Paratrooper only uses grenade behavior and never fires MP40.")]
     [SerializeField] private bool _debugGrenadeOnlyMode = false;
@@ -96,12 +103,25 @@ public class ParatrooperController_V2 : MonoBehaviour
                 else
                 {
                     bool canGrenade = _weaponSystem != null && _weaponSystem.CanThrowGrenade();
-                    bool shouldGrenade = canGrenade && UnityEngine.Random.value <= Mathf.Clamp01(_grenadeChanceAfterLanding);
-                    _stateMachine.ChangeState(shouldGrenade ? StickmanBodyState.Grenade : StickmanBodyState.Shoot);
+                    bool didStartImmediateGrenade = _tryImmediateGrenadeOnLand && canGrenade;
+                    Log($"[ParatrooperController_V2] LandFinished event: _tryImmediateGrenadeOnLand={_tryImmediateGrenadeOnLand}, canGrenade={canGrenade}. Will start {(didStartImmediateGrenade ? "Grenade" : "Shoot")}. Grenade block reason: {(canGrenade ? "N/A" : (_weaponSystem != null ? _weaponSystem.GetGrenadeBlockReason() : "WeaponSystem missing"))}");
+
+                    _stateMachine.ChangeState(didStartImmediateGrenade ? StickmanBodyState.Grenade : StickmanBodyState.Shoot);
+
+                    if (didStartImmediateGrenade)
+                    {
+                        _forcedGrenadeAttemptAtTime = -1f;
+                    }
+                    else
+                    {
+                        float delay = Mathf.Max(0.05f, _forcedGrenadeDelayAfterLandingSeconds);
+                        _forcedGrenadeAttemptAtTime = Time.time + delay;
+                    }
                 }
 
                 break;
             case AnimationEventType.ShootStarted:
+                _forcedShootFallbackAtTime = -1f;
                 if (_debugGrenadeOnlyMode)
                 {
                     _isShootWindowOpen = false;
@@ -123,6 +143,11 @@ public class ParatrooperController_V2 : MonoBehaviour
                 if (_stateMachine.CurrentState == StickmanBodyState.Grenade && _weaponSystem != null)
                 {
                     bool didThrow = _weaponSystem.TryThrowGrenadeAtHero();
+                    if (didThrow && !_debugGrenadeOnlyMode)
+                    {
+                        _forcedGrenadeAttemptAtTime = -1f;
+                        _forcedShootFallbackAtTime = Time.time + Mathf.Max(0.05f, _grenadeToShootFallbackSeconds);
+                    }
                     if (!didThrow && _debugGrenadeOnlyMode)
                     {
                         string reason = _weaponSystem.GetGrenadeBlockReason();
@@ -133,6 +158,8 @@ public class ParatrooperController_V2 : MonoBehaviour
             case AnimationEventType.GrenadeFinished:
                 if (_stateMachine.CurrentState == StickmanBodyState.Grenade)
                 {
+                    _forcedShootFallbackAtTime = -1f;
+                    _forcedGrenadeAttemptAtTime = -1f;
                     if (_debugGrenadeOnlyMode)
                     {
                         _stateMachine.ChangeState(StickmanBodyState.Grenade);
@@ -169,11 +196,45 @@ public class ParatrooperController_V2 : MonoBehaviour
         {
             _isShootWindowOpen = false;
         }
+
+        // Enforce one grenade attempt after landing if immediate grenade did not start.
+        if (!_debugGrenadeOnlyMode &&
+            _stateMachine.CurrentState == StickmanBodyState.Shoot &&
+            _forcedGrenadeAttemptAtTime > 0f &&
+            Time.time >= _forcedGrenadeAttemptAtTime)
+        {
+            _forcedGrenadeAttemptAtTime = -1f;
+            bool canGrenadeNow = _weaponSystem.CanThrowGrenade();
+            if (canGrenadeNow)
+            {
+                Log("[ParatrooperController_V2] Forced delayed grenade attempt is due. Switching Shoot -> Grenade.");
+                _stateMachine.ChangeState(StickmanBodyState.Grenade);
+            }
+            else
+            {
+                Log($"[ParatrooperController_V2] Forced delayed grenade attempt was due but blocked: {_weaponSystem.GetGrenadeBlockReason()}");
+            }
+        }
+
+        // Fail-safe in case the Spine "grenade_finished" event is missing for this clip/setup.
+        if (!_debugGrenadeOnlyMode &&
+            _stateMachine.CurrentState == StickmanBodyState.Grenade &&
+            _forcedShootFallbackAtTime > 0f &&
+            Time.time >= _forcedShootFallbackAtTime)
+        {
+            _forcedShootFallbackAtTime = -1f;
+            _stateMachine.ChangeState(StickmanBodyState.Shoot);
+        }
     }
 
     public void SetDebugGrenadeOnlyMode(bool enabled)
     {
         _debugGrenadeOnlyMode = enabled;
+    }
+
+    private static void Log(string message)
+    {
+        Debug.Log(message);
     }
 
     internal void OnAnimationEvent(object reloadStarted)

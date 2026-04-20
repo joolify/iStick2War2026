@@ -29,6 +29,8 @@ namespace iStick2War_V2
 {
     public class ParatrooperWeaponSystem_V2 : MonoBehaviour
     {
+        private static GameObject s_runtimeFallbackPotatomasherPrefab;
+        private static bool s_loggedRuntimeFallbackPrefab;
         private ParatrooperModel_V2 _model;
         private SkeletonAnimation _skeletonAnimation;
         private Bone _aimPointBone;
@@ -203,6 +205,7 @@ namespace iStick2War_V2
                 return "model missing";
             }
 
+            EnsurePotatomasherPrefabAssigned();
             if (_potatomasherProjectilePrefab == null)
             {
                 return "potatomasher prefab missing";
@@ -222,6 +225,47 @@ namespace iStick2War_V2
             }
 
             return null;
+        }
+
+        private void EnsurePotatomasherPrefabAssigned()
+        {
+            if (_potatomasherProjectilePrefab != null)
+            {
+                return;
+            }
+
+            if (s_runtimeFallbackPotatomasherPrefab == null)
+            {
+                s_runtimeFallbackPotatomasherPrefab = CreateRuntimeFallbackPotatomasherPrefab();
+            }
+
+            _potatomasherProjectilePrefab = s_runtimeFallbackPotatomasherPrefab;
+            if (_potatomasherProjectilePrefab != null && !s_loggedRuntimeFallbackPrefab)
+            {
+                s_loggedRuntimeFallbackPrefab = true;
+                Debug.LogWarning(
+                    "[ParatrooperWeaponSystem_V2] Potatomasher prefab was missing. Using runtime fallback projectile. " +
+                    "Assign _potatomasherProjectilePrefab in inspector to use the intended art/effects.");
+            }
+        }
+
+        private static GameObject CreateRuntimeFallbackPotatomasherPrefab()
+        {
+            GameObject fallback = new GameObject("RuntimeFallback_PotatomasherProjectile_V2");
+            fallback.SetActive(false);
+
+            Rigidbody2D rb = fallback.AddComponent<Rigidbody2D>();
+            rb.bodyType = RigidbodyType2D.Dynamic;
+            rb.gravityScale = 1.75f;
+            rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            rb.freezeRotation = true;
+
+            CircleCollider2D collider = fallback.AddComponent<CircleCollider2D>();
+            collider.isTrigger = false;
+            collider.radius = 0.12f;
+
+            fallback.AddComponent<PotatomasherProjectile_V2>();
+            return fallback;
         }
 
         public bool TryThrowGrenadeAtHero()
