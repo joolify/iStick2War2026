@@ -502,6 +502,32 @@ public class Paratrooper : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Forces runtime debug behavior for grenade-only test flow on the composed V2 systems.
+    /// </summary>
+    public void SetMasterDebugGrenadeOnly(bool enabled)
+    {
+        if (_controller == null)
+        {
+            _controller = GetComponent<ParatrooperController_V2>();
+        }
+        if (_controller == null)
+        {
+            _controller = GetComponentInChildren<ParatrooperController_V2>(true);
+        }
+        _controller?.SetDebugGrenadeOnlyMode(enabled);
+
+        if (_weaponSystem == null)
+        {
+            _weaponSystem = GetComponent<ParatrooperWeaponSystem_V2>();
+        }
+        if (_weaponSystem == null)
+        {
+            _weaponSystem = GetComponentInChildren<ParatrooperWeaponSystem_V2>(true);
+        }
+        _weaponSystem?.SetDebugDisableMp40Shooting(enabled);
+    }
+
     private void WireSystems()
     {
         // Inject dependencies manually (clean + fast in Unity)

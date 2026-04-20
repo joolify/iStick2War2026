@@ -253,9 +253,21 @@ public class ParatrooperView_V2 : MonoBehaviour
                 trackIndex = 1;
                 break;
             case StickmanBodyState.Grenade:
-                nextAnimation = _grenadeAnim != null ? _grenadeAnim : _shootingMP40Anim;
-                loop = false;
-                trackIndex = 0;
+                if (_grenadeAnim != null)
+                {
+                    nextAnimation = _grenadeAnim;
+                    loop = false;
+                    trackIndex = 0;
+                }
+                else
+                {
+                    // Never fall back to MP40 clip in grenade state; keep a looped non-shooting animation so the
+                    // character never appears frozen while grenade config is missing.
+                    nextAnimation = _glideAnim;
+                    loop = true;
+                    trackIndex = 1;
+                    Debug.LogWarning("[ParatrooperView_V2] Grenade state requested but _grenadeAnim is not assigned. Falling back to looped Glide clip to avoid MP40/static pose.");
+                }
                 break;
             case StickmanBodyState.Run:
                 // Temporary fallback while dedicated clips for these states are migrated.

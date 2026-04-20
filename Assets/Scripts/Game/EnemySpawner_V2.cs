@@ -114,6 +114,8 @@ namespace iStick2War_V2
 
         [Header("Debug")]
         [SerializeField] private bool _debugSpawnLogs = false;
+        [Tooltip("Forces all spawned Paratrooper_V2 to use grenade-only behavior (disables MP40).")]
+        [SerializeField] private bool _masterDebugGrenadeOnly = false;
         [Tooltip(
             "Logs anchor world positions, camera frustum snap, and fallback path. " +
             "If spawn positions look wrong: check Snap Spawns To Camera View Edges and Orthographic Frustum Inset Padding.")]
@@ -556,6 +558,7 @@ namespace iStick2War_V2
             // Awake visual sanitize / missing reconcile (e.g. SkeletonAnimation on root) can leave rigidbody root off
             // the requested drop while Spine is elsewhere — snap so gameplay matches the spawn resolution logs.
             spawned.SnapSpawnAlignmentToRequestedWorld(worldPosition);
+            ApplyMasterDebugFlagsToParatrooper(spawned);
 
             if (_activeWaveConfig != null)
             {
@@ -594,6 +597,21 @@ namespace iStick2War_V2
                     aircraft,
                     fromLeft);
                 StartCoroutine(LogParatrooperSpawnTrace(spawned, spawnSeq, worldPosition, fromLeft));
+            }
+        }
+
+        private void ApplyMasterDebugFlagsToParatrooper(Paratrooper spawned)
+        {
+            if (spawned == null || !_masterDebugGrenadeOnly)
+            {
+                return;
+            }
+
+            spawned.SetMasterDebugGrenadeOnly(true);
+
+            if (_debugSpawnLogs || _debugAnchorSpawnDiagnostics)
+            {
+                Debug.Log("[EnemySpawner_V2] Applied master debug grenade-only to spawned paratrooper (controller+weapon forced).");
             }
         }
 

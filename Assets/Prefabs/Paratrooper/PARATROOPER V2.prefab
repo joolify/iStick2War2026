@@ -30,7 +30,7 @@ Transform:
   m_GameObject: {fileID: 14335406216185171}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.5879165, w: 0.80892164}
-  m_LocalPosition: {x: -14.183912, y: -2.0827308, z: 0}
+  m_LocalPosition: {x: -14.183913, y: -2.0827303, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -214,7 +214,7 @@ Transform:
   m_GameObject: {fileID: 290865280016780074}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.81358105, w: 0.58145154}
-  m_LocalPosition: {x: -14.317072, y: -2.6570168, z: 0}
+  m_LocalPosition: {x: -14.317073, y: -2.6570168, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -461,6 +461,7 @@ MonoBehaviour:
   _deathFallClampRayLength: 48
   _deathFallGroundSkin: 0.04
   _deathFallClampMaxFeetClearanceFromHit: 6
+  _glideDieDeathClampMaxFeetClearanceFromHit: 0.35
   _enableColliderSummaryLog: 1
   _colliderSummaryIntervalSeconds: 2
   _onlyLogWhenSummaryChanges: 1
@@ -478,6 +479,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9367c41fae11d584c85b13945bae7fd1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperController_V2
+  _grenadeChanceAfterLanding: 0.35
+  _debugGrenadeOnlyMode: 1
 --- !u!114 &5122995855953606031
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -523,6 +526,7 @@ MonoBehaviour:
   armorMultiplier: 1
   currentState: 0
   pendingDieAfterLandAnim: 0
+  suppressDieAnimationFromAirborneImpact: 0
 --- !u!114 &2782605750978404735
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -580,6 +584,16 @@ MonoBehaviour:
   _whatToHit:
     serializedVersion: 2
     m_Bits: 64
+  _debugDisableMp40Shooting: 0
+  _potatomasherProjectilePrefab: {fileID: 7106101186618047853, guid: 4c0e7ad0db2ad264db837d66759d68a9, type: 3}
+  _grenadeThrowPoint: {fileID: 0}
+  _grenadeBoneName: grenadeBone
+  _grenadeThrowSpeed: 7.5
+  _grenadeFuseSeconds: 2.25
+  _grenadeBaseDamage: 24
+  _grenadeExplosionRadius: 1.6
+  _grenadeCooldown: 3.25
+  _debugGrenadeThrowLogs: 1
   _bunkerShotBlockMask:
     serializedVersion: 2
     m_Bits: 262144
@@ -816,7 +830,7 @@ Transform:
   m_GameObject: {fileID: 2558519598089176756}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.02792164, w: 0.9996101}
-  m_LocalPosition: {x: -13.857952, y: -3.3154035, z: 0}
+  m_LocalPosition: {x: -13.857952, y: -3.315403, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1000,7 +1014,7 @@ Transform:
   m_GameObject: {fileID: 2919523997494451103}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.06525112, w: 0.9978689}
-  m_LocalPosition: {x: -14.324553, y: -1.4689856, z: 0}
+  m_LocalPosition: {x: -14.3245535, y: -1.4689856, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1184,7 +1198,7 @@ Transform:
   m_GameObject: {fileID: 3218899603473570638}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.029055638, w: 0.9995778}
-  m_LocalPosition: {x: -14.543652, y: -3.3158822, z: 0}
+  m_LocalPosition: {x: -14.543653, y: -3.3158817, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1369,7 +1383,7 @@ Transform:
   m_GameObject: {fileID: 3670587808647388623}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: 0.028961435, w: 0.99958056}
-  m_LocalPosition: {x: -13.969139, y: -1.5151622, z: 0}
+  m_LocalPosition: {x: -13.96914, y: -1.5151625, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1596,7 +1610,7 @@ Transform:
   m_GameObject: {fileID: 5518520495485081694}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: 0.7600658, w: 0.64984614}
-  m_LocalPosition: {x: -14.18461, y: -2.085731, z: 0}
+  m_LocalPosition: {x: -14.184611, y: -2.085731, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1967,7 +1981,7 @@ Transform:
   m_GameObject: {fileID: 5721318589490420545}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: 0.21840598, w: 0.97585803}
-  m_LocalPosition: {x: -14.260418, y: -1.821343, z: 0}
+  m_LocalPosition: {x: -14.260418, y: -1.8213425, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2308,13 +2322,14 @@ MonoBehaviour:
   _deployAnim: {fileID: 11400000, guid: 196580e9010fa3443931524c02d2dcfa, type: 2}
   _glideAnim: {fileID: 11400000, guid: 3f8ab6cec8df6454fae7be134fd750bd, type: 2}
   _landAnim: {fileID: 11400000, guid: 2552f857adc14e34cb2c3c1f795e8bdd, type: 2}
+  _grenadeAnim: {fileID: 11400000, guid: b2e9506e3f9db9049801d5019a02927a, type: 2}
   _glideDeathAnim: {fileID: 11400000, guid: 18a1461724624e24a8ce5f5856dda76e, type: 2}
   _landFallDownBackAnim: {fileID: 11400000, guid: 60b80e1da8a4f15449b9935da44a70d4, type: 2}
   _landFallDownBack2Anim: {fileID: 11400000, guid: f0dcdae40f9ca6e46ae57a281c51aa5f, type: 2}
   _landFallDownBack3Anim: {fileID: 11400000, guid: 71a254a9373ecf541beea850bacb8b26, type: 2}
   _shootingMP40Anim: {fileID: 11400000, guid: 672b08387407ca147b3ae4fc3152da67, type: 2}
-  _debugAnimationLogs: 0
-  _debugParachuteLogs: 0
+  _debugAnimationLogs: 1
+  _debugParachuteLogs: 1
   _gibForce: 9.5
   _gibTorque: 220
   _gibLifetime: 4
@@ -2439,7 +2454,7 @@ Transform:
   m_GameObject: {fileID: 8428395232643671833}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: 0.6604605, w: 0.7508608}
-  m_LocalPosition: {x: -14.287029, y: -1.4340298, z: 0}
+  m_LocalPosition: {x: -14.287029, y: -1.4340296, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2625,7 +2640,7 @@ Transform:
   m_GameObject: {fileID: 9213196044087982848}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.6543839, w: 0.7561625}
-  m_LocalPosition: {x: -14.309412, y: -1.4654903, z: 0}
+  m_LocalPosition: {x: -14.309413, y: -1.4654903, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

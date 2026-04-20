@@ -29,6 +29,9 @@ public class ParatrooperController_V2 : MonoBehaviour
     private bool _isShootWindowOpen;
     [Header("Ground combat behavior")]
     [SerializeField] [Range(0f, 1f)] private float _grenadeChanceAfterLanding = 0.35f;
+    [Header("Debug")]
+    [Tooltip("When enabled, Paratrooper only uses grenade behavior and never fires MP40.")]
+    [SerializeField] private bool _debugGrenadeOnlyMode = false;
 
     /// <summary>True while Spine shoot window is open (read keeps field from CS0414).</summary>
     internal bool IsShootWindowOpen => _isShootWindowOpen;
@@ -81,6 +84,15 @@ public class ParatrooperController_V2 : MonoBehaviour
                     _model.pendingDieAfterLandAnim = false;
                     _stateMachine.ChangeState(StickmanBodyState.Die);
                 }
+                else if (_debugGrenadeOnlyMode)
+                {
+                    if (_weaponSystem != null && !_weaponSystem.CanThrowGrenade())
+                    {
+                        string reason = _weaponSystem.GetGrenadeBlockReason();
+                        Debug.LogWarning($"[ParatrooperController_V2] Grenade-only mode active but CanThrowGrenade() is false ({reason ?? "unknown reason"}). Staying on grenade behavior and suppressing shoot fallback.");
+                    }
+                    _stateMachine.ChangeState(StickmanBodyState.Grenade);
+                }
                 else
                 {
                     bool canGrenade = _weaponSystem != null && _weaponSystem.CanThrowGrenade();
@@ -90,6 +102,14 @@ public class ParatrooperController_V2 : MonoBehaviour
 
                 break;
             case AnimationEventType.ShootStarted:
+                if (_debugGrenadeOnlyMode)
+                {
+                    _isShootWindowOpen = false;
+                    _stateMachine.ChangeState(StickmanBodyState.Grenade);
+
+                    break;
+                }
+
                 if (_stateMachine.CurrentState == StickmanBodyState.Shoot && _weaponSystem != null)
                 {
                     _isShootWindowOpen = true;
@@ -102,13 +122,25 @@ public class ParatrooperController_V2 : MonoBehaviour
             case AnimationEventType.GrenadeThrow:
                 if (_stateMachine.CurrentState == StickmanBodyState.Grenade && _weaponSystem != null)
                 {
-                    _weaponSystem.TryThrowGrenadeAtHero();
+                    bool didThrow = _weaponSystem.TryThrowGrenadeAtHero();
+                    if (!didThrow && _debugGrenadeOnlyMode)
+                    {
+                        string reason = _weaponSystem.GetGrenadeBlockReason();
+                        Debug.LogWarning($"[ParatrooperController_V2] GrenadeThrow event received but throw failed in grenade-only mode ({reason ?? "unknown reason"}).");
+                    }
                 }
                 break;
             case AnimationEventType.GrenadeFinished:
                 if (_stateMachine.CurrentState == StickmanBodyState.Grenade)
                 {
-                    _stateMachine.ChangeState(StickmanBodyState.Shoot);
+                    if (_debugGrenadeOnlyMode)
+                    {
+                        _stateMachine.ChangeState(StickmanBodyState.Grenade);
+                    }
+                    else
+                    {
+                        _stateMachine.ChangeState(StickmanBodyState.Shoot);
+                    }
                 }
                 break;
         }
@@ -137,6 +169,11 @@ public class ParatrooperController_V2 : MonoBehaviour
         {
             _isShootWindowOpen = false;
         }
+    }
+
+    public void SetDebugGrenadeOnlyMode(bool enabled)
+    {
+        _debugGrenadeOnlyMode = enabled;
     }
 
     internal void OnAnimationEvent(object reloadStarted)

@@ -33,6 +33,7 @@ namespace iStick2War_V2
         private SkeletonAnimation _skeletonAnimation;
         private Bone _aimPointBone;
         private Bone _crossHairBone;
+        private Bone _grenadeBone;
         private HeroModel_V2 _heroModel;
         private Hero_V2 _heroRoot;
 
@@ -41,14 +42,20 @@ namespace iStick2War_V2
         [SerializeField] private float _range = 100f;
         [SerializeField] private int _baseDamage = 9;
         [SerializeField] private LayerMask _whatToHit = 0;
+        [Header("Debug")]
+        [Tooltip("Hard-block MP40 shot execution (useful when testing grenade-only flow).")]
+        [SerializeField] private bool _debugDisableMp40Shooting;
         [Header("Grenade (Potatomasher)")]
         [SerializeField] private GameObject _potatomasherProjectilePrefab;
         [SerializeField] private Transform _grenadeThrowPoint;
+        [SpineBone(dataField: "_skeletonAnimation")]
+        [SerializeField] private string _grenadeBoneName = "grenadeBone";
         [SerializeField] private float _grenadeThrowSpeed = 7.5f;
         [SerializeField] private float _grenadeFuseSeconds = 2.25f;
         [SerializeField] private int _grenadeBaseDamage = 24;
         [SerializeField] private float _grenadeExplosionRadius = 1.6f;
         [SerializeField] private float _grenadeCooldown = 3.25f;
+        [SerializeField] private bool _debugGrenadeThrowLogs = true;
         [Header("Bunker cover")]
         [Tooltip("Colliders on this mask should use BunkerHitbox_V2 (e.g. bunkerFront). Tries layer 'Bunker' when unset.")]
         [SerializeField] private LayerMask _bunkerShotBlockMask;
@@ -154,6 +161,11 @@ namespace iStick2War_V2
         /// </summary>
         public bool CanShoot()
         {
+            if (_debugDisableMp40Shooting)
+            {
+                return false;
+            }
+
             if (_model == null)
                 return false;
 
@@ -166,36 +178,53 @@ namespace iStick2War_V2
             return true;
         }
 
+        public void SetDebugDisableMp40Shooting(bool enabled)
+        {
+            _debugDisableMp40Shooting = enabled;
+        }
+
         public bool CanThrowGrenade()
+        {
+            return GetGrenadeBlockReason() == null;
+        }
+
+        public string GetGrenadeBlockReason()
         {
             if (_model == null)
             {
-                return false;
+                return "model missing";
             }
 
             if (_potatomasherProjectilePrefab == null)
             {
-                return false;
+                return "potatomasher prefab missing";
             }
 
-            if (Time.time < _lastGrenadeTime + Mathf.Max(0.1f, _grenadeCooldown))
+            float cooldown = Mathf.Max(0.1f, _grenadeCooldown);
+            float nextReadyAt = _lastGrenadeTime + cooldown;
+            if (Time.time < nextReadyAt)
             {
-                return false;
+                return $"grenade cooldown active ({(nextReadyAt - Time.time):0.00}s left)";
             }
 
             if (_model.currentState == iStick2War.StickmanBodyState.Die ||
                 _model.currentState == iStick2War.StickmanBodyState.GlideDie)
             {
-                return false;
+                return $"invalid state {_model.currentState}";
             }
 
-            return true;
+            return null;
         }
 
         public bool TryThrowGrenadeAtHero()
         {
-            if (!CanThrowGrenade())
+            string blockedReason = GetGrenadeBlockReason();
+            if (blockedReason != null)
             {
+                if (_debugGrenadeThrowLogs)
+                {
+                    Debug.LogWarning($"[ParatrooperWeaponSystem_V2] grenade_throw blocked: {blockedReason}");
+                }
                 return false;
             }
 
@@ -209,8 +238,13 @@ namespace iStick2War_V2
                 return false;
             }
 
-            Transform spawnPoint = _grenadeThrowPoint != null ? _grenadeThrowPoint : (_firePoint != null ? _firePoint : transform);
-            Vector2 origin = spawnPoint.position;
+            Vector2 origin;
+            bool usingGrenadeBone = TryGetParatrooperGrenadeThrowOriginWorld(out origin);
+            if (!usingGrenadeBone)
+            {
+                Transform spawnPoint = _grenadeThrowPoint != null ? _grenadeThrowPoint : (_firePoint != null ? _firePoint : transform);
+                origin = spawnPoint.position;
+            }
             Vector2 target = GetHeroCombatAimWorldPoint();
             Vector2 toTarget = target - origin;
             if (toTarget.sqrMagnitude < 0.0001f)
@@ -238,12 +272,30 @@ namespace iStick2War_V2
                 }
             }
 
+            if (_debugGrenadeThrowLogs)
+            {
+                string source = usingGrenadeBone
+                    ? $"SpineBone '{_grenadeBoneName}'"
+                    : (_grenadeThrowPoint != null ? $"Transform '{_grenadeThrowPoint.name}'" : "fallback root/firePoint");
+                Debug.Log(
+                    $"[ParatrooperWeaponSystem_V2] grenade_throw origin={origin} source={source} target={target} velocity={throwVelocity}");
+            }
+
             _lastGrenadeTime = Time.time;
             return true;
         }
 
         public void TryAutoShootAtHero()
         {
+            if (_debugDisableMp40Shooting)
+            {
+                if (_debugCombatLogs)
+                {
+                    Debug.Log("[ParatrooperWeaponSystem_V2] MP40 shot suppressed by debug flag.");
+                }
+                return;
+            }
+
             if (!CanShoot())
                 return;
 
@@ -896,6 +948,15 @@ namespace iStick2War_V2
             {
                 _crossHairBone = _skeletonAnimation.Skeleton.FindBone("crosshair");
             }
+
+            if (!string.IsNullOrWhiteSpace(_grenadeBoneName))
+            {
+                _grenadeBone = _skeletonAnimation.Skeleton.FindBone(_grenadeBoneName);
+            }
+            if (_grenadeBone == null)
+            {
+                _grenadeBone = _skeletonAnimation.Skeleton.FindBone("grenadeBone");
+            }
         }
 
         /// <summary>World position of the muzzle / mp40-aim bone when within sanity distance of the SkeletonAnimation transform.</summary>
@@ -927,6 +988,22 @@ namespace iStick2War_V2
                 return false;
             }
 
+            return true;
+        }
+
+        /// <summary>World position from the current Spine grenade bone pose (same frame as grenade_throw event).</summary>
+        private bool TryGetParatrooperGrenadeThrowOriginWorld(out Vector2 origin)
+        {
+            origin = default;
+
+            ResolveAimBones();
+            if (_skeletonAnimation == null || _grenadeBone == null)
+            {
+                return false;
+            }
+
+            origin = _skeletonAnimation.transform.TransformPoint(
+                new Vector3(_grenadeBone.WorldX, _grenadeBone.WorldY, 0f));
             return true;
         }
 
