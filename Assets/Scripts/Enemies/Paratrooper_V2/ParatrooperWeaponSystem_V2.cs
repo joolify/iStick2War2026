@@ -50,11 +50,19 @@ namespace iStick2War_V2
         [SerializeField] private Transform _grenadeThrowPoint;
         [SpineBone(dataField: "_skeletonAnimation")]
         [SerializeField] private string _grenadeBoneName = "grenadeBone";
-        [SerializeField] private float _grenadeThrowSpeed = 7.5f;
+        [SerializeField] private float _grenadeThrowSpeed = 18f;
+        [Tooltip("Hard minimum throw speed used at runtime (protects against stale prefab overrides).")]
+        [SerializeField] private float _minimumRuntimeGrenadeThrowSpeed = 18f;
         [SerializeField] private float _grenadeFuseSeconds = 2.25f;
         [SerializeField] private int _grenadeBaseDamage = 24;
         [SerializeField] private float _grenadeExplosionRadius = 1.6f;
         [SerializeField] private float _grenadeCooldown = 3.25f;
+        [Tooltip("When enabled, computes a ballistic arc using gravity so grenades can reach distant bunker targets more reliably.")]
+        [SerializeField] private bool _useBallisticGrenadeAim = true;
+        [Tooltip("Prefer the higher ballistic arc (more lob) when both low/high arc are possible.")]
+        [SerializeField] private bool _preferHighArcGrenadeThrow = true;
+        [Tooltip("Minimum horizontal speed ratio for ballistic throws. If high-arc becomes too vertical, low-arc is used.")]
+        [SerializeField, Range(0.05f, 0.95f)] private float _minHorizontalSpeedRatio = 0.35f;
         [SerializeField] private bool _debugGrenadeThrowLogs = true;
         [Header("Bunker cover")]
         [Tooltip("Colliders on this mask should use BunkerHitbox_V2 (e.g. bunkerFront). Tries layer 'Bunker' when unset.")]
@@ -246,13 +254,7 @@ namespace iStick2War_V2
                 origin = spawnPoint.position;
             }
             Vector2 target = GetHeroCombatAimWorldPoint();
-            Vector2 toTarget = target - origin;
-            if (toTarget.sqrMagnitude < 0.0001f)
-            {
-                toTarget = Vector2.right;
-            }
-
-            Vector2 throwVelocity = toTarget.normalized * Mathf.Max(0.1f, _grenadeThrowSpeed);
+            Vector2 throwVelocity = ComputeGrenadeLaunchVelocity(origin, target);
             GameObject projectileGo = Instantiate(_potatomasherProjectilePrefab, origin, Quaternion.identity);
             PotatomasherProjectile_V2 projectile = projectileGo.GetComponent<PotatomasherProjectile_V2>();
             if (projectile != null)
@@ -282,6 +284,103 @@ namespace iStick2War_V2
             }
 
             _lastGrenadeTime = Time.time;
+            return true;
+        }
+
+        private Vector2 ComputeGrenadeLaunchVelocity(Vector2 origin, Vector2 target)
+        {
+            Vector2 toTarget = target - origin;
+            float speed = Mathf.Max(0.1f, Mathf.Max(_grenadeThrowSpeed, _minimumRuntimeGrenadeThrowSpeed));
+            if (toTarget.sqrMagnitude < 0.0001f)
+            {
+                return Vector2.right * speed;
+            }
+
+            float horizontalDistance = Mathf.Abs(toTarget.x);
+            bool forceBallisticForLongRange = horizontalDistance > 4f;
+            bool shouldUseBallistic = _useBallisticGrenadeAim || forceBallisticForLongRange;
+            if (shouldUseBallistic && TryGetBallisticLaunchVelocity(origin, target, speed, out Vector2 ballisticVelocity))
+            {
+                return ballisticVelocity;
+            }
+
+            return toTarget.normalized * speed;
+        }
+
+        private bool TryGetBallisticLaunchVelocity(Vector2 origin, Vector2 target, float launchSpeed, out Vector2 velocity)
+        {
+            velocity = default;
+            float gravityScale = 1f;
+            Rigidbody2D prefabRb = _potatomasherProjectilePrefab != null ? _potatomasherProjectilePrefab.GetComponent<Rigidbody2D>() : null;
+            if (prefabRb != null)
+            {
+                gravityScale = Mathf.Max(0.0001f, prefabRb.gravityScale);
+            }
+
+            float g = Mathf.Abs(Physics2D.gravity.y) * gravityScale;
+            if (g < 0.0001f)
+            {
+                return false;
+            }
+
+            Vector2 delta = target - origin;
+            float dx = delta.x;
+            float dy = delta.y;
+            float x = Mathf.Abs(dx);
+            if (x < 0.01f)
+            {
+                return false;
+            }
+
+            float speed2 = launchSpeed * launchSpeed;
+            float speed4 = speed2 * speed2;
+            float discriminant = speed4 - g * (g * x * x + 2f * dy * speed2);
+            if (discriminant < 0f)
+            {
+                return false;
+            }
+
+            float sqrtDisc = Mathf.Sqrt(discriminant);
+            float tanLow = (speed2 - sqrtDisc) / (g * x);
+            float tanHigh = (speed2 + sqrtDisc) / (g * x);
+
+            float angleLow = Mathf.Atan(tanLow);
+            float angleHigh = Mathf.Atan(tanHigh);
+            float minHorizontalSpeed = launchSpeed * Mathf.Clamp01(_minHorizontalSpeedRatio);
+            float dirX = Mathf.Sign(dx);
+
+            Vector2 lowVelocity = new Vector2(
+                dirX * launchSpeed * Mathf.Cos(angleLow),
+                launchSpeed * Mathf.Sin(angleLow));
+            Vector2 highVelocity = new Vector2(
+                dirX * launchSpeed * Mathf.Cos(angleHigh),
+                launchSpeed * Mathf.Sin(angleHigh));
+
+            bool highHasEnoughHorizontal = Mathf.Abs(highVelocity.x) >= minHorizontalSpeed;
+            bool lowHasEnoughHorizontal = Mathf.Abs(lowVelocity.x) >= minHorizontalSpeed;
+
+            if (_preferHighArcGrenadeThrow && highHasEnoughHorizontal)
+            {
+                velocity = highVelocity;
+            }
+            else if (!_preferHighArcGrenadeThrow && lowHasEnoughHorizontal)
+            {
+                velocity = lowVelocity;
+            }
+            else if (lowHasEnoughHorizontal)
+            {
+                // Avoid near-vertical throws that explode above the thrower.
+                velocity = lowVelocity;
+            }
+            else if (highHasEnoughHorizontal)
+            {
+                velocity = highVelocity;
+            }
+            else
+            {
+                // Both arcs are steep; pick the one with better horizontal reach.
+                velocity = Mathf.Abs(lowVelocity.x) >= Mathf.Abs(highVelocity.x) ? lowVelocity : highVelocity;
+            }
             return true;
         }
 
