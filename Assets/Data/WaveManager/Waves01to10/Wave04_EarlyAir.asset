@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c3e0b36a6a9941f4b9f05a30121bf937, type: 3}
   m_Name: Wave04_EarlyAir
   m_EditorClassIdentifier: Assembly-CSharp::iStick2War_V2.WaveConfig_V2
-  _enemyCount: 5
-  _waveDurationSeconds: 34
-  _spawnIntervalSeconds: 1.75
+  _enemyCount: 60
+  _waveDurationSeconds: 120
+  _spawnIntervalSeconds: 1.85
   _enemyHealthMultiplier: 1.05
   _enemyDamageMultiplier: 1.02
-  _bomberPassCount: 1
-  _waveRewardCurrency: 84
+  _bomberPassCount: 0
+  _waveRewardCurrency: 90

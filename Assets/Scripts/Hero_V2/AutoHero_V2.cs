@@ -13,6 +13,8 @@ namespace iStick2War_V2
     {
         [Header("Test profile")]
         [SerializeField] private AutoHeroTestProfileKind_V2 _testProfile = AutoHeroTestProfileKind_V2.Perfect;
+        [Tooltip("Force Perfect profile even if scene rules try to override.")]
+        [SerializeField] private bool _forcePerfectProfile = true;
 
         [Header("References (optional — resolved at runtime if empty)")]
         [SerializeField] private Hero_V2 _hero;
@@ -50,6 +52,11 @@ namespace iStick2War_V2
         [Tooltip("While InWave, logs periodically when no EnemyBodyPart target is chosen (helps diagnose last-wave soft locks).")]
         [SerializeField] private bool _logWaveCombatWhenNoTarget;
         [SerializeField] private float _logWaveCombatWhenNoTargetIntervalSeconds = 2f;
+        [Header("Automation loop (runs)")]
+        [SerializeField] private bool _enableAutomationRunLoop = true;
+        [SerializeField] private int _automationTotalRuns = 10;
+        [SerializeField] private float _automationActionDelaySeconds = 0.5f;
+        [SerializeField] private bool _automationLogs = true;
 
         private readonly Collider2D[] _overlapBuffer = new Collider2D[64];
         private int _enemyBodyPartLayer = -1;
@@ -57,6 +64,18 @@ namespace iStick2War_V2
         private int _shopPhasesCompleted;
         private bool _shopExitScheduledThisVisit;
         private float _nextWaveCombatNoTargetLogUnscaledTime;
+        private bool _sessionInProgress;
+        private int _completedRuns;
+        private float _nextAutomationActionAtUnscaled;
+        private PendingAutomationAction _pendingAutomationAction = PendingAutomationAction.None;
+
+        private enum PendingAutomationAction
+        {
+            None,
+            ClickGameOverContinue,
+            ClickGameWonContinue,
+            ClickMainMenuPlay
+        }
 
         // --- Test profile: aim noise (world units), resampled on a timer ---
         private Vector2 _aimNoiseOffset;
@@ -74,6 +93,10 @@ namespace iStick2War_V2
             CacheReferences();
             _enemyBodyPartLayer = LayerMask.NameToLayer("EnemyBodyPart");
             ApplySceneGameplayBotOverride();
+            if (_forcePerfectProfile)
+            {
+                _testProfile = AutoHeroTestProfileKind_V2.Perfect;
+            }
         }
 
         private void ApplySceneGameplayBotOverride()
@@ -149,21 +172,47 @@ namespace iStick2War_V2
 
             _input.SetBotDriving(true);
 
-            if (_hero.IsDead())
-            {
-                _view.SetAutoAimWorldOverride(null);
-                _input.SetBotFrame(Vector2.zero, false, false);
-                return;
-            }
-
             if (_waveManager == null)
             {
+                if (_hero.IsDead())
+                {
+                    _view.SetAutoAimWorldOverride(null);
+                    _input.SetBotFrame(Vector2.zero, false, false);
+                    return;
+                }
+
                 TickCombatOnly(deltaTime);
                 return;
             }
 
             WaveLoopState_V2 state = _waveManager.State;
+            TickAutomationRunLoop(state);
+
+            if (_pendingAutomationAction != PendingAutomationAction.None)
+            {
+                _view.SetAutoAimWorldOverride(null);
+                _input.SetBotFrame(Vector2.zero, false, false);
+                _lastWaveState = state;
+                return;
+            }
+
+            if (_hero.IsDead())
+            {
+                _view.SetAutoAimWorldOverride(null);
+                _input.SetBotFrame(Vector2.zero, false, false);
+                _lastWaveState = state;
+                return;
+            }
+
             if (state == WaveLoopState_V2.GameOver)
+            {
+                _view.SetAutoAimWorldOverride(null);
+                _input.SetBotFrame(Vector2.zero, false, false);
+                _lastWaveState = state;
+                return;
+            }
+
+            if (state == WaveLoopState_V2.GameWon)
             {
                 _view.SetAutoAimWorldOverride(null);
                 _input.SetBotFrame(Vector2.zero, false, false);
@@ -207,6 +256,215 @@ namespace iStick2War_V2
 
             _lastWaveState = state;
             TickCombatOnly(deltaTime);
+        }
+
+        private void TickAutomationRunLoop(WaveLoopState_V2 state)
+        {
+            if (!_enableAutomationRunLoop || _waveManager == null)
+            {
+                return;
+            }
+
+            TryExecutePendingAutomationAction();
+            if (_pendingAutomationAction != PendingAutomationAction.None)
+            {
+                return;
+            }
+
+            if (state == WaveLoopState_V2.InWave && !_hero.IsDead())
+            {
+                _sessionInProgress = true;
+                return;
+            }
+
+            if (state == WaveLoopState_V2.GameOver)
+            {
+                if (_sessionInProgress)
+                {
+                    _completedRuns++;
+                    _sessionInProgress = false;
+                    LogAutomation($"Run {_completedRuns}/{Mathf.Max(1, _automationTotalRuns)} ended: GameOver.");
+                }
+
+                if (_completedRuns < Mathf.Max(1, _automationTotalRuns))
+                {
+                    QueueAutomationAction(PendingAutomationAction.ClickGameOverContinue);
+                }
+                else
+                {
+                    LogAutomation("Automation finished after max runs (GameOver).");
+                }
+
+                return;
+            }
+
+            if (state == WaveLoopState_V2.GameWon)
+            {
+                if (_sessionInProgress)
+                {
+                    _completedRuns++;
+                    _sessionInProgress = false;
+                    LogAutomation($"Run {_completedRuns}/{Mathf.Max(1, _automationTotalRuns)} ended: GameWon.");
+                }
+
+                if (_completedRuns < Mathf.Max(1, _automationTotalRuns))
+                {
+                    QueueAutomationAction(PendingAutomationAction.ClickGameWonContinue);
+                }
+                else
+                {
+                    LogAutomation("Automation finished after max runs (GameWon).");
+                }
+
+                return;
+            }
+
+            bool menuLikelyOpen = state == WaveLoopState_V2.Preparing && Time.timeScale <= 0.001f;
+            if (menuLikelyOpen && !_sessionInProgress && _completedRuns < Mathf.Max(1, _automationTotalRuns))
+            {
+                QueueAutomationAction(PendingAutomationAction.ClickMainMenuPlay);
+            }
+        }
+
+        private void QueueAutomationAction(PendingAutomationAction action)
+        {
+            if (_pendingAutomationAction != PendingAutomationAction.None)
+            {
+                return;
+            }
+
+            _pendingAutomationAction = action;
+            _nextAutomationActionAtUnscaled = Time.unscaledTime + Mathf.Max(0.05f, _automationActionDelaySeconds);
+        }
+
+        private void TryExecutePendingAutomationAction()
+        {
+            if (_pendingAutomationAction == PendingAutomationAction.None)
+            {
+                return;
+            }
+
+            if (Time.unscaledTime < _nextAutomationActionAtUnscaled)
+            {
+                return;
+            }
+
+            bool clicked = false;
+            switch (_pendingAutomationAction)
+            {
+                case PendingAutomationAction.ClickGameOverContinue:
+                    LogAutomation("Trying click: GameOver Continue (bkg_gameOver_continue -> btn_gameOver_continue -> ReturnToMainMenu fallback)");
+                    clicked =
+                        TryClickMainMenuButtonByObjectName("bkg_gameOver_continue", "gameOver-continue-primary") ||
+                        TryClickMainMenuButtonByObjectName("btn_gameOver_continue", "gameOver-continue-secondary") ||
+                        TryClickReturnToMainMenuButtonFallback("gameOver-return-fallback");
+                    break;
+                case PendingAutomationAction.ClickGameWonContinue:
+                    LogAutomation("Trying click: GameWon Continue (btn_gameWon_continue -> bkg_gameWon_continue -> ReturnToMainMenu fallback)");
+                    clicked =
+                        TryClickMainMenuButtonByObjectName("btn_gameWon_continue", "gameWon-continue-primary") ||
+                        TryClickMainMenuButtonByObjectName("bkg_gameWon_continue", "gameWon-continue-secondary") ||
+                        TryClickReturnToMainMenuButtonFallback("gameWon-return-fallback");
+                    break;
+                case PendingAutomationAction.ClickMainMenuPlay:
+                    LogAutomation("Trying click: MainMenu Play (btn_main_menu_play -> Play fallback)");
+                    clicked =
+                        TryClickMainMenuButtonByObjectName("btn_main_menu_play", "mainMenu-play-primary") ||
+                        TryClickPlayButtonFallback("mainMenu-play-fallback");
+                    if (clicked)
+                    {
+                        _sessionInProgress = true;
+                        LogAutomation($"Run {_completedRuns + 1}/{Mathf.Max(1, _automationTotalRuns)} started.");
+                    }
+                    break;
+            }
+
+            if (clicked)
+            {
+                LogAutomation($"Automation click executed: {_pendingAutomationAction}");
+                _pendingAutomationAction = PendingAutomationAction.None;
+                return;
+            }
+
+            LogAutomation($"Automation click failed this tick: {_pendingAutomationAction} (will retry)");
+            _nextAutomationActionAtUnscaled = Time.unscaledTime + 0.4f;
+        }
+
+        private bool TryClickMainMenuButtonByObjectName(string objectName, string reasonTag)
+        {
+            if (string.IsNullOrWhiteSpace(objectName))
+            {
+                return false;
+            }
+
+            MainMenuNavButton_V2[] navButtons =
+                FindObjectsByType<MainMenuNavButton_V2>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < navButtons.Length; i++)
+            {
+                MainMenuNavButton_V2 nav = navButtons[i];
+                if (nav == null || nav.gameObject == null || !nav.gameObject.name.Equals(objectName))
+                {
+                    continue;
+                }
+
+                if (!nav.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                nav.TriggerAutomationClick();
+                LogAutomation($"Clicked '{nav.gameObject.name}' [{reasonTag}]");
+                return true;
+            }
+
+            LogAutomation($"Button not found/active: '{objectName}' [{reasonTag}]");
+            return false;
+        }
+
+        private bool TryClickReturnToMainMenuButtonFallback(string reasonTag)
+        {
+            MainMenuNavButton_V2[] navButtons =
+                FindObjectsByType<MainMenuNavButton_V2>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < navButtons.Length; i++)
+            {
+                MainMenuNavButton_V2 nav = navButtons[i];
+                if (nav != null && nav.gameObject.activeInHierarchy && nav.IsReturnToMainMenuAction())
+                {
+                    nav.TriggerAutomationClick();
+                    LogAutomation($"Clicked fallback ReturnToMainMenu '{nav.gameObject.name}' [{reasonTag}]");
+                    return true;
+                }
+            }
+
+            LogAutomation($"No active ReturnToMainMenu button found [{reasonTag}]");
+            return false;
+        }
+
+        private bool TryClickPlayButtonFallback(string reasonTag)
+        {
+            MainMenuNavButton_V2[] navButtons =
+                FindObjectsByType<MainMenuNavButton_V2>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < navButtons.Length; i++)
+            {
+                MainMenuNavButton_V2 nav = navButtons[i];
+                if (nav != null && nav.gameObject.activeInHierarchy && nav.IsPlayAction())
+                {
+                    nav.TriggerAutomationClick();
+                    LogAutomation($"Clicked fallback Play '{nav.gameObject.name}' [{reasonTag}]");
+                    return true;
+                }
+            }
+
+            LogAutomation($"No active Play button found [{reasonTag}]");
+            return false;
+        }
+
+        private void LogAutomation(string msg)
+        {
+            if (_automationLogs)
+            {
+                Debug.Log($"[AutoHero_V2] {msg}");
+            }
         }
 
         private void TickShop()

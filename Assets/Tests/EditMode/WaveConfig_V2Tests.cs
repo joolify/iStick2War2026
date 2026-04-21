@@ -24,11 +24,11 @@ namespace iStick2War.Tests.EditMode
         }
 
         [Test]
-        public void EnemyCount_IsAtLeastOne()
+        public void EnemyCount_IsNotNegative()
         {
             EditModeTestHelpers.SetPrivateField(_config, "_enemyCount", -10);
 
-            Assert.That(_config.EnemyCount, Is.EqualTo(1));
+            Assert.That(_config.EnemyCount, Is.EqualTo(0));
         }
 
         [Test]

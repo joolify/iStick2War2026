@@ -640,6 +640,7 @@ public class Paratrooper : MonoBehaviour
         // has a one-frame false negative.
         bool wasGroundCombatState =
             from == StickmanBodyState.Shoot ||
+            from == StickmanBodyState.Grenade ||
             from == StickmanBodyState.Land ||
             from == StickmanBodyState.Idle ||
             from == StickmanBodyState.Run;
@@ -802,7 +803,7 @@ public class Paratrooper : MonoBehaviour
         }
 
         StickmanBodyState s = _stateMachine.CurrentState;
-        if (s == StickmanBodyState.Land || s == StickmanBodyState.Shoot)
+        if (s == StickmanBodyState.Land || s == StickmanBodyState.Shoot || s == StickmanBodyState.Grenade)
         {
             if (!_airborneGravityScaleCachedValid)
             {
@@ -1070,7 +1071,10 @@ public class Paratrooper : MonoBehaviour
             return true;
         }
 
-        if (s == StickmanBodyState.Shoot || s == StickmanBodyState.Run || s == StickmanBodyState.Idle)
+        if (s == StickmanBodyState.Shoot ||
+            s == StickmanBodyState.Grenade ||
+            s == StickmanBodyState.Run ||
+            s == StickmanBodyState.Idle)
         {
             return false;
         }

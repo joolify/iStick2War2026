@@ -105,6 +105,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fb6914ac4d6cb0044aabde83a08788cb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.Bombplane_V2
+  _enableHorizontalFlight: 1
+  _horizontalFlySpeed: 5.5
+  _flightOffscreenMarginWorld: 4
+  _flightMaxLifetimeSeconds: 45
+  _spriteFacesRightWhenScaleXPositive: 0
+  _invertFlightDirectionX: 0
   _bombProjectilePrefab: {fileID: -6090124734264886313, guid: 3423af3f32db2d043bc526446c57f17f, type: 3}
   _bombDropMount: {fileID: 5053498953683407277}
   _bombDropIntervalSeconds: 1.25

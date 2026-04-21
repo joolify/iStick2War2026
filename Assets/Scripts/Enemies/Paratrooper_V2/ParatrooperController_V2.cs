@@ -36,12 +36,19 @@ public class ParatrooperController_V2 : MonoBehaviour
     [SerializeField] private float _forcedGrenadeDelayAfterLandingSeconds = 1.25f;
     [Tooltip("Failsafe: if grenade finished event is missed, force transition to Shoot after this many seconds.")]
     [SerializeField] private float _grenadeToShootFallbackSeconds = 0.9f;
+    [Tooltip("Failsafe: max time allowed in Grenade state (unscaled). If still in Grenade after a throw, forces Shoot so MP40 can resume.")]
+    [SerializeField] private float _maxSecondsInGrenadeState = 4f;
     [Header("Debug")]
     [Tooltip("When enabled, Paratrooper only uses grenade behavior and never fires MP40.")]
     [SerializeField] private bool _debugGrenadeOnlyMode = false;
+    [Tooltip("Verbose logs: state changes, Spine events, grenade timers, and throttled MP40 Tick diagnostics.")]
+    [SerializeField] private bool _debugParatrooperCombatLogs = false;
+    [SerializeField] private float _debugCombatLogThrottleSeconds = 0.35f;
 
     /// <summary>True while Spine shoot window is open (read keeps field from CS0414).</summary>
     internal bool IsShootWindowOpen => _isShootWindowOpen;
+    private float _grenadeStateEnterUnscaledTime = -1f;
+    private float _lastDebugCombatLogUnscaledTime = float.NegativeInfinity;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
 
     public void Initialize(
@@ -54,6 +61,39 @@ public class ParatrooperController_V2 : MonoBehaviour
         _stateMachine = stateMachine;
         _damageReceiver = damageReceiver;
         _weaponSystem = weaponSystem;
+
+        if (_stateMachine != null)
+        {
+            _stateMachine.OnStateChanged -= HandleMachineStateChanged;
+            _stateMachine.OnStateChanged += HandleMachineStateChanged;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (_stateMachine != null)
+        {
+            _stateMachine.OnStateChanged -= HandleMachineStateChanged;
+        }
+    }
+
+    private void HandleMachineStateChanged(StickmanBodyState from, StickmanBodyState to)
+    {
+        if (to == StickmanBodyState.Grenade)
+        {
+            _grenadeStateEnterUnscaledTime = Time.unscaledTime;
+        }
+        else if (from == StickmanBodyState.Grenade)
+        {
+            _grenadeStateEnterUnscaledTime = -1f;
+        }
+
+        if (_debugParatrooperCombatLogs)
+        {
+            Debug.Log(
+                $"[ParatrooperController_V2] '{name}' state {from} -> {to} | modelState={(_model != null ? _model.currentState.ToString() : "null")} " +
+                $"grenadeEnterT={_grenadeStateEnterUnscaledTime:0.###} forcedShootAt={_forcedShootFallbackAtTime:0.###} forcedGrenadeAt={_forcedGrenadeAttemptAtTime:0.###}");
+        }
     }
 
     void Start()
@@ -74,6 +114,14 @@ public class ParatrooperController_V2 : MonoBehaviour
 
     public void OnAnimationEvent(AnimationEventType eventName)
     {
+        if (_debugParatrooperCombatLogs &&
+            eventName != AnimationEventType.ShootStarted &&
+            eventName != AnimationEventType.ShootFinished)
+        {
+            Debug.Log(
+                $"[ParatrooperController_V2] '{name}' OnAnimationEvent={eventName} machineState={(_stateMachine != null ? _stateMachine.CurrentState.ToString() : "null")}");
+        }
+
         switch (eventName)
         {
             case AnimationEventType.DeployFinished:
@@ -130,10 +178,9 @@ public class ParatrooperController_V2 : MonoBehaviour
                     break;
                 }
 
-                if (_stateMachine.CurrentState == StickmanBodyState.Shoot && _weaponSystem != null)
+                if (_stateMachine.CurrentState == StickmanBodyState.Shoot)
                 {
                     _isShootWindowOpen = true;
-                    _weaponSystem.TryAutoShootAtHero();
                 }
                 break;
             case AnimationEventType.ShootFinished:
@@ -143,6 +190,12 @@ public class ParatrooperController_V2 : MonoBehaviour
                 if (_stateMachine.CurrentState == StickmanBodyState.Grenade && _weaponSystem != null)
                 {
                     bool didThrow = _weaponSystem.TryThrowGrenadeAtHero();
+                    if (_debugParatrooperCombatLogs)
+                    {
+                        Debug.Log(
+                            $"[ParatrooperController_V2] '{name}' GrenadeThrow didThrow={didThrow} debugGrenadeOnly={_debugGrenadeOnlyMode} " +
+                            $"nextShootFallbackTime={(didThrow && !_debugGrenadeOnlyMode ? Time.time + Mathf.Max(0.05f, _grenadeToShootFallbackSeconds) : _forcedShootFallbackAtTime):0.###}");
+                    }
                     if (didThrow && !_debugGrenadeOnlyMode)
                     {
                         _forcedGrenadeAttemptAtTime = -1f;
@@ -153,6 +206,11 @@ public class ParatrooperController_V2 : MonoBehaviour
                         string reason = _weaponSystem.GetGrenadeBlockReason();
                         Debug.LogWarning($"[ParatrooperController_V2] GrenadeThrow event received but throw failed in grenade-only mode ({reason ?? "unknown reason"}).");
                     }
+                }
+                else if (_debugParatrooperCombatLogs)
+                {
+                    Debug.LogWarning(
+                        $"[ParatrooperController_V2] '{name}' GrenadeThrow ignored (state={(_stateMachine != null ? _stateMachine.CurrentState.ToString() : "null")}, weapon={(_weaponSystem != null ? "ok" : "null")}).");
                 }
                 break;
             case AnimationEventType.GrenadeFinished:
@@ -166,8 +224,24 @@ public class ParatrooperController_V2 : MonoBehaviour
                     }
                     else
                     {
+                        if (_debugParatrooperCombatLogs)
+                        {
+                            Debug.Log($"[ParatrooperController_V2] '{name}' GrenadeFinished -> ChangeState(Shoot).");
+                        }
                         _stateMachine.ChangeState(StickmanBodyState.Shoot);
                     }
+                }
+                else if (_debugParatrooperCombatLogs)
+                {
+                    Debug.LogWarning(
+                        $"[ParatrooperController_V2] '{name}' GrenadeFinished ignored; not in Grenade (current={(_stateMachine != null ? _stateMachine.CurrentState.ToString() : "null")}).");
+                }
+                break;
+            default:
+                if (_debugParatrooperCombatLogs)
+                {
+                    // e.g. None, GrenadeStarted, LandStarted — forwarder may emit None when event names do not match.
+                    Debug.Log($"[ParatrooperController_V2] '{name}' OnAnimationEvent no-op for {eventName} (state={(_stateMachine != null ? _stateMachine.CurrentState.ToString() : "null")}).");
                 }
                 break;
         }
@@ -190,11 +264,15 @@ public class ParatrooperController_V2 : MonoBehaviour
             return;
         }
 
-        // Shooting is event-driven by Spine shoot events.
-        // Keep Tick free from fire calls to avoid double-triggering.
+        // MP40: drive shots from Tick using weapon cooldown. Relying only on Spine "shoot started" events breaks
+        // after Grenade -> Shoot when the MP40 clip does not restart or events do not fire again.
         if (_stateMachine.CurrentState != StickmanBodyState.Shoot)
         {
             _isShootWindowOpen = false;
+        }
+        else if (!_debugGrenadeOnlyMode && _weaponSystem.CanShoot())
+        {
+            _weaponSystem.TryAutoShootAtHero();
         }
 
         // Enforce one grenade attempt after landing if immediate grenade did not start.
@@ -222,8 +300,46 @@ public class ParatrooperController_V2 : MonoBehaviour
             _forcedShootFallbackAtTime > 0f &&
             Time.time >= _forcedShootFallbackAtTime)
         {
+            if (_debugParatrooperCombatLogs)
+            {
+                Debug.Log($"[ParatrooperController_V2] '{name}' Tick: post-grenade-throw timer elapsed -> ChangeState(Shoot).");
+            }
             _forcedShootFallbackAtTime = -1f;
             _stateMachine.ChangeState(StickmanBodyState.Shoot);
+        }
+
+        // Absolute cap on Grenade state (handles wrong/missing EventData on grenade_finished, failed throw timer, etc.).
+        if (!_debugGrenadeOnlyMode &&
+            _stateMachine.CurrentState == StickmanBodyState.Grenade &&
+            _grenadeStateEnterUnscaledTime >= 0f)
+        {
+            float cap = Mathf.Max(0.5f, _maxSecondsInGrenadeState);
+            if (Time.unscaledTime - _grenadeStateEnterUnscaledTime >= cap)
+            {
+                _grenadeStateEnterUnscaledTime = -1f;
+                _forcedShootFallbackAtTime = -1f;
+                Log($"[ParatrooperController_V2] Grenade state exceeded {cap:0.##}s (unscaled) -> forcing Shoot.");
+                _stateMachine.ChangeState(StickmanBodyState.Shoot);
+            }
+        }
+
+        if (_debugParatrooperCombatLogs)
+        {
+            float throttle = Mathf.Max(0.1f, _debugCombatLogThrottleSeconds);
+            StickmanBodyState s = _stateMachine.CurrentState;
+            string mp40Block = _weaponSystem.GetMp40ShootBlockReason();
+            bool interesting =
+                s == StickmanBodyState.Grenade ||
+                (s == StickmanBodyState.Shoot && mp40Block != null) ||
+                (s == StickmanBodyState.Land && mp40Block != null);
+            if (interesting && Time.unscaledTime - _lastDebugCombatLogUnscaledTime >= throttle)
+            {
+                _lastDebugCombatLogUnscaledTime = Time.unscaledTime;
+                Debug.Log(
+                    $"[ParatrooperController_V2] '{name}' Tick throttled: state={s} model={(_model != null ? _model.currentState.ToString() : "null")} " +
+                    $"mp40={(mp40Block ?? "can-fire")} grenadeT0={_grenadeStateEnterUnscaledTime:0.###} shootFallbackT={_forcedShootFallbackAtTime:0.###} " +
+                    $"grenadeSchedT={_forcedGrenadeAttemptAtTime:0.###} shootWindow={_isShootWindowOpen}");
+            }
         }
     }
 

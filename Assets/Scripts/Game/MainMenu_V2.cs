@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using TMPro;
 
 namespace iStick2War_V2
@@ -131,10 +132,9 @@ namespace iStick2War_V2
 
             HideMainMenuRoots();
 
-            if (_pauseTimeWhileMenuOpen)
-            {
-                Time.timeScale = 1f;
-            }
+            // Unity does not reset timeScale when loading scenes; ReturnToMainMenu loads with timeScale 0.
+            // Always resume simulation when leaving the menu so Play works for every boot path.
+            Time.timeScale = 1f;
 
             NotifyWaveManagerGameStartedIfPossible();
         }
@@ -190,6 +190,82 @@ namespace iStick2War_V2
             {
                 HideByNameFallback();
                 HideNavButtonsFallback();
+            }
+        }
+
+        /// <summary>
+        /// Call after <see cref="SceneManager.LoadScene"/> when returning from game over. If this component sits on an
+        /// inactive GameObject, <see cref="Awake"/> never ran — re-show menu roots and pause time here.
+        /// </summary>
+        public void ApplyReturnToMainMenuAfterSceneReload()
+        {
+            _gameStarted = false;
+            gameObject.SetActive(true);
+
+            bool anyConfigured = false;
+            for (int i = 0; i < _hideOnPlay.Length; i++)
+            {
+                GameObject go = _hideOnPlay[i];
+                if (go == null)
+                {
+                    continue;
+                }
+
+                anyConfigured = true;
+                go.SetActive(true);
+            }
+
+            if (!anyConfigured)
+            {
+                ShowByNameFallback();
+                ShowNavButtonsFallback();
+            }
+
+            if (_settingsPanel != null)
+            {
+                _settingsPanel.SetActive(false);
+            }
+
+            if (_pauseTimeWhileMenuOpen)
+            {
+                Time.timeScale = 0f;
+            }
+        }
+
+        private void ShowByNameFallback()
+        {
+            Scene s = gameObject.scene;
+            GameObject[] gos = FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < gos.Length; i++)
+            {
+                GameObject go = gos[i];
+                if (go == null || go.scene != s)
+                {
+                    continue;
+                }
+
+                for (int n = 0; n < DefaultMenuObjectNames.Length; n++)
+                {
+                    if (go.name.Equals(DefaultMenuObjectNames[n], StringComparison.Ordinal))
+                    {
+                        go.SetActive(true);
+                        break;
+                    }
+                }
+            }
+        }
+
+        private static void ShowNavButtonsFallback()
+        {
+            MainMenuNavButton_V2[] navButtons =
+                FindObjectsByType<MainMenuNavButton_V2>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < navButtons.Length; i++)
+            {
+                MainMenuNavButton_V2 nav = navButtons[i];
+                if (nav != null && !nav.IsReturnToMainMenuAction())
+                {
+                    nav.gameObject.SetActive(true);
+                }
             }
         }
 

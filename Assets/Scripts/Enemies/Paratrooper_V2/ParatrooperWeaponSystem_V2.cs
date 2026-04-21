@@ -188,6 +188,34 @@ namespace iStick2War_V2
             return true;
         }
 
+        /// <summary>Null when MP40 would fire if <see cref="TryAutoShootAtHero"/> were called; otherwise why <see cref="CanShoot"/> is false.</summary>
+        public string GetMp40ShootBlockReason()
+        {
+            if (_debugDisableMp40Shooting)
+            {
+                return "debug MP40 disabled";
+            }
+
+            if (_model == null)
+            {
+                return "model missing";
+            }
+
+            float nextFire = _lastFireTime + _fireCooldown;
+            if (Time.time < nextFire)
+            {
+                return $"fire cooldown ({nextFire - Time.time:0.###}s left)";
+            }
+
+            if (_model.currentState == iStick2War.StickmanBodyState.Die ||
+                _model.currentState == iStick2War.StickmanBodyState.GlideDie)
+            {
+                return $"model.currentState={_model.currentState}";
+            }
+
+            return null;
+        }
+
         public void SetDebugDisableMp40Shooting(bool enabled)
         {
             _debugDisableMp40Shooting = enabled;

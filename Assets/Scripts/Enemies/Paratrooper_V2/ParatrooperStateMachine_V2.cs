@@ -73,6 +73,11 @@ public class ParatrooperStateMachine_V2 : MonoBehaviour
 
         ExitState(_currentState);
         _currentState = newState;
+        if (_model != null)
+        {
+            _model.currentState = _currentState;
+        }
+
         EnterState(_currentState);
 
         OnStateChanged?.Invoke(previousState, newState);

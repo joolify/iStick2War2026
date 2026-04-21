@@ -30,6 +30,19 @@ namespace iStick2War_V2.Editor
             }
         }
 
+        private static string NormalizeKind(string kind)
+        {
+            return string.IsNullOrEmpty(kind)
+                ? string.Empty
+                : kind.Trim().ToLowerInvariant();
+        }
+
+        private static bool IsWaveEndKind(string kind)
+        {
+            string k = NormalizeKind(kind);
+            return k == "wave_cleared" || k == "run_end";
+        }
+
         private const string PrefSuppressOnboarding = "iStick2War.WaveTelemetryAnalyzer.SuppressOnboardingBunkerFlags";
         private const string PrefOnboardingMaxWave = "iStick2War.WaveTelemetryAnalyzer.OnboardingMaxWaveInclusive";
         private const string PrefBatchFolder = "iStick2War.WaveTelemetryAnalyzer.BatchFolder";
@@ -349,10 +362,43 @@ namespace iStick2War_V2.Editor
                     continue;
                 }
 
-                if (e.kind == "wave_cleared" || e.kind == "run_end")
+                if (IsWaveEndKind(e.kind))
                 {
                     waveEndRows.Add(e);
                 }
+            }
+
+            if (waveEndRows.Count == 0)
+            {
+                var byKind = new Dictionary<string, int>(StringComparer.Ordinal);
+                foreach (TelemetryEventDto e in root.events)
+                {
+                    if (e == null)
+                    {
+                        continue;
+                    }
+
+                    string nk = NormalizeKind(e.kind);
+                    if (string.IsNullOrEmpty(nk))
+                    {
+                        nk = "(empty)";
+                    }
+
+                    if (!byKind.TryGetValue(nk, out int c))
+                    {
+                        c = 0;
+                    }
+
+                    byKind[nk] = c + 1;
+                }
+
+                sb.AppendLine("NOTE: Inga wave_cleared/run_end-rader hittades efter kind-normalisering.");
+                sb.AppendLine("Kinds i filen (normaliserade):");
+                foreach (KeyValuePair<string, int> kv in BatchSortedPairs(byKind))
+                {
+                    sb.AppendLine($"  {kv.Key}: {kv.Value}");
+                }
+                sb.AppendLine();
             }
 
             for (int wi = 0; wi < waveEndRows.Count; wi++)
@@ -550,7 +596,7 @@ namespace iStick2War_V2.Editor
                         continue;
                     }
 
-                    if (e.kind == "wave_cleared" || e.kind == "run_end")
+                    if (IsWaveEndKind(e.kind))
                     {
                         waveEndRows.Add(e);
                     }
@@ -614,7 +660,7 @@ namespace iStick2War_V2.Editor
                 TelemetryEventDto lastRunEnd = null;
                 for (int i = waveEndRows.Count - 1; i >= 0; i--)
                 {
-                    if (waveEndRows[i].kind == "run_end")
+                    if (NormalizeKind(waveEndRows[i].kind) == "run_end")
                     {
                         lastRunEnd = waveEndRows[i];
                         break;
@@ -1198,7 +1244,8 @@ namespace iStick2War_V2.Editor
             TelemetryEventDto nextWaveEndRowInFileOrder)
         {
             var flags = new List<string>();
-            bool isWaveEnd = ev.kind == "wave_cleared" || ev.kind == "run_end";
+            string kind = NormalizeKind(ev.kind);
+            bool isWaveEnd = kind == "wave_cleared" || kind == "run_end";
 
             if (!isWaveEnd)
             {
@@ -1237,14 +1284,14 @@ namespace iStick2War_V2.Editor
             bool preloadLowCoverWithHits =
                 bunkerStart01 < 0.2f && ev.damageTakenBunker > 0;
             bool preloadNoCoverAtStart = ev.bunkerHpWaveStart <= 0;
-            if ((ev.kind == "wave_cleared" || ev.kind == "run_end") &&
+            if ((kind == "wave_cleared" || kind == "run_end") &&
                 ev.waveDurationSec > 3f &&
                 (preloadLowCoverWithHits || preloadNoCoverAtStart))
             {
                 flags.Add("PRELOAD_FAIL");
             }
 
-            if ((ev.kind == "wave_cleared" || ev.kind == "run_end") &&
+            if ((kind == "wave_cleared" || kind == "run_end") &&
                 ev.bunkerHpWaveStart > 0 &&
                 ev.damageTakenBunker == 0 &&
                 bunkerStart01 < 0.6f &&
@@ -1262,14 +1309,14 @@ namespace iStick2War_V2.Editor
                 flags.Add("HIGH_CARRY_IN_PRESSURE");
             }
 
-            if (ev.kind == "run_end" && (ev.heroDead || ev.bunkerBreached))
+            if (kind == "run_end" && (ev.heroDead || ev.bunkerBreached))
             {
                 flags.Add("OVERLOAD_FAIL");
             }
 
-            if (ev.kind == "wave_cleared" &&
+            if (kind == "wave_cleared" &&
                 nextWaveEndRowInFileOrder != null &&
-                nextWaveEndRowInFileOrder.kind == "run_end" &&
+                NormalizeKind(nextWaveEndRowInFileOrder.kind) == "run_end" &&
                 nextWaveEndRowInFileOrder.wave == ev.wave + 1 &&
                 (nextWaveEndRowInFileOrder.heroDead || nextWaveEndRowInFileOrder.bunkerBreached))
             {
@@ -1277,7 +1324,7 @@ namespace iStick2War_V2.Editor
             }
 
             if (!skipOnboardingWaveHeuristics &&
-                ev.kind == "wave_cleared" &&
+                kind == "wave_cleared" &&
                 !ev.heroDead &&
                 !ev.bunkerBreached &&
                 ev.damageTakenBunker >= 30 &&
@@ -1288,7 +1335,7 @@ namespace iStick2War_V2.Editor
             }
 
             if (!skipOnboardingWaveHeuristics &&
-                ev.kind == "wave_cleared" &&
+                kind == "wave_cleared" &&
                 !ev.bunkerBreached &&
                 ev.minBunkerHpRatioThisWave >= 0f &&
                 ev.minBunkerHpRatioThisWave < 0.15f)
@@ -1297,7 +1344,7 @@ namespace iStick2War_V2.Editor
             }
 
             if (!skipOnboardingWaveHeuristics &&
-                (ev.kind == "wave_cleared" || ev.kind == "run_end") &&
+                (kind == "wave_cleared" || kind == "run_end") &&
                 ev.damageTakenBunker == 0 &&
                 ev.minBunkerHpRatioThisWave >= 0.99f)
             {

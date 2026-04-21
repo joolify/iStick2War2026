@@ -37,7 +37,7 @@ namespace iStick2War_V2
         [Header("Economy Reward")]
         [SerializeField] private int _waveRewardCurrency = 80;
 
-        public int EnemyCount => Mathf.Max(1, _enemyCount);
+        public int EnemyCount => Mathf.Max(0, _enemyCount);
         public float WaveDurationSeconds => Mathf.Max(1f, _waveDurationSeconds);
         public float SpawnIntervalSeconds => Mathf.Max(0.1f, _spawnIntervalSeconds);
         public float EnemyHealthMultiplier => Mathf.Max(0.1f, _enemyHealthMultiplier);

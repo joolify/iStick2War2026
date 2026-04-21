@@ -12,7 +12,8 @@ namespace iStick2War_V2
         Preparing,
         InWave,
         Shop,
-        GameOver
+        GameOver,
+        GameWon
     }
 
     public sealed class WaveManager_V2 : MonoBehaviour
@@ -32,6 +33,27 @@ namespace iStick2War_V2
         [SerializeField] private TMP_Text _topBarReloadText;
         [SerializeField] private TMP_Text _topBarBunkerHealthText;
         [SerializeField] private TMP_Text _topBarWaveText;
+        [Header("Game Over UI")]
+        [Tooltip("Optional; if unset, resolved once when entering Game Over. Shown only when the hero is dead.")]
+        [SerializeField] private GameOverUI_V2 _gameOverUi;
+        [Header("Game Over UI — hero death only")]
+        [Tooltip("e.g. world-space GameOver root. Hidden until Hero_V2 dies.")]
+        [SerializeField] private GameObject _heroDeathGameOverRoot;
+        [Tooltip("Child button on GameOver root, e.g. btn_gameOver_continue / bkg_gameOver_continue.")]
+        [SerializeField] private GameObject _heroDeathContinueButton;
+        [Tooltip("Top bar label, e.g. txt_topbar_gameOver. Hidden until Hero_V2 dies.")]
+        [SerializeField] private TMP_Text _heroDeathTopBarTitle;
+        [Tooltip("Top bar label, e.g. txt_topbar_gameOver_continue. Hidden until Hero_V2 dies.")]
+        [SerializeField] private TMP_Text _heroDeathTopBarContinue;
+        [Header("Game Won UI — wave 10 clear")]
+        [Tooltip("e.g. world-space GameWon root. Hidden until last wave is cleared.")]
+        [SerializeField] private GameObject _gameWonRoot;
+        [Tooltip("Continue button on win panel, e.g. btn_gameWon_continue.")]
+        [SerializeField] private GameObject _gameWonContinueButton;
+        [Tooltip("Top bar label, e.g. txt_topbar_gameWon.")]
+        [SerializeField] private TMP_Text _gameWonTopBarTitle;
+        [Tooltip("Top bar label, e.g. txt_topbar_gameWon_continue.")]
+        [SerializeField] private TMP_Text _gameWonTopBarContinue;
         [Header("Top bar wave label (intro)")]
         [Tooltip("Fully visible duration after main menu Play or shop Continue before fade-out.")]
         [SerializeField] private float _topBarWaveTextVisibleSeconds = 4f;
@@ -283,6 +305,10 @@ namespace iStick2War_V2
             ResolveTopBarReferencesIfNeeded();
             CacheTopBarWaveTextBaseColorIfNeeded();
             HideTopBarWaveTextImmediate();
+            ResolveHeroDeathGameOverUiIfNeeded();
+            SetHeroDeathGameOverUiVisible(false);
+            ResolveGameWonUiIfNeeded();
+            SetGameWonUiVisible(false);
             if (_shopPanel != null)
             {
                 _shopPanel.Initialize(this);
@@ -296,7 +322,10 @@ namespace iStick2War_V2
 
         private void Update()
         {
-            if (_state != WaveLoopState_V2.GameOver && _hero != null && _hero.IsDead())
+            if (_state != WaveLoopState_V2.GameOver &&
+                _state != WaveLoopState_V2.GameWon &&
+                _hero != null &&
+                _hero.IsDead())
             {
                 EnterGameOverState();
                 return;
@@ -701,6 +730,13 @@ namespace iStick2War_V2
                 _enemySpawner.StopWave();
             }
 
+            bool clearedLastWave = _waves != null && _waves.Count > 0 && _waveIndex >= _waves.Count - 1;
+            if (clearedLastWave)
+            {
+                EnterGameWonState();
+                return;
+            }
+
             int reward = _hasScalingForActiveWave
                 ? _scalingForActiveWave.EffectiveWaveRewardCurrency
                 : wave.WaveRewardCurrency;
@@ -803,7 +839,193 @@ namespace iStick2War_V2
                 _shopPanel.Hide();
             }
             SetCameraFollowEnabled(false);
-            Log("WaveManager entered GameOver (no more wave configs).");
+
+            bool heroDeath = _hero != null && _hero.IsDead();
+            ResolveHeroDeathGameOverUiIfNeeded();
+            if (heroDeath)
+            {
+                SetHeroDeathGameOverUiVisible(true);
+                if (_gameOverUi == null)
+                {
+                    _gameOverUi = FindAnyObjectByType<GameOverUI_V2>(FindObjectsInactive.Include);
+                }
+
+                _gameOverUi?.Show();
+            }
+            else
+            {
+                SetHeroDeathGameOverUiVisible(false);
+            }
+
+            Log($"WaveManager entered GameOver (heroDeath={heroDeath}).");
+        }
+
+        private void EnterGameWonState()
+        {
+            SetState(WaveLoopState_V2.GameWon);
+            if (_enemySpawner != null)
+            {
+                _enemySpawner.StopWave();
+            }
+            if (_shopPanel != null)
+            {
+                _shopPanel.Hide();
+            }
+            SetCameraFollowEnabled(false);
+            SetHeroDeathGameOverUiVisible(false);
+            ResolveGameWonUiIfNeeded();
+            SetGameWonUiVisible(true);
+            Log($"WaveManager entered GameWon at wave {CurrentWaveNumber}.");
+        }
+
+        private void ResolveHeroDeathGameOverUiIfNeeded()
+        {
+            if (_heroDeathGameOverRoot == null)
+            {
+                Transform[] transforms = FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                for (int i = 0; i < transforms.Length; i++)
+                {
+                    Transform t = transforms[i];
+                    if (t == null || t.parent != null)
+                    {
+                        continue;
+                    }
+
+                    if (t.gameObject.name.Equals("GameOver", StringComparison.Ordinal))
+                    {
+                        _heroDeathGameOverRoot = t.gameObject;
+                        break;
+                    }
+                }
+            }
+
+            if (_heroDeathTopBarTitle == null)
+            {
+                _heroDeathTopBarTitle = FindTmpInLoadedScenes("txt_topbar_gameOver");
+            }
+
+            if (_heroDeathContinueButton == null)
+            {
+                _heroDeathContinueButton = FindGameObjectInLoadedScenes("btn_gameOver_continue");
+                if (_heroDeathContinueButton == null)
+                {
+                    _heroDeathContinueButton = FindGameObjectInLoadedScenes("bkg_gameOver_continue");
+                }
+            }
+
+            if (_heroDeathTopBarContinue == null)
+            {
+                _heroDeathTopBarContinue = FindTmpInLoadedScenes("txt_topbar_gameOver_continue");
+            }
+        }
+
+        private static TMP_Text FindTmpInLoadedScenes(string exactName)
+        {
+            if (string.IsNullOrEmpty(exactName))
+            {
+                return null;
+            }
+
+            TMP_Text[] texts = FindObjectsByType<TMP_Text>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < texts.Length; i++)
+            {
+                TMP_Text t = texts[i];
+                if (t != null && t.gameObject.name.Equals(exactName, StringComparison.Ordinal))
+                {
+                    return t;
+                }
+            }
+
+            return null;
+        }
+
+        private static GameObject FindGameObjectInLoadedScenes(string exactName)
+        {
+            if (string.IsNullOrEmpty(exactName))
+            {
+                return null;
+            }
+
+            GameObject[] objects = FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < objects.Length; i++)
+            {
+                GameObject go = objects[i];
+                if (go != null && go.name.Equals(exactName, StringComparison.Ordinal))
+                {
+                    return go;
+                }
+            }
+
+            return null;
+        }
+
+        private void SetHeroDeathGameOverUiVisible(bool visible)
+        {
+            if (_heroDeathGameOverRoot != null)
+            {
+                _heroDeathGameOverRoot.SetActive(visible);
+            }
+
+            if (_heroDeathContinueButton != null)
+            {
+                _heroDeathContinueButton.SetActive(visible);
+            }
+
+            if (_heroDeathTopBarTitle != null)
+            {
+                _heroDeathTopBarTitle.gameObject.SetActive(visible);
+            }
+
+            if (_heroDeathTopBarContinue != null)
+            {
+                _heroDeathTopBarContinue.gameObject.SetActive(visible);
+            }
+        }
+
+        private void ResolveGameWonUiIfNeeded()
+        {
+            if (_gameWonRoot == null)
+            {
+                _gameWonRoot = FindGameObjectInLoadedScenes("GameWon");
+            }
+
+            if (_gameWonContinueButton == null)
+            {
+                _gameWonContinueButton = FindGameObjectInLoadedScenes("btn_gameWon_continue");
+            }
+
+            if (_gameWonTopBarTitle == null)
+            {
+                _gameWonTopBarTitle = FindTmpInLoadedScenes("txt_topbar_gameWon");
+            }
+
+            if (_gameWonTopBarContinue == null)
+            {
+                _gameWonTopBarContinue = FindTmpInLoadedScenes("txt_topbar_gameWon_continue");
+            }
+        }
+
+        private void SetGameWonUiVisible(bool visible)
+        {
+            if (_gameWonRoot != null)
+            {
+                _gameWonRoot.SetActive(visible);
+            }
+
+            if (_gameWonContinueButton != null)
+            {
+                _gameWonContinueButton.SetActive(visible);
+            }
+
+            if (_gameWonTopBarTitle != null)
+            {
+                _gameWonTopBarTitle.gameObject.SetActive(visible);
+            }
+
+            if (_gameWonTopBarContinue != null)
+            {
+                _gameWonTopBarContinue.gameObject.SetActive(visible);
+            }
         }
 
         private WaveConfig_V2 GetCurrentWaveConfig()

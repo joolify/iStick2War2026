@@ -154,6 +154,14 @@ namespace iStick2War_V2
             {
                 LogAnchorSetupOnce();
             }
+
+            if (_masterDebugGrenadeOnly)
+            {
+                Debug.LogWarning(
+                    "[EnemySpawner_V2] Master Debug Grenade Only is ON: every spawned Paratrooper_V2 gets grenade-only AI " +
+                    "and MP40 is hard-disabled. They will throw at most until grenade cooldown, then idle with no MP40. " +
+                    "Disable _masterDebugGrenadeOnly on this spawner for normal combat.");
+            }
         }
 
         public void BeginWave(
@@ -801,15 +809,16 @@ namespace iStick2War_V2
             Vector2 rbVelocity = rb != null ? rb.linearVelocity : Vector2.zero;
             string aircraftInfo = aircraft != null ? $"aircraft='{aircraft.name}' aircraftPos={aircraft.transform.position}" : "aircraft=(none)";
 
-            Debug.Log(
-                "[EnemySpawner_V2] Paratrooper spawn snapshot\n" +
-                FormatWaveDiagLine() +
-                $"  id={spawnSeq} phase={phase} side={(fromLeft ? "LEFT" : "RIGHT")} state={stateLabel}\n" +
-                $"  requestedPos={requestedSpawnPos} inside={reqInside}\n" +
-                $"  actualTransformPos={actualTransformPos} inside={actualInside}\n" +
-                $"  rbPos={rbPosition} inside={rbInside} rbVel={rbVelocity}\n" +
-                $"  {aircraftInfo}\n" +
-                $"  {camInfo}");
+            // Noisy when _debugAnchorSpawnDiagnostics + spawn trace runs; uncomment to inspect spawn snapshots.
+            // Debug.Log(
+            //     "[EnemySpawner_V2] Paratrooper spawn snapshot\n" +
+            //     FormatWaveDiagLine() +
+            //     $"  id={spawnSeq} phase={phase} side={(fromLeft ? "LEFT" : "RIGHT")} state={stateLabel}\n" +
+            //     $"  requestedPos={requestedSpawnPos} inside={reqInside}\n" +
+            //     $"  actualTransformPos={actualTransformPos} inside={actualInside}\n" +
+            //     $"  rbPos={rbPosition} inside={rbInside} rbVel={rbVelocity}\n" +
+            //     $"  {aircraftInfo}\n" +
+            //     $"  {camInfo}");
         }
 
         private bool IsWorldPositionInsideOrthographicCameraView(Vector3 worldPosition, float padding)
@@ -956,8 +965,9 @@ namespace iStick2War_V2
         {
             PruneInactiveTrackedDeaths();
 
-            // BeginWave failed (null prefab / config) leaves target 0 — never report "cleared" or waves end instantly.
-            if (_targetSpawnCount <= 0)
+            // BeginWave failed (null prefab / config) leaves target 0 and no active wave config.
+            // Valid bomber-only waves intentionally use target 0 helicopter drops.
+            if (_targetSpawnCount < 0 || (!_spawnRoutineFinished && _targetSpawnCount == 0))
             {
                 return false;
             }

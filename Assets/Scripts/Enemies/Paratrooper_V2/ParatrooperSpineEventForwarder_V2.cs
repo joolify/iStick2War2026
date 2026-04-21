@@ -173,6 +173,18 @@ namespace iStick2War_V2
             {
                 _controller.OnAnimationEvent(AnimationEventType.ShootFinished);
             }
+            else if (normalized == "grenade_started" || normalized == "grenadestarted")
+            {
+                _controller.OnAnimationEvent(AnimationEventType.GrenadeStarted);
+            }
+            else if (normalized == "grenade_finished" || normalized == "grenadefinished")
+            {
+                _controller.OnAnimationEvent(AnimationEventType.GrenadeFinished);
+            }
+            else if (normalized == "grenade_throw" || normalized == "grenadethrow")
+            {
+                _controller.OnAnimationEvent(AnimationEventType.GrenadeThrow);
+            }
             else if (normalized == "start_shoot" || normalized == "shoot_started")
             {
                 _controller.OnAnimationEvent(AnimationEventType.ShootStarted);

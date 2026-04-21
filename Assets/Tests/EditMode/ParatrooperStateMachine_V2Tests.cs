@@ -42,6 +42,7 @@ namespace iStick2War.Tests.EditMode
             _stateMachine.ChangeState(StickmanBodyState.Run);
 
             Assert.That(_stateMachine.CurrentState, Is.EqualTo(StickmanBodyState.Run));
+            Assert.That(_model.currentState, Is.EqualTo(StickmanBodyState.Run));
         }
 
         [Test]

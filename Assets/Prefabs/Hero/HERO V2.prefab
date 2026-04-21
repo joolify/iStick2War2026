@@ -447,7 +447,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 657bf09dca1ffa1499aea9a7d3a50913, type: 3}
   m_Name: 
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.AutoHero_V2
-  _testProfile: 1
+  _testProfile: 0
+  _forcePerfectProfile: 1
   _hero: {fileID: 8158568889302826421}
   _model: {fileID: 5383291416438822190}
   _view: {fileID: 8349641459453035569}
@@ -465,6 +466,10 @@ MonoBehaviour:
   _logShopAndWave: 0
   _logWaveCombatWhenNoTarget: 0
   _logWaveCombatWhenNoTargetIntervalSeconds: 2
+  _enableAutomationRunLoop: 1
+  _automationTotalRuns: 10
+  _automationActionDelaySeconds: 0.5
+  _automationLogs: 1
 --- !u!1 &7697533572169241141
 GameObject:
   m_ObjectHideFlags: 0

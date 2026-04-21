@@ -320,6 +320,11 @@ public class ParatrooperView_V2 : MonoBehaviour
             {
                 trackEntry.TrackTime = 0f;
             }
+            else if (state == StickmanBodyState.Shoot && _lastStateBeforeChange == StickmanBodyState.Grenade)
+            {
+                // Grenade may leave MP40 track stale; always restart the loop from t=0 when resuming fire.
+                trackEntry.TrackTime = 0f;
+            }
         }
         if (isDeathState)
         {
