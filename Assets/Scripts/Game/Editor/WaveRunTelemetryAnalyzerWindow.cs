@@ -263,10 +263,16 @@ namespace iStick2War_V2.Editor
             }
 
             EditorGUILayout.Space(6);
+            EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("Analyze", GUILayout.Height(28)))
             {
                 RunAnalysis();
             }
+            if (GUILayout.Button("Analyze: Spara rapportfil", GUILayout.Height(28), GUILayout.Width(170)))
+            {
+                SaveSingleAnalysisReportToJsonFolder();
+            }
+            EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space(8);
             _scroll = EditorGUILayout.BeginScrollView(_scroll);
@@ -991,6 +997,57 @@ namespace iStick2War_V2.Editor
             {
                 _lastMessageType = MessageType.Error;
                 _lastMessage = "Kunde inte spara batchrapport: " + ex.Message;
+            }
+        }
+
+        private void SaveSingleAnalysisReportToJsonFolder()
+        {
+            if (string.IsNullOrWhiteSpace(_report))
+            {
+                _lastMessageType = MessageType.Warning;
+                _lastMessage = "Ingen rapport att spara ännu. Kör «Analyze» först.";
+                return;
+            }
+
+            string dir = "";
+            if (!string.IsNullOrWhiteSpace(_jsonPath))
+            {
+                if (Directory.Exists(_jsonPath))
+                {
+                    dir = _jsonPath;
+                }
+                else
+                {
+                    dir = Path.GetDirectoryName(_jsonPath) ?? "";
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
+            {
+                _lastMessageType = MessageType.Error;
+                _lastMessage = "Kunde inte avgöra mål-mapp från JSON file. Välj en giltig JSON först.";
+                return;
+            }
+
+            string stem = "wave_analysis";
+            if (!string.IsNullOrWhiteSpace(_jsonPath) && File.Exists(_jsonPath))
+            {
+                stem = Path.GetFileNameWithoutExtension(_jsonPath);
+            }
+
+            string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+            string fileName = $"{stem}_analysis_{stamp}.txt";
+            string path = Path.Combine(dir, fileName);
+            try
+            {
+                File.WriteAllText(path, _report, Encoding.UTF8);
+                _lastMessageType = MessageType.Info;
+                _lastMessage = $"Analysrapport sparad: {path}";
+            }
+            catch (Exception ex)
+            {
+                _lastMessageType = MessageType.Error;
+                _lastMessage = "Kunde inte spara analysrapport: " + ex.Message;
             }
         }
 
