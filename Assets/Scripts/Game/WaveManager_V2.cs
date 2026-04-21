@@ -2,7 +2,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Text;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using iStick2War;
 using TMPro;
 
@@ -83,6 +85,13 @@ namespace iStick2War_V2
         [SerializeField]
         private WaveBalanceConfig_V2 _waveBalanceConfig;
         [SerializeField] private float _prepareDurationSeconds = 2f;
+        [Header("Between-wave pressure reset")]
+        [Tooltip("Apply a partial bunker heal after each cleared wave (before shop) to reduce carry-over pressure debt.")]
+        [SerializeField] private bool _enableBetweenWavePressureReset = true;
+        [Tooltip("Fraction of bunker max HP restored after each clear (0.15 = +15% max HP).")]
+        [SerializeField] [Range(0f, 1f)] private float _betweenWaveBunkerHealFraction = 0.15f;
+        [Tooltip("Extra Prepare delay before the next wave starts (breathing room).")]
+        [SerializeField] private float _betweenWaveExtraPrepareSeconds = 1.5f;
         [Tooltip(
             "When EnemySpawner is used, waves end only when the spawner reports cleared (all drops + kills). " +
             "WaveConfig duration no longer cuts the wave short. This is a last-resort timeout if the spawner never clears.")]
@@ -134,12 +143,18 @@ namespace iStick2War_V2
         private AutoHero_V2 _autoHero;
         private float _inWaveEnteredUnscaledTime;
         private string _lastGameErrorReason = "";
+        private float _extraPrepareDelaySecondsForNextWave;
 
         public event Action<WaveLoopState_V2> OnStateChanged;
         public event Action<int, int, int> OnMetaChanged;
 
         public WaveLoopState_V2 State => _state;
+        public EnemySpawner_V2 EnemySpawner => _enemySpawner;
         public int CurrentWaveNumber => _waveIndex + 1;
+
+        /// <summary>Unscaled seconds since this run entered <see cref="WaveLoopState_V2.InWave"/>; -1 if not InWave.</summary>
+        public float InWaveElapsedUnscaledSec =>
+            _state == WaveLoopState_V2.InWave ? Time.unscaledTime - _inWaveEnteredUnscaledTime : -1f;
         public int Currency => _currency;
         public int BunkerHealth => _bunkerHealth;
         public int BunkerMaxHealth => _bunkerMaxHealthRuntime;
@@ -386,6 +401,7 @@ namespace iStick2War_V2
             }
 
             _enemiesKilledThisWave++;
+            WaveRunTelemetry_V2.NotifyEnemyKilledForFeelKpis();
 
             // Do not complete wave from kill-count while spawner-driven delayed spawns
             // (e.g. aircraft -> drop-when-visible) may still be pending.
@@ -767,6 +783,8 @@ namespace iStick2War_V2
                 return;
             }
 
+            ApplyBetweenWavePressureReset();
+
             int reward = _hasScalingForActiveWave
                 ? _scalingForActiveWave.EffectiveWaveRewardCurrency
                 : wave.WaveRewardCurrency;
@@ -785,8 +803,34 @@ namespace iStick2War_V2
         private void EnterPreparingState()
         {
             SetState(WaveLoopState_V2.Preparing);
-            _stateEndTime = Time.time + Mathf.Max(0.1f, _prepareDurationSeconds);
+            float prepare = Mathf.Max(0.1f, _prepareDurationSeconds) + Mathf.Max(0f, _extraPrepareDelaySecondsForNextWave);
+            _extraPrepareDelaySecondsForNextWave = 0f;
+            _stateEndTime = Time.time + prepare;
             _enemiesKilledThisWave = 0;
+        }
+
+        private void ApplyBetweenWavePressureReset()
+        {
+            if (!_enableBetweenWavePressureReset)
+            {
+                _extraPrepareDelaySecondsForNextWave = 0f;
+                return;
+            }
+
+            int before = _bunkerHealth;
+            int healAmount = Mathf.RoundToInt(Mathf.Max(0f, _betweenWaveBunkerHealFraction) * _bunkerMaxHealthRuntime);
+            if (healAmount > 0)
+            {
+                _bunkerHealth = Mathf.Min(_bunkerMaxHealthRuntime, _bunkerHealth + healAmount);
+            }
+
+            _extraPrepareDelaySecondsForNextWave = Mathf.Max(0f, _betweenWaveExtraPrepareSeconds);
+            if (_debugWaveLogs)
+            {
+                Log(
+                    $"Between-wave pressure reset: bunker {before}->{_bunkerHealth}/{_bunkerMaxHealthRuntime}, " +
+                    $"extraPrepare={_extraPrepareDelaySecondsForNextWave:0.##}s.");
+            }
         }
 
         private void EnterInWaveState()
@@ -914,8 +958,173 @@ namespace iStick2War_V2
             Log($"WaveManager entered GameWon at wave {CurrentWaveNumber}.");
         }
 
+        private string BuildGameErrorDiagnosticsSnapshot()
+        {
+            var sb = new StringBuilder(2048);
+            sb.Append("time: realtimeSinceStartup=");
+            sb.Append(Time.realtimeSinceStartup.ToString("0.###", CultureInfo.InvariantCulture));
+            sb.Append(" unscaledTime=");
+            sb.Append(Time.unscaledTime.ToString("0.###", CultureInfo.InvariantCulture));
+            sb.Append(" timeSinceLevelLoad=");
+            sb.Append(Time.timeSinceLevelLoad.ToString("0.###", CultureInfo.InvariantCulture));
+            sb.Append(" timeScale=");
+            sb.Append(Time.timeScale.ToString("0.###", CultureInfo.InvariantCulture));
+            sb.Append(" frame=");
+            sb.Append(Time.frameCount);
+            sb.Append(" activeScene=");
+            Scene activeScene = SceneManager.GetActiveScene();
+            sb.Append(activeScene.path.Length > 0 ? activeScene.path : activeScene.name);
+            sb.Append(" loadedScenes=");
+            sb.Append(SceneManager.sceneCount);
+            sb.Append(" isEditor=");
+            sb.Append(Application.isEditor);
+            sb.Append(" platform=");
+            sb.Append(Application.platform.ToString());
+            sb.Append(" internet=");
+            sb.Append(Application.internetReachability.ToString());
+            sb.Append(" gcManagedBytes=");
+            sb.Append(GC.GetTotalMemory(false).ToString(CultureInfo.InvariantCulture));
+            sb.AppendLine();
+
+            sb.Append("waveLoop: state=");
+            sb.Append(_state.ToString());
+            sb.Append(" waveIndex0=");
+            sb.Append(_waveIndex);
+            sb.Append(" currentWave1=");
+            sb.Append(CurrentWaveNumber);
+            sb.Append(" inWaveElapsedUnscaledSec=");
+            sb.Append(InWaveElapsedUnscaledSec.ToString("0.###", CultureInfo.InvariantCulture));
+            sb.Append(" wavesListCount=");
+            sb.Append(_waves != null ? _waves.Count : 0);
+            sb.AppendLine();
+
+            sb.Append("economy: currency=");
+            sb.Append(_currency);
+            sb.Append(" bunkerHp=");
+            sb.Append(_bunkerHealth);
+            sb.Append(" bunkerMaxHp=");
+            sb.Append(_bunkerMaxHealthRuntime);
+            sb.AppendLine();
+
+            WaveConfig_V2 waveCfg = GetCurrentWaveConfig();
+            if (waveCfg != null)
+            {
+                sb.Append("waveConfig: enemyCount=");
+                sb.Append(waveCfg.EnemyCount);
+                sb.Append(" spawnIntervalSec=");
+                sb.Append(waveCfg.SpawnIntervalSeconds.ToString("0.###", CultureInfo.InvariantCulture));
+                sb.Append(" cfgHpMul=");
+                sb.Append(waveCfg.EnemyHealthMultiplier.ToString("0.###", CultureInfo.InvariantCulture));
+                sb.Append(" cfgDmgMul=");
+                sb.Append(waveCfg.EnemyDamageMultiplier.ToString("0.###", CultureInfo.InvariantCulture));
+                sb.Append(" bomberPasses=");
+                sb.Append(waveCfg.BomberPassCount);
+                sb.Append(" rewardCurrency=");
+                sb.Append(waveCfg.WaveRewardCurrency);
+                sb.AppendLine();
+            }
+            else
+            {
+                sb.AppendLine("waveConfig: (null)");
+            }
+
+            if (_hasScalingForActiveWave)
+            {
+                WaveRunScalingSnapshot s = _scalingForActiveWave;
+                sb.Append("scalingActiveWave: ver=");
+                sb.Append(s.ScalingVersion);
+                sb.Append(" effHp=");
+                sb.Append(s.EffectiveEnemyHpMultiplier.ToString("0.###", CultureInfo.InvariantCulture));
+                sb.Append(" effDmg=");
+                sb.Append(s.EffectiveEnemyDamageMultiplier.ToString("0.###", CultureInfo.InvariantCulture));
+                sb.Append(" effSpawnInt=");
+                sb.Append(s.EffectiveSpawnIntervalSeconds.ToString("0.###", CultureInfo.InvariantCulture));
+                sb.Append(" effReward=");
+                sb.Append(s.EffectiveWaveRewardCurrency);
+                sb.AppendLine();
+            }
+            else
+            {
+                sb.AppendLine("scalingActiveWave: (none)");
+            }
+
+            sb.Append("watchdog: enable=");
+            sb.Append(_enableGameErrorWatchdog);
+            sb.Append(" noAimShootSec=");
+            sb.Append(_autoHeroNoAimOrShootErrorSeconds.ToString("0.#", CultureInfo.InvariantCulture));
+            sb.Append(" noSpawnSec=");
+            sb.Append(_enemyNoSpawnErrorSeconds.ToString("0.#", CultureInfo.InvariantCulture));
+            sb.AppendLine();
+
+            if (_hero != null)
+            {
+                sb.Append("hero: hp=");
+                sb.Append(_hero.GetCurrentHealth());
+                sb.Append("/");
+                sb.Append(_hero.GetMaxHealth());
+                sb.Append(" dead=");
+                sb.Append(_hero.IsDead());
+                sb.Append(" weapon=");
+                sb.Append(_hero.GetCurrentWeaponDisplayName());
+                sb.Append(" type=");
+                sb.Append(_hero.CurrentWeaponType.ToString());
+                sb.Append(" ammo=");
+                sb.Append(_hero.GetCurrentWeaponAmmo());
+                sb.Append("/");
+                sb.Append(_hero.GetCurrentWeaponMaxAmmo());
+                sb.Append(" reserve=");
+                sb.Append(_hero.GetCurrentWeaponReserveAmmo());
+                sb.Append(" pos=");
+                sb.Append(_hero.transform.position.x.ToString("0.##", CultureInfo.InvariantCulture));
+                sb.Append(",");
+                sb.Append(_hero.transform.position.y.ToString("0.##", CultureInfo.InvariantCulture));
+                sb.AppendLine();
+            }
+            else
+            {
+                sb.AppendLine("hero: (null)");
+            }
+
+            if (_autoHero != null)
+            {
+                float now = Time.unscaledTime;
+                sb.Append("autoHero: lastAimUnscaledAge=");
+                sb.Append((now - _autoHero.LastAimAtEnemyUnscaledTime).ToString("0.###", CultureInfo.InvariantCulture));
+                sb.Append("s lastShootHeldUnscaledAge=");
+                sb.Append((now - _autoHero.LastShootHeldUnscaledTime).ToString("0.###", CultureInfo.InvariantCulture));
+                sb.Append("s");
+                sb.AppendLine();
+            }
+            else
+            {
+                sb.AppendLine("autoHero: (null)");
+            }
+
+            if (_enemySpawner != null)
+            {
+                sb.Append("enemySpawner: ");
+                sb.AppendLine(_enemySpawner.BuildDiagnosticsSnapshotForTelemetry());
+            }
+            else
+            {
+                sb.AppendLine("enemySpawner: (null)");
+            }
+
+            return sb.ToString();
+        }
+
         private void EnterGameErrorState(string reason)
         {
+            // Telemetry and other OnStateChanged listeners read this immediately; set before SetState
+            // so WaveRunTelemetry_V2 can emit game_error:<detail> on the same callback tick.
+            _lastGameErrorReason = string.IsNullOrWhiteSpace(reason) ? "Unknown error." : reason.Trim();
+            string diagnostics = BuildGameErrorDiagnosticsSnapshot();
+            Debug.LogError(
+                "[WaveManager_V2] GameError — " + _lastGameErrorReason + "\n" + diagnostics);
+            WaveRunTelemetry_V2.RecordSyntheticTelemetryError(
+                "GameError",
+                _lastGameErrorReason + "\n--- diagnostics (pre StopWave / pre state listeners) ---\n" + diagnostics);
+
             SetState(WaveLoopState_V2.GameError);
             if (_enemySpawner != null)
             {
@@ -930,7 +1139,6 @@ namespace iStick2War_V2
             SetCameraFollowEnabled(false);
             SetHeroDeathGameOverUiVisible(false);
             SetGameWonUiVisible(false);
-            _lastGameErrorReason = string.IsNullOrWhiteSpace(reason) ? "Unknown error." : reason;
             ResolveGameErrorUiIfNeeded();
             SetGameErrorUiVisible(true);
             Log($"WaveManager entered GameError. reason={_lastGameErrorReason}");
@@ -1168,7 +1376,7 @@ namespace iStick2War_V2
                 }
             }
 
-            if (_enemySpawner != null)
+            if (_enemySpawner != null && _enemySpawner.IsWaveActive)
             {
                 float noSpawnSeconds = Mathf.Max(0f, now - _enemySpawner.LastParatrooperSpawnUnscaledTime);
                 if (noSpawnSeconds >= Mathf.Max(5f, _enemyNoSpawnErrorSeconds))

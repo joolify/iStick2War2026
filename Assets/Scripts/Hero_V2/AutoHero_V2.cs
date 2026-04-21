@@ -669,7 +669,6 @@ namespace iStick2War_V2
             {
                 aimPoint = target.bounds.center;
                 hasTarget = true;
-                _lastAimAtEnemyUnscaledTime = Time.unscaledTime;
             }
 
             RefreshAimNoiseForProfile(hasTarget);
@@ -732,6 +731,13 @@ namespace iStick2War_V2
             {
                 _lastShootHeldUnscaledTime = Time.unscaledTime;
             }
+
+            // Watchdog uses max(aim, shoot): firing with a fallback aim point must still count as "aim" activity.
+            if (hasTarget || rawShootHeld)
+            {
+                _lastAimAtEnemyUnscaledTime = Time.unscaledTime;
+            }
+
             bool reload = _hero.ShouldShowReloadPrompt();
 
             _view.SetAutoAimWorldOverride(hasTarget ? aimPoint : heroPos + Vector2.right * 6f);

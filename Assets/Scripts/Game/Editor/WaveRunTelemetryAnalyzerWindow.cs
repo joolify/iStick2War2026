@@ -71,9 +71,75 @@ namespace iStick2War_V2.Editor
             "TRIVIAL_BUNKER\tingen bunker-skada och minBunkerHpRatio ≥ 0.99\n" +
             "PRESSURE_DOMINATED_DURATION\ttryck-tid följer nästan hela våglängden\n\n" +
             "Dessutom visas ungefärlig HP-ratio-lutning från första/sista bunkerHpSamples-punkt (slope≈…/s).\n\n" +
+            "JSON: root.unityLogs[] (om den finns) listar Unity Error/Exception/Assert med samma sessionId, wave, vapen, HP, " +
+            "position, trackedLivingParatroopers m.m. (batch-TSV har kolumnen unityLogRows). " +
+            "root.feelSession = första kill/damage/död/köp + offline feel-KPI:er i batch-TSV (feel_* kolumner).\n\n" +
             "Flaggorna är tolkningshjälp, inte balans-sanning — justera trösklar i editor-skriptet när ni har mer data.\n\n" +
             "Inställning «Undertryck onboarding-flaggor»: döljer OBJECTIVE_INACTIVE, TRIVIAL_BUNKER och SWEET_SPOT_HINT för valt vågnummer och lägre " +
             "(så tidiga vågor inte feltolkas som balans-/retention-signaler).";
+
+        /// <summary>Field guide for JSON + batch columns (Swedish); appended to Analyze/Batch reports and optional UI foldout.</summary>
+        private static readonly string AnalyzerTelemetryReferenceSv =
+            "--- Telemetri & JSON (vad filen betyder) ---\n" +
+            "Källa: «WaveRunTelemetry_V2» skriver en JSON-fil per körning (Unity JsonUtility). Rotobjektet har bl.a. " +
+            "«_comment», «glossary», eko-fält för bunker-/HP-sampling, «events[]», valfritt «unityLogs[]», " +
+            "valfritt «feelSession». Alla tider i «realtimeSinceStartup» är sekunder sedan Unity startade när raden skrevs.\n" +
+            "Rot: «bunkerCriticalHpFractionUsed», «bunkerHpSampleIntervalSecUsed», «bunkerHpSamplesMaxPerWaveUsed», " +
+            "«bunkerPressureHpRatioThresholdUsed» = sparade trösklar/samplingsparametrar vid persist (samma som används i analysens tryck-mått). " +
+            "«glossary» i JSON-filen är auktoritativ ordlista för fältnamn om den skiljer sig från denna rapport.\n\n" +
+            "## events[] — rader (kind)\n" +
+            "• «session_begin»: körning startad; ekonomi/HP/vapen speglar snapshot vid skrivtillfälle. «waveScalingJson» tom.\n" +
+            "• «wave_cleared»: vågen som nyss avslutats (lämnar InWave → Shop). «wave» = den avslutade vågen. " +
+            "«waveDurationSec» = tid i InWave för den vågen. «enemiesKilled» = kills den vågen. " +
+            "Skada/heal/skott m.m. är ackumulatorer för just den InWave-perioden.\n" +
+            "• «run_end»: GameOver / GameError / GameWon m.m. «endReason» förklarar utfallet (t.ex. «hero_death», " +
+            "«game_error:…», «game_won»). Om GameOver skedde under InWave fylls abort-vågens bunkerkurva som vid wave_cleared.\n" +
+            "• «session_quit»: editor/app avslutad utan GameOver (tom «waveScalingJson»).\n\n" +
+            "## events[] — viktiga fält (samma namn på alla rader; tolkning beror på kind)\n" +
+            "«sessionId»: hex utan bindestreck, samma session som filnamn-suffix.\n" +
+            "«wave»: 1-baserat vågnummer vid skrivtid (session_begin = aktuell våg; wave_cleared = nyss klar våg).\n" +
+            "«heroHp» / «heroMaxHp», «bunkerHp» / «bunkerMaxHp», «currency»: snapshot vid raden.\n" +
+            "«weapon» / «weaponType»: vapen vid snapshot.\n" +
+            "«damageTakenHero» / «healingHero»: under aktuell InWave (nollställs nästa InWave).\n" +
+            "«damageTakenBunker»: bunker-skada under InWave (via NotifyBunkerDamageTaken).\n" +
+            "«timeInBunkerSec»: hero i bunkerzon under InWave (oskalad tid).\n" +
+            "«shotsFired», «rayHits» / «rayMisses», «projectileLaunches», «reloads»: combat under InWave.\n" +
+            "«shopPurchasesPrior» / «shopCurrencySpentPrior» / «shopOffersBoughtPrior[]»: på «wave_cleared» = " +
+            "köp i shop-intermissionen före den vågen som just cleared.\n" +
+            "«heroHpWaveStart» / «bunkerHpWaveStart» / «currencyWaveStart»: vid InWave-start för den vågen " +
+            "(session_begin fyller samma för första radens konsistens).\n" +
+            "«autoHeroTestProfile» / «sceneProfileId»: bot/scenprofil om satta.\n" +
+            "«bunkerBreached»: bunkerHp==0 vid snapshot. «bunkerCriticalLow»: låg men icke-noll bunker enligt rot-tröskel.\n" +
+            "«waveStressScore», «bunkerPressureTimeSec», «bunkerPressureTimeAfterFirstDamageSec», " +
+            "«minBunkerHpRatioThisWave», «bunkerHpSamples[]»: se rotfältens eko och JSON-glossary.\n" +
+            "«waveScalingJson»: JsonUtility-sträng med skalning för wave_cleared / relevant run_end (tom annars).\n\n" +
+            "## unityLogs[] (rot)\n" +
+            "Varje rad = Unity Error/Exception/Assert (ev. Warning om aktiverat) + gameplay-snapshot " +
+            "(wave, state, HP, ammo, scen, spawner-rad, …). «fingerprint» + «repeatCount» slår ihop identiska " +
+            "på varandra följande fel. Samma «sessionId» som events[].\n\n" +
+            "## feelSession (rot)\n" +
+            "Milstolpar i Time.realtimeSinceStartup + sekunder sedan session_begin (fält …SecSinceSessionBegin, −1 om ej hänt). " +
+            "Första köpet: valuta/erbjudande + hero HP/max/vapen för power-delta-jämförelse mot senare wave_cleared.\n\n" +
+            "## Feel-KPI:er i denna rapport (offline, från events + feelSession)\n" +
+            "• «first90s» = ja om sekunder sedan session_begin ligger i [0, 90] för milstolpen.\n" +
+            "• «bunkerTimeFrac01» = summa(timeInBunkerSec)/summa(waveDurationSec) över wave_cleared " +
+            "(lägre ≈ mindre tid i bunker; grov proxy för «skjuta vs gömma»).\n" +
+            "• «combatProxyPerHeroDamageTaken» = (summa rayHits+projectileLaunches+enemiesKilled)/max(1, summa damageTakenHero) " +
+            "— kan spegla skicklighet, vapen eller fiendetal; inte «roligt per se».\n" +
+            "• «overwhelmedInWaveSecSum» = total InWave-tid för vågor där damageTakenHero/waveDurationSec ≥ 10 " +
+            "(konstant FeelOverwhelmedHeroDps i editor-skriptet) — heuristik, kalibrera mot hur det känns i spel.\n" +
+            "• «heroMaxHpDeltaAfterFirstShop» = första wave_cleared efter första köpets tid: heroMaxHp minus max vid köp.\n" +
+            "• «survSecAfterFirstShop» = realtime till första död efter köp, annars till sista run_end/session_quit.\n\n" +
+            "## Batch-TSV (kolumner, filordning)\n" +
+            "fil: filnamn. sessionId. sceneProfileId / autoHero från session_begin-liknande meta.\n" +
+            "failWave: sista run_end:s våg om fail (ej game_won), annars —. maxWaveCleared: högsta wave på wave_cleared.\n" +
+            "sessionSec: sista minus första events[].realtimeSinceStartup (grovt sessionslängd).\n" +
+            "flags: heuristiska flaggor unika för körningen (;-separerade). unityLogRows: antal unityLogs-rader.\n" +
+            "feel_firstKillSec … feel_firstShopSec: från feelSession (−1/blankt om saknas). " +
+            "feel_bunkerTimeFrac01 … feel_survSecAfterFirstShop: härledda som ovan.\n\n" +
+            "## Tolkning (viktigt)\n" +
+            "Siffror här är stöd för speltest och design, inte automatisk «bra/dålig»-dom. Vid motsägelse: lita på känsla i build + " +
+            "reproducerbar kontext (JSON + unityLogs), inte på en enskild proxy.\n";
 
         private string _jsonPath = "";
         private string _batchFolderPath = "";
@@ -86,6 +152,7 @@ namespace iStick2War_V2.Editor
         private Vector2 _scroll;
         private string _report = "";
         private bool _showIntroFoldout = true;
+        private bool _showTelemetryRefFoldout = true;
         /// <summary>When true, skip OBJECTIVE_INACTIVE, TRIVIAL_BUNKER, and SWEET_SPOT_HINT for early waves (onboarding).</summary>
         private bool _suppressOnboardingBunkerFlags;
         private int _onboardingMaxWaveInclusive;
@@ -134,6 +201,15 @@ namespace iStick2War_V2.Editor
                 if (_showIntroFoldout)
                 {
                     EditorGUILayout.HelpBox(AnalyzerIntroSv, MessageType.None);
+                }
+
+                _showTelemetryRefFoldout = EditorGUILayout.Foldout(
+                    _showTelemetryRefFoldout,
+                    "Telemetri & JSON — fältguide (samma som i rapporten)",
+                    true);
+                if (_showTelemetryRefFoldout)
+                {
+                    EditorGUILayout.HelpBox(AnalyzerTelemetryReferenceSv, MessageType.None);
                 }
 
                 EditorGUILayout.Space(4);
@@ -332,9 +408,14 @@ namespace iStick2War_V2.Editor
             var sb = new StringBuilder(4096);
             sb.AppendLine(AnalyzerIntroSv);
             sb.AppendLine();
+            sb.AppendLine(AnalyzerTelemetryReferenceSv);
+            sb.AppendLine();
             sb.AppendLine("---");
             sb.AppendLine($"File: {_jsonPath}");
             sb.AppendLine($"bunkerPressureHpRatioThresholdUsed (root): {pressureThr:0.###} (reference; row flags use fixed heuristics v1)");
+            int unityLogRows = root.unityLogs != null ? root.unityLogs.Length : 0;
+            sb.AppendLine($"unityLogs[] (Unity errors/exceptions snapshot): {unityLogRows} rad(er)");
+            AppendFeelKpisSingleFileReport(sb, root);
             int onboardMax = Mathf.Max(0, _onboardingMaxWaveInclusive);
             sb.AppendLine(
                 "Onboarding-filter: " +
@@ -522,6 +603,40 @@ namespace iStick2War_V2.Editor
                 sb.AppendLine();
             }
 
+            if (root.unityLogs != null && root.unityLogs.Length > 0)
+            {
+                sb.AppendLine("--- Unity console / errors (root.unityLogs[], senaste först i filen = högst index) ---");
+                int show = Mathf.Min(root.unityLogs.Length, 25);
+                int start = Mathf.Max(0, root.unityLogs.Length - show);
+                for (int i = root.unityLogs.Length - 1; i >= start; i--)
+                {
+                    TelemetryUnityLogRowDto u = root.unityLogs[i];
+                    if (u == null)
+                    {
+                        continue;
+                    }
+
+                    sb.AppendLine(
+                        $"[{u.logType}] wave={u.wave} {u.waveLoopState} repeat={u.repeatCount} " +
+                        $"hero={u.heroHp}/{u.heroMaxHp} ammo={u.heroAmmoInMag}/{u.heroAmmoMagMax}+{u.heroReserveAmmo} " +
+                        $"{Truncate(u.weapon ?? "", 22)} trackedPara={u.trackedLivingParatroopers} fp={u.fingerprint}");
+                    sb.AppendLine(
+                        $"  ctx: timeScale={u.timeScale:0.###} inWaveUnscaledSec={u.inWaveUnscaledSec:0.###} " +
+                        $"dmgH={u.damageTakenHeroThisWave} dmgBnk={u.damageTakenBunkerThisWave} shots={u.shotsFiredThisWave} " +
+                        $"bunkPressUnscaled={u.bunkerPressureTimeUnscaledThisWave:0.##}");
+                    sb.AppendLine("  scene: " + Truncate(u.activeScenePathOrName ?? "", 100));
+                    sb.AppendLine("  scaling: " + Truncate(u.scalingSnapshotShort ?? "", 200));
+                    sb.AppendLine("  spawner: " + Truncate(u.spawnerDiagnosticsLine ?? "", 220));
+                    sb.AppendLine("  msg: " + Truncate(u.messageTruncated ?? "", 220));
+                    if (!string.IsNullOrEmpty(u.stackTraceTruncated))
+                    {
+                        sb.AppendLine("  stack: " + Truncate(u.stackTraceTruncated, 260));
+                    }
+                }
+
+                sb.AppendLine();
+            }
+
             _report = sb.ToString();
             _lastMessageType = MessageType.Info;
             _lastMessage = "Analysis complete.";
@@ -544,6 +659,8 @@ namespace iStick2War_V2.Editor
             Array.Sort(files, StringComparer.OrdinalIgnoreCase);
 
             int batchRuns = 0;
+            long totalUnityLogRows = 0;
+            int runsWithUnityLogs = 0;
             int readOrParseFailed = 0;
             int emptyEvents = 0;
             var noWaveEndFiles = new List<string>(8);
@@ -795,8 +912,37 @@ namespace iStick2War_V2.Editor
 
                 string flagsJoined = flagsThisRun.Count > 0 ? string.Join(";", flagsThisRun) : "(inga)";
                 string deathText = failWave >= 0 ? failWave.ToString(CultureInfo.InvariantCulture) : "—";
+                int unityRowsThisFile = root.unityLogs != null ? root.unityLogs.Length : 0;
+                if (unityRowsThisFile > 0)
+                {
+                    runsWithUnityLogs++;
+                    totalUnityLogRows += unityRowsThisFile;
+                }
+
+                ComputeFeelWaveAggregates(
+                    root.events,
+                    out float feelBunkerFrac,
+                    out float feelCombatPerHeroDmg,
+                    out float feelOverwSec,
+                    out float feelTotalDur);
+                int feelMaxHpDelta = ComputeHeroMaxHpDeltaAfterFirstShop(root.events, root.feelSession);
+                float feelSurvAfterShop = ComputeSurvivalRealtimeAfterFirstShop(root.events, root.feelSession);
+                string FeelF(float v) =>
+                    v >= 0f ? v.ToString("0.###", CultureInfo.InvariantCulture) : "";
+                TelemetryFeelSessionSummaryDto fs = root.feelSession;
+                string feelTsv =
+                    $"\t{(fs != null ? FeelF(fs.firstKillSecSinceSessionBegin) : "")}" +
+                    $"\t{(fs != null ? FeelF(fs.firstHeroDamageSecSinceSessionBegin) : "")}" +
+                    $"\t{(fs != null ? FeelF(fs.firstHeroDeathSecSinceSessionBegin) : "")}" +
+                    $"\t{(fs != null ? FeelF(fs.firstShopPurchaseSecSinceSessionBegin) : "")}" +
+                    $"\t{feelBunkerFrac.ToString("0.###", CultureInfo.InvariantCulture)}" +
+                    $"\t{feelCombatPerHeroDmg.ToString("0.###", CultureInfo.InvariantCulture)}" +
+                    $"\t{feelOverwSec.ToString("0.##", CultureInfo.InvariantCulture)}" +
+                    $"\t{feelMaxHpDelta.ToString(CultureInfo.InvariantCulture)}" +
+                    $"\t{(feelSurvAfterShop >= 0f ? feelSurvAfterShop.ToString("0.##", CultureInfo.InvariantCulture) : "")}";
+
                 string tsvLine =
-                    $"{fn}\t{sessionId}\t{sceneProfileId}\t{autoHeroProfile}\t{deathText}\t{maxWaveCleared}\t{sessionDur:0.#}\t{flagsJoined}";
+                    $"{fn}\t{sessionId}\t{sceneProfileId}\t{autoHeroProfile}\t{deathText}\t{maxWaveCleared}\t{sessionDur:0.#}\t{flagsJoined}\t{unityRowsThisFile}{feelTsv}";
                 perFileLines.Add(tsvLine);
 
                 batchRuns++;
@@ -806,6 +952,8 @@ namespace iStick2War_V2.Editor
 
             var sb = new StringBuilder(8192);
             sb.AppendLine("BATCH — wave telemetry (v1-heuristik, offline)");
+            sb.AppendLine();
+            sb.AppendLine(AnalyzerTelemetryReferenceSv);
             sb.AppendLine();
             sb.AppendLine($"Mapp: {_batchFolderPath}");
             sb.AppendLine($"Sökning: {(_batchRecursive ? "rekursiv" : "endast vald mapp")}");
@@ -832,6 +980,8 @@ namespace iStick2War_V2.Editor
                     : "av"));
             sb.AppendLine();
             sb.AppendLine($"JSON-filer matchade (*.json): {files.Length}");
+            sb.AppendLine(
+                $"Unity console-rader (root.unityLogs[]): {totalUnityLogRows} totalt i {runsWithUnityLogs} körningar (minst en rad)");
             sb.AppendLine($"Hoppade över (filter): {skippedByFilter}");
             if (skippedByFilter > 0 && skipReasonCount.Count > 0)
             {
@@ -969,7 +1119,12 @@ namespace iStick2War_V2.Editor
 
             sb.AppendLine();
             sb.AppendLine("--- Per fil (TSV — klistra i Excel) ---");
-            sb.AppendLine("fil\tsessionId\tsceneProfileId\tautoHero\tfailWave\tmaxWaveCleared\tsessionSec\tflags");
+            sb.AppendLine("Kolumnbeskrivning: se avsnittet «Batch-TSV» i ordlistan överst i denna batch-rapport.");
+            sb.AppendLine(
+                "fil\tsessionId\tsceneProfileId\tautoHero\tfailWave\tmaxWaveCleared\tsessionSec\tflags\tunityLogRows\t" +
+                "feel_firstKillSec\tfeel_firstDmgSec\tfeel_firstDeathSec\tfeel_firstShopSec\t" +
+                "feel_bunkerTimeFrac01\tfeel_combatPerHeroDmgTaken\tfeel_overwhelmedInWaveSecSum\t" +
+                "feel_heroMaxHpDeltaAfterFirstShop\tfeel_survSecAfterFirstShop");
             foreach (string line in perFileLines)
             {
                 sb.AppendLine(line);
@@ -1412,6 +1567,197 @@ namespace iStick2War_V2.Editor
             return Mathf.Clamp01(depth * 0.62f + slopeNorm * 0.38f);
         }
 
+        /// <summary>Hero damage taken per second above this counts the whole wave duration toward "overwhelmed" time.</summary>
+        private const float FeelOverwhelmedHeroDps = 10f;
+
+        private static string FeelFirst90sLabel(float secSinceSessionBegin)
+        {
+            if (secSinceSessionBegin < 0f)
+            {
+                return "—";
+            }
+
+            return secSinceSessionBegin <= 90f ? "ja" : "nej";
+        }
+
+        private static void ComputeFeelWaveAggregates(
+            TelemetryEventDto[] events,
+            out float bunkerTimeFrac01,
+            out float combatProxyPerHeroDamageTaken,
+            out float overwhelmedInWaveSecSum,
+            out float totalWaveClearedInWaveSec)
+        {
+            bunkerTimeFrac01 = 0f;
+            combatProxyPerHeroDamageTaken = 0f;
+            overwhelmedInWaveSecSum = 0f;
+            totalWaveClearedInWaveSec = 0f;
+            if (events == null || events.Length == 0)
+            {
+                return;
+            }
+
+            double bunkerSum = 0.0;
+            double durSum = 0.0;
+            double combatSum = 0.0;
+            int heroDmgSum = 0;
+            double overwhelmDur = 0.0;
+            for (int i = 0; i < events.Length; i++)
+            {
+                TelemetryEventDto e = events[i];
+                if (e == null || NormalizeKind(e.kind) != "wave_cleared")
+                {
+                    continue;
+                }
+
+                float dur = Mathf.Max(0f, e.waveDurationSec);
+                if (dur < 0.0001f)
+                {
+                    continue;
+                }
+
+                durSum += dur;
+                bunkerSum += Mathf.Max(0f, e.timeInBunkerSec);
+                int combatProxy = Mathf.Max(0, e.rayHits + e.projectileLaunches + e.enemiesKilled);
+                combatSum += combatProxy;
+                heroDmgSum += Mathf.Max(0, e.damageTakenHero);
+                float dps = e.damageTakenHero / dur;
+                if (dps >= FeelOverwhelmedHeroDps)
+                {
+                    overwhelmDur += dur;
+                }
+            }
+
+            totalWaveClearedInWaveSec = (float)durSum;
+            if (durSum > 0.0001)
+            {
+                bunkerTimeFrac01 = Mathf.Clamp01((float)(bunkerSum / durSum));
+            }
+
+            combatProxyPerHeroDamageTaken = heroDmgSum > 0 ? (float)(combatSum / heroDmgSum) : (float)combatSum;
+            overwhelmedInWaveSecSum = (float)overwhelmDur;
+        }
+
+        private static int ComputeHeroMaxHpDeltaAfterFirstShop(
+            TelemetryEventDto[] events,
+            TelemetryFeelSessionSummaryDto feel)
+        {
+            if (feel == null ||
+                feel.firstShopPurchaseRealtimeSinceStartup <= 0f ||
+                feel.firstPurchaseHeroMaxHp <= 0)
+            {
+                return 0;
+            }
+
+            float shopRt = feel.firstShopPurchaseRealtimeSinceStartup;
+            if (events == null)
+            {
+                return 0;
+            }
+
+            for (int i = 0; i < events.Length; i++)
+            {
+                TelemetryEventDto e = events[i];
+                if (e == null || NormalizeKind(e.kind) != "wave_cleared")
+                {
+                    continue;
+                }
+
+                if (e.realtimeSinceStartup > shopRt && e.heroMaxHp > 0)
+                {
+                    return e.heroMaxHp - feel.firstPurchaseHeroMaxHp;
+                }
+            }
+
+            return 0;
+        }
+
+        private static float ComputeSurvivalRealtimeAfterFirstShop(
+            TelemetryEventDto[] events,
+            TelemetryFeelSessionSummaryDto feel)
+        {
+            if (feel == null || feel.firstShopPurchaseRealtimeSinceStartup <= 0f || events == null)
+            {
+                return -1f;
+            }
+
+            float shopRt = feel.firstShopPurchaseRealtimeSinceStartup;
+            float endRt = -1f;
+            for (int i = events.Length - 1; i >= 0; i--)
+            {
+                TelemetryEventDto e = events[i];
+                if (e == null)
+                {
+                    continue;
+                }
+
+                string k = NormalizeKind(e.kind);
+                if (k == "run_end" || k == "session_quit")
+                {
+                    endRt = e.realtimeSinceStartup;
+                    break;
+                }
+            }
+
+            if (endRt < shopRt)
+            {
+                return -1f;
+            }
+
+            if (feel.firstHeroDeathRealtimeSinceStartup > shopRt)
+            {
+                return feel.firstHeroDeathRealtimeSinceStartup - shopRt;
+            }
+
+            return endRt - shopRt;
+        }
+
+        private static void AppendFeelKpisSingleFileReport(StringBuilder sb, TelemetryFileRootDto root)
+        {
+            sb.AppendLine("--- Feel KPIs (offline proxies) ---");
+            sb.AppendLine(
+                "OBS: feel-värden är heuristiska proxies (skicklighet, vapen, RNG, botprofil) — använd för att välja körningar " +
+                "att granska, inte som automatisk «bra/dålig»-dom. Se även ordlistan ovan (Feel-KPI / unityLogs / events).");
+            TelemetryFeelSessionSummaryDto f = root.feelSession;
+            if (f == null)
+            {
+                sb.AppendLine("(ingen feelSession — spela in med senaste WaveRunTelemetry_V2 / JSON)");
+                sb.AppendLine();
+                return;
+            }
+
+            sb.AppendLine(
+                "Milstolpar (sekunder sedan session_begin, -1 = ej inträffat). Fönster «första 90s»: ja om 0–90s.");
+            sb.AppendLine(
+                $"  firstKillSec={f.firstKillSecSinceSessionBegin:0.###} first90s={FeelFirst90sLabel(f.firstKillSecSinceSessionBegin)}");
+            sb.AppendLine(
+                $"  firstDamageSec={f.firstHeroDamageSecSinceSessionBegin:0.###} first90s={FeelFirst90sLabel(f.firstHeroDamageSecSinceSessionBegin)}");
+            sb.AppendLine(
+                $"  firstDeathSec={f.firstHeroDeathSecSinceSessionBegin:0.###} first90s={FeelFirst90sLabel(f.firstHeroDeathSecSinceSessionBegin)}");
+            sb.AppendLine(
+                $"  firstShopPurchaseSec={f.firstShopPurchaseSecSinceSessionBegin:0.###} first90s={FeelFirst90sLabel(f.firstShopPurchaseSecSinceSessionBegin)}");
+            sb.AppendLine(
+                $"  firstShop: spent={f.firstShopPurchaseCurrencySpent} offer={f.firstShopOfferKind} " +
+                $"heroAtPurchase={f.firstPurchaseHeroHp}/{f.firstPurchaseHeroMaxHp} weapon={f.firstPurchaseWeaponType}");
+            ComputeFeelWaveAggregates(
+                root.events,
+                out float bunkerFrac,
+                out float combatPerDmg,
+                out float overwSec,
+                out float totalDur);
+            sb.AppendLine(
+                $"Agency / stress (aggregerat över wave_cleared): " +
+                $"bunkerTimeFrac01={bunkerFrac:0.###} (lägre ≈ mindre gömma i bunker), " +
+                $"combatProxyPerHeroDamageTaken={combatPerDmg:0.###} (hits+launches+kills per HP skada), " +
+                $"overwhelmedInWaveSecSum={overwSec:0.##} (vågar där damageTakenHero/waveDurationSec≥{FeelOverwhelmedHeroDps.ToString("0.#", CultureInfo.InvariantCulture)} DPS), " +
+                $"totalInWaveSecCleared={totalDur:0.##}");
+            int maxHpDelta = ComputeHeroMaxHpDeltaAfterFirstShop(root.events, f);
+            float survAfterShop = ComputeSurvivalRealtimeAfterFirstShop(root.events, f);
+            sb.AppendLine(
+                $"Shop dopamine (proxy): heroMaxHpDelta efter första köp (första wave_cleared efter shop-tid)={maxHpDelta}, " +
+                $"survivalRealtimeAfterFirstShop_sec={(survAfterShop >= 0f ? survAfterShop.ToString("0.##", CultureInfo.InvariantCulture) : "—")}");
+            sb.AppendLine();
+        }
+
         private static string Truncate(string s, int max)
         {
             if (string.IsNullOrEmpty(s) || s.Length <= max)
@@ -1607,6 +1953,73 @@ namespace iStick2War_V2.Editor
         }
 
         [Serializable]
+        private sealed class TelemetryUnityLogRowDto
+        {
+            public string sessionId;
+            public string utcIso8601;
+            public float realtimeSinceStartup;
+            public string unityEditorOrPlayerVersion;
+            public string logType;
+            public string messageTruncated;
+            public string stackTraceTruncated;
+            public string fingerprint;
+            public int repeatCount;
+            public int wave;
+            public string waveLoopState;
+            public int heroHp;
+            public int heroMaxHp;
+            public string weapon;
+            public string weaponType;
+            public string autoHeroTestProfile;
+            public string sceneProfileId;
+            public float heroPosX;
+            public float heroPosY;
+            public int heroAmmoInMag;
+            public int heroAmmoMagMax;
+            public int heroReserveAmmo;
+            public int bunkerHp;
+            public int bunkerMaxHp;
+            public int currency;
+            public int enemiesKilledThisWave;
+            public int trackedLivingParatroopers;
+            public float timeUnscaled;
+            public float timeSinceLevelLoad;
+            public float timeScale;
+            public int frameCount;
+            public string activeScenePathOrName;
+            public int loadedSceneCount;
+            public bool isEditor;
+            public string platform;
+            public string internetReachability;
+            public long managedHeapBytes;
+            public float inWaveUnscaledSec;
+            public int damageTakenHeroThisWave;
+            public int damageTakenBunkerThisWave;
+            public int shotsFiredThisWave;
+            public float bunkerPressureTimeUnscaledThisWave;
+            public string scalingSnapshotShort;
+            public string spawnerDiagnosticsLine;
+        }
+
+        [Serializable]
+        private sealed class TelemetryFeelSessionSummaryDto
+        {
+            public float sessionBeginRealtimeSinceStartup;
+            public float firstKillRealtimeSinceStartup;
+            public float firstHeroDamageRealtimeSinceStartup;
+            public float firstHeroDeathRealtimeSinceStartup;
+            public float firstShopPurchaseRealtimeSinceStartup;
+            public float firstKillSecSinceSessionBegin;
+            public float firstHeroDamageSecSinceSessionBegin;
+            public float firstHeroDeathSecSinceSessionBegin;
+            public float firstShopPurchaseSecSinceSessionBegin;
+            public int firstShopPurchaseCurrencySpent;
+            public string firstShopOfferKind;
+            public int firstPurchaseHeroHp;
+            public int firstPurchaseHeroMaxHp;
+            public string firstPurchaseWeaponType;
+        }
+
         private sealed class TelemetryFileRootDto
         {
             public string _comment;
@@ -1616,6 +2029,8 @@ namespace iStick2War_V2.Editor
             public int bunkerHpSamplesMaxPerWaveUsed;
             public float bunkerPressureHpRatioThresholdUsed;
             public TelemetryEventDto[] events;
+            public TelemetryUnityLogRowDto[] unityLogs;
+            public TelemetryFeelSessionSummaryDto feelSession;
         }
 
         [Serializable]

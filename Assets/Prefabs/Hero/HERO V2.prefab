@@ -459,6 +459,8 @@ MonoBehaviour:
   _shootIfEnemyWithinWeaponRangeFactor: 1
   _bazookaPreferWithinHorizontal: 42
   _prioritizeInfantryOverAircraft: 1
+  _prioritizeGroundedParatroopers: 1
+  _groundedParatrooperPriorityBonus: 220
   _lowHealthEnterBunkerFraction: 0.35
   _maxShopPurchasesPerShopVisit: 24
   _shopScoreBonusBazookaAmmoWhenDry: 30000
@@ -467,9 +469,10 @@ MonoBehaviour:
   _logWaveCombatWhenNoTarget: 0
   _logWaveCombatWhenNoTargetIntervalSeconds: 2
   _enableAutomationRunLoop: 1
-  _automationTotalRuns: 10
+  _automationTotalRuns: 100
   _automationActionDelaySeconds: 0.5
   _automationLogs: 1
+  _autoRefillAmmoWhenDryInAutomation: 1
 --- !u!1 &7697533572169241141
 GameObject:
   m_ObjectHideFlags: 0

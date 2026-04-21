@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
 
 namespace iStick2War_V2
@@ -84,9 +85,19 @@ namespace iStick2War_V2
         [Tooltip("Safety cap for early waves to avoid immediate overload spikes from one helicopter flight.")]
         [SerializeField] private bool _capParatroopersPerFlightInEarlyWaves = true;
         [Tooltip("Apply early-wave cap up to and including this wave number (1-based).")]
-        [SerializeField] private int _earlyWaveCapMaxWaveInclusive = 1;
+        [SerializeField] private int _earlyWaveCapMaxWaveInclusive = 3;
         [Tooltip("Maximum paratroopers per helicopter flight while early-wave cap is active.")]
         [SerializeField] private int _earlyWaveMaxParatroopersPerFlight = 2;
+        [Header("Early-wave stabilization (wave 1-3)")]
+        [Tooltip("Apply deterministic anti-spike pacing in early waves.")]
+        [SerializeField] private bool _enableEarlyWaveStabilization = true;
+        [SerializeField] private int _earlyWaveStabilizationMaxWaveInclusive = 3;
+        [Tooltip("Multiplier on flight spawn interval in early waves (higher = slower spawns).")]
+        [SerializeField] private float _earlyWaveFlightSpawnIntervalMultiplier = 1.25f;
+        [Tooltip("Multiplier on per-flight drop spacing in early waves (higher = less stack).")]
+        [SerializeField] private float _earlyWaveDropIntervalMultiplier = 1.35f;
+        [Tooltip("Soft cap on simultaneously alive paratroopers during early waves.")]
+        [SerializeField] private int _earlyWaveMaxSimultaneousAliveParatroopers = 3;
         [Header("Wave 2 pacing override (anti-spike)")]
         [Tooltip("Apply additional pacing dampening only on wave 2 to reduce immediate post-wave-1 overload.")]
         [SerializeField] private bool _enableWave2PacingOverride = true;
@@ -168,6 +179,37 @@ namespace iStick2War_V2
 
         public float LastParatrooperSpawnUnscaledTime => _lastParatrooperSpawnUnscaledTime;
         public int SpawnedParatroopersThisWave => _spawnedCount;
+        public bool IsWaveActive => _isWaveActive;
+
+        /// <summary>
+        /// Approximate living paratroopers (tracked death handlers still active). For telemetry / diagnostics only.
+        /// </summary>
+        public int GetLivingParatroopersTrackedCountForTelemetry()
+        {
+            PruneInactiveTrackedDeaths();
+            return _trackedDeaths.Count;
+        }
+
+        /// <summary>One-line spawner state for GameError / telemetry (call before <see cref="StopWave"/> if possible).</summary>
+        public string BuildDiagnosticsSnapshotForTelemetry()
+        {
+            PruneInactiveTrackedDeaths();
+            float lastSpawnAgeSec = Time.unscaledTime - _lastParatrooperSpawnUnscaledTime;
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "isWaveActive={0} waveDiag={1} targetSpawn={2} spawned={3} spawnRoutineFinished={4} pendingDrops={5} " +
+                "trackedLiving={6} trackedAircraft={7} lastParatrooperSpawnAgeSec={8:0.###} waveSession={9}",
+                _isWaveActive,
+                FormatWaveNumberLabel(),
+                _targetSpawnCount,
+                _spawnedCount,
+                _spawnRoutineFinished,
+                _pendingDelayedDropCoroutines,
+                _trackedDeaths.Count,
+                _trackedAircraftDeaths.Count,
+                lastSpawnAgeSec,
+                _waveSessionId);
+        }
 
         private void Awake()
         {
@@ -270,7 +312,9 @@ namespace iStick2War_V2
             _spawnedCount = 0;
             _spawnRoutineFinished = false;
             _pendingDelayedDropCoroutines = 0;
-            _lastParatrooperSpawnUnscaledTime = 0f;
+            // Keep a sane timestamp after StopWave: EnterGameErrorState calls StopWave while the watchdog may still
+            // evaluate this frame; 0 would look like "no spawn since boot" and false-trigger no-spawn detection.
+            _lastParatrooperSpawnUnscaledTime = Time.unscaledTime;
         }
 
         private void OnDisable()
@@ -290,6 +334,13 @@ namespace iStick2War_V2
                 if (!_isWaveActive || waveSession != _waveSessionId)
                 {
                     yield break;
+                }
+
+                if (IsEarlyWaveSimultaneousCapReached())
+                {
+                    // Hold next helicopter flight until live infantry pressure drops below cap.
+                    yield return new WaitForSeconds(0.2f);
+                    continue;
                 }
 
                 int remaining = Mathf.Max(0, toSpawn - plannedParatroopers);
@@ -373,6 +424,11 @@ namespace iStick2War_V2
         private float GetRuntimeFlightSpawnIntervalSeconds()
         {
             float interval = Mathf.Max(0.05f, _runtimeSpawnIntervalSeconds);
+            if (IsEarlyWaveStabilizationActive())
+            {
+                interval *= Mathf.Max(0.5f, _earlyWaveFlightSpawnIntervalMultiplier);
+            }
+
             if (_enableWave2PacingOverride && _waveNumberForDiagnostics == 2)
             {
                 interval *= Mathf.Max(0.5f, _wave2FlightSpawnIntervalMultiplier);
@@ -384,12 +440,35 @@ namespace iStick2War_V2
         private float GetRuntimeDropIntervalPerFlightSeconds()
         {
             float interval = Mathf.Max(0f, _paratrooperDropIntervalPerFlight);
+            if (IsEarlyWaveStabilizationActive())
+            {
+                interval *= Mathf.Max(0.5f, _earlyWaveDropIntervalMultiplier);
+            }
+
             if (_enableWave2PacingOverride && _waveNumberForDiagnostics == 2)
             {
                 interval *= Mathf.Max(0.5f, _wave2DropIntervalMultiplier);
             }
 
             return interval;
+        }
+
+        private bool IsEarlyWaveStabilizationActive()
+        {
+            return _enableEarlyWaveStabilization &&
+                   _waveNumberForDiagnostics > 0 &&
+                   _waveNumberForDiagnostics <= Mathf.Max(1, _earlyWaveStabilizationMaxWaveInclusive);
+        }
+
+        private bool IsEarlyWaveSimultaneousCapReached()
+        {
+            if (!IsEarlyWaveStabilizationActive())
+            {
+                return false;
+            }
+
+            int cap = Mathf.Max(1, _earlyWaveMaxSimultaneousAliveParatroopers);
+            return _trackedDeaths.Count >= cap;
         }
 
         private void SpawnOne(int spawnIndexInWave, int paratroopersThisFlight)

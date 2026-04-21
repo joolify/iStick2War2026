@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using iStick2War;
 
 namespace iStick2War_V2
@@ -21,6 +22,30 @@ namespace iStick2War_V2
         [SerializeField] private bool _telemetryEnabled = true;
         [SerializeField] private string _fileNamePrefix = "wave_run";
         [SerializeField] private bool _logFilePathOnce = true;
+
+        [Header("Unity console → telemetry (errors / exceptions)")]
+        [Tooltip("Subscribe to Application.logMessageReceivedThreaded and append rows to root.unityLogs[] in the session JSON.")]
+        [SerializeField] private bool _captureUnityConsoleErrors = true;
+
+        [Tooltip("Also persist LogType.Warning (noisy in some projects).")]
+        [SerializeField] private bool _captureUnityWarningsToo;
+
+        [Tooltip("Merge consecutive identical fingerprints into repeatCount instead of spamming rows.")]
+        [SerializeField] private bool _unityLogCoalesceConsecutiveDuplicates = true;
+
+        [Tooltip("Cap stored unityLogs[] rows per session (oldest dropped when exceeded).")]
+        [SerializeField] [Range(16, 500)]
+        private int _unityLogsMaxRowsPerSession = 200;
+
+        [SerializeField] [Range(1024, 65535)]
+        private int _unityLogMessageMaxChars = 12000;
+
+        [SerializeField] [Range(0, 65535)]
+        private int _unityLogStackMaxChars = 48000;
+
+        [Tooltip("Max queued log lines from worker threads before dropping (burst protection).")]
+        [SerializeField] [Range(8, 500)]
+        private int _unityLogPendingQueueMax = 100;
 
         [Header("Derived bunker flags")]
         [Tooltip(
@@ -87,6 +112,79 @@ namespace iStick2War_V2
         private float _bunkerLowPressureTimeAfterFirstDamageUnscaledDuringWave;
         private bool _bunkerDamageReceivedThisWave;
 
+        // --- Feel / retention proxies (session; persisted on root.feelSession) ---
+        private float _feelSessionBeginRealtime = -1f;
+        private float _feelFirstKillRealtime = -1f;
+        private float _feelFirstHeroDamageRealtime = -1f;
+        private float _feelFirstHeroDeathRealtime = -1f;
+        private float _feelFirstShopPurchaseRealtime = -1f;
+        private int _feelFirstShopPurchaseCurrencySpent;
+        private string _feelFirstShopOfferKind = "";
+        private int _feelFirstPurchaseHeroHp;
+        private int _feelFirstPurchaseHeroMaxHp;
+        private string _feelFirstPurchaseWeaponType = "";
+
+        private bool _suppressUnityLogCapture;
+        private bool _unityLogHookRegistered;
+        private readonly object _pendingUnityLogsLock = new object();
+        private readonly List<PendingUnityLog> _pendingUnityLogs = new List<PendingUnityLog>(8);
+
+        private struct PendingUnityLog
+        {
+            public string condition;
+            public string stackTrace;
+            public LogType type;
+        }
+
+        [Serializable]
+        private sealed class TelemetryUnityLogRow
+        {
+            public string sessionId;
+            public string utcIso8601;
+            public float realtimeSinceStartup;
+            public string unityEditorOrPlayerVersion;
+            public string logType;
+            public string messageTruncated;
+            public string stackTraceTruncated;
+            public string fingerprint;
+            public int repeatCount;
+            public int wave;
+            public string waveLoopState;
+            public int heroHp;
+            public int heroMaxHp;
+            public string weapon;
+            public string weaponType;
+            public string autoHeroTestProfile;
+            public string sceneProfileId;
+            public float heroPosX;
+            public float heroPosY;
+            public int heroAmmoInMag;
+            public int heroAmmoMagMax;
+            public int heroReserveAmmo;
+            public int bunkerHp;
+            public int bunkerMaxHp;
+            public int currency;
+            public int enemiesKilledThisWave;
+            public int trackedLivingParatroopers;
+            public float timeUnscaled;
+            public float timeSinceLevelLoad;
+            public float timeScale;
+            public int frameCount;
+            public string activeScenePathOrName;
+            public int loadedSceneCount;
+            public bool isEditor;
+            public string platform;
+            public string internetReachability;
+            public long managedHeapBytes;
+            public float inWaveUnscaledSec;
+            public int damageTakenHeroThisWave;
+            public int damageTakenBunkerThisWave;
+            public int shotsFiredThisWave;
+            public float bunkerPressureTimeUnscaledThisWave;
+            public string scalingSnapshotShort;
+            public string spawnerDiagnosticsLine;
+        }
+
         [Serializable]
         private sealed class BunkerHpSamplePoint
         {
@@ -128,6 +226,37 @@ namespace iStick2War_V2
             public float bunkerPressureHpRatioThresholdUsed;
 
             public TelemetryEvent[] events;
+
+            /// <summary>Optional: Unity console errors/exceptions with a gameplay snapshot (same sessionId as events[]).</summary>
+            public TelemetryUnityLogRow[] unityLogs;
+
+            /// <summary>Optional: design/feel proxies (milestones + deltas vs session_begin realtime).</summary>
+            public TelemetryFeelSessionSummary feelSession;
+        }
+
+        [Serializable]
+        private sealed class TelemetryFeelSessionSummary
+        {
+            /// <summary><see cref="Time.realtimeSinceStartup"/> when session_begin row was written; -1 if unknown.</summary>
+            public float sessionBeginRealtimeSinceStartup;
+
+            public float firstKillRealtimeSinceStartup;
+            public float firstHeroDamageRealtimeSinceStartup;
+            public float firstHeroDeathRealtimeSinceStartup;
+            public float firstShopPurchaseRealtimeSinceStartup;
+
+            /// <summary>Seconds after session_begin; -1 if milestone never occurred.</summary>
+            public float firstKillSecSinceSessionBegin;
+
+            public float firstHeroDamageSecSinceSessionBegin;
+            public float firstHeroDeathSecSinceSessionBegin;
+            public float firstShopPurchaseSecSinceSessionBegin;
+
+            public int firstShopPurchaseCurrencySpent;
+            public string firstShopOfferKind;
+            public int firstPurchaseHeroHp;
+            public int firstPurchaseHeroMaxHp;
+            public string firstPurchaseWeaponType;
         }
 
         [Serializable]
@@ -258,6 +387,11 @@ namespace iStick2War_V2
         private void Awake()
         {
             _sessionId = Guid.NewGuid().ToString("N");
+            _feelSessionBeginRealtime = -1f;
+            _feelFirstKillRealtime = -1f;
+            _feelFirstHeroDamageRealtime = -1f;
+            _feelFirstHeroDeathRealtime = -1f;
+            _feelFirstShopPurchaseRealtime = -1f;
         }
 
         private void OnEnable()
@@ -287,6 +421,12 @@ namespace iStick2War_V2
 
                 _sessionBeginCoroutine = StartCoroutine(WriteSessionBeginAfterManagersInitialized());
             }
+
+            if (_telemetryEnabled && _captureUnityConsoleErrors)
+            {
+                Application.logMessageReceivedThreaded += OnUnityLogMessageThreaded;
+                _unityLogHookRegistered = true;
+            }
         }
 
         private IEnumerator WriteSessionBeginAfterManagersInitialized()
@@ -299,6 +439,11 @@ namespace iStick2War_V2
 
         private void Update()
         {
+            if (_telemetryEnabled)
+            {
+                FlushPendingUnityLogsFromMainThread();
+            }
+
             if (!_telemetryEnabled || _waveManager == null || _waveManager.State != WaveLoopState_V2.InWave)
             {
                 return;
@@ -392,6 +537,12 @@ namespace iStick2War_V2
             {
                 _waveManager.OnStateChanged -= OnWaveStateChanged;
             }
+
+            if (_unityLogHookRegistered)
+            {
+                Application.logMessageReceivedThreaded -= OnUnityLogMessageThreaded;
+                _unityLogHookRegistered = false;
+            }
         }
 
         private void OnApplicationQuit()
@@ -416,6 +567,49 @@ namespace iStick2War_V2
             ActiveInstance?.RegisterShopPurchase(offerKind, currencySpent);
         }
 
+        /// <summary>Call from <see cref="WaveManager_V2.ReportEnemyKilled"/> for feel-KPI first-kill timing.</summary>
+        public static void NotifyEnemyKilledForFeelKpis()
+        {
+            ActiveInstance?.RegisterFirstEnemyKillRealtime();
+        }
+
+        /// <summary>
+        /// Record a non-Unity exception signal (watchdog, sanity check, etc.) into <c>unityLogs[]</c> with the same
+        /// gameplay snapshot as console errors. Thread-safe: can be called from any thread; flushed on the main thread.
+        /// </summary>
+        public static void RecordSyntheticTelemetryError(string code, string message)
+        {
+            ActiveInstance?.EnqueueSyntheticErrorFromAnyThread(code, message);
+        }
+
+        private void EnqueueSyntheticErrorFromAnyThread(string code, string message)
+        {
+            if (!_telemetryEnabled)
+            {
+                return;
+            }
+
+            string c = (code ?? "").Trim();
+            string m = (message ?? "").Trim();
+            string line = string.IsNullOrEmpty(c) ? m : $"[{c}] {m}";
+            line = TruncateForTelemetryQueue(line, _unityLogMessageMaxChars);
+            lock (_pendingUnityLogsLock)
+            {
+                if (_pendingUnityLogs.Count >= _unityLogPendingQueueMax)
+                {
+                    _pendingUnityLogs.RemoveAt(0);
+                }
+
+                _pendingUnityLogs.Add(
+                    new PendingUnityLog
+                    {
+                        condition = line,
+                        stackTrace = "",
+                        type = LogType.Error
+                    });
+            }
+        }
+
         private void RegisterBunkerDamageTaken(int amount)
         {
             if (!_telemetryEnabled || _waveManager == null || _waveManager.State != WaveLoopState_V2.InWave)
@@ -434,12 +628,42 @@ namespace iStick2War_V2
                 return;
             }
 
+            if (_feelFirstShopPurchaseRealtime < 0f)
+            {
+                _feelFirstShopPurchaseRealtime = Time.realtimeSinceStartup;
+                _feelFirstShopPurchaseCurrencySpent = Mathf.Max(0, currencySpent);
+                _feelFirstShopOfferKind = string.IsNullOrWhiteSpace(offerKind) ? "" : offerKind.Trim();
+                Hero_V2 h = FindHero();
+                if (h != null)
+                {
+                    _feelFirstPurchaseHeroHp = h.GetCurrentHealth();
+                    _feelFirstPurchaseHeroMaxHp = h.GetMaxHealth();
+                    _feelFirstPurchaseWeaponType = h.CurrentWeaponType.ToString();
+                }
+                else
+                {
+                    _feelFirstPurchaseHeroHp = -1;
+                    _feelFirstPurchaseHeroMaxHp = -1;
+                    _feelFirstPurchaseWeaponType = "";
+                }
+            }
+
             _intermissionShopPurchaseCount++;
             _intermissionShopCurrencySpent += Mathf.Max(0, currencySpent);
             if (!string.IsNullOrWhiteSpace(offerKind))
             {
                 _intermissionShopOfferKinds.Add(offerKind.Trim());
             }
+        }
+
+        private void RegisterFirstEnemyKillRealtime()
+        {
+            if (!_telemetryEnabled || _feelFirstKillRealtime >= 0f)
+            {
+                return;
+            }
+
+            _feelFirstKillRealtime = Time.realtimeSinceStartup;
         }
 
         private void ResolveWaveManager()
@@ -479,6 +703,8 @@ namespace iStick2War_V2
             {
                 _subscribedHero.DamageReceiver.OnDamageTaken -= OnHeroDamageTaken;
                 _subscribedHero.DamageReceiver.OnDamageTaken += OnHeroDamageTaken;
+                _subscribedHero.DamageReceiver.OnDeath -= OnHeroDeathForFeelKpis;
+                _subscribedHero.DamageReceiver.OnDeath += OnHeroDeathForFeelKpis;
             }
 
             _subscribedHero.OnHealed -= OnHeroHealed;
@@ -503,6 +729,7 @@ namespace iStick2War_V2
             if (_subscribedHero.DamageReceiver != null)
             {
                 _subscribedHero.DamageReceiver.OnDamageTaken -= OnHeroDamageTaken;
+                _subscribedHero.DamageReceiver.OnDeath -= OnHeroDeathForFeelKpis;
             }
 
             _subscribedHero.OnHealed -= OnHeroHealed;
@@ -517,12 +744,27 @@ namespace iStick2War_V2
 
         private void OnHeroDamageTaken(int amount)
         {
+            if (_telemetryEnabled && amount > 0 && _feelFirstHeroDamageRealtime < 0f)
+            {
+                _feelFirstHeroDamageRealtime = Time.realtimeSinceStartup;
+            }
+
             if (!_telemetryEnabled || _waveManager == null || _waveManager.State != WaveLoopState_V2.InWave)
             {
                 return;
             }
 
             _heroDamageTakenDuringWave += Mathf.Max(0, amount);
+        }
+
+        private void OnHeroDeathForFeelKpis()
+        {
+            if (!_telemetryEnabled || _feelFirstHeroDeathRealtime >= 0f)
+            {
+                return;
+            }
+
+            _feelFirstHeroDeathRealtime = Time.realtimeSinceStartup;
         }
 
         private void OnHeroHealed(int amount)
@@ -576,6 +818,7 @@ namespace iStick2War_V2
 
             _sessionBeginWritten = true;
             EnsureOutputPath();
+            _feelSessionBeginRealtime = Time.realtimeSinceStartup;
             // session_begin is emitted before the first InWave transition, so wave-start fields would
             // otherwise stay default (0). Snapshot current economy/HP for a consistent first row.
             SnapshotWaveStartEconomy();
@@ -912,18 +1155,18 @@ namespace iStick2War_V2
         private string ResolveRunEndReason(WaveLoopState_V2 previousState)
         {
             if (_waveManager != null &&
-                _waveManager.State == WaveLoopState_V2.GameError)
+                (_waveManager.State == WaveLoopState_V2.GameError || previousState == WaveLoopState_V2.GameError))
             {
                 if (_waveManager.TryGetLastGameErrorReason(out string gameErrorReason))
                 {
                     return "game_error:" + gameErrorReason;
                 }
 
-                return "game_error";
+                return "game_error:reason_unavailable";
             }
 
             if (_waveManager != null &&
-                _waveManager.State == WaveLoopState_V2.GameWon)
+                (_waveManager.State == WaveLoopState_V2.GameWon || previousState == WaveLoopState_V2.GameWon))
             {
                 return "game_won";
             }
@@ -1020,13 +1263,72 @@ namespace iStick2War_V2
                 }
 
                 root.events = list.ToArray();
-                ApplyTelemetryDocumentation(root);
-                string json = JsonUtility.ToJson(root, prettyPrint: true);
-                File.WriteAllText(_filePath, json);
+                PersistTelemetryRoot(root);
             }
             catch (Exception ex)
             {
                 Debug.LogWarning($"[WaveRunTelemetry_V2] Failed to write telemetry: {ex.Message}");
+            }
+        }
+
+        private TelemetryFeelSessionSummary BuildFeelSessionSnapshot()
+        {
+            var s = new TelemetryFeelSessionSummary
+            {
+                sessionBeginRealtimeSinceStartup = _feelSessionBeginRealtime,
+                firstKillRealtimeSinceStartup = _feelFirstKillRealtime,
+                firstHeroDamageRealtimeSinceStartup = _feelFirstHeroDamageRealtime,
+                firstHeroDeathRealtimeSinceStartup = _feelFirstHeroDeathRealtime,
+                firstShopPurchaseRealtimeSinceStartup = _feelFirstShopPurchaseRealtime,
+                firstShopPurchaseCurrencySpent = _feelFirstShopPurchaseCurrencySpent,
+                firstShopOfferKind = _feelFirstShopOfferKind ?? "",
+                firstPurchaseHeroHp = _feelFirstPurchaseHeroHp,
+                firstPurchaseHeroMaxHp = _feelFirstPurchaseHeroMaxHp,
+                firstPurchaseWeaponType = _feelFirstPurchaseWeaponType ?? ""
+            };
+
+            float anchor = _feelSessionBeginRealtime;
+            if (anchor >= 0f)
+            {
+                s.firstKillSecSinceSessionBegin = FeelDeltaSec(anchor, _feelFirstKillRealtime);
+                s.firstHeroDamageSecSinceSessionBegin = FeelDeltaSec(anchor, _feelFirstHeroDamageRealtime);
+                s.firstHeroDeathSecSinceSessionBegin = FeelDeltaSec(anchor, _feelFirstHeroDeathRealtime);
+                s.firstShopPurchaseSecSinceSessionBegin = FeelDeltaSec(anchor, _feelFirstShopPurchaseRealtime);
+            }
+            else
+            {
+                s.firstKillSecSinceSessionBegin = -1f;
+                s.firstHeroDamageSecSinceSessionBegin = -1f;
+                s.firstHeroDeathSecSinceSessionBegin = -1f;
+                s.firstShopPurchaseSecSinceSessionBegin = -1f;
+            }
+
+            return s;
+        }
+
+        private static float FeelDeltaSec(float sessionBeginRt, float milestoneRt)
+        {
+            if (sessionBeginRt < 0f || milestoneRt < 0f)
+            {
+                return -1f;
+            }
+
+            return milestoneRt - sessionBeginRt;
+        }
+
+        private void PersistTelemetryRoot(TelemetryFileRoot root)
+        {
+            _suppressUnityLogCapture = true;
+            try
+            {
+                root.feelSession = BuildFeelSessionSnapshot();
+                ApplyTelemetryDocumentation(root);
+                string json = JsonUtility.ToJson(root, prettyPrint: true);
+                File.WriteAllText(_filePath, json);
+            }
+            finally
+            {
+                _suppressUnityLogCapture = false;
             }
         }
 
@@ -1041,7 +1343,8 @@ namespace iStick2War_V2
             float pressureThrUsed = Mathf.Clamp(_bunkerPressureHpRatioThreshold, 0.05f, 0.99f);
             root.bunkerPressureHpRatioThresholdUsed = pressureThrUsed;
             root._comment =
-                "iStick2War wave-run telemetry (JSON). Root contains _comment, glossary, bunkerCriticalHpFractionUsed, and events[]. " +
+                "iStick2War wave-run telemetry (JSON). Root contains _comment, glossary, bunkerCriticalHpFractionUsed, events[], " +
+                "optional unityLogs[], and optional feelSession (first-kill/damage/death/shop milestones vs session_begin; see glossary). " +
                 "Each object in events[] shares the same property names; meaning depends on events[].kind. " +
                 "Numeric snapshots are taken when the row is written (Unity Time.realtimeSinceStartup). " +
                 "Per-wave combat counters reset when a new InWave phase starts; wave_cleared attributes the " +
@@ -1315,22 +1618,322 @@ namespace iStick2War_V2
                             "snapshot (scalingVersion labels WaveBalanceConfig_V2; balance* / config* / effective* as documented). " +
                             "Parse with JsonUtility into your DTO. Empty string on session_begin / session_quit and other kinds. " +
                             "Replaces a nested object field so Unity JsonUtility does not emit bogus empty objects on those rows."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "unityLogs[] (root, optional)",
+                        meaning =
+                            "Sibling of events[]: rows from Unity Application.logMessageReceivedThreaded when LogType is Error, " +
+                            "Exception, or Assert (optional Warnings via Inspector). Each row includes message/stack fingerprints, " +
+                            "repeatCount when identical consecutive errors are coalesced, and a gameplay snapshot: wave, " +
+                            "waveLoopState, hero/bunker economy, ammo, weapon, hero position, enemies killed this wave, " +
+                            "trackedLivingParatroopers, timeScale/frame/scene/platform, inWaveUnscaledSec, per-wave combat " +
+                            "accumulators, scalingSnapshotShort, spawnerDiagnosticsLine. Same sessionId as events[]."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "feelSession (root, optional)",
+                        meaning =
+                            "Design/feel milestones using Time.realtimeSinceStartup: session anchor from session_begin, " +
+                            "firstKill/Damage/Death/ShopPurchase absolute times and *SecSinceSessionBegin (-1 if not yet). " +
+                            "First shop row includes currency spent on that first purchase line, offer kind, and hero HP/max/weapon " +
+                            "snapshot for power-delta analysis vs later wave_cleared rows (offline)."
                     }
                 }
             };
+        }
+
+        private void OnUnityLogMessageThreaded(string condition, string stackTrace, LogType type)
+        {
+            if (!_telemetryEnabled ||
+                !_captureUnityConsoleErrors ||
+                _suppressUnityLogCapture)
+            {
+                return;
+            }
+
+            if (type != LogType.Error &&
+                type != LogType.Exception &&
+                type != LogType.Assert &&
+                !(_captureUnityWarningsToo && type == LogType.Warning))
+            {
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(condition) &&
+                condition.IndexOf("[WaveRunTelemetry_V2]", StringComparison.Ordinal) >= 0 &&
+                condition.IndexOf("Failed to write", StringComparison.Ordinal) >= 0)
+            {
+                return;
+            }
+
+            string c = TruncateForTelemetryQueue(condition, _unityLogMessageMaxChars);
+            string s = TruncateForTelemetryQueue(stackTrace, _unityLogStackMaxChars);
+            lock (_pendingUnityLogsLock)
+            {
+                if (_pendingUnityLogs.Count >= _unityLogPendingQueueMax)
+                {
+                    _pendingUnityLogs.RemoveAt(0);
+                }
+
+                _pendingUnityLogs.Add(
+                    new PendingUnityLog
+                    {
+                        condition = c,
+                        stackTrace = s,
+                        type = type
+                    });
+            }
+        }
+
+        private static string TruncateForTelemetryQueue(string value, int maxChars)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return "";
+            }
+
+            int cap = Mathf.Clamp(maxChars, 256, 65535);
+            return value.Length <= cap ? value : value.Substring(0, cap);
+        }
+
+        private void FlushPendingUnityLogsFromMainThread()
+        {
+            List<PendingUnityLog> batch = null;
+            lock (_pendingUnityLogsLock)
+            {
+                if (_pendingUnityLogs.Count == 0)
+                {
+                    return;
+                }
+
+                batch = new List<PendingUnityLog>(_pendingUnityLogs);
+                _pendingUnityLogs.Clear();
+            }
+
+            for (int i = 0; i < batch.Count; i++)
+            {
+                PendingUnityLog p = batch[i];
+                AppendUnityLogRowFromMainThread(p.type, p.condition, p.stackTrace);
+            }
+        }
+
+        private void AppendUnityLogRowFromMainThread(LogType type, string message, string stackTrace)
+        {
+            if (!_telemetryEnabled)
+            {
+                return;
+            }
+
+            ResolveWaveManager();
+            string fp = ComputeUnityLogFingerprint(message, stackTrace);
+            TelemetryUnityLogRow row = BuildUnityLogRow(type, message, stackTrace, fp);
+            AppendOrCoalesceUnityLogRow(row);
+        }
+
+        private TelemetryUnityLogRow BuildUnityLogRow(LogType type, string message, string stackTrace, string fingerprint)
+        {
+            Hero_V2 h = FindHero();
+            int heroHp = h != null ? h.GetCurrentHealth() : -1;
+            int heroMax = h != null ? h.GetMaxHealth() : -1;
+            string weaponLabel = h != null ? h.GetCurrentWeaponDisplayName() : "";
+            string weaponTypeStr = h != null ? h.CurrentWeaponType.ToString() : "";
+            string autoHeroProfile = ResolveAutoHeroTestProfileLabel(h);
+            string sceneProfileIdValue = GameplaySceneRules_V2.IsActive ? GameplaySceneRules_V2.ProfileId : "";
+            float px = 0f;
+            float py = 0f;
+            int ammoMag = -1;
+            int ammoMagMax = -1;
+            int ammoReserve = -1;
+            if (h != null)
+            {
+                Vector2 p = h.transform.position;
+                px = p.x;
+                py = p.y;
+                ammoMag = h.GetCurrentWeaponAmmo();
+                ammoMagMax = h.GetCurrentWeaponMaxAmmo();
+                ammoReserve = h.GetCurrentWeaponReserveAmmo();
+            }
+
+            int wave = _waveManager != null ? _waveManager.CurrentWaveNumber : -1;
+            string loopState = _waveManager != null ? _waveManager.State.ToString() : "";
+            int bunkerHp = _waveManager != null ? _waveManager.BunkerHealth : -1;
+            int bunkerMax = _waveManager != null ? _waveManager.BunkerMaxHealth : -1;
+            int currency = _waveManager != null ? _waveManager.Currency : -1;
+            int killsThisWave = _waveManager != null ? _waveManager.EnemiesKilledThisWave : -1;
+            int trackedLiving = -1;
+            string spawnerLine = "";
+            if (_waveManager != null && _waveManager.EnemySpawner != null)
+            {
+                EnemySpawner_V2 sp = _waveManager.EnemySpawner;
+                trackedLiving = sp.GetLivingParatroopersTrackedCountForTelemetry();
+                spawnerLine = sp.BuildDiagnosticsSnapshotForTelemetry();
+            }
+
+            Scene activeScene = SceneManager.GetActiveScene();
+            string sceneLabel =
+                activeScene.path != null && activeScene.path.Length > 0 ? activeScene.path : activeScene.name;
+            float inWaveUnscaled = _waveManager != null ? _waveManager.InWaveElapsedUnscaledSec : -1f;
+            string scalingShort = "";
+            if (_waveManager != null && _waveManager.TryGetScalingSnapshotForTelemetry(out WaveRunScalingSnapshot snap))
+            {
+                scalingShort =
+                    $"ver={snap.ScalingVersion} effHP={snap.EffectiveEnemyHpMultiplier.ToString("0.###", CultureInfo.InvariantCulture)} " +
+                    $"effDmg={snap.EffectiveEnemyDamageMultiplier.ToString("0.###", CultureInfo.InvariantCulture)} " +
+                    $"effSpawn={snap.EffectiveSpawnIntervalSeconds.ToString("0.###", CultureInfo.InvariantCulture)} " +
+                    $"effReward={snap.EffectiveWaveRewardCurrency}";
+                if (scalingShort.Length > 400)
+                {
+                    scalingShort = scalingShort.Substring(0, 400);
+                }
+            }
+
+            if (spawnerLine.Length > 500)
+            {
+                spawnerLine = spawnerLine.Substring(0, 500);
+            }
+
+            return new TelemetryUnityLogRow
+            {
+                sessionId = _sessionId ?? "",
+                utcIso8601 = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
+                realtimeSinceStartup = Time.realtimeSinceStartup,
+                unityEditorOrPlayerVersion = Application.unityVersion ?? "",
+                logType = type.ToString(),
+                messageTruncated = message ?? "",
+                stackTraceTruncated = stackTrace ?? "",
+                fingerprint = fingerprint,
+                repeatCount = 1,
+                wave = wave,
+                waveLoopState = loopState,
+                heroHp = heroHp,
+                heroMaxHp = heroMax,
+                weapon = weaponLabel,
+                weaponType = weaponTypeStr,
+                autoHeroTestProfile = autoHeroProfile,
+                sceneProfileId = sceneProfileIdValue,
+                heroPosX = px,
+                heroPosY = py,
+                heroAmmoInMag = ammoMag,
+                heroAmmoMagMax = ammoMagMax,
+                heroReserveAmmo = ammoReserve,
+                bunkerHp = bunkerHp,
+                bunkerMaxHp = bunkerMax,
+                currency = currency,
+                enemiesKilledThisWave = killsThisWave,
+                trackedLivingParatroopers = trackedLiving,
+                timeUnscaled = Time.unscaledTime,
+                timeSinceLevelLoad = Time.timeSinceLevelLoad,
+                timeScale = Time.timeScale,
+                frameCount = Time.frameCount,
+                activeScenePathOrName = sceneLabel ?? "",
+                loadedSceneCount = SceneManager.sceneCount,
+                isEditor = Application.isEditor,
+                platform = Application.platform.ToString(),
+                internetReachability = Application.internetReachability.ToString(),
+                managedHeapBytes = GC.GetTotalMemory(false),
+                inWaveUnscaledSec = inWaveUnscaled,
+                damageTakenHeroThisWave = _heroDamageTakenDuringWave,
+                damageTakenBunkerThisWave = _bunkerDamageTakenDuringWave,
+                shotsFiredThisWave = _shotsFiredDuringWave,
+                bunkerPressureTimeUnscaledThisWave = _bunkerLowPressureTimeUnscaledDuringWave,
+                scalingSnapshotShort = scalingShort,
+                spawnerDiagnosticsLine = spawnerLine
+            };
+        }
+
+        private static string ComputeUnityLogFingerprint(string message, string stackTrace)
+        {
+            uint a = Fnv1a32Prefix(message, 8000);
+            uint b = Fnv1a32Prefix(stackTrace, 12000);
+            uint c = Fnv1a32Prefix((message ?? "") + "\n" + (stackTrace ?? ""), 16000);
+            return a.ToString("X8", CultureInfo.InvariantCulture) +
+                   b.ToString("X8", CultureInfo.InvariantCulture) +
+                   c.ToString("X8", CultureInfo.InvariantCulture);
+        }
+
+        private static uint Fnv1a32Prefix(string text, int maxChars)
+        {
+            const uint offset = 2166136261u;
+            const uint prime = 16777619u;
+            uint hash = offset;
+            if (string.IsNullOrEmpty(text))
+            {
+                return hash;
+            }
+
+            int n = Mathf.Min(maxChars, text.Length);
+            for (int i = 0; i < n; i++)
+            {
+                hash ^= text[i];
+                hash *= prime;
+            }
+
+            return hash;
+        }
+
+        private void AppendOrCoalesceUnityLogRow(TelemetryUnityLogRow row)
+        {
+            if (!_telemetryEnabled || row == null)
+            {
+                return;
+            }
+
+            try
+            {
+                EnsureOutputPath();
+                TelemetryFileRoot root = ReadRootOrNew();
+                var list = new List<TelemetryUnityLogRow>(root.unityLogs ?? Array.Empty<TelemetryUnityLogRow>());
+                int maxRows = Mathf.Clamp(_unityLogsMaxRowsPerSession, 16, 500);
+                if (_unityLogCoalesceConsecutiveDuplicates && list.Count > 0)
+                {
+                    TelemetryUnityLogRow last = list[list.Count - 1];
+                    if (last != null &&
+                        !string.IsNullOrEmpty(last.fingerprint) &&
+                        last.fingerprint == row.fingerprint)
+                    {
+                        last.repeatCount = Mathf.Max(1, last.repeatCount) + Mathf.Max(1, row.repeatCount);
+                        root.unityLogs = list.ToArray();
+                        PersistTelemetryRoot(root);
+                        return;
+                    }
+                }
+
+                while (list.Count >= maxRows)
+                {
+                    list.RemoveAt(0);
+                }
+
+                row.repeatCount = Mathf.Max(1, row.repeatCount);
+                list.Add(row);
+                root.unityLogs = list.ToArray();
+                PersistTelemetryRoot(root);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[WaveRunTelemetry_V2] Failed to write unity log row: {ex.Message}");
+            }
         }
 
         private TelemetryFileRoot ReadRootOrNew()
         {
             if (!File.Exists(_filePath))
             {
-                return new TelemetryFileRoot { events = Array.Empty<TelemetryEvent>() };
+                return new TelemetryFileRoot
+                {
+                    events = Array.Empty<TelemetryEvent>(),
+                    unityLogs = Array.Empty<TelemetryUnityLogRow>()
+                };
             }
 
             string text = File.ReadAllText(_filePath);
             if (string.IsNullOrWhiteSpace(text))
             {
-                return new TelemetryFileRoot { events = Array.Empty<TelemetryEvent>() };
+                return new TelemetryFileRoot
+                {
+                    events = Array.Empty<TelemetryEvent>(),
+                    unityLogs = Array.Empty<TelemetryUnityLogRow>()
+                };
             }
 
             try
@@ -1338,7 +1941,11 @@ namespace iStick2War_V2
                 TelemetryFileRoot root = JsonUtility.FromJson<TelemetryFileRoot>(text);
                 if (root == null)
                 {
-                    return new TelemetryFileRoot { events = Array.Empty<TelemetryEvent>() };
+                    return new TelemetryFileRoot
+                    {
+                        events = Array.Empty<TelemetryEvent>(),
+                        unityLogs = Array.Empty<TelemetryUnityLogRow>()
+                    };
                 }
 
                 if (root.events == null)
@@ -1357,11 +1964,20 @@ namespace iStick2War_V2
                     }
                 }
 
+                if (root.unityLogs == null)
+                {
+                    root.unityLogs = Array.Empty<TelemetryUnityLogRow>();
+                }
+
                 return root;
             }
             catch (Exception)
             {
-                return new TelemetryFileRoot { events = Array.Empty<TelemetryEvent>() };
+                return new TelemetryFileRoot
+                {
+                    events = Array.Empty<TelemetryEvent>(),
+                    unityLogs = Array.Empty<TelemetryUnityLogRow>()
+                };
             }
         }
     }
