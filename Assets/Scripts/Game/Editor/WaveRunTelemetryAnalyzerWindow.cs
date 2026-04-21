@@ -64,6 +64,7 @@ namespace iStick2War_V2.Editor
             "HIGH_CARRY_IN_PRESSURE\tsom PRELOAD inte gäller: bunkerStart01 ≥ 0.2, bunker-skada, stor skillnad press total vs efter första träff\n" +
             "NEAR_BREACH\twave_cleared, minBunkerHpRatio < 0.15, inte bunkerBreached (tur/panik, inte sweet spot)\n" +
             "OVERLOAD_FAIL\trun_end och (heroDead eller bunkerBreached)\n" +
+            "GAME_ERROR_FAIL\trun_end med endReason som börjar på game_error (watchdog/soft-lock guard)\n" +
             "NEXT_WAVE_OVERLOAD\twave_cleared: nästa wave_cleared/run_end-rad i filen är run_end för wave+1 med game over (heroDead eller bunkerBreached)\n" +
             "SWEET_SPOT_HINT\tgrov \"bra fight\"-heuristik för wave_cleared (skada + min ratio-intervall, ingen död/breach)\n" +
             "TRIVIAL_BUNKER\tingen bunker-skada och minBunkerHpRatio ≥ 0.99\n" +
@@ -1487,6 +1488,13 @@ namespace iStick2War_V2.Editor
             if (kind == "run_end" && (ev.heroDead || ev.bunkerBreached))
             {
                 flags.Add("OVERLOAD_FAIL");
+            }
+
+            if (kind == "run_end" &&
+                !string.IsNullOrEmpty(ev.endReason) &&
+                ev.endReason.StartsWith("game_error", StringComparison.OrdinalIgnoreCase))
+            {
+                flags.Add("GAME_ERROR_FAIL");
             }
 
             if (kind == "wave_cleared" &&

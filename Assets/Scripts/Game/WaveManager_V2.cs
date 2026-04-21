@@ -14,7 +14,8 @@ namespace iStick2War_V2
         InWave,
         Shop,
         GameOver,
-        GameWon
+        GameWon,
+        GameError
     }
 
     public sealed class WaveManager_V2 : MonoBehaviour
@@ -55,6 +56,17 @@ namespace iStick2War_V2
         [SerializeField] private TMP_Text _gameWonTopBarTitle;
         [Tooltip("Top bar label, e.g. txt_topbar_gameWon_continue.")]
         [SerializeField] private TMP_Text _gameWonTopBarContinue;
+        [Header("Game Error UI — runtime watchdog")]
+        [Tooltip("Show GameError UI if runtime gets stuck (e.g. no aim/shoot or no enemy spawns for too long).")]
+        [SerializeField] private bool _enableGameErrorWatchdog = true;
+        [SerializeField] private float _autoHeroNoAimOrShootErrorSeconds = 60f;
+        [SerializeField] private float _enemyNoSpawnErrorSeconds = 60f;
+        [SerializeField] private GameObject _gameErrorRoot;
+        [SerializeField] private GameObject _gameErrorContinueButton;
+        [SerializeField] private TMP_Text _gameErrorTopBarTitle;
+        [SerializeField] private TMP_Text _gameErrorTopBarContinue;
+        [Tooltip("Optional detail text shown when GameError triggers (e.g. watchdog reason).")]
+        [SerializeField] private TMP_Text _gameErrorReasonText;
         [Header("Top bar wave label (intro)")]
         [Tooltip("Fully visible duration after main menu Play or shop Continue before fade-out.")]
         [SerializeField] private float _topBarWaveTextVisibleSeconds = 4f;
@@ -119,6 +131,9 @@ namespace iStick2War_V2
         private bool _topBarWaveTextBaseColorCached;
         private WaveRunScalingSnapshot _scalingForActiveWave;
         private bool _hasScalingForActiveWave;
+        private AutoHero_V2 _autoHero;
+        private float _inWaveEnteredUnscaledTime;
+        private string _lastGameErrorReason = "";
 
         public event Action<WaveLoopState_V2> OnStateChanged;
         public event Action<int, int, int> OnMetaChanged;
@@ -146,6 +161,12 @@ namespace iStick2War_V2
 
             snapshot = _scalingForActiveWave;
             return true;
+        }
+
+        public bool TryGetLastGameErrorReason(out string reason)
+        {
+            reason = _lastGameErrorReason;
+            return !string.IsNullOrWhiteSpace(reason);
         }
 
         /// <summary>
@@ -310,6 +331,8 @@ namespace iStick2War_V2
             SetHeroDeathGameOverUiVisible(false);
             ResolveGameWonUiIfNeeded();
             SetGameWonUiVisible(false);
+            ResolveGameErrorUiIfNeeded();
+            SetGameErrorUiVisible(false);
             if (_shopPanel != null)
             {
                 _shopPanel.Initialize(this);
@@ -325,6 +348,7 @@ namespace iStick2War_V2
         {
             if (_state != WaveLoopState_V2.GameOver &&
                 _state != WaveLoopState_V2.GameWon &&
+                _state != WaveLoopState_V2.GameError &&
                 _hero != null &&
                 _hero.IsDead())
             {
@@ -685,6 +709,11 @@ namespace iStick2War_V2
 
         private void TickInWaveState()
         {
+            if (TryTriggerGameErrorFromWatchdog())
+            {
+                return;
+            }
+
             WaveConfig_V2 wave = GetCurrentWaveConfig();
             if (wave == null)
             {
@@ -777,6 +806,11 @@ namespace iStick2War_V2
                 wave.WaveDurationSeconds * 2f + 60f);
             _waveSpawnerFailSafeEndTime = Time.time + failSafeBasis;
             _enemiesKilledThisWave = 0;
+            _inWaveEnteredUnscaledTime = Time.unscaledTime;
+            if (_hero != null)
+            {
+                _autoHero = _hero.GetComponent<AutoHero_V2>();
+            }
             _scalingForActiveWave = BuildScalingSnapshot(wave, CurrentWaveNumber);
             _hasScalingForActiveWave = true;
             if (_enemySpawner != null)
@@ -874,9 +908,32 @@ namespace iStick2War_V2
             }
             SetCameraFollowEnabled(false);
             SetHeroDeathGameOverUiVisible(false);
+            SetGameErrorUiVisible(false);
             ResolveGameWonUiIfNeeded();
             SetGameWonUiVisible(true);
             Log($"WaveManager entered GameWon at wave {CurrentWaveNumber}.");
+        }
+
+        private void EnterGameErrorState(string reason)
+        {
+            SetState(WaveLoopState_V2.GameError);
+            if (_enemySpawner != null)
+            {
+                _enemySpawner.StopWave();
+            }
+
+            if (_shopPanel != null)
+            {
+                _shopPanel.Hide();
+            }
+
+            SetCameraFollowEnabled(false);
+            SetHeroDeathGameOverUiVisible(false);
+            SetGameWonUiVisible(false);
+            _lastGameErrorReason = string.IsNullOrWhiteSpace(reason) ? "Unknown error." : reason;
+            ResolveGameErrorUiIfNeeded();
+            SetGameErrorUiVisible(true);
+            Log($"WaveManager entered GameError. reason={_lastGameErrorReason}");
         }
 
         private void ResolveHeroDeathGameOverUiIfNeeded()
@@ -1027,6 +1084,103 @@ namespace iStick2War_V2
             {
                 _gameWonTopBarContinue.gameObject.SetActive(visible);
             }
+        }
+
+        private void ResolveGameErrorUiIfNeeded()
+        {
+            if (_gameErrorRoot == null)
+            {
+                _gameErrorRoot = FindGameObjectInLoadedScenes("GameError");
+            }
+
+            if (_gameErrorContinueButton == null)
+            {
+                _gameErrorContinueButton = FindGameObjectInLoadedScenes("btn_gameError_continue");
+            }
+
+            if (_gameErrorTopBarTitle == null)
+            {
+                _gameErrorTopBarTitle = FindTmpInLoadedScenes("txt_topbar_gameError");
+            }
+
+            if (_gameErrorTopBarContinue == null)
+            {
+                _gameErrorTopBarContinue = FindTmpInLoadedScenes("txt_topbar_gameError_continue");
+            }
+
+            if (_gameErrorReasonText == null)
+            {
+                _gameErrorReasonText = FindTmpInLoadedScenes("txt_topbar_gameError_reason");
+            }
+        }
+
+        private void SetGameErrorUiVisible(bool visible)
+        {
+            if (_gameErrorRoot != null)
+            {
+                _gameErrorRoot.SetActive(visible);
+            }
+
+            if (_gameErrorContinueButton != null)
+            {
+                _gameErrorContinueButton.SetActive(visible);
+            }
+
+            if (_gameErrorTopBarTitle != null)
+            {
+                _gameErrorTopBarTitle.gameObject.SetActive(visible);
+            }
+
+            if (_gameErrorTopBarContinue != null)
+            {
+                _gameErrorTopBarContinue.gameObject.SetActive(visible);
+            }
+
+            if (_gameErrorReasonText != null)
+            {
+                _gameErrorReasonText.gameObject.SetActive(visible);
+                if (visible)
+                {
+                    _gameErrorReasonText.text = _lastGameErrorReason;
+                }
+            }
+        }
+
+        private bool TryTriggerGameErrorFromWatchdog()
+        {
+            if (!_enableGameErrorWatchdog || _state != WaveLoopState_V2.InWave)
+            {
+                return false;
+            }
+
+            float now = Time.unscaledTime;
+
+            if (_autoHero != null)
+            {
+                float noAimOrShootSeconds = Mathf.Max(
+                    0f,
+                    now - Mathf.Max(_autoHero.LastAimAtEnemyUnscaledTime, _autoHero.LastShootHeldUnscaledTime));
+                if (noAimOrShootSeconds >= Mathf.Max(5f, _autoHeroNoAimOrShootErrorSeconds))
+                {
+                    EnterGameErrorState(
+                        $"AutoHero inactive: no aim/shoot for {noAimOrShootSeconds:0.0}s (threshold={_autoHeroNoAimOrShootErrorSeconds:0.0}s).");
+                    return true;
+                }
+            }
+
+            if (_enemySpawner != null)
+            {
+                float noSpawnSeconds = Mathf.Max(0f, now - _enemySpawner.LastParatrooperSpawnUnscaledTime);
+                if (noSpawnSeconds >= Mathf.Max(5f, _enemyNoSpawnErrorSeconds))
+                {
+                    EnterGameErrorState(
+                        $"No enemy spawns for {noSpawnSeconds:0.0}s (threshold={_enemyNoSpawnErrorSeconds:0.0}s), " +
+                        $"spawnedThisWave={_enemySpawner.SpawnedParatroopersThisWave}.");
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private WaveConfig_V2 GetCurrentWaveConfig()

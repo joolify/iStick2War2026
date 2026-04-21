@@ -81,6 +81,21 @@ namespace iStick2War_V2
         [SerializeField] private int _maxParatroopersPerFlight = 5;
         [Tooltip("Delay between drops from the same helicopter flight (seconds).")]
         [SerializeField] private float _paratrooperDropIntervalPerFlight = 0.3f;
+        [Tooltip("Safety cap for early waves to avoid immediate overload spikes from one helicopter flight.")]
+        [SerializeField] private bool _capParatroopersPerFlightInEarlyWaves = true;
+        [Tooltip("Apply early-wave cap up to and including this wave number (1-based).")]
+        [SerializeField] private int _earlyWaveCapMaxWaveInclusive = 1;
+        [Tooltip("Maximum paratroopers per helicopter flight while early-wave cap is active.")]
+        [SerializeField] private int _earlyWaveMaxParatroopersPerFlight = 2;
+        [Header("Wave 2 pacing override (anti-spike)")]
+        [Tooltip("Apply additional pacing dampening only on wave 2 to reduce immediate post-wave-1 overload.")]
+        [SerializeField] private bool _enableWave2PacingOverride = true;
+        [Tooltip("Wave 2 cap for paratroopers per helicopter flight.")]
+        [SerializeField] private int _wave2MaxParatroopersPerFlight = 2;
+        [Tooltip("Multiplier on helicopter-flight spawn interval during wave 2.")]
+        [SerializeField] private float _wave2FlightSpawnIntervalMultiplier = 1.2f;
+        [Tooltip("Multiplier on in-flight drop spacing during wave 2.")]
+        [SerializeField] private float _wave2DropIntervalMultiplier = 1.4f;
         [Tooltip("Safety timeout for delayed drop; spawns anyway after this many seconds.")]
         [SerializeField] private float _maxSecondsToWaitForVisibleAircraftDrop = 6f;
         [Tooltip(
@@ -149,6 +164,10 @@ namespace iStick2War_V2
         private int _paratrooperDebugSpawnSeq;
         private bool _lastResolvedMountUsedFallbackRoot;
         private int _pendingDelayedDropCoroutines;
+        private float _lastParatrooperSpawnUnscaledTime;
+
+        public float LastParatrooperSpawnUnscaledTime => _lastParatrooperSpawnUnscaledTime;
+        public int SpawnedParatroopersThisWave => _spawnedCount;
 
         private void Awake()
         {
@@ -203,6 +222,7 @@ namespace iStick2War_V2
             _spawnedCount = 0;
             _spawnRoutineFinished = false;
             _pendingDelayedDropCoroutines = 0;
+            _lastParatrooperSpawnUnscaledTime = Time.unscaledTime;
             _spawnRoutine = StartCoroutine(SpawnRoutine(config));
             if (config.BomberPassCount > 0 && _bomberPrefab != null)
             {
@@ -250,6 +270,7 @@ namespace iStick2War_V2
             _spawnedCount = 0;
             _spawnRoutineFinished = false;
             _pendingDelayedDropCoroutines = 0;
+            _lastParatrooperSpawnUnscaledTime = 0f;
         }
 
         private void OnDisable()
@@ -260,7 +281,7 @@ namespace iStick2War_V2
         private IEnumerator SpawnRoutine(WaveConfig_V2 config)
         {
             int toSpawn = config.EnemyCount;
-            float interval = _runtimeSpawnIntervalSeconds;
+            float interval = GetRuntimeFlightSpawnIntervalSeconds();
             int waveSession = _waveSessionId;
             int plannedParatroopers = 0;
             int flightIndex = 0;
@@ -331,8 +352,44 @@ namespace iStick2War_V2
 
             int minDrops = Mathf.Max(1, _minParatroopersPerFlight);
             int maxDrops = Mathf.Max(minDrops, _maxParatroopersPerFlight);
+            if (_capParatroopersPerFlightInEarlyWaves &&
+                _waveNumberForDiagnostics > 0 &&
+                _waveNumberForDiagnostics <= Mathf.Max(1, _earlyWaveCapMaxWaveInclusive))
+            {
+                maxDrops = Mathf.Min(maxDrops, Mathf.Max(1, _earlyWaveMaxParatroopersPerFlight));
+                minDrops = Mathf.Min(minDrops, maxDrops);
+            }
+
+            if (_enableWave2PacingOverride && _waveNumberForDiagnostics == 2)
+            {
+                int wave2Cap = Mathf.Max(1, _wave2MaxParatroopersPerFlight);
+                maxDrops = Mathf.Min(maxDrops, wave2Cap);
+                minDrops = Mathf.Min(minDrops, maxDrops);
+            }
             int randomized = UnityEngine.Random.Range(minDrops, maxDrops + 1);
             return Mathf.Clamp(randomized, 1, remainingParatroopersInWave);
+        }
+
+        private float GetRuntimeFlightSpawnIntervalSeconds()
+        {
+            float interval = Mathf.Max(0.05f, _runtimeSpawnIntervalSeconds);
+            if (_enableWave2PacingOverride && _waveNumberForDiagnostics == 2)
+            {
+                interval *= Mathf.Max(0.5f, _wave2FlightSpawnIntervalMultiplier);
+            }
+
+            return interval;
+        }
+
+        private float GetRuntimeDropIntervalPerFlightSeconds()
+        {
+            float interval = Mathf.Max(0f, _paratrooperDropIntervalPerFlight);
+            if (_enableWave2PacingOverride && _waveNumberForDiagnostics == 2)
+            {
+                interval *= Mathf.Max(0.5f, _wave2DropIntervalMultiplier);
+            }
+
+            return interval;
         }
 
         private void SpawnOne(int spawnIndexInWave, int paratroopersThisFlight)
@@ -429,7 +486,7 @@ namespace iStick2War_V2
                     if (_spawnParatrooperWhenAircraftIsVisible)
                     {
                         int dropCount = Mathf.Max(1, paratroopersThisFlight);
-                        float dropInterval = Mathf.Max(0f, _paratrooperDropIntervalPerFlight);
+                        float dropInterval = GetRuntimeDropIntervalPerFlightSeconds();
                         for (int dropIndex = 0; dropIndex < dropCount; dropIndex++)
                         {
                             StartCoroutine(SpawnParatrooperWhenAircraftVisible(
@@ -442,10 +499,14 @@ namespace iStick2War_V2
                     }
 
                     int dropNow = Mathf.Max(1, paratroopersThisFlight);
+                    float dropDelay = GetRuntimeDropIntervalPerFlightSeconds();
                     for (int dropIndex = 0; dropIndex < dropNow; dropIndex++)
                     {
-                        Vector3 paratrooperWorldPositionNow = GetParatrooperSpawnPositionFromAircraft(aircraft);
-                        SpawnParatrooper(paratrooperWorldPositionNow, usedAnchorSpawn, fromLeft, aircraft);
+                        StartCoroutine(SpawnParatrooperFromAircraftAfterDelay(
+                            aircraft,
+                            usedAnchorSpawn,
+                            fromLeft,
+                            dropIndex * dropDelay));
                     }
                     return;
                 }
@@ -626,6 +687,7 @@ namespace iStick2War_V2
             }
 
             _spawnedCount++;
+            _lastParatrooperSpawnUnscaledTime = Time.unscaledTime;
 
             ParatrooperDeathHandler_V2 deathHandler = spawned.GetComponent<ParatrooperDeathHandler_V2>();
             if (deathHandler == null)
@@ -722,9 +784,10 @@ namespace iStick2War_V2
                 }
 
                 // Aircraft was destroyed before it ever reached a valid drop state.
-                // In that case we should cancel this drop completely.
+                // Account for the lost planned drop so IsWaveCleared() does not wait forever.
                 if (aircraft == null)
                 {
+                    RegisterCancelledPlannedParatrooperDrop("aircraft-destroyed-before-visible-drop");
                     if (_debugAnchorSpawnDiagnostics)
                     {
                         Debug.Log(
@@ -747,6 +810,53 @@ namespace iStick2War_V2
             finally
             {
                 _pendingDelayedDropCoroutines = Mathf.Max(0, _pendingDelayedDropCoroutines - 1);
+            }
+        }
+
+        private IEnumerator SpawnParatrooperFromAircraftAfterDelay(
+            GameObject aircraft,
+            bool usedAnchorSpawn,
+            bool fromLeft,
+            float initialDelaySeconds)
+        {
+            _pendingDelayedDropCoroutines++;
+            try
+            {
+                if (initialDelaySeconds > 0f)
+                {
+                    yield return new WaitForSeconds(initialDelaySeconds);
+                }
+
+                if (!_isWaveActive || aircraft == null)
+                {
+                    if (_isWaveActive && aircraft == null)
+                    {
+                        RegisterCancelledPlannedParatrooperDrop("aircraft-missing-before-delayed-drop");
+                    }
+                    yield break;
+                }
+
+                Vector3 dropPos = GetParatrooperSpawnPositionFromAircraft(aircraft);
+                SpawnParatrooper(dropPos, usedAnchorSpawn, fromLeft, aircraft);
+            }
+            finally
+            {
+                _pendingDelayedDropCoroutines = Mathf.Max(0, _pendingDelayedDropCoroutines - 1);
+            }
+        }
+
+        /// <summary>
+        /// Prevents wave soft-lock when a scheduled drop is lost (e.g. aircraft destroyed before delayed release).
+        /// </summary>
+        private void RegisterCancelledPlannedParatrooperDrop(string reason)
+        {
+            int before = _targetSpawnCount;
+            _targetSpawnCount = Mathf.Max(0, _targetSpawnCount - 1);
+            if (_debugSpawnLogs || _debugAnchorSpawnDiagnostics)
+            {
+                Debug.Log(
+                    $"[EnemySpawner_V2] Planned drop cancelled ({reason}) -> targetSpawn {before} -> {_targetSpawnCount}. " +
+                    FormatWaveDiagSuffix());
             }
         }
 

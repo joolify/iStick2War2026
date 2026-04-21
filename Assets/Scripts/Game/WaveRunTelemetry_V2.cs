@@ -631,7 +631,7 @@ namespace iStick2War_V2
                         endReason: ""));
             }
 
-            if (newState == WaveLoopState_V2.GameOver)
+            if (newState == WaveLoopState_V2.GameOver || newState == WaveLoopState_V2.GameError)
             {
                 WriteRunEnd(_lastState);
             }
@@ -888,7 +888,7 @@ namespace iStick2War_V2
             }
 
             _runEndWritten = true;
-            string reason = ResolveGameOverReason(previousState);
+            string reason = ResolveRunEndReason(previousState);
             bool abortDuringInWave = previousState == WaveLoopState_V2.InWave;
             float inWaveDurationSec = 0f;
             if (abortDuringInWave)
@@ -907,8 +907,19 @@ namespace iStick2War_V2
                     runEndIncludeAbortWaveBunkerCurve: abortDuringInWave));
         }
 
-        private string ResolveGameOverReason(WaveLoopState_V2 previousState)
+        private string ResolveRunEndReason(WaveLoopState_V2 previousState)
         {
+            if (_waveManager != null &&
+                _waveManager.State == WaveLoopState_V2.GameError)
+            {
+                if (_waveManager.TryGetLastGameErrorReason(out string gameErrorReason))
+                {
+                    return "game_error:" + gameErrorReason;
+                }
+
+                return "game_error";
+            }
+
             Hero_V2 hero = FindHero();
             if (hero != null && hero.IsDead())
             {

@@ -74,6 +74,8 @@ namespace iStick2War_V2
         private int _completedRuns;
         private float _nextAutomationActionAtUnscaled;
         private PendingAutomationAction _pendingAutomationAction = PendingAutomationAction.None;
+        private float _lastAimAtEnemyUnscaledTime;
+        private float _lastShootHeldUnscaledTime;
 
         private enum PendingAutomationAction
         {
@@ -93,12 +95,16 @@ namespace iStick2War_V2
 
         /// <summary>Active preset for balance/telemetry runs (Inspector).</summary>
         public AutoHeroTestProfileKind_V2 TestProfile => _testProfile;
+        public float LastAimAtEnemyUnscaledTime => _lastAimAtEnemyUnscaledTime;
+        public float LastShootHeldUnscaledTime => _lastShootHeldUnscaledTime;
 
         private void Awake()
         {
             CacheReferences();
             _enemyBodyPartLayer = LayerMask.NameToLayer("EnemyBodyPart");
             ApplySceneGameplayBotOverride();
+            _lastAimAtEnemyUnscaledTime = Time.unscaledTime;
+            _lastShootHeldUnscaledTime = Time.unscaledTime;
             if (_forcePerfectProfile)
             {
                 _testProfile = AutoHeroTestProfileKind_V2.Perfect;
@@ -663,6 +669,7 @@ namespace iStick2War_V2
             {
                 aimPoint = target.bounds.center;
                 hasTarget = true;
+                _lastAimAtEnemyUnscaledTime = Time.unscaledTime;
             }
 
             RefreshAimNoiseForProfile(hasTarget);
@@ -721,6 +728,10 @@ namespace iStick2War_V2
 
             bool rawShootHeld = inRange && !wantBunker && canHoldFire && targetShootableOnCamera;
             bool shootHeld = ApplyProfileToShootHeld(rawShootHeld);
+            if (shootHeld)
+            {
+                _lastShootHeldUnscaledTime = Time.unscaledTime;
+            }
             bool reload = _hero.ShouldShowReloadPrompt();
 
             _view.SetAutoAimWorldOverride(hasTarget ? aimPoint : heroPos + Vector2.right * 6f);
