@@ -185,6 +185,11 @@ namespace iStick2War_V2.Editor
                 RunBatchSummary();
             }
 
+            if (GUILayout.Button("Batch: Spara rapportfil", GUILayout.Width(150)))
+            {
+                SaveBatchReportToBatchFolder();
+            }
+
             if (GUILayout.Button("Kopiera rapport", GUILayout.Width(100)) && !string.IsNullOrEmpty(_report))
             {
                 EditorGUIUtility.systemCopyBuffer = _report;
@@ -353,6 +358,13 @@ namespace iStick2War_V2.Editor
             bool hasPrevWaveStress = false;
             float prevWaveStressScore = 0f;
             WaveChainPrev chainPrev = default;
+            int overloadFailCount = 0;
+            int pressureDominatedCount = 0;
+            int objectiveInactiveCount = 0;
+            int rowsWithWaveEnd = 0;
+            float pressureScoreSum = 0f;
+            float pressureContinuitySum = 0f;
+            float survivalMarginMinSum = 0f;
 
             var waveEndRows = new List<TelemetryEventDto>(root.events.Length);
             foreach (TelemetryEventDto e in root.events)
@@ -426,6 +438,22 @@ namespace iStick2War_V2.Editor
                 float survivalMarginMin01 = Mathf.Min(bunkerStart01, heroStart01) - pressureScore;
                 float pressureDeficitAvg01 = ComputePressureDeficitAvg01(ev);
                 float pressureContinuity01 = ComputePressureContinuity01(ev, pressureThr);
+                rowsWithWaveEnd++;
+                pressureScoreSum += pressureScore;
+                pressureContinuitySum += pressureContinuity01;
+                survivalMarginMinSum += survivalMarginMin01;
+                if (flags.Contains("OVERLOAD_FAIL"))
+                {
+                    overloadFailCount++;
+                }
+                if (flags.Contains("PRESSURE_DOMINATED_DURATION"))
+                {
+                    pressureDominatedCount++;
+                }
+                if (flags.Contains("OBJECTIVE_INACTIVE"))
+                {
+                    objectiveInactiveCount++;
+                }
 
                 string stressDeltaText = hasPrevWaveStress
                     ? $"{ev.waveStressScore - prevWaveStressScore:0.##}"
@@ -443,6 +471,10 @@ namespace iStick2War_V2.Editor
                     $"  pacing: stressDelta={stressDeltaText} bunkerStart01={bunkerStart01:0.###} heroStart01={heroStart01:0.###} startHpBuffer01={startHpBuffer01:0.###}");
                 sb.AppendLine(
                     $"  pacing: survivalMarginV1={survivalMarginV1:0.###} survivalMarginMin01={survivalMarginMin01:0.###} pressureDeficitAvg01={pressureDeficitAvg01:0.###} pressureContinuity01={pressureContinuity01:0.###}");
+                if (ev.shopOffersBoughtPrior != null && ev.shopOffersBoughtPrior.Length > 0)
+                {
+                    sb.AppendLine($"  shopOffersBoughtPrior: {string.Join(", ", ev.shopOffersBoughtPrior)}");
+                }
                 if (!string.IsNullOrEmpty(ev.waveScalingJson))
                 {
                     sb.AppendLine("  waveScalingJson: " + Truncate(ev.waveScalingJson, 120));
@@ -454,6 +486,32 @@ namespace iStick2War_V2.Editor
                 prevWaveStressScore = ev.waveStressScore;
                 hasPrevWaveStress = true;
                 chainPrev = new WaveChainPrev(ev.wave, ev.minBunkerHpRatioThisWave, ev.bunkerBreached);
+            }
+
+            if (rowsWithWaveEnd > 0)
+            {
+                float avgPressureScore = pressureScoreSum / rowsWithWaveEnd;
+                float avgPressureContinuity = pressureContinuitySum / rowsWithWaveEnd;
+                float avgSurvivalMarginMin = survivalMarginMinSum / rowsWithWaveEnd;
+                sb.AppendLine("--- Auto-comment (v1) ---");
+                string dominant =
+                    overloadFailCount > 0 &&
+                    (pressureDominatedCount > 0 || (avgPressureScore > 0.85f && avgPressureContinuity > 0.85f))
+                        ? "Dominant failure mode: sustained bunker pressure (constant cover erosion over wave duration)."
+                    : overloadFailCount > 0
+                        ? "Dominant failure mode: acute overload collapse (terminal fail without continuous-pressure signature)."
+                    : objectiveInactiveCount >= Mathf.Max(1, rowsWithWaveEnd / 2)
+                        ? "Dominant mode: objective under-pressure not engaged (low bunker threat realized)."
+                    : avgSurvivalMarginMin > 0.25f
+                        ? "Dominant mode: comfortable buffer (likely under-tuned for this profile)."
+                    : "Dominant mode: mixed signals (no single failure pattern dominates this file).";
+                sb.AppendLine(dominant);
+                sb.AppendLine(
+                    $"Context: rows={rowsWithWaveEnd}, OVERLOAD_FAIL={overloadFailCount}, " +
+                    $"PRESSURE_DOMINATED_DURATION={pressureDominatedCount}, OBJECTIVE_INACTIVE={objectiveInactiveCount}, " +
+                    $"avgPressureScore={avgPressureScore:0.###}, avgPressureContinuity={avgPressureContinuity:0.###}, " +
+                    $"avgSurvivalMarginMin01={avgSurvivalMarginMin:0.###}");
+                sb.AppendLine();
             }
 
             _report = sb.ToString();
@@ -480,6 +538,7 @@ namespace iStick2War_V2.Editor
             int batchRuns = 0;
             int readOrParseFailed = 0;
             int emptyEvents = 0;
+            var noWaveEndFiles = new List<string>(8);
             int skippedByFilter = 0;
             var skipReasonCount = new Dictionary<string, int>(StringComparer.Ordinal);
             int runsWithRunEnd = 0;
@@ -552,6 +611,7 @@ namespace iStick2War_V2.Editor
                 if (root == null || root.events == null || root.events.Length == 0)
                 {
                     emptyEvents++;
+                    noWaveEndFiles.Add(fn + " (events[] empty)");
                     continue;
                 }
 
@@ -605,6 +665,24 @@ namespace iStick2War_V2.Editor
                 if (waveEndRows.Count == 0)
                 {
                     emptyEvents++;
+                    int sessionQuitRows = 0;
+                    int sessionBeginRows = 0;
+                    for (int i = 0; i < root.events.Length; i++)
+                    {
+                        TelemetryEventDto ev = root.events[i];
+                        string k = NormalizeKind(ev != null ? ev.kind : null);
+                        if (k == "session_quit")
+                        {
+                            sessionQuitRows++;
+                        }
+                        else if (k == "session_begin")
+                        {
+                            sessionBeginRows++;
+                        }
+                    }
+
+                    noWaveEndFiles.Add(
+                        $"{fn} (no wave_end rows; session_begin={sessionBeginRows}, session_quit={sessionQuitRows})");
                     continue;
                 }
 
@@ -749,6 +827,14 @@ namespace iStick2War_V2.Editor
             sb.AppendLine($"Lyckade körningar (parse OK, events, efter filter): {batchRuns}");
             sb.AppendLine($"Läs/parse-fel: {readOrParseFailed}");
             sb.AppendLine($"Tom events[] / inga wave-rader: {emptyEvents}");
+            if (noWaveEndFiles.Count > 0)
+            {
+                sb.AppendLine("  Exkluderade filer (inga wave_cleared/run_end):");
+                for (int i = 0; i < noWaveEndFiles.Count; i++)
+                {
+                    sb.AppendLine("  - " + noWaveEndFiles[i]);
+                }
+            }
             sb.AppendLine();
 
             if (sceneProfilesSeen.Count > 0)
@@ -874,6 +960,38 @@ namespace iStick2War_V2.Editor
             _report = sb.ToString();
             _lastMessageType = MessageType.Info;
             _lastMessage = $"Batch klar: {batchRuns} körningar, {files.Length} json-filer, {skippedByFilter} hoppade (filter).";
+        }
+
+        private void SaveBatchReportToBatchFolder()
+        {
+            if (string.IsNullOrWhiteSpace(_batchFolderPath) || !Directory.Exists(_batchFolderPath))
+            {
+                _lastMessageType = MessageType.Error;
+                _lastMessage = "Batch-mapp finns inte. Välj mapp först.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_report))
+            {
+                _lastMessageType = MessageType.Warning;
+                _lastMessage = "Ingen rapport att spara ännu. Kör «Summarize folder» först.";
+                return;
+            }
+
+            string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+            string fileName = $"batch_summary_{stamp}.txt";
+            string path = Path.Combine(_batchFolderPath, fileName);
+            try
+            {
+                File.WriteAllText(path, _report, Encoding.UTF8);
+                _lastMessageType = MessageType.Info;
+                _lastMessage = $"Batchrapport sparad: {path}";
+            }
+            catch (Exception ex)
+            {
+                _lastMessageType = MessageType.Error;
+                _lastMessage = "Kunde inte spara batchrapport: " + ex.Message;
+            }
         }
 
         private static void TryGetSessionMeta(
@@ -1444,6 +1562,7 @@ namespace iStick2War_V2.Editor
             public int reloads;
             public int shopPurchasesPrior;
             public int shopCurrencySpentPrior;
+            public string[] shopOffersBoughtPrior;
             public int heroHpWaveStart;
             public int bunkerHpWaveStart;
             public int currencyWaveStart;
