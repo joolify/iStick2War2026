@@ -57,6 +57,8 @@ namespace iStick2War_V2
         [SerializeField] private int _automationTotalRuns = 10;
         [SerializeField] private float _automationActionDelaySeconds = 0.5f;
         [SerializeField] private bool _automationLogs = true;
+        [Tooltip("Prevents test deadlock when bot is fully dry (0 mag + 0 reserve). Refills active weapon via Hero API.")]
+        [SerializeField] private bool _autoRefillAmmoWhenDryInAutomation = true;
 
         private readonly Collider2D[] _overlapBuffer = new Collider2D[64];
         private int _enemyBodyPartLayer = -1;
@@ -620,6 +622,8 @@ namespace iStick2War_V2
 
         private void TickCombatOnly(float _)
         {
+            TryPreventAmmoDeadlockInAutomation();
+
             Vector2 heroPos = _model.transform.position;
             Vector2? bunkerAnchor = TryGetBunkerInteriorWorldPoint();
 
@@ -717,6 +721,40 @@ namespace iStick2War_V2
 
             _view.SetAutoAimWorldOverride(hasTarget ? aimPoint : heroPos + Vector2.right * 6f);
             _input.SetBotFrame(move, shootHeld, reload);
+        }
+
+        private void TryPreventAmmoDeadlockInAutomation()
+        {
+            if (!_enableAutomationRunLoop || !_autoRefillAmmoWhenDryInAutomation)
+            {
+                return;
+            }
+
+            if (_hero == null || _model == null || _model.isDead)
+            {
+                return;
+            }
+
+            // Deadlock symptom from telemetry runs: bot has no rounds in mag nor reserve, can no longer
+            // clear threats, and wave never progresses. For automation this should be treated as a test
+            // harness refill, not gameplay balance.
+            if (_model.currentAmmo > 0 || _model.currentReserveAmmo > 0)
+            {
+                return;
+            }
+
+            HeroWeaponDefinition_V2 activeDef = _model.currentWeaponDefinition;
+            if (activeDef == null)
+            {
+                return;
+            }
+
+            bool refilled = _hero.TryRefillWeaponMagazine(activeDef);
+            if (refilled)
+            {
+                LogAutomation(
+                    $"Ammo deadlock prevented: refilled active weapon '{activeDef.WeaponType}' to full mag+reserve.");
+            }
         }
 
         private void RefreshAimNoiseForProfile(bool hasTarget)

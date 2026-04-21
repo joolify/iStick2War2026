@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
 using iStick2War;
 using TMPro;
@@ -1180,8 +1181,12 @@ namespace iStick2War_V2
 
             if (_topBarCurrentAmmoText != null)
             {
+                bool isColt45 = _hero.CurrentWeaponType == WeaponType.Colt45;
+                string reserveText = isColt45
+                    ? "∞"
+                    : _hero.GetCurrentWeaponReserveAmmo().ToString(CultureInfo.InvariantCulture);
                 _topBarCurrentAmmoText.text =
-                    $"Ammo: {_hero.GetCurrentWeaponAmmo()}/{_hero.GetCurrentWeaponReserveAmmo()}";
+                    $"Ammo: {_hero.GetCurrentWeaponAmmo()}/{reserveText}";
             }
 
             if (_topBarReloadText != null)

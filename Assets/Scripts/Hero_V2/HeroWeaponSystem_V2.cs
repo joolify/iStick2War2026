@@ -480,6 +480,16 @@ namespace iStick2War_V2
             HeroWeaponRuntimeState_V2 active = _inventory.ActiveWeapon;
             if (active != null && active.Definition != null)
             {
+                bool isColt45 = active.Definition.WeaponType == WeaponType.Colt45;
+                if (isColt45)
+                {
+                    // Colt45 keeps reload behavior (magazine refill) but has infinite reserve for baseline survivability.
+                    active.CurrentAmmo = active.Definition.MaxAmmo;
+                    active.CurrentReserveAmmo = active.Definition.MaxReserveAmmo;
+                    _model.SetAmmoState(active.CurrentAmmo, active.CurrentReserveAmmo);
+                    return;
+                }
+
                 int needed = Mathf.Max(0, active.Definition.MaxAmmo - active.CurrentAmmo);
                 int toLoad = Mathf.Min(needed, Mathf.Max(0, active.CurrentReserveAmmo));
                 active.CurrentAmmo += toLoad;

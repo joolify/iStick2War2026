@@ -9,6 +9,8 @@ namespace iStick2War_V2
         [SerializeField] private float _gravityScale = 1.75f;
         [SerializeField] private GameObject _explosionEffectPrefab;
         [SerializeField] private float _explosionEffectLifetime = 1.2f;
+        [Tooltip("When false, grenade ignores collisions with paratrooper colliders/body parts.")]
+        [SerializeField] private bool _canExplodeOnParatrooperCollision = false;
 
         private float _fuseSeconds = 2.25f;
         private int _damage = 24;
@@ -59,6 +61,12 @@ namespace iStick2War_V2
                 return;
             }
 
+            Collider2D other = collision.collider;
+            if (!_canExplodeOnParatrooperCollision && IsParatrooperCollider(other))
+            {
+                return;
+            }
+
             Explode();
         }
 
@@ -69,7 +77,7 @@ namespace iStick2War_V2
                 return;
             }
 
-            if (other.GetComponentInParent<Paratrooper>() != null)
+            if (!_canExplodeOnParatrooperCollision && IsParatrooperCollider(other))
             {
                 return;
             }
@@ -115,6 +123,26 @@ namespace iStick2War_V2
             }
 
             Destroy(gameObject);
+        }
+
+        private static bool IsParatrooperCollider(Collider2D other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+
+            if (other.GetComponentInParent<Paratrooper>() != null)
+            {
+                return true;
+            }
+
+            if (other.GetComponent<ParatrooperBodyPart_V2>() != null)
+            {
+                return true;
+            }
+
+            return false;
         }
     }
 }

@@ -74,9 +74,11 @@ namespace iStick2War_V2
         // Shop intermission before the wave that just cleared (set when leaving Shop → Preparing)
         private int _shopPurchasesPriorToWaveJustCleared;
         private int _shopCurrencySpentPriorToWaveJustCleared;
+        private string[] _shopOffersBoughtPriorToWaveJustCleared = Array.Empty<string>();
 
         private int _intermissionShopPurchaseCount;
         private int _intermissionShopCurrencySpent;
+        private readonly List<string> _intermissionShopOfferKinds = new List<string>(8);
 
         private float _minBunkerHpRatioThisWave;
         private List<BunkerHpSamplePoint> _bunkerHpSamplesThisWave;
@@ -194,6 +196,7 @@ namespace iStick2War_V2
             public int reloads;
             public int shopPurchasesPrior;
             public int shopCurrencySpentPrior;
+            public string[] shopOffersBoughtPrior;
             public int heroHpWaveStart;
             public int bunkerHpWaveStart;
             public int currencyWaveStart;
@@ -433,6 +436,10 @@ namespace iStick2War_V2
 
             _intermissionShopPurchaseCount++;
             _intermissionShopCurrencySpent += Mathf.Max(0, currencySpent);
+            if (!string.IsNullOrWhiteSpace(offerKind))
+            {
+                _intermissionShopOfferKinds.Add(offerKind.Trim());
+            }
         }
 
         private void ResolveWaveManager()
@@ -593,8 +600,12 @@ namespace iStick2War_V2
             {
                 _shopPurchasesPriorToWaveJustCleared = _intermissionShopPurchaseCount;
                 _shopCurrencySpentPriorToWaveJustCleared = _intermissionShopCurrencySpent;
+                _shopOffersBoughtPriorToWaveJustCleared = _intermissionShopOfferKinds.Count > 0
+                    ? _intermissionShopOfferKinds.ToArray()
+                    : Array.Empty<string>();
                 _intermissionShopPurchaseCount = 0;
                 _intermissionShopCurrencySpent = 0;
+                _intermissionShopOfferKinds.Clear();
             }
 
             if (_lastState != WaveLoopState_V2.InWave && newState == WaveLoopState_V2.InWave)
@@ -811,6 +822,7 @@ namespace iStick2War_V2
                 reloads = _reloadsDuringWave,
                 shopPurchasesPrior = _shopPurchasesPriorToWaveJustCleared,
                 shopCurrencySpentPrior = _shopCurrencySpentPriorToWaveJustCleared,
+                shopOffersBoughtPrior = _shopOffersBoughtPriorToWaveJustCleared ?? Array.Empty<string>(),
                 heroHpWaveStart = _heroHpAtWaveStart,
                 bunkerHpWaveStart = _bunkerHpAtWaveStart,
                 currencyWaveStart = _currencyAtWaveStart,
@@ -1162,6 +1174,13 @@ namespace iStick2War_V2
                         meaning =
                             "Shop intermission before the wave that just cleared: purchase count and currency spent " +
                             "(attributed on wave_cleared when leaving Shop → Preparing)."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "shopOffersBoughtPrior[]",
+                        meaning =
+                            "Offer kind labels bought in the same intermission window as shopPurchasesPrior/shopCurrencySpentPrior " +
+                            "(e.g. WeaponUnlock, HealthPack, AmmoRefill, BunkerRepair)."
                     },
                     new TelemetryGlossaryEntry
                     {

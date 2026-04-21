@@ -74,6 +74,13 @@ namespace iStick2War_V2
         [SerializeField] private float _aircraftFlightMaxLifetimeSeconds = 45f;
         [Tooltip("If enabled, paratrooper is spawned only after aircraft enters camera view.")]
         [SerializeField] private bool _spawnParatrooperWhenAircraftIsVisible = true;
+        [Header("Paratrooper drops per helicopter flight")]
+        [Tooltip("Minimum paratroopers dropped by one helicopter flight.")]
+        [SerializeField] private int _minParatroopersPerFlight = 1;
+        [Tooltip("Maximum paratroopers dropped by one helicopter flight.")]
+        [SerializeField] private int _maxParatroopersPerFlight = 5;
+        [Tooltip("Delay between drops from the same helicopter flight (seconds).")]
+        [SerializeField] private float _paratrooperDropIntervalPerFlight = 0.3f;
         [Tooltip("Safety timeout for delayed drop; spawns anyway after this many seconds.")]
         [SerializeField] private float _maxSecondsToWaitForVisibleAircraftDrop = 6f;
         [Tooltip(
@@ -255,15 +262,27 @@ namespace iStick2War_V2
             int toSpawn = config.EnemyCount;
             float interval = _runtimeSpawnIntervalSeconds;
             int waveSession = _waveSessionId;
-            for (int i = 0; i < toSpawn; i++)
+            int plannedParatroopers = 0;
+            int flightIndex = 0;
+            while (plannedParatroopers < toSpawn)
             {
                 if (!_isWaveActive || waveSession != _waveSessionId)
                 {
                     yield break;
                 }
 
-                SpawnOne(i);
-                if (i < toSpawn - 1)
+                int remaining = Mathf.Max(0, toSpawn - plannedParatroopers);
+                int perFlight = ResolveParatroopersPerFlight(remaining);
+                if (perFlight <= 0)
+                {
+                    break;
+                }
+
+                SpawnOne(flightIndex, perFlight);
+                plannedParatroopers += perFlight;
+                flightIndex++;
+
+                if (plannedParatroopers < toSpawn)
                 {
                     yield return new WaitForSeconds(interval);
                 }
@@ -303,7 +322,20 @@ namespace iStick2War_V2
             }
         }
 
-        private void SpawnOne(int spawnIndexInWave)
+        private int ResolveParatroopersPerFlight(int remainingParatroopersInWave)
+        {
+            if (remainingParatroopersInWave <= 0)
+            {
+                return 0;
+            }
+
+            int minDrops = Mathf.Max(1, _minParatroopersPerFlight);
+            int maxDrops = Mathf.Max(minDrops, _maxParatroopersPerFlight);
+            int randomized = UnityEngine.Random.Range(minDrops, maxDrops + 1);
+            return Mathf.Clamp(randomized, 1, remainingParatroopersInWave);
+        }
+
+        private void SpawnOne(int spawnIndexInWave, int paratroopersThisFlight)
         {
             if (!_isWaveActive)
             {
@@ -396,43 +428,61 @@ namespace iStick2War_V2
 
                     if (_spawnParatrooperWhenAircraftIsVisible)
                     {
-                        StartCoroutine(SpawnParatrooperWhenAircraftVisible(
-                            aircraft,
-                            usedAnchorSpawn,
-                            fromLeft));
+                        int dropCount = Mathf.Max(1, paratroopersThisFlight);
+                        float dropInterval = Mathf.Max(0f, _paratrooperDropIntervalPerFlight);
+                        for (int dropIndex = 0; dropIndex < dropCount; dropIndex++)
+                        {
+                            StartCoroutine(SpawnParatrooperWhenAircraftVisible(
+                                aircraft,
+                                usedAnchorSpawn,
+                                fromLeft,
+                                dropIndex * dropInterval));
+                        }
                         return;
                     }
 
-                    Vector3 paratrooperWorldPositionNow = GetParatrooperSpawnPositionFromAircraft(aircraft);
-                    SpawnParatrooper(paratrooperWorldPositionNow, usedAnchorSpawn, fromLeft, aircraft);
+                    int dropNow = Mathf.Max(1, paratroopersThisFlight);
+                    for (int dropIndex = 0; dropIndex < dropNow; dropIndex++)
+                    {
+                        Vector3 paratrooperWorldPositionNow = GetParatrooperSpawnPositionFromAircraft(aircraft);
+                        SpawnParatrooper(paratrooperWorldPositionNow, usedAnchorSpawn, fromLeft, aircraft);
+                    }
                     return;
                 }
                 else
                 {
-                    Vector3 paratrooperWorldPositionNow = aircraftWorldPos + _paratrooperOffsetFromMount;
-                    paratrooperWorldPositionNow.z = _anchorSpawnWorldZ;
-                    SpawnParatrooper(paratrooperWorldPositionNow, usedAnchorSpawn, fromLeft, aircraft);
+                    int dropNow = Mathf.Max(1, paratroopersThisFlight);
+                    for (int dropIndex = 0; dropIndex < dropNow; dropIndex++)
+                    {
+                        Vector3 paratrooperWorldPositionNow = aircraftWorldPos + _paratrooperOffsetFromMount;
+                        paratrooperWorldPositionNow.z = _anchorSpawnWorldZ;
+                        SpawnParatrooper(paratrooperWorldPositionNow, usedAnchorSpawn, fromLeft, aircraft);
+                    }
                     return;
                 }
             }
             else
             {
                 usedAnchorSpawn = false;
-                Vector3 paratrooperWorldPosition = new Vector3(
-                    UnityEngine.Random.Range(_spawnXRange.x, _spawnXRange.y),
-                    UnityEngine.Random.Range(_spawnYRange.x, _spawnYRange.y),
-                    0f);
-                paratrooperWorldPosition = ClampToCameraView(paratrooperWorldPosition);
-
-                if (_debugAnchorSpawnDiagnostics)
+                int dropNow = Mathf.Max(1, paratroopersThisFlight);
+                for (int dropIndex = 0; dropIndex < dropNow; dropIndex++)
                 {
-                    Debug.LogWarning(
-                        "[EnemySpawner_V2] Spawn used FALLBACK random area (no anchors and frustum off-screen spawn disabled or no ortho camera). " +
-                        $"Enable '{nameof(_useFrustumOffscreenSpawnWhenNoAnchors)}' or assign spawn transforms. " +
-                        $"Final pos={paratrooperWorldPosition}, waveSpawnIndex={spawnIndexInWave}");
-                }
+                    Vector3 paratrooperWorldPosition = new Vector3(
+                        UnityEngine.Random.Range(_spawnXRange.x, _spawnXRange.y),
+                        UnityEngine.Random.Range(_spawnYRange.x, _spawnYRange.y),
+                        0f);
+                    paratrooperWorldPosition = ClampToCameraView(paratrooperWorldPosition);
 
-                SpawnParatrooper(paratrooperWorldPosition, usedAnchorSpawn, fromLeft, aircraft);
+                    if (_debugAnchorSpawnDiagnostics)
+                    {
+                        Debug.LogWarning(
+                            "[EnemySpawner_V2] Spawn used FALLBACK random area (no anchors and frustum off-screen spawn disabled or no ortho camera). " +
+                            $"Enable '{nameof(_useFrustumOffscreenSpawnWhenNoAnchors)}' or assign spawn transforms. " +
+                            $"Final pos={paratrooperWorldPosition}, waveSpawnIndex={spawnIndexInWave}");
+                    }
+
+                    SpawnParatrooper(paratrooperWorldPosition, usedAnchorSpawn, fromLeft, aircraft);
+                }
                 return;
             }
         }
@@ -623,11 +673,20 @@ namespace iStick2War_V2
             }
         }
 
-        private IEnumerator SpawnParatrooperWhenAircraftVisible(GameObject aircraft, bool usedAnchorSpawn, bool fromLeft)
+        private IEnumerator SpawnParatrooperWhenAircraftVisible(
+            GameObject aircraft,
+            bool usedAnchorSpawn,
+            bool fromLeft,
+            float initialDelaySeconds = 0f)
         {
             _pendingDelayedDropCoroutines++;
             try
             {
+                if (initialDelaySeconds > 0f)
+                {
+                    yield return new WaitForSeconds(initialDelaySeconds);
+                }
+
                 if (aircraft == null)
                 {
                     yield break;
