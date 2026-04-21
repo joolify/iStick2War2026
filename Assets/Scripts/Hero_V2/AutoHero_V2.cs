@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using iStick2War;
+using TMPro;
 using UnityEngine;
 
 namespace iStick2War_V2
@@ -58,7 +59,12 @@ namespace iStick2War_V2
         [SerializeField] private float _logWaveCombatWhenNoTargetIntervalSeconds = 2f;
         [Header("Automation loop (runs)")]
         [SerializeField] private bool _enableAutomationRunLoop = true;
+        [Tooltip(
+            "Antal avslutade spelrundor (GameOver, GameWon eller GameError) innan automation slutar klicka vidare. " +
+            "Tidigare räknades inte GameError → en watchdog-fail kunde ge en extra runda trots rätt siffra här.")]
         [SerializeField] private int _automationTotalRuns = 10;
+        [Tooltip("Optional; if empty, resolved once by name txt_topbar_testRunDone (Topbar-canvas). Shown when automation batch completes.")]
+        [SerializeField] private TMP_Text _testRunDoneTopBarText;
         [SerializeField] private float _automationActionDelaySeconds = 0.5f;
         [SerializeField] private bool _automationLogs = true;
         [Tooltip("Prevents test deadlock when bot is fully dry (0 mag + 0 reserve). Refills active weapon via Hero API.")]
@@ -72,6 +78,9 @@ namespace iStick2War_V2
         private float _nextWaveCombatNoTargetLogUnscaledTime;
         private bool _sessionInProgress;
         private int _completedRuns;
+        private float _automationBatchStartRealtime = -1f;
+        private int _automationGameErrorCount;
+        private TMP_Text _resolvedTestRunDoneTopBarText;
         private float _nextAutomationActionAtUnscaled;
         private PendingAutomationAction _pendingAutomationAction = PendingAutomationAction.None;
         private float _lastAimAtEnemyUnscaledTime;
@@ -82,6 +91,7 @@ namespace iStick2War_V2
             None,
             ClickGameOverContinue,
             ClickGameWonContinue,
+            ClickGameErrorContinue,
             ClickMainMenuPlay
         }
 
@@ -109,6 +119,11 @@ namespace iStick2War_V2
             {
                 _testProfile = AutoHeroTestProfileKind_V2.Perfect;
             }
+
+            _automationBatchStartRealtime = -1f;
+            _automationGameErrorCount = 0;
+            _resolvedTestRunDoneTopBarText = null;
+            HideTestRunDoneTopBarBanner();
         }
 
         private void ApplySceneGameplayBotOverride()
@@ -285,6 +300,12 @@ namespace iStick2War_V2
 
             if (state == WaveLoopState_V2.InWave && !_hero.IsDead())
             {
+                if (_automationBatchStartRealtime < 0f && _completedRuns == 0)
+                {
+                    _automationBatchStartRealtime = Time.realtimeSinceStartup;
+                    HideTestRunDoneTopBarBanner();
+                }
+
                 _sessionInProgress = true;
                 return;
             }
@@ -304,7 +325,7 @@ namespace iStick2War_V2
                 }
                 else
                 {
-                    LogAutomation("Automation finished after max runs (GameOver).");
+                    FinishAutomationBatchRunLoop("GameOver");
                 }
 
                 return;
@@ -325,7 +346,29 @@ namespace iStick2War_V2
                 }
                 else
                 {
-                    LogAutomation("Automation finished after max runs (GameWon).");
+                    FinishAutomationBatchRunLoop("GameWon");
+                }
+
+                return;
+            }
+
+            if (state == WaveLoopState_V2.GameError)
+            {
+                if (_sessionInProgress)
+                {
+                    _automationGameErrorCount++;
+                    _completedRuns++;
+                    _sessionInProgress = false;
+                    LogAutomation($"Run {_completedRuns}/{Mathf.Max(1, _automationTotalRuns)} ended: GameError.");
+                }
+
+                if (_completedRuns < Mathf.Max(1, _automationTotalRuns))
+                {
+                    QueueAutomationAction(PendingAutomationAction.ClickGameErrorContinue);
+                }
+                else
+                {
+                    FinishAutomationBatchRunLoop("GameError");
                 }
 
                 return;
@@ -378,6 +421,12 @@ namespace iStick2War_V2
                         TryClickMainMenuButtonByObjectName("bkg_gameWon_continue", "gameWon-continue-secondary") ||
                         TryClickReturnToMainMenuButtonFallback("gameWon-return-fallback");
                     break;
+                case PendingAutomationAction.ClickGameErrorContinue:
+                    LogAutomation("Trying click: GameError Continue (btn_gameError_continue -> ReturnToMainMenu fallback)");
+                    clicked =
+                        TryClickMainMenuButtonByObjectName("btn_gameError_continue", "gameError-continue-primary") ||
+                        TryClickReturnToMainMenuButtonFallback("gameError-return-fallback");
+                    break;
                 case PendingAutomationAction.ClickMainMenuPlay:
                     LogAutomation("Trying click: MainMenu Play (btn_main_menu_play -> Play fallback)");
                     clicked =
@@ -410,7 +459,7 @@ namespace iStick2War_V2
             }
 
             MainMenuNavButton_V2[] navButtons =
-                FindObjectsByType<MainMenuNavButton_V2>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                FindObjectsByType<MainMenuNavButton_V2>(FindObjectsInactive.Include);
             for (int i = 0; i < navButtons.Length; i++)
             {
                 MainMenuNavButton_V2 nav = navButtons[i];
@@ -436,7 +485,7 @@ namespace iStick2War_V2
         private bool TryClickReturnToMainMenuButtonFallback(string reasonTag)
         {
             MainMenuNavButton_V2[] navButtons =
-                FindObjectsByType<MainMenuNavButton_V2>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                FindObjectsByType<MainMenuNavButton_V2>(FindObjectsInactive.Include);
             for (int i = 0; i < navButtons.Length; i++)
             {
                 MainMenuNavButton_V2 nav = navButtons[i];
@@ -455,7 +504,7 @@ namespace iStick2War_V2
         private bool TryClickPlayButtonFallback(string reasonTag)
         {
             MainMenuNavButton_V2[] navButtons =
-                FindObjectsByType<MainMenuNavButton_V2>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                FindObjectsByType<MainMenuNavButton_V2>(FindObjectsInactive.Include);
             for (int i = 0; i < navButtons.Length; i++)
             {
                 MainMenuNavButton_V2 nav = navButtons[i];
@@ -469,6 +518,106 @@ namespace iStick2War_V2
 
             LogAutomation($"No active Play button found [{reasonTag}]");
             return false;
+        }
+
+        private void HideTestRunDoneTopBarBanner()
+        {
+            TMP_Text t = ResolveTestRunDoneTopBarText();
+            if (t == null)
+            {
+                return;
+            }
+
+            t.text = "";
+            t.gameObject.SetActive(false);
+        }
+
+        private void FinishAutomationBatchRunLoop(string terminalKindForLog)
+        {
+            LogAutomation($"Automation finished after max runs ({terminalKindForLog}).");
+            int total = Mathf.Max(1, _automationTotalRuns);
+            float elapsed = _automationBatchStartRealtime >= 0f
+                ? Mathf.Max(0f, Time.realtimeSinceStartup - _automationBatchStartRealtime)
+                : 0f;
+            string duration = FormatAutomationElapsedEnglish(elapsed);
+            string errPart = _automationGameErrorCount <= 0
+                ? "No errors."
+                : _automationGameErrorCount == 1
+                    ? "1 error."
+                    : $"{_automationGameErrorCount} errors.";
+            string msg = $"Test run {total}/{total} games done in {duration}. {errPart}";
+            TMP_Text tmp = ResolveTestRunDoneTopBarText();
+            if (tmp != null)
+            {
+                tmp.text = msg;
+                tmp.gameObject.SetActive(true);
+            }
+        }
+
+        private TMP_Text ResolveTestRunDoneTopBarText()
+        {
+            if (_testRunDoneTopBarText != null)
+            {
+                return _testRunDoneTopBarText;
+            }
+
+            if (_resolvedTestRunDoneTopBarText != null)
+            {
+                return _resolvedTestRunDoneTopBarText;
+            }
+
+            _resolvedTestRunDoneTopBarText = FindTmpTextInLoadedScenesByExactName("txt_topbar_testRunDone");
+            return _resolvedTestRunDoneTopBarText;
+        }
+
+        private static string FormatAutomationElapsedEnglish(float elapsedSec)
+        {
+            if (elapsedSec < 0f)
+            {
+                elapsedSec = 0f;
+            }
+
+            int t = Mathf.FloorToInt(elapsedSec);
+            int h = t / 3600;
+            int m = (t % 3600) / 60;
+            int s = t % 60;
+            var parts = new List<string>(3);
+            if (h > 0)
+            {
+                parts.Add(h == 1 ? "1 hour" : $"{h} hours");
+            }
+
+            if (m > 0)
+            {
+                parts.Add(m == 1 ? "1 minute" : $"{m} minutes");
+            }
+
+            if (s > 0 || parts.Count == 0)
+            {
+                parts.Add(s == 1 ? "1 second" : $"{s} seconds");
+            }
+
+            return string.Join(", ", parts);
+        }
+
+        private static TMP_Text FindTmpTextInLoadedScenesByExactName(string exactName)
+        {
+            if (string.IsNullOrEmpty(exactName))
+            {
+                return null;
+            }
+
+            TMP_Text[] texts = FindObjectsByType<TMP_Text>(FindObjectsInactive.Include);
+            for (int i = 0; i < texts.Length; i++)
+            {
+                TMP_Text text = texts[i];
+                if (text != null && text.gameObject.name.Equals(exactName, System.StringComparison.Ordinal))
+                {
+                    return text;
+                }
+            }
+
+            return null;
         }
 
         private void LogAutomation(string msg)

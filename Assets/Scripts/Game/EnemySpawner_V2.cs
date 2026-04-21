@@ -182,6 +182,17 @@ namespace iStick2War_V2
         public bool IsWaveActive => _isWaveActive;
 
         /// <summary>
+        /// True when the paratrooper spawn coroutine has finished and every scheduled drop has been accounted for
+        /// (matches the spawn half of <see cref="IsWaveCleared"/>). While the wave is still active, long gaps without
+        /// new paratrooper spawns are normal — only clearing living enemies remains. Watchdogs should not treat that as a stall.
+        /// </summary>
+        public bool HasFinishedScheduledParatrooperSpawnsThisWave =>
+            _isWaveActive &&
+            _spawnRoutineFinished &&
+            _spawnedCount >= _targetSpawnCount &&
+            _pendingDelayedDropCoroutines == 0;
+
+        /// <summary>
         /// Approximate living paratroopers (tracked death handlers still active). For telemetry / diagnostics only.
         /// </summary>
         public int GetLivingParatroopersTrackedCountForTelemetry()

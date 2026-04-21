@@ -469,7 +469,8 @@ MonoBehaviour:
   _logWaveCombatWhenNoTarget: 0
   _logWaveCombatWhenNoTargetIntervalSeconds: 2
   _enableAutomationRunLoop: 1
-  _automationTotalRuns: 100
+  _automationTotalRuns: 10
+  _testRunDoneTopBarText: {fileID: 0}
   _automationActionDelaySeconds: 0.5
   _automationLogs: 1
   _autoRefillAmmoWhenDryInAutomation: 1

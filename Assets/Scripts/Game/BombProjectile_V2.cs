@@ -131,13 +131,10 @@ namespace iStick2War_V2
             }
 
             Hero_V2 hero = FindAnyObjectByType<Hero_V2>();
-            if (hero != null && !hero.IsDead())
+            if (hero != null && !hero.IsDead() && IsHeroWithinExplosionRadius(center, hero, _explosionRadius))
             {
-                float heroDist = Vector2.Distance(center, hero.transform.position);
-                if (heroDist <= _explosionRadius)
-                {
-                    hero.ReceiveDamage(_damage);
-                }
+                // Bunker safe zone blocks infantry fire to hero HP; bomb splash ignores that (and has no effect once bunker HP is 0).
+                hero.ReceiveDamage(_damage, ignoreBunkerSafeZone: true);
             }
 
             if (_explosionEffectPrefab != null)
@@ -147,6 +144,37 @@ namespace iStick2War_V2
             }
 
             Destroy(gameObject);
+        }
+
+        /// <summary>
+        /// Uses child colliders ClosestPoint so tall sprites / offset roots still catch AoE (transform-only distance often misses).
+        /// </summary>
+        private static bool IsHeroWithinExplosionRadius(Vector2 center, Hero_V2 hero, float radius)
+        {
+            if (radius <= 0f || hero == null)
+            {
+                return false;
+            }
+
+            float r2 = radius * radius;
+            Collider2D[] cols = hero.GetComponentsInChildren<Collider2D>(true);
+            for (int i = 0; i < cols.Length; i++)
+            {
+                Collider2D col = cols[i];
+                if (col == null || !col.enabled)
+                {
+                    continue;
+                }
+
+                Vector2 closest = col.ClosestPoint(center);
+                if (((Vector2)closest - center).sqrMagnitude <= r2)
+                {
+                    return true;
+                }
+            }
+
+            Vector2 root = hero.transform.position;
+            return (root - center).sqrMagnitude <= r2;
         }
     }
 }

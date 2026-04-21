@@ -327,7 +327,7 @@ namespace iStick2War_V2
 
         private static Transform FindLoadedSceneRootTransformByExactName(string exactName)
         {
-            Transform[] transforms = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            Transform[] transforms = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include);
             for (int i = 0; i < transforms.Length; i++)
             {
                 Transform t = transforms[i];

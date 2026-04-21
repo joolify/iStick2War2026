@@ -255,16 +255,23 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
             }
         }
 
-        public void ReceiveDamage(int damage)
+        /// <param name="damage">Positive HP loss.</param>
+        /// <param name="ignoreBunkerSafeZone">
+        /// When true, bunker cover does not block damage (e.g. bomb splash / heavy ordnance). Small-arms paths keep false.
+        /// </param>
+        public void ReceiveDamage(int damage, bool ignoreBunkerSafeZone = false)
         {
-            if (damage > 0)
+            if (damage > 0 && !ignoreBunkerSafeZone)
             {
                 if (_cachedWaveManager == null)
                 {
                     _cachedWaveManager = FindAnyObjectByType<WaveManager_V2>();
                 }
 
-                if (_cachedWaveManager != null && _cachedWaveManager.IsHeroInsideBunker(this))
+                // Cover only exists while bunker has HP; after breach, small-arms logic must not block (e.g. bomb splash).
+                if (_cachedWaveManager != null &&
+                    _cachedWaveManager.BunkerHealth > 0 &&
+                    _cachedWaveManager.IsHeroInsideBunker(this))
                 {
                     return;
                 }

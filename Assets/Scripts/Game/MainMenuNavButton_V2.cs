@@ -101,7 +101,7 @@ namespace iStick2War_V2
         private static void FinishReturnToMainMenuAfterSceneLoad(Scene scene, LoadSceneMode mode)
         {
             SceneManager.sceneLoaded -= FinishReturnToMainMenuAfterSceneLoad;
-            MainMenu_V2[] menus = FindObjectsByType<MainMenu_V2>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            MainMenu_V2[] menus = FindObjectsByType<MainMenu_V2>(FindObjectsInactive.Include);
             for (int i = 0; i < menus.Length; i++)
             {
                 if (menus[i] != null)

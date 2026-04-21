@@ -1148,7 +1148,7 @@ namespace iStick2War_V2
         {
             if (_heroDeathGameOverRoot == null)
             {
-                Transform[] transforms = FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                Transform[] transforms = FindObjectsByType<Transform>(FindObjectsInactive.Include);
                 for (int i = 0; i < transforms.Length; i++)
                 {
                     Transform t = transforms[i];
@@ -1192,7 +1192,7 @@ namespace iStick2War_V2
                 return null;
             }
 
-            TMP_Text[] texts = FindObjectsByType<TMP_Text>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            TMP_Text[] texts = FindObjectsByType<TMP_Text>(FindObjectsInactive.Include);
             for (int i = 0; i < texts.Length; i++)
             {
                 TMP_Text t = texts[i];
@@ -1212,7 +1212,7 @@ namespace iStick2War_V2
                 return null;
             }
 
-            GameObject[] objects = FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            GameObject[] objects = FindObjectsByType<GameObject>(FindObjectsInactive.Include);
             for (int i = 0; i < objects.Length; i++)
             {
                 GameObject go = objects[i];
@@ -1376,7 +1376,11 @@ namespace iStick2War_V2
                 }
             }
 
-            if (_enemySpawner != null && _enemySpawner.IsWaveActive)
+            // Only while more paratroopers are still expected from the spawn schedule. After the routine finishes
+            // and spawnedCount >= target, minutes can pass with no new drops while the player clears stragglers.
+            if (_enemySpawner != null &&
+                _enemySpawner.IsWaveActive &&
+                !_enemySpawner.HasFinishedScheduledParatrooperSpawnsThisWave)
             {
                 float noSpawnSeconds = Mathf.Max(0f, now - _enemySpawner.LastParatrooperSpawnUnscaledTime);
                 if (noSpawnSeconds >= Mathf.Max(5f, _enemyNoSpawnErrorSeconds))

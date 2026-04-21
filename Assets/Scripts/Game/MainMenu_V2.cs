@@ -235,7 +235,7 @@ namespace iStick2War_V2
         private void ShowByNameFallback()
         {
             Scene s = gameObject.scene;
-            GameObject[] gos = FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            GameObject[] gos = FindObjectsByType<GameObject>(FindObjectsInactive.Include);
             for (int i = 0; i < gos.Length; i++)
             {
                 GameObject go = gos[i];
@@ -258,7 +258,7 @@ namespace iStick2War_V2
         private static void ShowNavButtonsFallback()
         {
             MainMenuNavButton_V2[] navButtons =
-                FindObjectsByType<MainMenuNavButton_V2>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                FindObjectsByType<MainMenuNavButton_V2>(FindObjectsInactive.Include);
             for (int i = 0; i < navButtons.Length; i++)
             {
                 MainMenuNavButton_V2 nav = navButtons[i];
