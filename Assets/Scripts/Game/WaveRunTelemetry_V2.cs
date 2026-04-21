@@ -631,7 +631,9 @@ namespace iStick2War_V2
                         endReason: ""));
             }
 
-            if (newState == WaveLoopState_V2.GameOver || newState == WaveLoopState_V2.GameError)
+            if (newState == WaveLoopState_V2.GameOver ||
+                newState == WaveLoopState_V2.GameError ||
+                newState == WaveLoopState_V2.GameWon)
             {
                 WriteRunEnd(_lastState);
             }
@@ -918,6 +920,12 @@ namespace iStick2War_V2
                 }
 
                 return "game_error";
+            }
+
+            if (_waveManager != null &&
+                _waveManager.State == WaveLoopState_V2.GameWon)
+            {
+                return "game_won";
             }
 
             Hero_V2 hero = FindHero();

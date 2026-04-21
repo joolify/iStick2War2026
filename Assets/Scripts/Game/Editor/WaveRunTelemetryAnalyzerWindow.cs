@@ -65,6 +65,7 @@ namespace iStick2War_V2.Editor
             "NEAR_BREACH\twave_cleared, minBunkerHpRatio < 0.15, inte bunkerBreached (tur/panik, inte sweet spot)\n" +
             "OVERLOAD_FAIL\trun_end och (heroDead eller bunkerBreached)\n" +
             "GAME_ERROR_FAIL\trun_end med endReason som börjar på game_error (watchdog/soft-lock guard)\n" +
+            "GAME_WON_END\trun_end med endReason game_won (session avslutad med vinst)\n" +
             "NEXT_WAVE_OVERLOAD\twave_cleared: nästa wave_cleared/run_end-rad i filen är run_end för wave+1 med game over (heroDead eller bunkerBreached)\n" +
             "SWEET_SPOT_HINT\tgrov \"bra fight\"-heuristik för wave_cleared (skada + min ratio-intervall, ingen död/breach)\n" +
             "TRIVIAL_BUNKER\tingen bunker-skada och minBunkerHpRatio ≥ 0.99\n" +
@@ -550,9 +551,10 @@ namespace iStick2War_V2.Editor
             var skipReasonCount = new Dictionary<string, int>(StringComparer.Ordinal);
             int runsWithRunEnd = 0;
             int runsWithoutRunEnd = 0;
-            var deathWaves = new List<int>(files.Length);
-            var deathEndReasons = new Dictionary<string, int>(StringComparer.Ordinal);
-            var deathWaveHistogram = new Dictionary<int, int>();
+            int runsWon = 0;
+            var failWaves = new List<int>(files.Length);
+            var runEndReasons = new Dictionary<string, int>(StringComparer.Ordinal);
+            var failWaveHistogram = new Dictionary<int, int>();
             var flagRunCount = new Dictionary<string, int>(StringComparer.Ordinal);
             var flagRowCount = new Dictionary<string, int>(StringComparer.Ordinal);
             int totalWaveEndRows = 0;
@@ -752,15 +754,23 @@ namespace iStick2War_V2.Editor
                     }
                 }
 
-                int deathWave = -1;
+                int failWave = -1;
                 if (lastRunEnd != null)
                 {
-                    deathWave = lastRunEnd.wave;
                     runsWithRunEnd++;
-                    deathWaves.Add(deathWave);
-                    BatchIncrement(deathWaveHistogram, deathWave);
                     string er = string.IsNullOrEmpty(lastRunEnd.endReason) ? "(tom)" : lastRunEnd.endReason;
-                    BatchIncrement(deathEndReasons, er);
+                    BatchIncrement(runEndReasons, er);
+                    bool isWin = er.Equals("game_won", StringComparison.OrdinalIgnoreCase);
+                    if (isWin)
+                    {
+                        runsWon++;
+                    }
+                    else
+                    {
+                        failWave = lastRunEnd.wave;
+                        failWaves.Add(failWave);
+                        BatchIncrement(failWaveHistogram, failWave);
+                    }
                 }
                 else
                 {
@@ -784,7 +794,7 @@ namespace iStick2War_V2.Editor
                 }
 
                 string flagsJoined = flagsThisRun.Count > 0 ? string.Join(";", flagsThisRun) : "(inga)";
-                string deathText = deathWave >= 0 ? deathWave.ToString(CultureInfo.InvariantCulture) : "—";
+                string deathText = failWave >= 0 ? failWave.ToString(CultureInfo.InvariantCulture) : "—";
                 string tsvLine =
                     $"{fn}\t{sessionId}\t{sceneProfileId}\t{autoHeroProfile}\t{deathText}\t{maxWaveCleared}\t{sessionDur:0.#}\t{flagsJoined}";
                 perFileLines.Add(tsvLine);
@@ -871,42 +881,43 @@ namespace iStick2War_V2.Editor
                 return;
             }
 
-            sb.AppendLine("--- Game over (sista run_end i filen) ---");
+            sb.AppendLine("--- Run end (sista run_end i filen) ---");
             sb.AppendLine($"Körningar med run_end: {runsWithRunEnd} ({100f * runsWithRunEnd / batchRuns:0.#} %)");
             sb.AppendLine($"Körningar utan run_end: {runsWithoutRunEnd} ({100f * runsWithoutRunEnd / batchRuns:0.#} %)");
-            if (deathWaves.Count > 0)
+            sb.AppendLine($"Körningar med game_won: {runsWon} ({100f * runsWon / batchRuns:0.#} %)");
+            if (failWaves.Count > 0)
             {
-                float meanDw = MeanInt(deathWaves);
-                float medDw = MedianInt(deathWaves);
-                float sdDw = StdDevInt(deathWaves);
-                int minDw = MinInt(deathWaves);
-                int maxDw = MaxInt(deathWaves);
+                float meanDw = MeanInt(failWaves);
+                float medDw = MedianInt(failWaves);
+                float sdDw = StdDevInt(failWaves);
+                int minDw = MinInt(failWaves);
+                int maxDw = MaxInt(failWaves);
                 sb.AppendLine(
-                    $"Fail-våg (run_end.wave): medel {meanDw:0.##}, median {medDw:0.##}, std.avvik. {sdDw:0.##}, min {minDw}, max {maxDw}");
+                    $"Fail-våg (run_end.wave, exkl. game_won): medel {meanDw:0.##}, median {medDw:0.##}, std.avvik. {sdDw:0.##}, min {minDw}, max {maxDw}");
                 sb.AppendLine();
                 sb.AppendLine("Histogram (antal körningar per fail-våg):");
-                foreach (KeyValuePair<int, int> kv in BatchSortedIntKeys(deathWaveHistogram))
+                foreach (KeyValuePair<int, int> kv in BatchSortedIntKeys(failWaveHistogram))
                 {
-                    float pct = 100f * kv.Value / deathWaves.Count;
+                    float pct = 100f * kv.Value / failWaves.Count;
                     sb.AppendLine($"  våg {kv.Key}: {kv.Value} ({pct:0.#} % av run_end-körningar)");
                 }
             }
             else
             {
-                sb.AppendLine("Ingen run_end i någon fil (t.ex. bara session_quit).");
+                sb.AppendLine("Ingen fail run_end i batch (antingen bara session_quit eller enbart game_won).");
             }
 
-            if (deathEndReasons.Count > 0)
+            if (runEndReasons.Count > 0)
             {
                 sb.AppendLine();
                 sb.AppendLine("--- endReason (sista run_end) ---");
                 int totalEr = 0;
-                foreach (int c in deathEndReasons.Values)
+                foreach (int c in runEndReasons.Values)
                 {
                     totalEr += c;
                 }
 
-                foreach (KeyValuePair<string, int> kv in BatchSortedPairs(deathEndReasons))
+                foreach (KeyValuePair<string, int> kv in BatchSortedPairs(runEndReasons))
                 {
                     sb.AppendLine($"  {kv.Key}: {kv.Value} ({100f * kv.Value / Mathf.Max(1, totalEr):0.#} %)");
                 }
@@ -1495,6 +1506,13 @@ namespace iStick2War_V2.Editor
                 ev.endReason.StartsWith("game_error", StringComparison.OrdinalIgnoreCase))
             {
                 flags.Add("GAME_ERROR_FAIL");
+            }
+
+            if (kind == "run_end" &&
+                !string.IsNullOrEmpty(ev.endReason) &&
+                ev.endReason.Equals("game_won", StringComparison.OrdinalIgnoreCase))
+            {
+                flags.Add("GAME_WON_END");
             }
 
             if (kind == "wave_cleared" &&
