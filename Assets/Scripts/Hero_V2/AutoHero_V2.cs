@@ -34,6 +34,10 @@ namespace iStick2War_V2
             "When true, any Paratrooper body hitbox in the search radius wins over the helicopter. " +
             "Otherwise the single nearest EnemyBodyPart collider is used (aircraft often steals the aim).")]
         [SerializeField] private bool _prioritizeInfantryOverAircraft = true;
+        [Tooltip("When true, grounded/combat-ready paratroopers get higher target priority than airborne paratroopers.")]
+        [SerializeField] private bool _prioritizeGroundedParatroopers = true;
+        [Tooltip("Extra score for grounded/combat-ready paratroopers when selecting target.")]
+        [SerializeField] private float _groundedParatrooperPriorityBonus = 220f;
 
         [Header("Bunker")]
         [SerializeField] [Range(0.05f, 0.95f)] private float _lowHealthEnterBunkerFraction = 0.35f;
@@ -924,6 +928,7 @@ namespace iStick2War_V2
             float bestAnyDist = float.MaxValue;
             Collider2D bestInfantry = null;
             float bestInfantryDist = float.MaxValue;
+            float bestInfantryScore = float.NegativeInfinity;
             Collider2D bestAircraft = null;
             float bestAircraftDist = float.MaxValue;
 
@@ -957,8 +962,16 @@ namespace iStick2War_V2
 
                 if (isParatrooper)
                 {
-                    if (d < bestInfantryDist)
+                    float infantryScore = -d;
+                    if (_prioritizeGroundedParatroopers && IsGroundCombatParatrooper(c))
                     {
+                        infantryScore += Mathf.Max(0f, _groundedParatrooperPriorityBonus);
+                    }
+
+                    if (infantryScore > bestInfantryScore ||
+                        (Mathf.Approximately(infantryScore, bestInfantryScore) && d < bestInfantryDist))
+                    {
+                        bestInfantryScore = infantryScore;
                         bestInfantryDist = d;
                         bestInfantry = c;
                     }
@@ -1032,6 +1045,27 @@ namespace iStick2War_V2
 
             return c.GetComponent<AircraftHealth_V2>() != null ||
                    c.GetComponentInParent<AircraftHealth_V2>() != null;
+        }
+
+        private static bool IsGroundCombatParatrooper(Collider2D c)
+        {
+            if (c == null)
+            {
+                return false;
+            }
+
+            ParatrooperStateMachine_V2 sm = c.GetComponentInParent<ParatrooperStateMachine_V2>();
+            if (sm == null)
+            {
+                return false;
+            }
+
+            StickmanBodyState s = sm.CurrentState;
+            return s == StickmanBodyState.Land ||
+                   s == StickmanBodyState.Shoot ||
+                   s == StickmanBodyState.Grenade ||
+                   s == StickmanBodyState.Run ||
+                   s == StickmanBodyState.Idle;
         }
 
         private static Vector2? TryGetBunkerInteriorWorldPoint()
