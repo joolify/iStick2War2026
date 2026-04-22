@@ -303,6 +303,43 @@ public class Paratrooper : MonoBehaviour
         CaptureSpineWorldAnchorForPostSpawnFacingReconcile();
     }
 
+    public void PrepareForSpawn()
+    {
+        EnsureAttachedColliderScratch();
+
+        if (_model == null) _model = GetComponent<ParatrooperModel_V2>();
+        if (_stateMachine == null) _stateMachine = GetComponent<ParatrooperStateMachine_V2>();
+        if (_controller == null) _controller = GetComponent<ParatrooperController_V2>();
+        if (_weaponSystem == null) _weaponSystem = GetComponent<ParatrooperWeaponSystem_V2>();
+        if (_damageReceiver == null) _damageReceiver = GetComponent<ParatrooperDamageReceiver_V2>();
+        if (_deathHandler == null) _deathHandler = GetComponent<ParatrooperDeathHandler_V2>();
+        if (_rigidbody2D == null) _rigidbody2D = GetComponent<Rigidbody2D>();
+
+        _warnedAttachedColliderBufferTruncation = false;
+        _warnedGroundProbeAnchorRejected = false;
+        _warnedGroundProbeAnchorHorizontalDrift = false;
+        _nextColliderSummaryTime = 0f;
+        _lastColliderSummary = string.Empty;
+        _lastGroundProbeDebugUnscaledTime = float.NegativeInfinity;
+        _airborneGravityScaleCachedValid = false;
+        ClearAirborneBunkerCollisionExclusion();
+
+        if (_model != null)
+        {
+            _model.ResetForSpawn();
+        }
+
+        if (_stateMachine != null)
+        {
+            _stateMachine.ResetForSpawn();
+        }
+
+        _controller?.ResetForSpawn();
+        _weaponSystem?.ResetForSpawn();
+        _controller?.StartGame();
+        CaptureSpineWorldAnchorForPostSpawnFacingReconcile();
+    }
+
     private void CaptureSpineWorldAnchorForPostSpawnFacingReconcile()
     {
         if (_skeletonAnimation == null)

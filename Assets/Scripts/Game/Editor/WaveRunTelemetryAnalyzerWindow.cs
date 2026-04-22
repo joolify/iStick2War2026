@@ -83,7 +83,7 @@ namespace iStick2War_V2.Editor
             "--- Telemetri & JSON (vad filen betyder) ---\n" +
             "Källa: «WaveRunTelemetry_V2» skriver en JSON-fil per körning (Unity JsonUtility). Rotobjektet har bl.a. " +
             "«_comment», «glossary», eko-fält för bunker-/HP-sampling, «events[]», valfritt «unityLogs[]», " +
-            "valfritt «feelSession». Alla tider i «realtimeSinceStartup» är sekunder sedan Unity startade när raden skrevs.\n" +
+            "valfritt «feelSession», valfritt «poolStats». Alla tider i «realtimeSinceStartup» är sekunder sedan Unity startade när raden skrevs.\n" +
             "Rot: «bunkerCriticalHpFractionUsed», «bunkerHpSampleIntervalSecUsed», «bunkerHpSamplesMaxPerWaveUsed», " +
             "«bunkerPressureHpRatioThresholdUsed» = sparade trösklar/samplingsparametrar vid persist (samma som används i analysens tryck-mått). " +
             "«glossary» i JSON-filen är auktoritativ ordlista för fältnamn om den skiljer sig från denna rapport.\n\n" +
@@ -415,6 +415,12 @@ namespace iStick2War_V2.Editor
             sb.AppendLine($"bunkerPressureHpRatioThresholdUsed (root): {pressureThr:0.###} (reference; row flags use fixed heuristics v1)");
             int unityLogRows = root.unityLogs != null ? root.unityLogs.Length : 0;
             sb.AppendLine($"unityLogs[] (Unity errors/exceptions snapshot): {unityLogRows} rad(er)");
+            if (root.poolStats != null)
+            {
+                sb.AppendLine(
+                    $"poolStats (root): prefabs={root.poolStats.prefabTypeCount}, inactive={root.poolStats.totalInactiveCount}, " +
+                    $"created={root.poolStats.totalCreatedCount}, reused={root.poolStats.totalReusedCount}, despawn={root.poolStats.totalDespawnCount}");
+            }
             AppendFeelKpisSingleFileReport(sb, root);
             int onboardMax = Mathf.Max(0, _onboardingMaxWaveInclusive);
             sb.AppendLine(
@@ -2031,6 +2037,28 @@ namespace iStick2War_V2.Editor
             public TelemetryEventDto[] events;
             public TelemetryUnityLogRowDto[] unityLogs;
             public TelemetryFeelSessionSummaryDto feelSession;
+            public TelemetryPoolStatsDto poolStats;
+        }
+
+        [Serializable]
+        private sealed class TelemetryPoolStatsDto
+        {
+            public int prefabTypeCount;
+            public int totalInactiveCount;
+            public int totalCreatedCount;
+            public int totalReusedCount;
+            public int totalDespawnCount;
+            public TelemetryPoolPrefabStatsDto[] prefabs;
+        }
+
+        [Serializable]
+        private sealed class TelemetryPoolPrefabStatsDto
+        {
+            public string prefabName;
+            public int inactiveCount;
+            public int createdCount;
+            public int reusedCount;
+            public int despawnCount;
         }
 
         [Serializable]

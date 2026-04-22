@@ -734,7 +734,7 @@ namespace iStick2War_V2
                 return;
             }
 
-            Paratrooper spawned = Instantiate(_paratrooperPrefab, worldPosition, Quaternion.identity);
+            Paratrooper spawned = SimplePrefabPool_V2.Spawn(_paratrooperPrefab, worldPosition, Quaternion.identity);
             if (spawned == null)
             {
                 return;
@@ -746,6 +746,8 @@ namespace iStick2War_V2
             {
                 spawned.gameObject.SetActive(true);
             }
+
+            spawned.PrepareForSpawn();
 
             int spawnSeq = ++_paratrooperDebugSpawnSeq;
 

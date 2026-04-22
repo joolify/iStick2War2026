@@ -49,6 +49,11 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
     private bool _deathStateSent;
     public event System.Action<Vector2, float> OnExploded;
 
+    private void OnEnable()
+    {
+        _deathStateSent = false;
+    }
+
     void Awake()
     {
         _model = GetComponentInParent<ParatrooperModel_V2>();

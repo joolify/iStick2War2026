@@ -166,6 +166,16 @@ namespace iStick2War_V2
             CacheHeroCollider();
         }
 
+        public void ResetForSpawn()
+        {
+            _lastFireTime = -999f;
+            _lastGrenadeTime = -999f;
+            _lineCoroutine = null;
+            _heroRoot = FindAnyObjectByType<Hero_V2>();
+            _heroModel = _heroRoot != null ? _heroRoot.GetComponent<HeroModel_V2>() : FindAnyObjectByType<HeroModel_V2>();
+            CacheHeroCollider();
+        }
+
         /// <summary>
         /// Called by Controller to indicate intent to shoot.
         /// </summary>

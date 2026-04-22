@@ -66,6 +66,14 @@ public class ParatrooperModel_V2 : MonoBehaviour
         ApplyDamageProfile();
     }
 
+    public void ResetForSpawn()
+    {
+        ApplyDamageProfile();
+        pendingDieAfterLandAnim = false;
+        suppressDieAnimationFromAirborneImpact = false;
+        currentState = StickmanBodyState.Idle;
+    }
+
     private void OnValidate()
     {
         ApplyDamageProfile();

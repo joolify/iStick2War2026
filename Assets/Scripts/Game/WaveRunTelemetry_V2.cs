@@ -232,6 +232,9 @@ namespace iStick2War_V2
 
             /// <summary>Optional: design/feel proxies (milestones + deltas vs session_begin realtime).</summary>
             public TelemetryFeelSessionSummary feelSession;
+
+            /// <summary>Optional: prefab pool counters snapshot (SimplePrefabPool_V2) at write time.</summary>
+            public SimplePrefabPool_V2.PoolStatsSnapshot poolStats;
         }
 
         [Serializable]
@@ -1322,6 +1325,7 @@ namespace iStick2War_V2
             try
             {
                 root.feelSession = BuildFeelSessionSnapshot();
+                root.poolStats = SimplePrefabPool_V2.GetSnapshot();
                 ApplyTelemetryDocumentation(root);
                 string json = JsonUtility.ToJson(root, prettyPrint: true);
                 File.WriteAllText(_filePath, json);
@@ -1344,7 +1348,8 @@ namespace iStick2War_V2
             root.bunkerPressureHpRatioThresholdUsed = pressureThrUsed;
             root._comment =
                 "iStick2War wave-run telemetry (JSON). Root contains _comment, glossary, bunkerCriticalHpFractionUsed, events[], " +
-                "optional unityLogs[], and optional feelSession (first-kill/damage/death/shop milestones vs session_begin; see glossary). " +
+                "optional unityLogs[], optional feelSession (first-kill/damage/death/shop milestones vs session_begin), and optional " +
+                "poolStats (prefab pool counters; see glossary). " +
                 "Each object in events[] shares the same property names; meaning depends on events[].kind. " +
                 "Numeric snapshots are taken when the row is written (Unity Time.realtimeSinceStartup). " +
                 "Per-wave combat counters reset when a new InWave phase starts; wave_cleared attributes the " +
@@ -1638,6 +1643,14 @@ namespace iStick2War_V2
                             "firstKill/Damage/Death/ShopPurchase absolute times and *SecSinceSessionBegin (-1 if not yet). " +
                             "First shop row includes currency spent on that first purchase line, offer kind, and hero HP/max/weapon " +
                             "snapshot for power-delta analysis vs later wave_cleared rows (offline)."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "poolStats (root, optional)",
+                        meaning =
+                            "Snapshot from SimplePrefabPool_V2 at file write time. totals: prefabTypeCount, totalInactiveCount, " +
+                            "totalCreatedCount, totalReusedCount, totalDespawnCount. prefabs[] rows contain prefabName + " +
+                            "inactiveCount/createdCount/reusedCount/despawnCount per pooled prefab key."
                     }
                 }
             };

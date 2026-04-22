@@ -112,6 +112,15 @@ public class ParatrooperController_V2 : MonoBehaviour
         OnDeploy();
     }
 
+    public void ResetForSpawn()
+    {
+        _isShootWindowOpen = false;
+        _forcedShootFallbackAtTime = -1f;
+        _forcedGrenadeAttemptAtTime = -1f;
+        _grenadeStateEnterUnscaledTime = -1f;
+        _lastDebugCombatLogUnscaledTime = float.NegativeInfinity;
+    }
+
     public void OnAnimationEvent(AnimationEventType eventName)
     {
         if (_debugParatrooperCombatLogs &&

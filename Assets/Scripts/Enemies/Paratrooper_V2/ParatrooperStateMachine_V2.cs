@@ -61,6 +61,15 @@ public class ParatrooperStateMachine_V2 : MonoBehaviour
         _model.currentState = _currentState;
     }
 
+    public void ResetForSpawn()
+    {
+        _currentState = StickmanBodyState.Idle;
+        if (_model != null)
+        {
+            _model.currentState = _currentState;
+        }
+    }
+
     public void ChangeState(StickmanBodyState newState)
     {
         if (newState == _currentState)
