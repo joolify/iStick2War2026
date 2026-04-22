@@ -18,11 +18,14 @@ namespace iStick2War_V2
         [SerializeField] private bool _debugImpactLogs;
 
         private bool _exploded;
+        private float _expireAt;
 
         public void Initialize(Vector2 inheritedVelocity, int damage, float explosionRadius)
         {
             _damage = Mathf.Max(1, damage);
             _explosionRadius = Mathf.Max(0.2f, explosionRadius);
+            _exploded = false;
+            _expireAt = Time.time + Mathf.Max(0.5f, _lifetimeSeconds);
 
             if (_rigidbody2D == null)
             {
@@ -34,8 +37,6 @@ namespace iStick2War_V2
                 _rigidbody2D.gravityScale = _gravityScale;
                 _rigidbody2D.linearVelocity = inheritedVelocity;
             }
-
-            Destroy(gameObject, Mathf.Max(0.5f, _lifetimeSeconds));
         }
 
         private void Awake()
@@ -66,6 +67,19 @@ namespace iStick2War_V2
             }
 
             Explode();
+        }
+
+        private void Update()
+        {
+            if (_exploded)
+            {
+                return;
+            }
+
+            if (_expireAt > 0f && Time.time >= _expireAt)
+            {
+                DespawnSelf();
+            }
         }
 
         private void OnTriggerEnter2D(Collider2D other)
@@ -139,11 +153,20 @@ namespace iStick2War_V2
 
             if (_explosionEffectPrefab != null)
             {
-                GameObject fx = Instantiate(_explosionEffectPrefab, transform.position, Quaternion.identity);
-                Destroy(fx, Mathf.Max(0.05f, _explosionEffectLifetime));
+                GameObject fx = SimplePrefabPool_V2.Spawn(_explosionEffectPrefab, transform.position, Quaternion.identity);
+                if (fx != null)
+                {
+                    PooledAutoDespawn_V2 timer = fx.GetComponent<PooledAutoDespawn_V2>();
+                    if (timer == null)
+                    {
+                        timer = fx.AddComponent<PooledAutoDespawn_V2>();
+                    }
+
+                    timer.Arm(Mathf.Max(0.05f, _explosionEffectLifetime));
+                }
             }
 
-            Destroy(gameObject);
+            DespawnSelf();
         }
 
         /// <summary>
@@ -175,6 +198,19 @@ namespace iStick2War_V2
 
             Vector2 root = hero.transform.position;
             return (root - center).sqrMagnitude <= r2;
+        }
+
+        private void DespawnSelf()
+        {
+            if (_rigidbody2D != null)
+            {
+                _rigidbody2D.linearVelocity = Vector2.zero;
+                _rigidbody2D.angularVelocity = 0f;
+            }
+
+            _exploded = false;
+            _expireAt = 0f;
+            SimplePrefabPool_V2.Despawn(gameObject);
         }
     }
 }

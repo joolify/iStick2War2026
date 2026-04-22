@@ -673,7 +673,7 @@ namespace iStick2War_V2
                 aircraftWorldPos += furtherOutside * (spawnIndexInWave * stagger);
             }
 
-            GameObject bomber = Instantiate(_bomberPrefab, aircraftWorldPos, aircraftRotation);
+            GameObject bomber = SimplePrefabPool_V2.Spawn(_bomberPrefab, aircraftWorldPos, aircraftRotation);
             if (bomber == null)
             {
                 return;
@@ -701,7 +701,13 @@ namespace iStick2War_V2
             }
             else if (_aircraftAutoDestroySeconds > 0f)
             {
-                Destroy(bomber, _aircraftAutoDestroySeconds);
+                PooledAutoDespawn_V2 timer = bomber.GetComponent<PooledAutoDespawn_V2>();
+                if (timer == null)
+                {
+                    timer = bomber.AddComponent<PooledAutoDespawn_V2>();
+                }
+
+                timer.Arm(_aircraftAutoDestroySeconds);
             }
 
             Bombplane_V2 bombplane = bomber.GetComponent<Bombplane_V2>();
@@ -1243,37 +1249,66 @@ namespace iStick2War_V2
 
         private void PruneInactiveTrackedDeaths()
         {
-            if (_trackedDeaths.Count == 0)
+            if (_trackedDeaths.Count > 0)
             {
-                return;
-            }
-
-            List<ParatrooperDeathHandler_V2> stale = null;
-            foreach (ParatrooperDeathHandler_V2 deathHandler in _trackedDeaths)
-            {
-                if (deathHandler == null || !deathHandler.gameObject.activeInHierarchy)
+                List<ParatrooperDeathHandler_V2> stale = null;
+                foreach (ParatrooperDeathHandler_V2 deathHandler in _trackedDeaths)
                 {
-                    if (stale == null)
+                    if (deathHandler == null || !deathHandler.gameObject.activeInHierarchy)
                     {
-                        stale = new List<ParatrooperDeathHandler_V2>();
+                        if (stale == null)
+                        {
+                            stale = new List<ParatrooperDeathHandler_V2>();
+                        }
+
+                        stale.Add(deathHandler);
                     }
-                    stale.Add(deathHandler);
                 }
-            }
 
-            if (stale == null)
-            {
-                return;
-            }
-
-            for (int i = 0; i < stale.Count; i++)
-            {
-                ParatrooperDeathHandler_V2 deathHandler = stale[i];
-                if (deathHandler != null)
+                if (stale != null)
                 {
-                    deathHandler.OnDeathStarted -= HandleTrackedEnemyDeath;
+                    for (int i = 0; i < stale.Count; i++)
+                    {
+                        ParatrooperDeathHandler_V2 deathHandler = stale[i];
+                        if (deathHandler != null)
+                        {
+                            deathHandler.OnDeathStarted -= HandleTrackedEnemyDeath;
+                        }
+
+                        _trackedDeaths.Remove(deathHandler);
+                    }
                 }
-                _trackedDeaths.Remove(deathHandler);
+            }
+
+            if (_trackedAircraftDeaths.Count > 0)
+            {
+                List<AircraftHealth_V2> staleAircraft = null;
+                foreach (AircraftHealth_V2 aircraftHealth in _trackedAircraftDeaths)
+                {
+                    if (aircraftHealth == null || !aircraftHealth.gameObject.activeInHierarchy)
+                    {
+                        if (staleAircraft == null)
+                        {
+                            staleAircraft = new List<AircraftHealth_V2>();
+                        }
+
+                        staleAircraft.Add(aircraftHealth);
+                    }
+                }
+
+                if (staleAircraft != null)
+                {
+                    for (int i = 0; i < staleAircraft.Count; i++)
+                    {
+                        AircraftHealth_V2 aircraftHealth = staleAircraft[i];
+                        if (aircraftHealth != null)
+                        {
+                            aircraftHealth.OnDestroyed -= HandleTrackedAircraftDestroyed;
+                        }
+
+                        _trackedAircraftDeaths.Remove(aircraftHealth);
+                    }
+                }
             }
         }
 
@@ -1713,7 +1748,8 @@ namespace iStick2War_V2
         {
             for (int i = _spawnedAircraftInstances.Count - 1; i >= 0; i--)
             {
-                if (_spawnedAircraftInstances[i] == null)
+                GameObject go = _spawnedAircraftInstances[i];
+                if (go == null || !go.activeInHierarchy)
                 {
                     _spawnedAircraftInstances.RemoveAt(i);
                 }
@@ -1727,7 +1763,7 @@ namespace iStick2War_V2
                 GameObject go = _spawnedAircraftInstances[i];
                 if (go != null)
                 {
-                    UnityEngine.Object.Destroy(go);
+                    SimplePrefabPool_V2.Despawn(go);
                 }
             }
 

@@ -65,6 +65,14 @@ namespace iStick2War_V2
         [SerializeField] private int _automationTotalRuns = 10;
         [Tooltip("Optional; if empty, resolved once by name txt_topbar_testRunDone (Topbar-canvas). Shown when automation batch completes.")]
         [SerializeField] private TMP_Text _testRunDoneTopBarText;
+        [Tooltip(
+            "Optional safety cap per editor session. When >0, automation pauses after this many completed runs " +
+            "(or earlier if total runs are reached) so you can restart Unity and avoid long-session memory growth.")]
+        [SerializeField] private int _automationChunkSize = 25;
+        [Tooltip("Run lightweight memory cleanup every N completed runs (0 = off). Helps long overnight editor batches.")]
+        [SerializeField] private int _automationMemoryCleanupEveryRuns = 3;
+        [Tooltip("Calls GC.Collect + Resources.UnloadUnusedAssets at configured cadence between runs.")]
+        [SerializeField] private bool _automationEnableMemoryCleanup = true;
         [SerializeField] private float _automationActionDelaySeconds = 0.5f;
         [SerializeField] private bool _automationLogs = true;
         [Tooltip("Prevents test deadlock when bot is fully dry (0 mag + 0 reserve). Refills active weapon via Hero API.")]
@@ -81,6 +89,8 @@ namespace iStick2War_V2
         private float _automationBatchStartRealtime = -1f;
         private int _automationGameErrorCount;
         private TMP_Text _resolvedTestRunDoneTopBarText;
+        private bool _automationChunkPaused;
+        private bool _automationCleanupInProgress;
         private float _nextAutomationActionAtUnscaled;
         private PendingAutomationAction _pendingAutomationAction = PendingAutomationAction.None;
         private float _lastAimAtEnemyUnscaledTime;
@@ -122,6 +132,8 @@ namespace iStick2War_V2
 
             _automationBatchStartRealtime = -1f;
             _automationGameErrorCount = 0;
+            _automationChunkPaused = false;
+            _automationCleanupInProgress = false;
             _resolvedTestRunDoneTopBarText = null;
             HideTestRunDoneTopBarBanner();
         }
@@ -292,6 +304,11 @@ namespace iStick2War_V2
                 return;
             }
 
+            if (_automationChunkPaused || _automationCleanupInProgress)
+            {
+                return;
+            }
+
             TryExecutePendingAutomationAction();
             if (_pendingAutomationAction != PendingAutomationAction.None)
             {
@@ -317,6 +334,12 @@ namespace iStick2War_V2
                     _completedRuns++;
                     _sessionInProgress = false;
                     LogAutomation($"Run {_completedRuns}/{Mathf.Max(1, _automationTotalRuns)} ended: GameOver.");
+                    if (TryPauseAtChunkBoundary())
+                    {
+                        return;
+                    }
+
+                    TryRunAutomationCleanupAtCadence();
                 }
 
                 if (_completedRuns < Mathf.Max(1, _automationTotalRuns))
@@ -338,6 +361,12 @@ namespace iStick2War_V2
                     _completedRuns++;
                     _sessionInProgress = false;
                     LogAutomation($"Run {_completedRuns}/{Mathf.Max(1, _automationTotalRuns)} ended: GameWon.");
+                    if (TryPauseAtChunkBoundary())
+                    {
+                        return;
+                    }
+
+                    TryRunAutomationCleanupAtCadence();
                 }
 
                 if (_completedRuns < Mathf.Max(1, _automationTotalRuns))
@@ -360,6 +389,12 @@ namespace iStick2War_V2
                     _completedRuns++;
                     _sessionInProgress = false;
                     LogAutomation($"Run {_completedRuns}/{Mathf.Max(1, _automationTotalRuns)} ended: GameError.");
+                    if (TryPauseAtChunkBoundary())
+                    {
+                        return;
+                    }
+
+                    TryRunAutomationCleanupAtCadence();
                 }
 
                 if (_completedRuns < Mathf.Max(1, _automationTotalRuns))
@@ -530,6 +565,70 @@ namespace iStick2War_V2
 
             t.text = "";
             t.gameObject.SetActive(false);
+        }
+
+        private bool TryPauseAtChunkBoundary()
+        {
+            int total = Mathf.Max(1, _automationTotalRuns);
+            int chunk = Mathf.Max(0, _automationChunkSize);
+            if (chunk <= 0 || _completedRuns <= 0 || _completedRuns >= total)
+            {
+                return false;
+            }
+
+            if (_completedRuns % chunk != 0)
+            {
+                return false;
+            }
+
+            _automationChunkPaused = true;
+            float elapsed = _automationBatchStartRealtime >= 0f
+                ? Mathf.Max(0f, Time.realtimeSinceStartup - _automationBatchStartRealtime)
+                : 0f;
+            string msg =
+                $"Chunk pause at run {_completedRuns}/{total} after {FormatAutomationElapsedEnglish(elapsed)}. " +
+                "Restart Unity, then resume automation.";
+            TMP_Text tmp = ResolveTestRunDoneTopBarText();
+            if (tmp != null)
+            {
+                tmp.text = msg;
+                tmp.gameObject.SetActive(true);
+            }
+
+            LogAutomation(msg);
+            return true;
+        }
+
+        private void TryRunAutomationCleanupAtCadence()
+        {
+            if (!_automationEnableMemoryCleanup || _automationCleanupInProgress)
+            {
+                return;
+            }
+
+            int cadence = Mathf.Max(0, _automationMemoryCleanupEveryRuns);
+            if (cadence <= 0 || _completedRuns <= 0 || (_completedRuns % cadence) != 0)
+            {
+                return;
+            }
+
+            StartCoroutine(AutomationCleanupRoutine());
+        }
+
+        private IEnumerator AutomationCleanupRoutine()
+        {
+            _automationCleanupInProgress = true;
+            LogAutomation("Automation memory cleanup: GC.Collect + UnloadUnusedAssets.");
+            System.GC.Collect();
+            AsyncOperation unload = Resources.UnloadUnusedAssets();
+            if (unload != null)
+            {
+                yield return unload;
+            }
+
+            System.GC.Collect();
+            _automationCleanupInProgress = false;
+            LogAutomation("Automation memory cleanup finished.");
         }
 
         private void FinishAutomationBatchRunLoop(string terminalKindForLog)

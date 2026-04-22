@@ -85,7 +85,7 @@ namespace iStick2War_V2
         private void DropBomb()
         {
             Vector3 dropPos = _bombDropMount != null ? _bombDropMount.position : transform.position;
-            BombProjectile_V2 bomb = Instantiate(_bombProjectilePrefab, dropPos, Quaternion.identity);
+            BombProjectile_V2 bomb = SimplePrefabPool_V2.Spawn(_bombProjectilePrefab, dropPos, Quaternion.identity);
             if (bomb != null)
             {
                 Vector2 inherited = _rigidbody2D != null ? _rigidbody2D.linearVelocity : Vector2.zero;
@@ -110,7 +110,7 @@ namespace iStick2War_V2
 
             if (Time.time >= _expireAt)
             {
-                Destroy(gameObject);
+                DespawnSelf();
                 return;
             }
 
@@ -129,8 +129,21 @@ namespace iStick2War_V2
 
             if ((_flightDirectionX > 0f && x > rightBound) || (_flightDirectionX < 0f && x < leftBound))
             {
-                Destroy(gameObject);
+                DespawnSelf();
             }
+        }
+
+        private void OnDisable()
+        {
+            _hasStarted = false;
+            _bombsDropped = 0;
+            _nextDropTime = 0f;
+            _expireAt = 0f;
+        }
+
+        private void DespawnSelf()
+        {
+            SimplePrefabPool_V2.Despawn(gameObject);
         }
     }
 }

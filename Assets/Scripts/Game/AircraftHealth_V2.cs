@@ -24,6 +24,12 @@ namespace iStick2War_V2
             _currentHealth = Mathf.Max(1f, _maxHealth);
         }
 
+        private void OnEnable()
+        {
+            _isDead = false;
+            _currentHealth = Mathf.Max(1f, _maxHealth);
+        }
+
         /// <summary>Apply damage from hero weapons (per-weapon values come from <see cref="HeroWeaponDefinition_V2"/>).</summary>
         public void ApplyDamage(float damage)
         {
@@ -50,13 +56,22 @@ namespace iStick2War_V2
             OnDestroyed?.Invoke(this);
             if (_airExplosionEffectPrefab != null)
             {
-                GameObject fx = Instantiate(_airExplosionEffectPrefab, transform.position, Quaternion.identity);
-                Destroy(fx, Mathf.Max(0.05f, _airExplosionEffectLifetime));
+                GameObject fx = SimplePrefabPool_V2.Spawn(_airExplosionEffectPrefab, transform.position, Quaternion.identity);
+                if (fx != null)
+                {
+                    PooledAutoDespawn_V2 timer = fx.GetComponent<PooledAutoDespawn_V2>();
+                    if (timer == null)
+                    {
+                        timer = fx.AddComponent<PooledAutoDespawn_V2>();
+                    }
+
+                    timer.Arm(Mathf.Max(0.05f, _airExplosionEffectLifetime));
+                }
             }
 
             if (_destroyRootWhenDead)
             {
-                Destroy(gameObject);
+                SimplePrefabPool_V2.Despawn(gameObject);
             }
         }
     }
