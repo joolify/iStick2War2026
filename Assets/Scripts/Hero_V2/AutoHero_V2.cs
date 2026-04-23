@@ -18,6 +18,13 @@ namespace iStick2War_V2
         [Tooltip("Force Perfect profile even if scene rules try to override.")]
         [SerializeField] private bool _forcePerfectProfile = true;
 
+        [Header("Test / hero HP (Hero_V2 model)")]
+        [Tooltip("When true, applies max/current HP once at startup (after Hero Awake). For repro tests e.g. orphaned enemies after hero death.")]
+        [SerializeField] private bool _applyHeroHpOverrideForTesting;
+        [SerializeField] private int _testHeroMaxHp = 100;
+        [Tooltip("Current HP after override. Use -1 to set current = max.")]
+        [SerializeField] private int _testHeroCurrentHp = -1;
+
         [Header("References (optional — resolved at runtime if empty)")]
         [SerializeField] private Hero_V2 _hero;
         [SerializeField] private HeroModel_V2 _model;
@@ -34,6 +41,12 @@ namespace iStick2War_V2
         [SerializeField] private float _bazookaPreferWithinHorizontal = 42f;
         [Tooltip("Extra horizontal reach for Bazooka preference when the selected target is a bombing aircraft (Bombplane_V2).")]
         [SerializeField] private float _bazookaPreferWithinHorizontalForBombingAircraft = 95f;
+        [Tooltip(
+            "When the selected target is any AircraftHealth_V2, Bazooka-vs-hitscan distance uses world distance (not X-only), " +
+            "capped by this value so fast/high planes still trigger rocket selection when unlocked.")]
+        [SerializeField] private float _bazookaAntiAirMaxWorldDistance = 140f;
+        [Tooltip("Shoot gate vs aircraft: aim point is often far above the hero; scales max weapon range (1 = strict box, ~2.6+ = practical AA).")]
+        [SerializeField] private float _aircraftShootRangeSlackMultiplier = 2.65f;
         [Tooltip(
             "When true, any Paratrooper body hitbox in the search radius wins over the helicopter. " +
             "Otherwise the single nearest EnemyBodyPart collider is used (aircraft often steals the aim).")]
@@ -122,6 +135,7 @@ namespace iStick2War_V2
         private PendingAutomationAction _pendingAutomationAction = PendingAutomationAction.None;
         private float _lastAimAtEnemyUnscaledTime;
         private float _lastShootHeldUnscaledTime;
+        private bool _heroHpTestOverrideApplied;
 
         private enum PendingAutomationAction
         {
@@ -163,6 +177,11 @@ namespace iStick2War_V2
             _automationCleanupInProgress = false;
             _resolvedTestRunDoneTopBarText = null;
             HideTestRunDoneTopBarBanner();
+        }
+
+        private void Start()
+        {
+            TryApplyHeroHpTestOverride();
         }
 
         private void ApplySceneGameplayBotOverride()
@@ -212,6 +231,25 @@ namespace iStick2War_V2
             }
         }
 
+        private void TryApplyHeroHpTestOverride()
+        {
+            if (!_applyHeroHpOverrideForTesting || _heroHpTestOverrideApplied)
+            {
+                return;
+            }
+
+            CacheReferences();
+            if (_model == null)
+            {
+                return;
+            }
+
+            int maxHp = Mathf.Max(1, _testHeroMaxHp);
+            int current = _testHeroCurrentHp < 0 ? maxHp : _testHeroCurrentHp;
+            _model.ApplyHealthOverrideForTesting(maxHp, current);
+            _heroHpTestOverrideApplied = true;
+        }
+
         private void CacheWaveManagerIfNeeded()
         {
             if (_waveManager == null)
@@ -225,6 +263,7 @@ namespace iStick2War_V2
         {
             CacheReferences();
             CacheWaveManagerIfNeeded();
+            TryApplyHeroHpTestOverride();
 
             if (_hero == null || _model == null || _view == null || _input == null)
             {
@@ -990,11 +1029,20 @@ namespace iStick2War_V2
             }
 
             float maxShootDist = weaponRange * rangeFactor;
-            float verticalSlack = IsParatrooperCollider(target) ? 1.35f : 0.85f;
-            bool inRange =
-                hasTarget &&
-                Mathf.Abs(aimPoint.x - heroPos.x) <= maxShootDist &&
-                Mathf.Abs(aimPoint.y - heroPos.y) <= maxShootDist * verticalSlack;
+            bool inRange;
+            if (hasTarget && target != null && IsAircraftCollider(target))
+            {
+                float slack = Mathf.Max(1f, _aircraftShootRangeSlackMultiplier);
+                inRange = Vector2.Distance(aimPoint, heroPos) <= maxShootDist * slack;
+            }
+            else
+            {
+                float verticalSlack = IsParatrooperCollider(target) ? 1.35f : 0.85f;
+                inRange =
+                    hasTarget &&
+                    Mathf.Abs(aimPoint.x - heroPos.x) <= maxShootDist &&
+                    Mathf.Abs(aimPoint.y - heroPos.y) <= maxShootDist * verticalSlack;
+            }
 
             // Do not hold fire when the active weapon is completely dry: HeroController_V2 requires a release to
             // clear _outOfAmmoLatched after a dry-fire; holding shoot forever would soft-lock shooting.
@@ -1147,12 +1195,26 @@ namespace iStick2War_V2
             }
 
             float horiz = Mathf.Abs(enemyPos.x - heroPos.x);
-            float bazookaHoriz =
-                targetCollider != null && IsBombingAircraftCollider(targetCollider)
-                    ? Mathf.Max(_bazookaPreferWithinHorizontal, _bazookaPreferWithinHorizontalForBombingAircraft)
-                    : _bazookaPreferWithinHorizontal;
-            bool wantBazookaRange = horiz <= bazookaHoriz;
-            bool wantCarbineRange = horiz > bazookaHoriz * 1.15f;
+            float worldDist = Vector2.Distance(heroPos, enemyPos);
+            bool vsAircraft = targetCollider != null && IsAircraftCollider(targetCollider);
+            float metric = vsAircraft ? worldDist : horiz;
+
+            float bazookaRangeBudget = _bazookaPreferWithinHorizontal;
+            if (vsAircraft)
+            {
+                bazookaRangeBudget = Mathf.Max(
+                    bazookaRangeBudget,
+                    _bazookaAntiAirMaxWorldDistance);
+                if (IsBombingAircraftCollider(targetCollider))
+                {
+                    bazookaRangeBudget = Mathf.Max(
+                        bazookaRangeBudget,
+                        _bazookaPreferWithinHorizontalForBombingAircraft);
+                }
+            }
+
+            bool wantBazookaRange = metric <= bazookaRangeBudget;
+            bool wantCarbineRange = metric > bazookaRangeBudget * 1.15f;
 
             bool bazookaAmmo =
                 _hero.HasUnlockedWeaponOfType(WeaponType.Bazooka) &&
@@ -1160,6 +1222,9 @@ namespace iStick2War_V2
             bool carbineAmmo =
                 _hero.HasUnlockedWeaponOfType(WeaponType.Carbine) &&
                 _hero.HasUsableAmmoForWeaponType(WeaponType.Carbine);
+            bool thompsonAmmo =
+                _hero.HasUnlockedWeaponOfType(WeaponType.Thompson) &&
+                _hero.HasUsableAmmoForWeaponType(WeaponType.Thompson);
 
             if (wantBazookaRange)
             {
@@ -1175,6 +1240,12 @@ namespace iStick2War_V2
                     return;
                 }
 
+                if (thompsonAmmo)
+                {
+                    _hero.TrySwitchToWeaponType(WeaponType.Thompson);
+                    return;
+                }
+
                 _hero.TrySwitchToAnyWeaponWithAmmo();
                 return;
             }
@@ -1184,6 +1255,12 @@ namespace iStick2War_V2
                 if (carbineAmmo)
                 {
                     _hero.TrySwitchToWeaponType(WeaponType.Carbine);
+                    return;
+                }
+
+                if (thompsonAmmo)
+                {
+                    _hero.TrySwitchToWeaponType(WeaponType.Thompson);
                     return;
                 }
 

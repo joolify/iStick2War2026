@@ -120,6 +120,27 @@ namespace iStick2War_V2
             currentHealth = Mathf.Min(currentHealth + amount, maxHealth);
         }
 
+        /// <summary>
+        /// Balance / integration tests (e.g. AutoHero): set max and current HP once the hero is constructed.
+        /// If <paramref name="currentHp"/> is 0, the hero becomes dead. Does not resurrect if already dead.
+        /// </summary>
+        public void ApplyHealthOverrideForTesting(int maxHp, int currentHp)
+        {
+            if (isDead)
+            {
+                return;
+            }
+
+            maxHp = Mathf.Max(1, maxHp);
+            maxHealth = maxHp;
+            currentHealth = Mathf.Clamp(currentHp, 0, maxHealth);
+            if (currentHealth <= 0)
+            {
+                currentHealth = 0;
+                SetDead();
+            }
+        }
+
         // -------------------------
         // AMMO LOGIC (safe)
         // -------------------------
