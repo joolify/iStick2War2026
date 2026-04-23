@@ -1362,13 +1362,19 @@ namespace iStick2War_V2
             }
 
             float now = Time.unscaledTime;
+            bool spawnStarvedNoLiving =
+                _enemySpawner != null &&
+                _enemySpawner.IsWaveActive &&
+                _enemySpawner.IsSpawnStarvedThisWave &&
+                _enemySpawner.GetLivingParatroopersTrackedCountForTelemetry() <= 0;
 
             if (_autoHero != null)
             {
                 float noAimOrShootSeconds = Mathf.Max(
                     0f,
                     now - Mathf.Max(_autoHero.LastAimAtEnemyUnscaledTime, _autoHero.LastShootHeldUnscaledTime));
-                if (noAimOrShootSeconds >= Mathf.Max(5f, _autoHeroNoAimOrShootErrorSeconds))
+                if (!spawnStarvedNoLiving &&
+                    noAimOrShootSeconds >= Mathf.Max(5f, _autoHeroNoAimOrShootErrorSeconds))
                 {
                     EnterGameErrorState(
                         $"AutoHero inactive: no aim/shoot for {noAimOrShootSeconds:0.0}s (threshold={_autoHeroNoAimOrShootErrorSeconds:0.0}s).");
@@ -1385,6 +1391,26 @@ namespace iStick2War_V2
                 float noSpawnSeconds = Mathf.Max(0f, now - _enemySpawner.LastParatrooperSpawnUnscaledTime);
                 if (noSpawnSeconds >= Mathf.Max(5f, _enemyNoSpawnErrorSeconds))
                 {
+                    if (_enemySpawner.IsSpawnStarvedThisWave &&
+                        _enemySpawner.GetLivingParatroopersTrackedCountForTelemetry() <= 0)
+                    {
+                        if (_enemySpawner.TryRecoverSpawnStarvation(out string recoveryDetails))
+                        {
+                            Debug.LogWarning(
+                                "[WaveManager_V2] Watchdog detected spawn starvation and recovered one spawn. " +
+                                recoveryDetails);
+                            return false;
+                        }
+
+                        EnterGameErrorState(
+                            $"Spawn starvation: no spawns for {noSpawnSeconds:0.0}s " +
+                            $"(threshold={_enemyNoSpawnErrorSeconds:0.0}s), target={_enemySpawner.TargetParatroopersThisWave}, " +
+                            $"spawned={_enemySpawner.SpawnedParatroopersThisWave}, pending={_enemySpawner.PendingParatrooperDropsThisWave}, " +
+                            $"living={_enemySpawner.GetLivingParatroopersTrackedCountForTelemetry()}, " +
+                            $"exit='{_enemySpawner.SpawnRoutineExitReason}', lastAbort='{_enemySpawner.LastSpawnAbortReason}'.");
+                        return true;
+                    }
+
                     EnterGameErrorState(
                         $"No enemy spawns for {noSpawnSeconds:0.0}s (threshold={_enemyNoSpawnErrorSeconds:0.0}s), " +
                         $"spawnedThisWave={_enemySpawner.SpawnedParatroopersThisWave}.");

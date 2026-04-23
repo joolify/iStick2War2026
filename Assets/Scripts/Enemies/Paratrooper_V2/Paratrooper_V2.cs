@@ -195,6 +195,24 @@ public class Paratrooper : MonoBehaviour
     [SerializeField] private bool _onlyLogWhenSummaryChanges = true;
     [SerializeField] private bool _warnWhenColliderSummaryIsNotFull = true;
     [SerializeField] private bool _autoFixBodyPartLayerToEnemyBodyPart = true;
+    
+    [Header("Safety - Orphan Cleanup")]
+    [Tooltip("If enabled, despawns the paratrooper after leaving the MainCamera view for a short time.")]
+    [SerializeField] private bool _autoDespawnWhenOutsideMainCamera = true;
+    [Tooltip("Viewport margin outside [0..1] before this counts as offscreen.")]
+    [SerializeField] private float _offscreenViewportMargin = 0.05f;
+    [Tooltip("How long the unit may stay outside camera view before force despawn.")]
+    [SerializeField] private float _offscreenDespawnDelaySeconds = 0.75f;
+    [Tooltip("Require at least one on-screen frame before offscreen despawn can trigger.")]
+    [SerializeField] private bool _requireVisibleBeforeOffscreenDespawn = true;
+    [Tooltip("Hard kill zone (world space). If root exits this box, despawn immediately.")]
+    [SerializeField] private bool _enableWorldBoundsSafetyDespawn = true;
+    [SerializeField] private Vector2 _worldBoundsMin = new Vector2(-40f, -20f);
+    [SerializeField] private Vector2 _worldBoundsMax = new Vector2(40f, 25f);
+    [Tooltip("Absolute fail-safe max lifetime (unscaled). Prevents orphaned enemies from living forever.")]
+    [SerializeField] private bool _enableLifetimeSafetyDespawn = true;
+    [SerializeField] private float _maxLifetimeSeconds = 90f;
+    [SerializeField] private bool _debugSafetyDespawnLogs;
 
     private float _nextColliderSummaryTime;
     private string _lastColliderSummary;
@@ -208,6 +226,10 @@ public class Paratrooper : MonoBehaviour
     private bool _warnedGroundProbeAnchorHorizontalDrift;
     private float _airborneGravityScaleCached;
     private bool _airborneGravityScaleCachedValid;
+    private bool _hasBeenVisibleToMainCamera;
+    private float _offscreenSinceUnscaledTime;
+    private Camera _cachedMainCamera;
+    private float _spawnUnscaledTime;
 
     /// <summary>
     /// Spine root world position at end of <see cref="Awake"/> (before spawner flips spawn facing on root scale X).
@@ -313,6 +335,7 @@ public class Paratrooper : MonoBehaviour
         if (_weaponSystem == null) _weaponSystem = GetComponent<ParatrooperWeaponSystem_V2>();
         if (_damageReceiver == null) _damageReceiver = GetComponent<ParatrooperDamageReceiver_V2>();
         if (_deathHandler == null) _deathHandler = GetComponent<ParatrooperDeathHandler_V2>();
+        if (_view == null) _view = GetComponent<ParatrooperView_V2>();
         if (_rigidbody2D == null) _rigidbody2D = GetComponent<Rigidbody2D>();
 
         _warnedAttachedColliderBufferTruncation = false;
@@ -322,6 +345,10 @@ public class Paratrooper : MonoBehaviour
         _lastColliderSummary = string.Empty;
         _lastGroundProbeDebugUnscaledTime = float.NegativeInfinity;
         _airborneGravityScaleCachedValid = false;
+        _hasBeenVisibleToMainCamera = false;
+        _offscreenSinceUnscaledTime = float.NegativeInfinity;
+        _cachedMainCamera = null;
+        _spawnUnscaledTime = Time.unscaledTime;
         ClearAirborneBunkerCollisionExclusion();
 
         if (_model != null)
@@ -336,6 +363,7 @@ public class Paratrooper : MonoBehaviour
 
         _controller?.ResetForSpawn();
         _weaponSystem?.ResetForSpawn();
+        _view?.ResetVisualStateForSpawn();
         _controller?.StartGame();
         CaptureSpineWorldAnchorForPostSpawnFacingReconcile();
     }
@@ -808,6 +836,9 @@ public class Paratrooper : MonoBehaviour
      * */
     void Update()
     {
+        HandleWorldBoundsSafetyDespawn();
+        HandleLifetimeSafetyDespawn();
+        HandleOffscreenSafetyDespawn();
         _controller.Tick(Time.deltaTime);
         ApplyGlideAirMovement();
         HandleNearGroundLandingTransition();
@@ -826,6 +857,150 @@ public class Paratrooper : MonoBehaviour
         {
             ClampFeetAboveGroundDuringDeathFall();
         }
+    }
+    
+    private void HandleWorldBoundsSafetyDespawn()
+    {
+        if (!_enableWorldBoundsSafetyDespawn || !gameObject.activeInHierarchy)
+        {
+            return;
+        }
+
+        Vector3 p = transform.position;
+        float minX = Mathf.Min(_worldBoundsMin.x, _worldBoundsMax.x);
+        float maxX = Mathf.Max(_worldBoundsMin.x, _worldBoundsMax.x);
+        float minY = Mathf.Min(_worldBoundsMin.y, _worldBoundsMax.y);
+        float maxY = Mathf.Max(_worldBoundsMin.y, _worldBoundsMax.y);
+        bool outside = p.x < minX || p.x > maxX || p.y < minY || p.y > maxY;
+        if (!outside)
+        {
+            return;
+        }
+
+        if (_debugSafetyDespawnLogs)
+        {
+            Debug.LogWarning(
+                $"[Paratrooper_V2] Force despawn outside world bounds. " +
+                $"pos={FormatVec(p)} boundsMin=({minX:0.##},{minY:0.##}) boundsMax=({maxX:0.##},{maxY:0.##})");
+        }
+
+        ForceSafetyDespawn("Outside world bounds");
+    }
+
+    private void HandleLifetimeSafetyDespawn()
+    {
+        if (!_enableLifetimeSafetyDespawn || !gameObject.activeInHierarchy)
+        {
+            return;
+        }
+
+        float maxLifetime = Mathf.Max(1f, _maxLifetimeSeconds);
+        if (Time.unscaledTime - _spawnUnscaledTime < maxLifetime)
+        {
+            return;
+        }
+
+        if (_debugSafetyDespawnLogs)
+        {
+            Debug.LogWarning(
+                $"[Paratrooper_V2] Force despawn by max lifetime. " +
+                $"age={(Time.unscaledTime - _spawnUnscaledTime):0.##}s limit={maxLifetime:0.##}s");
+        }
+
+        ForceSafetyDespawn("Lifetime exceeded");
+    }
+
+    private void HandleOffscreenSafetyDespawn()
+    {
+        if (!_autoDespawnWhenOutsideMainCamera || !gameObject.activeInHierarchy)
+        {
+            return;
+        }
+
+        if (_stateMachine == null)
+        {
+            return;
+        }
+
+        StickmanBodyState s = _stateMachine.CurrentState;
+        if (s == StickmanBodyState.Die)
+        {
+            return;
+        }
+
+        Camera cam = GetMainCameraCached();
+        if (cam == null)
+        {
+            return;
+        }
+
+        Vector3 viewport = cam.WorldToViewportPoint(transform.position);
+        bool inFront = viewport.z > 0f;
+        float m = Mathf.Max(0f, _offscreenViewportMargin);
+        bool inside =
+            inFront &&
+            viewport.x >= -m && viewport.x <= 1f + m &&
+            viewport.y >= -m && viewport.y <= 1f + m;
+
+        if (inside)
+        {
+            _hasBeenVisibleToMainCamera = true;
+            _offscreenSinceUnscaledTime = float.NegativeInfinity;
+            return;
+        }
+
+        if (_requireVisibleBeforeOffscreenDespawn && !_hasBeenVisibleToMainCamera)
+        {
+            return;
+        }
+
+        if (float.IsNegativeInfinity(_offscreenSinceUnscaledTime))
+        {
+            _offscreenSinceUnscaledTime = Time.unscaledTime;
+            return;
+        }
+
+        float delay = Mathf.Max(0.05f, _offscreenDespawnDelaySeconds);
+        if (Time.unscaledTime - _offscreenSinceUnscaledTime < delay)
+        {
+            return;
+        }
+
+        if (_debugSafetyDespawnLogs)
+        {
+            Debug.LogWarning(
+                $"[Paratrooper_V2] Force despawn outside MainCamera view. " +
+                $"viewport={FormatVec(viewport)} state={s} delay={delay:0.##}s");
+        }
+
+        ForceSafetyDespawn("Outside MainCamera viewport");
+    }
+
+    private void ForceSafetyDespawn(string reason)
+    {
+        if (_deathHandler != null)
+        {
+            _deathHandler.ForceDespawnImmediately(reason);
+            return;
+        }
+
+        if (_debugSafetyDespawnLogs)
+        {
+            Debug.LogWarning($"[Paratrooper_V2] Safety despawn fallback without DeathHandler: {reason}");
+        }
+
+        SimplePrefabPool_V2.Despawn(gameObject);
+    }
+
+    private Camera GetMainCameraCached()
+    {
+        if (_cachedMainCamera != null && _cachedMainCamera.isActiveAndEnabled)
+        {
+            return _cachedMainCamera;
+        }
+
+        _cachedMainCamera = Camera.main;
+        return _cachedMainCamera;
     }
 
     /// <summary>

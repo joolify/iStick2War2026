@@ -385,6 +385,16 @@ namespace iStick2War_V2
             /// Empty on other kinds (avoids Unity JsonUtility emitting empty nested objects for session_begin / session_quit).
             /// </summary>
             public string waveScalingJson;
+
+            // Spawner snapshot for diagnosing spawn starvation / watchdog failures.
+            public int spawnerTargetSpawn;
+            public int spawnerSpawned;
+            public int spawnerPendingDrops;
+            public bool spawnerSpawnStarved;
+            public string spawnerSpawnRoutineExitReason;
+            public string spawnerLastSpawnAbortReason;
+            public int spawnerFailedSpawnAttempts;
+            public int spawnerRecoveryCount;
         }
 
         private void Awake()
@@ -1044,6 +1054,27 @@ namespace iStick2War_V2
                 waveScalingJson = "";
             }
 
+            EnemySpawner_V2 spawner = _waveManager != null ? _waveManager.EnemySpawner : null;
+            int spawnerTarget = 0;
+            int spawnerSpawned = 0;
+            int spawnerPending = 0;
+            bool spawnerStarved = false;
+            string spawnerExit = "";
+            string spawnerAbort = "";
+            int spawnerFailed = 0;
+            int spawnerRecoveries = 0;
+            if (spawner != null)
+            {
+                spawnerTarget = spawner.TargetParatroopersThisWave;
+                spawnerSpawned = spawner.SpawnedParatroopersThisWave;
+                spawnerPending = spawner.PendingParatrooperDropsThisWave;
+                spawnerStarved = spawner.IsSpawnStarvedThisWave;
+                spawnerExit = spawner.SpawnRoutineExitReason;
+                spawnerAbort = spawner.LastSpawnAbortReason;
+                spawnerFailed = spawner.FailedParatrooperSpawnAttemptsThisWave;
+                spawnerRecoveries = spawner.SpawnStarvationRecoveryCountThisWave;
+            }
+
             return new TelemetryEvent
             {
                 kind = kind,
@@ -1085,7 +1116,15 @@ namespace iStick2War_V2
                 bunkerPressureTimeAfterFirstDamageSec = bunkerPressureAfterFirstDamageForRow,
                 minBunkerHpRatioThisWave = minBunkerRatio,
                 bunkerHpSamples = bunkerSamples,
-                waveScalingJson = waveScalingJson
+                waveScalingJson = waveScalingJson,
+                spawnerTargetSpawn = spawnerTarget,
+                spawnerSpawned = spawnerSpawned,
+                spawnerPendingDrops = spawnerPending,
+                spawnerSpawnStarved = spawnerStarved,
+                spawnerSpawnRoutineExitReason = spawnerExit,
+                spawnerLastSpawnAbortReason = spawnerAbort,
+                spawnerFailedSpawnAttempts = spawnerFailed,
+                spawnerRecoveryCount = spawnerRecoveries
             };
         }
 
@@ -1623,6 +1662,13 @@ namespace iStick2War_V2
                             "snapshot (scalingVersion labels WaveBalanceConfig_V2; balance* / config* / effective* as documented). " +
                             "Parse with JsonUtility into your DTO. Empty string on session_begin / session_quit and other kinds. " +
                             "Replaces a nested object field so Unity JsonUtility does not emit bogus empty objects on those rows."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "spawner* fields on row (spawnerTargetSpawn, spawnerSpawned, spawnerPendingDrops, spawnerSpawnStarved, spawnerSpawnRoutineExitReason, spawnerLastSpawnAbortReason, spawnerFailedSpawnAttempts, spawnerRecoveryCount)",
+                        meaning =
+                            "Snapshot from EnemySpawner_V2 at row write time. Used to diagnose spawn starvation (spawn schedule " +
+                            "finished but spawned<target), failed spawn attempts, and watchdog-driven recovery attempts."
                     },
                     new TelemetryGlossaryEntry
                     {

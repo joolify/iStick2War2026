@@ -176,10 +176,27 @@ namespace iStick2War_V2
         private bool _lastResolvedMountUsedFallbackRoot;
         private int _pendingDelayedDropCoroutines;
         private float _lastParatrooperSpawnUnscaledTime;
+        private float _lastSpawnAttemptUnscaledTime;
+        private int _failedParatrooperSpawnAttemptsThisWave;
+        private int _spawnStarvationRecoveryCount;
+        private string _lastSpawnAbortReason = "";
+        private string _spawnRoutineExitReason = "not_started";
 
         public float LastParatrooperSpawnUnscaledTime => _lastParatrooperSpawnUnscaledTime;
+        public float LastSpawnAttemptUnscaledTime => _lastSpawnAttemptUnscaledTime;
         public int SpawnedParatroopersThisWave => _spawnedCount;
+        public int TargetParatroopersThisWave => _targetSpawnCount;
+        public int PendingParatrooperDropsThisWave => _pendingDelayedDropCoroutines;
+        public int FailedParatrooperSpawnAttemptsThisWave => _failedParatrooperSpawnAttemptsThisWave;
+        public int SpawnStarvationRecoveryCountThisWave => _spawnStarvationRecoveryCount;
+        public string LastSpawnAbortReason => _lastSpawnAbortReason ?? "";
+        public string SpawnRoutineExitReason => _spawnRoutineExitReason ?? "";
         public bool IsWaveActive => _isWaveActive;
+        public bool IsSpawnStarvedThisWave =>
+            _isWaveActive &&
+            _spawnRoutineFinished &&
+            _pendingDelayedDropCoroutines == 0 &&
+            _spawnedCount < _targetSpawnCount;
 
         /// <summary>
         /// True when the paratrooper spawn coroutine has finished and every scheduled drop has been accounted for
@@ -209,7 +226,9 @@ namespace iStick2War_V2
             return string.Format(
                 CultureInfo.InvariantCulture,
                 "isWaveActive={0} waveDiag={1} targetSpawn={2} spawned={3} spawnRoutineFinished={4} pendingDrops={5} " +
-                "trackedLiving={6} trackedAircraft={7} lastParatrooperSpawnAgeSec={8:0.###} waveSession={9}",
+                "trackedLiving={6} trackedAircraft={7} lastParatrooperSpawnAgeSec={8:0.###} " +
+                "lastSpawnAttemptAgeSec={9:0.###} spawnStarved={10} spawnExit='{11}' failedSpawnAttempts={12} " +
+                "spawnRecoveries={13} lastAbort='{14}' waveSession={15}",
                 _isWaveActive,
                 FormatWaveNumberLabel(),
                 _targetSpawnCount,
@@ -219,6 +238,12 @@ namespace iStick2War_V2
                 _trackedDeaths.Count,
                 _trackedAircraftDeaths.Count,
                 lastSpawnAgeSec,
+                Mathf.Max(0f, Time.unscaledTime - _lastSpawnAttemptUnscaledTime),
+                IsSpawnStarvedThisWave,
+                SpawnRoutineExitReason,
+                _failedParatrooperSpawnAttemptsThisWave,
+                _spawnStarvationRecoveryCount,
+                LastSpawnAbortReason,
                 _waveSessionId);
         }
 
@@ -276,6 +301,11 @@ namespace iStick2War_V2
             _spawnRoutineFinished = false;
             _pendingDelayedDropCoroutines = 0;
             _lastParatrooperSpawnUnscaledTime = Time.unscaledTime;
+            _lastSpawnAttemptUnscaledTime = _lastParatrooperSpawnUnscaledTime;
+            _failedParatrooperSpawnAttemptsThisWave = 0;
+            _spawnStarvationRecoveryCount = 0;
+            _lastSpawnAbortReason = "";
+            _spawnRoutineExitReason = "running";
             _spawnRoutine = StartCoroutine(SpawnRoutine(config));
             if (config.BomberPassCount > 0 && _bomberPrefab != null)
             {
@@ -323,9 +353,14 @@ namespace iStick2War_V2
             _spawnedCount = 0;
             _spawnRoutineFinished = false;
             _pendingDelayedDropCoroutines = 0;
+            _failedParatrooperSpawnAttemptsThisWave = 0;
+            _spawnStarvationRecoveryCount = 0;
+            _lastSpawnAbortReason = "";
+            _spawnRoutineExitReason = "stopped";
             // Keep a sane timestamp after StopWave: EnterGameErrorState calls StopWave while the watchdog may still
             // evaluate this frame; 0 would look like "no spawn since boot" and false-trigger no-spawn detection.
             _lastParatrooperSpawnUnscaledTime = Time.unscaledTime;
+            _lastSpawnAttemptUnscaledTime = _lastParatrooperSpawnUnscaledTime;
         }
 
         private void OnDisable()
@@ -340,10 +375,12 @@ namespace iStick2War_V2
             int waveSession = _waveSessionId;
             int plannedParatroopers = 0;
             int flightIndex = 0;
+            _spawnRoutineExitReason = "running";
             while (plannedParatroopers < toSpawn)
             {
                 if (!_isWaveActive || waveSession != _waveSessionId)
                 {
+                    _spawnRoutineExitReason = "wave-inactive-or-session-changed";
                     yield break;
                 }
 
@@ -358,6 +395,7 @@ namespace iStick2War_V2
                 int perFlight = ResolveParatroopersPerFlight(remaining);
                 if (perFlight <= 0)
                 {
+                    _spawnRoutineExitReason = "resolve-per-flight-returned-zero";
                     break;
                 }
 
@@ -373,6 +411,45 @@ namespace iStick2War_V2
 
             _spawnRoutine = null;
             _spawnRoutineFinished = true;
+            if (_spawnRoutineExitReason == "running")
+            {
+                _spawnRoutineExitReason = "completed-planned-flights";
+            }
+            if (_spawnedCount < _targetSpawnCount && _pendingDelayedDropCoroutines == 0)
+            {
+                _spawnRoutineExitReason = "completed-with-missing-spawns";
+            }
+        }
+
+        /// <summary>
+        /// Attempts to recover one missing paratrooper when spawn schedule is finished but spawned&lt;target.
+        /// Returns true only when a new paratrooper was actually spawned.
+        /// </summary>
+        public bool TryRecoverSpawnStarvation(out string details)
+        {
+            details = "";
+            if (!IsSpawnStarvedThisWave)
+            {
+                details = "not-starved";
+                return false;
+            }
+
+            Vector3 recoveryPos = new Vector3(
+                UnityEngine.Random.Range(_spawnXRange.x, _spawnXRange.y),
+                UnityEngine.Random.Range(_spawnYRange.x, _spawnYRange.y),
+                0f);
+            recoveryPos = ClampToCameraView(recoveryPos);
+            bool spawned = SpawnParatrooper(recoveryPos, usedAnchorSpawn: false, fromLeft: false, aircraft: null);
+            if (!spawned)
+            {
+                details = "recovery-spawn-failed";
+                return false;
+            }
+
+            _spawnStarvationRecoveryCount++;
+            _spawnRoutineExitReason = "starvation-recovered";
+            details = $"recovered one missing spawn at {recoveryPos}. spawned={_spawnedCount}/{_targetSpawnCount}";
+            return true;
         }
 
         private IEnumerator SpawnBomberPassRoutine(int bomberPasses, float basedOnSpawnIntervalSeconds)
@@ -607,7 +684,10 @@ namespace iStick2War_V2
                     {
                         Vector3 paratrooperWorldPositionNow = aircraftWorldPos + _paratrooperOffsetFromMount;
                         paratrooperWorldPositionNow.z = _anchorSpawnWorldZ;
-                        SpawnParatrooper(paratrooperWorldPositionNow, usedAnchorSpawn, fromLeft, aircraft);
+                        if (!SpawnParatrooper(paratrooperWorldPositionNow, usedAnchorSpawn, fromLeft, aircraft))
+                        {
+                            RegisterCancelledPlannedParatrooperDrop("direct-anchor-drop-spawn-failed");
+                        }
                     }
                     return;
                 }
@@ -632,7 +712,10 @@ namespace iStick2War_V2
                             $"Final pos={paratrooperWorldPosition}, waveSpawnIndex={spawnIndexInWave}");
                     }
 
-                    SpawnParatrooper(paratrooperWorldPosition, usedAnchorSpawn, fromLeft, aircraft);
+                    if (!SpawnParatrooper(paratrooperWorldPosition, usedAnchorSpawn, fromLeft, aircraft))
+                    {
+                        RegisterCancelledPlannedParatrooperDrop("fallback-random-drop-spawn-failed");
+                    }
                 }
                 return;
             }
@@ -723,21 +806,26 @@ namespace iStick2War_V2
             }
         }
 
-        private void SpawnParatrooper(
+        private bool SpawnParatrooper(
             Vector3 worldPosition,
             bool usedAnchorSpawn,
             bool fromLeft,
             GameObject aircraft)
         {
+            _lastSpawnAttemptUnscaledTime = Time.unscaledTime;
             if (!_isWaveActive)
             {
-                return;
+                _failedParatrooperSpawnAttemptsThisWave++;
+                _lastSpawnAbortReason = "spawn-attempt-while-wave-inactive";
+                return false;
             }
 
             Paratrooper spawned = SimplePrefabPool_V2.Spawn(_paratrooperPrefab, worldPosition, Quaternion.identity);
             if (spawned == null)
             {
-                return;
+                _failedParatrooperSpawnAttemptsThisWave++;
+                _lastSpawnAbortReason = "pool-spawn-returned-null";
+                return false;
             }
 
             // Prefab root may be saved inactive (children still show as activeSelf in YAML but do not render).
@@ -816,6 +904,8 @@ namespace iStick2War_V2
                     fromLeft);
                 StartCoroutine(LogParatrooperSpawnTrace(spawned, spawnSeq, worldPosition, fromLeft));
             }
+
+            return true;
         }
 
         private void ApplyMasterDebugFlagsToParatrooper(Paratrooper spawned)
@@ -869,7 +959,10 @@ namespace iStick2War_V2
                             fallbackPosition,
                             fromLeft);
                         Vector3 safeDropPosition = ClampDropPositionInsideOrthographicCameraView(fallbackPosition, requiredInset);
-                        SpawnParatrooper(safeDropPosition, usedAnchorSpawn, fromLeft, aircraft);
+                        if (!SpawnParatrooper(safeDropPosition, usedAnchorSpawn, fromLeft, aircraft))
+                        {
+                            RegisterCancelledPlannedParatrooperDrop("visible-drop-spawn-failed");
+                        }
                         yield break;
                     }
 
@@ -903,7 +996,10 @@ namespace iStick2War_V2
                     fromLeft);
                 float timeoutInset = Mathf.Max(0f, _aircraftVisibleCheckPaddingWorld);
                 Vector3 timeoutDropPosition = ClampDropPositionInsideOrthographicCameraView(fallbackPosition, timeoutInset);
-                SpawnParatrooper(timeoutDropPosition, usedAnchorSpawn, fromLeft, aircraft);
+                if (!SpawnParatrooper(timeoutDropPosition, usedAnchorSpawn, fromLeft, aircraft))
+                {
+                    RegisterCancelledPlannedParatrooperDrop("timeout-visible-drop-spawn-failed");
+                }
             }
             finally
             {
@@ -935,7 +1031,10 @@ namespace iStick2War_V2
                 }
 
                 Vector3 dropPos = GetParatrooperSpawnPositionFromAircraft(aircraft);
-                SpawnParatrooper(dropPos, usedAnchorSpawn, fromLeft, aircraft);
+                if (!SpawnParatrooper(dropPos, usedAnchorSpawn, fromLeft, aircraft))
+                {
+                    RegisterCancelledPlannedParatrooperDrop("delayed-aircraft-drop-spawn-failed");
+                }
             }
             finally
             {
@@ -950,6 +1049,7 @@ namespace iStick2War_V2
         {
             int before = _targetSpawnCount;
             _targetSpawnCount = Mathf.Max(0, _targetSpawnCount - 1);
+            _lastSpawnAbortReason = reason ?? "cancelled-planned-drop";
             if (_debugSpawnLogs || _debugAnchorSpawnDiagnostics)
             {
                 Debug.Log(

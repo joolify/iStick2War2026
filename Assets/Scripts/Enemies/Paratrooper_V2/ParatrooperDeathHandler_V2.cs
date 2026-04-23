@@ -75,6 +75,22 @@ public class ParatrooperDeathHandler_V2 : MonoBehaviour
         OnDeathStarted?.Invoke(this);
         StartCoroutine(DeathRoutine());
     }
+    
+    /// <summary>
+    /// Immediately despawns this instance (pool-safe), bypassing death delay.
+    /// </summary>
+    public void ForceDespawnImmediately(string reason = null)
+    {
+        if (!string.IsNullOrWhiteSpace(reason))
+        {
+            Debug.LogWarning($"[ParatrooperDeathHandler_V2] ForceDespawnImmediately: {reason}");
+        }
+
+        _isDying = true;
+        StopAllCoroutines();
+        OnDeathStarted?.Invoke(this);
+        SimplePrefabPool_V2.Despawn(gameObject);
+    }
 
     IEnumerator DeathRoutine()
     {
@@ -106,7 +122,7 @@ public class ParatrooperDeathHandler_V2 : MonoBehaviour
     private void Cleanup()
     {
         // Disable components, unsubscribe events, return to pool, etc.
-        gameObject.SetActive(false);
+        SimplePrefabPool_V2.Despawn(gameObject);
     }
 
 }

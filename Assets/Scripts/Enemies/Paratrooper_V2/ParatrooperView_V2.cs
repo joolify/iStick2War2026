@@ -157,6 +157,58 @@ public class ParatrooperView_V2 : MonoBehaviour
         CheckAnimationNames();
         ResolveAimBones();
     }
+    
+    /// <summary>
+    /// Pool-safe reset so a reused instance cannot keep death/explosion visual state from a previous life.
+    /// </summary>
+    public void ResetVisualStateForSpawn()
+    {
+        _isExploded = false;
+        _deathAnimationLocked = false;
+        _suppressParachuteVisuals = false;
+        _groundDeathParachuteLogPrinted = false;
+        _lastStateBeforeChange = StickmanBodyState.Idle;
+
+        if (_skeletonAnimation == null)
+        {
+            _skeletonAnimation = GetComponent<SkeletonAnimation>();
+        }
+
+        if (_skeletonAnimation != null)
+        {
+            _skeletonAnimation.enabled = true;
+            if (_skeletonAnimation.Skeleton != null)
+            {
+                _skeletonAnimation.Skeleton.SetToSetupPose();
+            }
+            if (_skeletonAnimation.AnimationState != null)
+            {
+                _skeletonAnimation.AnimationState.ClearTracks();
+                _skeletonAnimation.AnimationState.SetEmptyAnimation(0, 0f);
+                _skeletonAnimation.AnimationState.SetEmptyAnimation(1, 0f);
+            }
+            _skeletonAnimation.Update(0f);
+            _skeletonAnimation.LateUpdate();
+
+            SkeletonRenderer renderer = _skeletonAnimation.GetComponent<SkeletonRenderer>();
+            if (renderer != null)
+            {
+                renderer.enabled = true;
+            }
+        }
+
+        // Explosion path may have disabled all child renderers; re-enable for pooled reuse.
+        Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            if (renderers[i] != null)
+            {
+                renderers[i].enabled = true;
+            }
+        }
+
+        ResolveAimBones();
+    }
 
     private void CheckAnimationNames()
     {
@@ -302,6 +354,13 @@ public class ParatrooperView_V2 : MonoBehaviour
         }
         else
         {
+            // Deploy/Glide run on track 1, but stale full-body clips on track 0 can visually override them.
+            // Always clear track 0 for air states so pooled reuse cannot keep death/impact pose.
+            if (state == StickmanBodyState.Deploy || state == StickmanBodyState.Glide)
+            {
+                _skeletonAnimation.AnimationState.ClearTrack(0);
+            }
+
             // Land may have left a hold pose on track 0; combat states use track 1 and must not mix with it.
             if (state == StickmanBodyState.Idle || state == StickmanBodyState.Shoot)
             {

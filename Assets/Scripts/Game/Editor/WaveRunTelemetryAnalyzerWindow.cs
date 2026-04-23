@@ -681,6 +681,10 @@ namespace iStick2War_V2.Editor
             var flagRunCount = new Dictionary<string, int>(StringComparer.Ordinal);
             var flagRowCount = new Dictionary<string, int>(StringComparer.Ordinal);
             int totalWaveEndRows = 0;
+            int runsWithSpawnStarvation = 0;
+            int totalSpawnStarvedRows = 0;
+            int totalSpawnerRecoveries = 0;
+            int totalSpawnerFailedAttempts = 0;
             var minRatioWave2 = new List<float>(files.Length);
             var minRatioByWave = new Dictionary<int, List<float>>();
             for (int w = 1; w <= 12; w++)
@@ -819,6 +823,11 @@ namespace iStick2War_V2.Editor
                 }
 
                 var flagsThisRun = new HashSet<string>(StringComparer.Ordinal);
+                int spawnStarvedRowsThisRun = 0;
+                int spawnerRecoveriesThisRun = 0;
+                int spawnerFailedAttemptsThisRun = 0;
+                string lastSpawnerExitReasonThisRun = "";
+                string lastSpawnerAbortReasonThisRun = "";
                 WaveChainPrev chainPrev = default;
                 int maxWaveCleared = 0;
                 for (int wi = 0; wi < waveEndRows.Count; wi++)
@@ -839,6 +848,24 @@ namespace iStick2War_V2.Editor
                     }
 
                     totalWaveEndRows++;
+                    if (ev.spawnerSpawnStarved)
+                    {
+                        spawnStarvedRowsThisRun++;
+                        totalSpawnStarvedRows++;
+                    }
+
+                    spawnerRecoveriesThisRun += Mathf.Max(0, ev.spawnerRecoveryCount);
+                    spawnerFailedAttemptsThisRun += Mathf.Max(0, ev.spawnerFailedSpawnAttempts);
+                    if (!string.IsNullOrWhiteSpace(ev.spawnerSpawnRoutineExitReason))
+                    {
+                        lastSpawnerExitReasonThisRun = ev.spawnerSpawnRoutineExitReason;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(ev.spawnerLastSpawnAbortReason))
+                    {
+                        lastSpawnerAbortReasonThisRun = ev.spawnerLastSpawnAbortReason;
+                    }
+
                     foreach (string f in flags)
                     {
                         BatchIncrement(flagRowCount, f);
@@ -919,6 +946,13 @@ namespace iStick2War_V2.Editor
                 string flagsJoined = flagsThisRun.Count > 0 ? string.Join(";", flagsThisRun) : "(inga)";
                 string deathText = failWave >= 0 ? failWave.ToString(CultureInfo.InvariantCulture) : "—";
                 int unityRowsThisFile = root.unityLogs != null ? root.unityLogs.Length : 0;
+                if (spawnStarvedRowsThisRun > 0)
+                {
+                    runsWithSpawnStarvation++;
+                }
+
+                totalSpawnerRecoveries += spawnerRecoveriesThisRun;
+                totalSpawnerFailedAttempts += spawnerFailedAttemptsThisRun;
                 if (unityRowsThisFile > 0)
                 {
                     runsWithUnityLogs++;
@@ -948,7 +982,9 @@ namespace iStick2War_V2.Editor
                     $"\t{(feelSurvAfterShop >= 0f ? feelSurvAfterShop.ToString("0.##", CultureInfo.InvariantCulture) : "")}";
 
                 string tsvLine =
-                    $"{fn}\t{sessionId}\t{sceneProfileId}\t{autoHeroProfile}\t{deathText}\t{maxWaveCleared}\t{sessionDur:0.#}\t{flagsJoined}\t{unityRowsThisFile}{feelTsv}";
+                    $"{fn}\t{sessionId}\t{sceneProfileId}\t{autoHeroProfile}\t{deathText}\t{maxWaveCleared}\t{sessionDur:0.#}\t{flagsJoined}\t{unityRowsThisFile}" +
+                    $"\t{spawnStarvedRowsThisRun}\t{spawnerRecoveriesThisRun}\t{spawnerFailedAttemptsThisRun}\t{lastSpawnerExitReasonThisRun}\t{lastSpawnerAbortReasonThisRun}" +
+                    $"{feelTsv}";
                 perFileLines.Add(tsvLine);
 
                 batchRuns++;
@@ -1078,6 +1114,14 @@ namespace iStick2War_V2.Editor
                     sb.AppendLine($"  {kv.Key}: {kv.Value} ({100f * kv.Value / Mathf.Max(1, totalEr):0.#} %)");
                 }
             }
+            
+            sb.AppendLine();
+            sb.AppendLine("--- Spawn starvation (nya spawner-fält) ---");
+            sb.AppendLine(
+                $"Körningar med minst en starvation-rad: {runsWithSpawnStarvation}/{batchRuns} ({100f * runsWithSpawnStarvation / Mathf.Max(1, batchRuns):0.#} %)");
+            sb.AppendLine($"Starvation-rader totalt (wave_cleared/run_end): {totalSpawnStarvedRows}/{totalWaveEndRows}");
+            sb.AppendLine($"Summa recovery-försök (spawnerRecoveryCount): {totalSpawnerRecoveries}");
+            sb.AppendLine($"Summa misslyckade spawn-försök (spawnerFailedSpawnAttempts): {totalSpawnerFailedAttempts}");
 
             sb.AppendLine();
             sb.AppendLine("--- minBunkerHpRatioThisWave på wave_cleared wave=2 ---");
@@ -1128,6 +1172,7 @@ namespace iStick2War_V2.Editor
             sb.AppendLine("Kolumnbeskrivning: se avsnittet «Batch-TSV» i ordlistan överst i denna batch-rapport.");
             sb.AppendLine(
                 "fil\tsessionId\tsceneProfileId\tautoHero\tfailWave\tmaxWaveCleared\tsessionSec\tflags\tunityLogRows\t" +
+                "spawnStarvedRows\tspawnRecoveries\tspawnFailedAttempts\tspawnExitReasonLast\tspawnAbortReasonLast\t" +
                 "feel_firstKillSec\tfeel_firstDmgSec\tfeel_firstDeathSec\tfeel_firstShopSec\t" +
                 "feel_bunkerTimeFrac01\tfeel_combatPerHeroDmgTaken\tfeel_overwhelmedInWaveSecSum\t" +
                 "feel_heroMaxHpDeltaAfterFirstShop\tfeel_survSecAfterFirstShop");
@@ -2104,6 +2149,14 @@ namespace iStick2War_V2.Editor
             public float minBunkerHpRatioThisWave;
             public BunkerHpSampleDto[] bunkerHpSamples;
             public string waveScalingJson;
+            public int spawnerTargetSpawn;
+            public int spawnerSpawned;
+            public int spawnerPendingDrops;
+            public bool spawnerSpawnStarved;
+            public string spawnerSpawnRoutineExitReason;
+            public string spawnerLastSpawnAbortReason;
+            public int spawnerFailedSpawnAttempts;
+            public int spawnerRecoveryCount;
         }
     }
 }
