@@ -32,6 +32,8 @@ namespace iStick2War_V2
         [SerializeField] private float _enemySearchRadius = 90f;
         [SerializeField] private float _shootIfEnemyWithinWeaponRangeFactor = 1f;
         [SerializeField] private float _bazookaPreferWithinHorizontal = 42f;
+        [Tooltip("Extra horizontal reach for Bazooka preference when the selected target is a bombing aircraft (Bombplane_V2).")]
+        [SerializeField] private float _bazookaPreferWithinHorizontalForBombingAircraft = 95f;
         [Tooltip(
             "When true, any Paratrooper body hitbox in the search radius wins over the helicopter. " +
             "Otherwise the single nearest EnemyBodyPart collider is used (aircraft often steals the aim).")]
@@ -40,6 +42,28 @@ namespace iStick2War_V2
         [SerializeField] private bool _prioritizeGroundedParatroopers = true;
         [Tooltip("Extra score for grounded/combat-ready paratroopers when selecting target.")]
         [SerializeField] private float _groundedParatrooperPriorityBonus = 220f;
+        [Tooltip("Strong priority bonus for paratroopers actively shooting/throwing grenades.")]
+        [SerializeField] private float _combatParatrooperPriorityBonus = 12000f;
+        [Tooltip("Penalty for airborne parachute states so grounded threats win target selection.")]
+        [SerializeField] private float _airborneParatrooperPriorityPenalty = 1500f;
+        [Tooltip("Logs chosen enemy target score/state at intervals during InWave.")]
+        [SerializeField] private bool _debugTargetSelectionLogs;
+        [SerializeField] private float _debugTargetSelectionLogIntervalSeconds = 0.5f;
+        [Tooltip("When true, airborne paratroopers are ignored if any grounded paratrooper is targetable.")]
+        [SerializeField] private bool _ignoreAirborneWhenGroundedExists = true;
+
+        [Header("Bomb run survival")]
+        [Tooltip("When true, retreat toward bunker interior when falling bombs are likely to splash the hero (ignores low-HP bunker rule).")]
+        [SerializeField] private bool _retreatToBunkerOnBombSplashThreat = true;
+        [Tooltip("Extra horizontal margin added to bomb explosion radius when judging splash threat.")]
+        [SerializeField] private float _bombSplashThreatHorizExtra = 0.85f;
+        [Tooltip("Also treat bombs as threatening when they are below the hero by at most this many world units (rolling bounce / low release).")]
+        [SerializeField] private float _bombSplashThreatMaxBelowHero = 1.1f;
+        [Tooltip(
+            "When infantry is normally prioritized, temporarily aim the nearest Bombplane_V2 aircraft instead " +
+            "if a bomb splash threat is active and the aircraft is within this horizontal distance.")]
+        [SerializeField] private bool _aimBombingAircraftWhileBombsFall = true;
+        [SerializeField] private float _aimBombingAircraftWhileBombsFallMaxHoriz = 70f;
 
         [Header("Bunker")]
         [SerializeField] [Range(0.05f, 0.95f)] private float _lowHealthEnterBunkerFraction = 0.35f;
@@ -80,11 +104,13 @@ namespace iStick2War_V2
         [SerializeField] private bool _autoRefillAmmoWhenDryInAutomation = true;
 
         private readonly Collider2D[] _overlapBuffer = new Collider2D[64];
+        private readonly List<ParatrooperBodyPart_V2> _paratrooperBodyPartBuffer = new List<ParatrooperBodyPart_V2>(16);
         private int _enemyBodyPartLayer = -1;
         private WaveLoopState_V2 _lastWaveState = WaveLoopState_V2.Preparing;
         private int _shopPhasesCompleted;
         private bool _shopExitScheduledThisVisit;
         private float _nextWaveCombatNoTargetLogUnscaledTime;
+        private float _nextTargetSelectionDebugLogUnscaledTime;
         private bool _sessionInProgress;
         private int _completedRuns;
         private float _automationBatchStartRealtime = -1f;
@@ -888,13 +914,19 @@ namespace iStick2War_V2
 
             bool inside = _waveManager != null && _waveManager.IsHeroInsideBunker(_hero);
             float hpRatio = _model.maxHealth > 0 ? (float)_model.currentHealth / _model.maxHealth : 1f;
-            bool wantBunker =
+            bool bombThreat = _retreatToBunkerOnBombSplashThreat && IsBombSplashThreatActive(heroPos);
+            bool wantBunkerFromHp =
                 bunkerAnchor.HasValue &&
                 hpRatio < _lowHealthEnterBunkerFraction &&
                 !inside;
+            bool wantBunkerFromBombs =
+                bunkerAnchor.HasValue &&
+                bombThreat &&
+                !inside;
+            bool wantBunker = wantBunkerFromHp || wantBunkerFromBombs;
 
             Plane[] shootFrustumPlanes = TryGetShootVisibilityFrustumPlanes();
-            Collider2D target = FindNearestEnemyCollider(heroPos, shootFrustumPlanes);
+            Collider2D target = FindNearestEnemyCollider(heroPos, shootFrustumPlanes, bombThreat);
             Vector2 aimPoint = heroPos + Vector2.right * 8f;
             bool hasTarget = false;
 
@@ -916,7 +948,7 @@ namespace iStick2War_V2
 
             if (target != null)
             {
-                aimPoint = target.bounds.center;
+                aimPoint = ResolveAimPointForTarget(target, heroPos);
                 hasTarget = true;
             }
 
@@ -926,7 +958,7 @@ namespace iStick2War_V2
                 aimPoint += _aimNoiseOffset;
             }
 
-            MaybeSelectWeaponForThreat(heroPos, aimPoint, hasTarget);
+            MaybeSelectWeaponForThreat(heroPos, aimPoint, hasTarget, target);
 
             Vector2 move = Vector2.zero;
             if (wantBunker)
@@ -974,7 +1006,19 @@ namespace iStick2War_V2
                 shootFrustumPlanes == null ||
                 GeometryUtility.TestPlanesAABB(shootFrustumPlanes, target.bounds);
 
-            bool rawShootHeld = inRange && !wantBunker && canHoldFire && targetShootableOnCamera;
+            bool shootBlockedByBunkerMove = wantBunker;
+            if (shootBlockedByBunkerMove &&
+                wantBunkerFromBombs &&
+                bombThreat &&
+                target != null &&
+                IsBombingAircraftCollider(target) &&
+                _model.currentWeaponType == WeaponType.Bazooka &&
+                _hero.HasUsableAmmoForWeaponType(WeaponType.Bazooka))
+            {
+                shootBlockedByBunkerMove = false;
+            }
+
+            bool rawShootHeld = inRange && !shootBlockedByBunkerMove && canHoldFire && targetShootableOnCamera;
             bool shootHeld = ApplyProfileToShootHeld(rawShootHeld);
             if (shootHeld)
             {
@@ -1071,7 +1115,7 @@ namespace iStick2War_V2
             return Time.unscaledTime >= _shootEngageAllowedAfterUnscaled;
         }
 
-        private void MaybeSelectWeaponForThreat(Vector2 heroPos, Vector2 enemyPos, bool hasTarget)
+        private void MaybeSelectWeaponForThreat(Vector2 heroPos, Vector2 enemyPos, bool hasTarget, Collider2D targetCollider)
         {
             if (!hasTarget)
             {
@@ -1103,8 +1147,12 @@ namespace iStick2War_V2
             }
 
             float horiz = Mathf.Abs(enemyPos.x - heroPos.x);
-            bool wantBazookaRange = horiz <= _bazookaPreferWithinHorizontal;
-            bool wantCarbineRange = horiz > _bazookaPreferWithinHorizontal * 1.15f;
+            float bazookaHoriz =
+                targetCollider != null && IsBombingAircraftCollider(targetCollider)
+                    ? Mathf.Max(_bazookaPreferWithinHorizontal, _bazookaPreferWithinHorizontalForBombingAircraft)
+                    : _bazookaPreferWithinHorizontal;
+            bool wantBazookaRange = horiz <= bazookaHoriz;
+            bool wantCarbineRange = horiz > bazookaHoriz * 1.15f;
 
             bool bazookaAmmo =
                 _hero.HasUnlockedWeaponOfType(WeaponType.Bazooka) &&
@@ -1172,7 +1220,7 @@ namespace iStick2War_V2
             return TryGetShootVisibilityFrustumPlanes(cam);
         }
 
-        private Collider2D FindNearestEnemyCollider(Vector2 from, Plane[] shootFrustumPlanes)
+        private Collider2D FindNearestEnemyCollider(Vector2 from, Plane[] shootFrustumPlanes, bool bombSplashThreat)
         {
             if (_enemyBodyPartLayer < 0)
             {
@@ -1195,8 +1243,12 @@ namespace iStick2War_V2
             Collider2D bestInfantry = null;
             float bestInfantryDist = float.MaxValue;
             float bestInfantryScore = float.NegativeInfinity;
+            int bestInfantryTier = int.MinValue;
+            bool hasGroundedInfantryCandidate = false;
             Collider2D bestAircraft = null;
             float bestAircraftDist = float.MaxValue;
+            Collider2D bestBombingAircraft = null;
+            float bestBombingAircraftDist = float.MaxValue;
 
             for (int i = 0; i < count; i++)
             {
@@ -1226,17 +1278,43 @@ namespace iStick2War_V2
                     bestAny = c;
                 }
 
+                if (IsBombingAircraftCollider(c))
+                {
+                    float horiz = Mathf.Abs(p.x - from.x);
+                    if (horiz <= Mathf.Max(0.5f, _aimBombingAircraftWhileBombsFallMaxHoriz) && d < bestBombingAircraftDist)
+                    {
+                        bestBombingAircraftDist = d;
+                        bestBombingAircraft = c;
+                    }
+                }
+
                 if (isParatrooper)
                 {
+                    StickmanBodyState paratrooperState = GetParatrooperStateOrDie(c);
+                    int infantryTier = GetParatrooperPriorityTier(paratrooperState);
                     float infantryScore = -d;
-                    if (_prioritizeGroundedParatroopers && IsGroundCombatParatrooper(c))
+                    if (_prioritizeGroundedParatroopers && IsGroundCombatState(paratrooperState))
                     {
                         infantryScore += Mathf.Max(0f, _groundedParatrooperPriorityBonus);
                     }
+                    if (IsGroundCombatState(paratrooperState))
+                    {
+                        hasGroundedInfantryCandidate = true;
+                    }
+                    if (paratrooperState == StickmanBodyState.Shoot || paratrooperState == StickmanBodyState.Grenade)
+                    {
+                        infantryScore += Mathf.Max(0f, _combatParatrooperPriorityBonus);
+                    }
+                    else if (paratrooperState == StickmanBodyState.Deploy || paratrooperState == StickmanBodyState.Glide)
+                    {
+                        infantryScore -= Mathf.Max(0f, _airborneParatrooperPriorityPenalty);
+                    }
 
-                    if (infantryScore > bestInfantryScore ||
+                    if (infantryTier > bestInfantryTier ||
+                        (infantryTier == bestInfantryTier && infantryScore > bestInfantryScore) ||
                         (Mathf.Approximately(infantryScore, bestInfantryScore) && d < bestInfantryDist))
                     {
+                        bestInfantryTier = infantryTier;
                         bestInfantryScore = infantryScore;
                         bestInfantryDist = d;
                         bestInfantry = c;
@@ -1252,27 +1330,124 @@ namespace iStick2War_V2
                 }
             }
 
+            if (_ignoreAirborneWhenGroundedExists && hasGroundedInfantryCandidate && bestInfantry != null)
+            {
+                StickmanBodyState bestState = GetParatrooperStateOrDie(bestInfantry);
+                if (!IsGroundCombatState(bestState))
+                {
+                    // Re-scan candidates and pick the nearest grounded target deterministically.
+                    Collider2D bestGroundedInfantry = null;
+                    float bestGroundedDist = float.MaxValue;
+                    for (int i = 0; i < count; i++)
+                    {
+                        Collider2D c = _overlapBuffer[i];
+                        if (c == null || !IsParatrooperCollider(c) || !IsViableParatrooperTarget(c))
+                        {
+                            continue;
+                        }
+
+                        if (shootFrustumPlanes != null &&
+                            !GeometryUtility.TestPlanesAABB(shootFrustumPlanes, c.bounds))
+                        {
+                            continue;
+                        }
+
+                        StickmanBodyState s = GetParatrooperStateOrDie(c);
+                        if (!IsGroundCombatState(s))
+                        {
+                            continue;
+                        }
+
+                        Vector2 center = c.bounds.center;
+                        float d = (center - from).sqrMagnitude;
+                        if (d < bestGroundedDist)
+                        {
+                            bestGroundedDist = d;
+                            bestGroundedInfantry = c;
+                        }
+                    }
+
+                    if (bestGroundedInfantry != null)
+                    {
+                        bestInfantry = bestGroundedInfantry;
+                        bestInfantryDist = bestGroundedDist;
+                        bestInfantryScore = -bestGroundedDist;
+                    }
+                }
+            }
+
+            if (_aimBombingAircraftWhileBombsFall &&
+                bombSplashThreat &&
+                bestBombingAircraft != null &&
+                (_prioritizeInfantryOverAircraft ? bestInfantry != null : true))
+            {
+                MaybeLogTargetSelectionDebug(bestBombingAircraft, -bestBombingAircraftDist, "bombplane-override");
+                return bestBombingAircraft;
+            }
+
             if (_prioritizeInfantryOverAircraft && bestInfantry != null)
             {
+                MaybeLogTargetSelectionDebug(bestInfantry, bestInfantryScore, "infantry-priority");
                 return bestInfantry;
             }
 
             if (bestInfantry != null && bestAircraft != null)
             {
-                return bestInfantryDist <= bestAircraftDist ? bestInfantry : bestAircraft;
+                Collider2D selected = bestInfantryDist <= bestAircraftDist ? bestInfantry : bestAircraft;
+                float selectedScore = selected == bestInfantry ? bestInfantryScore : -bestAircraftDist;
+                MaybeLogTargetSelectionDebug(selected, selectedScore, "nearest-infantry-vs-aircraft");
+                return selected;
             }
 
             if (bestInfantry != null)
             {
+                MaybeLogTargetSelectionDebug(bestInfantry, bestInfantryScore, "infantry-only");
                 return bestInfantry;
             }
 
             if (bestAircraft != null)
             {
+                MaybeLogTargetSelectionDebug(bestAircraft, -bestAircraftDist, "aircraft-only");
                 return bestAircraft;
             }
 
+            MaybeLogTargetSelectionDebug(null, float.NegativeInfinity, "no-target");
             return bestAny;
+        }
+
+        private void MaybeLogTargetSelectionDebug(Collider2D selected, float score, string reason)
+        {
+            if (!_debugTargetSelectionLogs)
+            {
+                return;
+            }
+
+            if (_waveManager == null || _waveManager.State != WaveLoopState_V2.InWave)
+            {
+                return;
+            }
+
+            float now = Time.unscaledTime;
+            if (now < _nextTargetSelectionDebugLogUnscaledTime)
+            {
+                return;
+            }
+
+            _nextTargetSelectionDebugLogUnscaledTime =
+                now + Mathf.Max(0.1f, _debugTargetSelectionLogIntervalSeconds);
+
+            if (selected == null)
+            {
+                Debug.Log($"[AutoHero_V2 TargetDbg] selected=(none) reason={reason}");
+                return;
+            }
+
+            StickmanBodyState s = GetParatrooperStateOrDie(selected);
+            bool isPara = IsParatrooperCollider(selected);
+            Vector2 c = selected.bounds.center;
+            Debug.Log(
+                $"[AutoHero_V2 TargetDbg] selected='{selected.name}' para={isPara} state={s} " +
+                $"center=({c.x:0.##},{c.y:0.##}) score={score:0.##} reason={reason}");
         }
 
         private static bool IsParatrooperCollider(Collider2D c)
@@ -1313,25 +1488,217 @@ namespace iStick2War_V2
                    c.GetComponentInParent<AircraftHealth_V2>() != null;
         }
 
+        private static bool IsBombingAircraftCollider(Collider2D c)
+        {
+            if (!IsAircraftCollider(c))
+            {
+                return false;
+            }
+
+            return c.GetComponentInParent<Bombplane_V2>() != null;
+        }
+
+        private bool IsBombSplashThreatActive(Vector2 heroPos)
+        {
+            BombProjectile_V2[] bombs = Object.FindObjectsByType<BombProjectile_V2>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            if (bombs == null || bombs.Length == 0)
+            {
+                return false;
+            }
+
+            float maxBelow = Mathf.Max(0f, _bombSplashThreatMaxBelowHero);
+            float horizExtra = Mathf.Max(0f, _bombSplashThreatHorizExtra);
+
+            for (int i = 0; i < bombs.Length; i++)
+            {
+                BombProjectile_V2 bomb = bombs[i];
+                if (bomb == null || !bomb.isActiveAndEnabled)
+                {
+                    continue;
+                }
+
+                Vector2 bp = bomb.transform.position;
+                float dx = Mathf.Abs(bp.x - heroPos.x);
+                float dy = bp.y - heroPos.y;
+
+                if (dy > 26f)
+                {
+                    continue;
+                }
+
+                float threatRadius = 2.1f + horizExtra;
+                Rigidbody2D rb = bomb.GetComponent<Rigidbody2D>();
+                if (rb != null)
+                {
+                    float speed = rb.linearVelocity.magnitude;
+                    threatRadius = Mathf.Max(threatRadius, speed * 0.34f + horizExtra);
+                }
+
+                if (dx <= threatRadius && dy >= -maxBelow)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private Vector2 ResolveAimPointForTarget(Collider2D target, Vector2 heroPos)
+        {
+            if (target == null)
+            {
+                return heroPos + Vector2.right * 8f;
+            }
+
+            // Perfect profile should lock paratrooper aim to torso/head hitboxes to avoid foot targeting.
+            if (_testProfile == AutoHeroTestProfileKind_V2.Perfect && IsParatrooperCollider(target))
+            {
+                Vector2? preferredPoint = TryResolveParatrooperTorsoOrHeadAimPoint(target, heroPos);
+                if (preferredPoint.HasValue)
+                {
+                    return preferredPoint.Value;
+                }
+            }
+
+            return target.bounds.center;
+        }
+
+        private Vector2? TryResolveParatrooperTorsoOrHeadAimPoint(Collider2D target, Vector2 heroPos)
+        {
+            ParatrooperBodyPart_V2 selectedPart =
+                target.GetComponent<ParatrooperBodyPart_V2>() ?? target.GetComponentInParent<ParatrooperBodyPart_V2>();
+            if (selectedPart == null)
+            {
+                return null;
+            }
+
+            ParatrooperModel_V2 paratrooperModel = selectedPart.GetComponentInParent<ParatrooperModel_V2>();
+            Transform paratrooperRoot = paratrooperModel != null ? paratrooperModel.transform : selectedPart.transform.root;
+            _paratrooperBodyPartBuffer.Clear();
+            paratrooperRoot.GetComponentsInChildren(true, _paratrooperBodyPartBuffer);
+
+            Vector2? bestHead = null;
+            float bestHeadDist = float.MaxValue;
+            Vector2? bestTorso = null;
+            float bestTorsoDist = float.MaxValue;
+
+            for (int i = 0; i < _paratrooperBodyPartBuffer.Count; i++)
+            {
+                ParatrooperBodyPart_V2 part = _paratrooperBodyPartBuffer[i];
+                if (part == null || !part.isActiveAndEnabled)
+                {
+                    continue;
+                }
+
+                Collider2D col = part.GetComponent<Collider2D>();
+                if (col == null || !col.enabled)
+                {
+                    continue;
+                }
+
+                Vector2 center = col.bounds.center;
+                float dist = (center - heroPos).sqrMagnitude;
+                if (part.bodyPart == BodyPartType.Torso && dist < bestTorsoDist)
+                {
+                    bestTorsoDist = dist;
+                    bestTorso = center;
+                }
+                else if (part.bodyPart == BodyPartType.Head && dist < bestHeadDist)
+                {
+                    bestHeadDist = dist;
+                    bestHead = center;
+                }
+            }
+
+            if (bestTorso.HasValue)
+            {
+                return bestTorso.Value;
+            }
+
+            if (bestHead.HasValue)
+            {
+                return bestHead.Value;
+            }
+
+            return null;
+        }
+
         private static bool IsGroundCombatParatrooper(Collider2D c)
+        {
+            StickmanBodyState s = GetParatrooperStateOrDie(c);
+            return IsGroundCombatState(s);
+        }
+
+        private static int GetParatrooperPriorityTier(StickmanBodyState s)
+        {
+            if (s == StickmanBodyState.Shoot ||
+                s == StickmanBodyState.Grenade ||
+                s == StickmanBodyState.CrouchShoot ||
+                s == StickmanBodyState.CrouchGrenade)
+            {
+                return 3;
+            }
+
+            if (IsGroundCombatState(s))
+            {
+                return 2;
+            }
+
+            if (s == StickmanBodyState.Deploy || s == StickmanBodyState.Glide || s == StickmanBodyState.GlideDie)
+            {
+                return 0;
+            }
+
+            return 1;
+        }
+
+        private static bool IsGroundCombatState(StickmanBodyState s)
+        {
+            return s == StickmanBodyState.Land ||
+                   s == StickmanBodyState.Shoot ||
+                   s == StickmanBodyState.Grenade ||
+                   s == StickmanBodyState.CrouchShoot ||
+                   s == StickmanBodyState.CrouchGrenade ||
+                   s == StickmanBodyState.CrouchIdle ||
+                   s == StickmanBodyState.CrouchWalk ||
+                   s == StickmanBodyState.CrouchReload ||
+                   s == StickmanBodyState.Run ||
+                   s == StickmanBodyState.Idle;
+        }
+        
+        private static StickmanBodyState GetParatrooperStateOrDie(Collider2D c)
         {
             if (c == null)
             {
-                return false;
+                return StickmanBodyState.Die;
+            }
+
+            ParatrooperBodyPart_V2 part =
+                c.GetComponent<ParatrooperBodyPart_V2>() ?? c.GetComponentInParent<ParatrooperBodyPart_V2>();
+            if (part != null)
+            {
+                ParatrooperModel_V2 model = part.GetComponentInParent<ParatrooperModel_V2>();
+                if (model != null)
+                {
+                    return model.currentState;
+                }
             }
 
             ParatrooperStateMachine_V2 sm = c.GetComponentInParent<ParatrooperStateMachine_V2>();
             if (sm == null)
             {
-                return false;
+                if (part != null)
+                {
+                    ParatrooperModel_V2 model = part.GetComponentInParent<ParatrooperModel_V2>();
+                    sm = model != null
+                        ? model.GetComponent<ParatrooperStateMachine_V2>() ?? model.GetComponentInParent<ParatrooperStateMachine_V2>()
+                        : null;
+                }
             }
 
-            StickmanBodyState s = sm.CurrentState;
-            return s == StickmanBodyState.Land ||
-                   s == StickmanBodyState.Shoot ||
-                   s == StickmanBodyState.Grenade ||
-                   s == StickmanBodyState.Run ||
-                   s == StickmanBodyState.Idle;
+            return sm != null ? sm.CurrentState : StickmanBodyState.Die;
         }
 
         private static Vector2? TryGetBunkerInteriorWorldPoint()

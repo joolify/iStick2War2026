@@ -81,7 +81,7 @@ namespace iStick2War_V2
         [Tooltip("Maximum paratroopers dropped by one helicopter flight.")]
         [SerializeField] private int _maxParatroopersPerFlight = 5;
         [Tooltip("Delay between drops from the same helicopter flight (seconds).")]
-        [SerializeField] private float _paratrooperDropIntervalPerFlight = 0.3f;
+        [SerializeField] private float _paratrooperDropIntervalPerFlight = 0.4f;
         [Tooltip("Safety cap for early waves to avoid immediate overload spikes from one helicopter flight.")]
         [SerializeField] private bool _capParatroopersPerFlightInEarlyWaves = true;
         [Tooltip("Apply early-wave cap up to and including this wave number (1-based).")]
@@ -654,14 +654,12 @@ namespace iStick2War_V2
                     {
                         int dropCount = Mathf.Max(1, paratroopersThisFlight);
                         float dropInterval = GetRuntimeDropIntervalPerFlightSeconds();
-                        for (int dropIndex = 0; dropIndex < dropCount; dropIndex++)
-                        {
-                            StartCoroutine(SpawnParatrooperWhenAircraftVisible(
-                                aircraft,
-                                usedAnchorSpawn,
-                                fromLeft,
-                                dropIndex * dropInterval));
-                        }
+                        StartCoroutine(SpawnParatrooperBurstWhenAircraftVisible(
+                            aircraft,
+                            usedAnchorSpawn,
+                            fromLeft,
+                            dropCount,
+                            dropInterval));
                         return;
                     }
 
@@ -1004,6 +1002,51 @@ namespace iStick2War_V2
             finally
             {
                 _pendingDelayedDropCoroutines = Mathf.Max(0, _pendingDelayedDropCoroutines - 1);
+            }
+        }
+
+        private IEnumerator SpawnParatrooperBurstWhenAircraftVisible(
+            GameObject aircraft,
+            bool usedAnchorSpawn,
+            bool fromLeft,
+            int dropCount,
+            float dropIntervalSeconds)
+        {
+            int remainingDrops = Mathf.Max(1, dropCount);
+            float spacing = Mathf.Max(0f, dropIntervalSeconds);
+            while (remainingDrops > 0)
+            {
+                if (!_isWaveActive)
+                {
+                    yield break;
+                }
+
+                if (aircraft == null)
+                {
+                    // Account for all still-pending planned drops from this flight.
+                    for (int i = 0; i < remainingDrops; i++)
+                    {
+                        RegisterCancelledPlannedParatrooperDrop("aircraft-destroyed-before-visible-burst-drop");
+                    }
+                    yield break;
+                }
+
+                yield return SpawnParatrooperWhenAircraftVisible(
+                    aircraft,
+                    usedAnchorSpawn,
+                    fromLeft,
+                    0f);
+
+                if (!_isWaveActive)
+                {
+                    yield break;
+                }
+
+                remainingDrops--;
+                if (remainingDrops > 0 && spacing > 0f)
+                {
+                    yield return new WaitForSeconds(spacing);
+                }
             }
         }
 
