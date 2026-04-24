@@ -1,4 +1,6 @@
-﻿using Spine;
+﻿using System;
+using System.Reflection;
+using Spine;
 using Spine.Unity;
 using UnityEngine;
 using iStick2War;
@@ -87,6 +89,22 @@ namespace iStick2War_V2
         [SerializeField] private HeroWeaponDefinition_V2 _fallbackWeaponDefinition;
         public AnimationReferenceAsset _landFallDownBackAnim;
 
+        [Header("Tesla animation overrides (optional)")]
+        [Tooltip("When the active weapon is Tesla, non-null entries replace the weapon-definition set (grenade: reserved for future grenade playback).")]
+        public AnimationReferenceAsset aimTeslaAnim;
+        public AnimationReferenceAsset grenadeTeslaAnim;
+        public AnimationReferenceAsset idleTeslaAnim;
+        public AnimationReferenceAsset jumpTeslaAnim;
+        public AnimationReferenceAsset runTeslaAnim;
+        public AnimationReferenceAsset shootingTeslaAnim;
+
+        [Space(10)]
+        [Header("Tesla blixt (LightningBolt2D)")]
+        [Tooltip("Dra hit LightningBolt2D-komponenten (objektet med blixteffekten).")]
+        [SerializeField] private MonoBehaviour teslaLightningBolt;
+        [SerializeField] private bool _syncTeslaLightningSortingWithTrail = true;
+        [System.NonSerialized] private TeslaLightningBoltCache _teslaLightningCache;
+
         [Header("VFX")]
         [SerializeField] private Transform _trailPrefab;
         [SerializeField] private float _trailWidth = 0.06f;
@@ -166,6 +184,8 @@ namespace iStick2War_V2
                 PlayLoop(idle);
             }
             PlayAimLoop();
+
+            StopTeslaLightningVfxIfActive();
         }
 
         void Update()
@@ -273,6 +293,7 @@ namespace iStick2War_V2
                     break;
 
                 case HeroState.Dead:
+                    StopTeslaLightningVfxIfActive();
                     PlayDeathAnimation();
                     break;
             }
@@ -517,6 +538,60 @@ namespace iStick2War_V2
             PlayAimLoop();
         }
 
+        /// <summary>
+        /// Draws imported LightningBolt2D VFX between shot origin and impact. Returns true if a valid bolt component is assigned.
+        /// </summary>
+        internal bool TryPlayTeslaLightningForShot(Vector2 worldStart, Vector2 worldEnd)
+        {
+            TeslaLightningBoltCache cache = ResolveTeslaLightningCache();
+            if (cache == null)
+            {
+                return false;
+            }
+
+            cache.PlayShot(
+                worldStart,
+                worldEnd,
+                _syncTeslaLightningSortingWithTrail,
+                ResolveTrailSortingLayerId(),
+                _trailSortingOrder);
+            return true;
+        }
+
+        private TeslaLightningBoltCache ResolveTeslaLightningCache()
+        {
+            if (teslaLightningBolt == null)
+            {
+                _teslaLightningCache = null;
+                return null;
+            }
+
+            if (_teslaLightningCache == null || !ReferenceEquals(_teslaLightningCache.Target, teslaLightningBolt))
+            {
+                _teslaLightningCache = new TeslaLightningBoltCache(teslaLightningBolt);
+            }
+
+            return _teslaLightningCache.IsValid ? _teslaLightningCache : null;
+        }
+
+        private void StopTeslaLightningVfxIfActive()
+        {
+            if (teslaLightningBolt == null)
+            {
+                return;
+            }
+
+            TeslaLightningBoltCache cache = ResolveTeslaLightningCache();
+            if (cache != null)
+            {
+                cache.Stop();
+            }
+            else
+            {
+                teslaLightningBolt.gameObject.SetActive(false);
+            }
+        }
+
         internal void PlayShotTrail(Vector2 origin, Vector2 finalPos)
         {
             if (_trailPrefab == null)
@@ -683,6 +758,8 @@ namespace iStick2War_V2
 
         internal void StopShoot()
         {
+            StopTeslaLightningVfxIfActive();
+
             AnimationReferenceAsset aimAnim = GetAimAnimationForCurrentWeapon();
             if (aimAnim != null)
             {
@@ -791,7 +868,30 @@ namespace iStick2War_V2
                 ? _model.currentWeaponDefinition
                 : null;
 
-            return MergeWithFallback(CreateAnimationSetFromDefinition(currentWeaponDefinition), fallbackSet);
+            WeaponAnimationSet merged = MergeWithFallback(
+                CreateAnimationSetFromDefinition(currentWeaponDefinition),
+                fallbackSet);
+
+            if (_model != null && _model.currentWeaponType == WeaponType.Tesla)
+            {
+                merged = MergeWithTeslaAnimationOverrides(merged);
+            }
+
+            return merged;
+        }
+
+        private WeaponAnimationSet MergeWithTeslaAnimationOverrides(WeaponAnimationSet baseSet)
+        {
+            return new WeaponAnimationSet
+            {
+                Idle = idleTeslaAnim != null ? idleTeslaAnim : baseSet.Idle,
+                Aim = aimTeslaAnim != null ? aimTeslaAnim : baseSet.Aim,
+                Shoot = shootingTeslaAnim != null ? shootingTeslaAnim : baseSet.Shoot,
+                Run = runTeslaAnim != null ? runTeslaAnim : baseSet.Run,
+                Jump = jumpTeslaAnim != null ? jumpTeslaAnim : baseSet.Jump,
+                Reload = baseSet.Reload,
+                DryFire = baseSet.DryFire
+            };
         }
 
         private static WeaponAnimationSet CreateAnimationSet(
@@ -849,6 +949,75 @@ namespace iStick2War_V2
                 Reload = primary.Reload != null ? primary.Reload : fallback.Reload,
                 DryFire = primary.DryFire != null ? primary.DryFire : fallback.DryFire
             };
+        }
+
+        /// <summary>
+        /// LightningBolt2D asset may live in Assembly-CSharp; Hero V2 is in iStick2War.Game — reflection avoids a hard type reference.
+        /// </summary>
+        private sealed class TeslaLightningBoltCache
+        {
+            private const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public;
+
+            private readonly MonoBehaviour _target;
+            private readonly FieldInfo _startPoint;
+            private readonly FieldInfo _endPoint;
+            private readonly FieldInfo _isPlaying;
+            private readonly FieldInfo _sortingLayer;
+            private readonly FieldInfo _orderInLayer;
+            private readonly MethodInfo _scheduleRegenerate;
+
+            public MonoBehaviour Target => _target;
+
+            public bool IsValid =>
+                _target != null && _startPoint != null && _endPoint != null && _isPlaying != null;
+
+            public TeslaLightningBoltCache(MonoBehaviour target)
+            {
+                _target = target;
+                if (target == null)
+                {
+                    return;
+                }
+
+                Type t = target.GetType();
+                _startPoint = t.GetField("startPoint", Flags);
+                _endPoint = t.GetField("endPoint", Flags);
+                _isPlaying = t.GetField("isPlaying", Flags);
+                _sortingLayer = t.GetField("sortingLayer", Flags);
+                _orderInLayer = t.GetField("orderInLayer", Flags);
+                _scheduleRegenerate = t.GetMethod("ScheduleRegenerate", Flags);
+            }
+
+            public void PlayShot(
+                Vector2 worldStart,
+                Vector2 worldEnd,
+                bool syncSorting,
+                int sortingLayerId,
+                int orderInLayer)
+            {
+                _startPoint.SetValue(_target, worldStart);
+                _endPoint.SetValue(_target, worldEnd);
+                _isPlaying.SetValue(_target, true);
+                _target.enabled = true;
+                _target.gameObject.SetActive(true);
+                if (syncSorting)
+                {
+                    _sortingLayer?.SetValue(_target, sortingLayerId);
+                    _orderInLayer?.SetValue(_target, orderInLayer);
+                }
+
+                _scheduleRegenerate?.Invoke(_target, null);
+            }
+
+            public void Stop()
+            {
+                if (_isPlaying != null)
+                {
+                    _isPlaying.SetValue(_target, false);
+                }
+
+                _target.gameObject.SetActive(false);
+            }
         }
     }
 }

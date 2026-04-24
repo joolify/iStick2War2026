@@ -265,6 +265,14 @@ namespace iStick2War_V2
                     // Allow strafe/run while the shoot loop is active.
                     _movementSystem.Move(_model.moveInput, deltaTime);
                     _view.UpdateShootLocomotion(_model.moveInput != Vector2.zero);
+                    // Beam-style weapons often use a looping shoot clip without Spine "ShootStarted" events.
+                    // TryShootNow is cheap when CanShoot() is false (fire-rate gate inside Shoot).
+                    if (_isShootLoopActive &&
+                        _input.IsShootingHeld &&
+                        UsesContinuousShootTickResolution(_model.currentWeaponType))
+                    {
+                        TryShootNow();
+                    }
                     break;
 
                 case HeroState.Reloading:
@@ -296,6 +304,12 @@ namespace iStick2War_V2
                         return;
                     }
 
+                    // Grounded Tesla / flamethrower: fire from ExecuteActions tick (see UsesContinuousShootTickResolution).
+                    if (UsesContinuousShootTickResolution(_model.currentWeaponType))
+                    {
+                        return;
+                    }
+
                     if (_model.currentAmmo <= 0)
                     {
                         LogCombat("[HeroController_V2] ShootStarted cancelled: out of ammo.");
@@ -318,6 +332,11 @@ namespace iStick2War_V2
                     }
                     break;
             }
+        }
+
+        private static bool UsesContinuousShootTickResolution(WeaponType weaponType)
+        {
+            return weaponType == WeaponType.Tesla || weaponType == WeaponType.Flamethrower;
         }
 
         private void TryShootNow()
@@ -343,7 +362,12 @@ namespace iStick2War_V2
 
             if (_weaponSystem.Shoot(shotContext, out var shotResult))
             {
-                _view.PlayShotTrail(aimPos, shotResult.FinalPos);
+                bool usedTeslaBolt = _model.currentWeaponType == WeaponType.Tesla &&
+                    _view.TryPlayTeslaLightningForShot(aimPos, shotResult.FinalPos);
+                if (!usedTeslaBolt)
+                {
+                    _view.PlayShotTrail(aimPos, shotResult.FinalPos);
+                }
             }
         }
 
