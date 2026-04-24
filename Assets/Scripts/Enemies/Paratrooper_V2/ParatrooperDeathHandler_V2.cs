@@ -33,6 +33,13 @@ public class ParatrooperDeathHandler_V2 : MonoBehaviour
 {
     bool useRagdoll;
     public int scoreValue;
+    [Header("Despawn timing")]
+    [Tooltip("Delay before despawn for normal (ground) deaths.")]
+    [SerializeField] private float _groundDeathDespawnDelaySeconds = 2f;
+    [Tooltip("Extra delay after airborne death has reached land/impact state.")]
+    [SerializeField] private float _airborneImpactDespawnDelaySeconds = 1.6f;
+    [Tooltip("Safety cap: max time to wait for GlideDie to reach ground/land before forced cleanup.")]
+    [SerializeField] private float _maxWaitForAirborneGroundImpactSeconds = 12f;
 
     private ParatrooperStateMachine_V2 _stateMachine;
     private bool _isDying;
@@ -95,7 +102,26 @@ public class ParatrooperDeathHandler_V2 : MonoBehaviour
     IEnumerator DeathRoutine()
     {
         PlayRagdollOrSpineDeath();
-        yield return new WaitForSeconds(2f);
+
+        bool startedAirborneDeath = _stateMachine != null && _stateMachine.CurrentState == StickmanBodyState.GlideDie;
+        if (startedAirborneDeath)
+        {
+            float maxWait = Mathf.Max(0.5f, _maxWaitForAirborneGroundImpactSeconds);
+            float startedAt = Time.unscaledTime;
+            while (_stateMachine != null &&
+                   _stateMachine.CurrentState == StickmanBodyState.GlideDie &&
+                   Time.unscaledTime - startedAt < maxWait)
+            {
+                yield return null;
+            }
+
+            yield return new WaitForSeconds(Mathf.Max(0.05f, _airborneImpactDespawnDelaySeconds));
+        }
+        else
+        {
+            yield return new WaitForSeconds(Mathf.Max(0.05f, _groundDeathDespawnDelaySeconds));
+        }
+
         NotifyGameManager();
         Cleanup();
     }

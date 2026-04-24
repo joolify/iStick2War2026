@@ -62,6 +62,8 @@ namespace iStick2War_V2
         [Tooltip("Logs chosen enemy target score/state at intervals during InWave.")]
         [SerializeField] private bool _debugTargetSelectionLogs;
         [SerializeField] private float _debugTargetSelectionLogIntervalSeconds = 0.5f;
+        [Tooltip("Logs when fallback scan picks a living paratrooper because normal overlap/filter produced no valid target.")]
+        [SerializeField] private bool _debugFallbackTargetingLogs;
         [Tooltip("When true, airborne paratroopers are ignored if any grounded paratrooper is targetable.")]
         [SerializeField] private bool _ignoreAirborneWhenGroundedExists = true;
 
@@ -95,6 +97,15 @@ namespace iStick2War_V2
         [Tooltip("While InWave, logs periodically when no EnemyBodyPart target is chosen (helps diagnose last-wave soft locks).")]
         [SerializeField] private bool _logWaveCombatWhenNoTarget;
         [SerializeField] private float _logWaveCombatWhenNoTargetIntervalSeconds = 2f;
+
+        [Header("Debug - Low HP warning sound")]
+        [Tooltip("Debug aid: plays a warning sound while AutoHero HP is at or below threshold.")]
+        [SerializeField] private bool _enableLowHpWarningSoundForDebug;
+        [SerializeField] private int _lowHpWarningThresholdHp = 5000;
+        [Tooltip("Optional dedicated source. If null, sound plays at hero position via PlayClipAtPoint.")]
+        [SerializeField] private AudioSource _lowHpWarningAudioSource;
+        [SerializeField] private AudioClip _lowHpWarningClip;
+        [SerializeField] private float _lowHpWarningRepeatSeconds = 1.2f;
         [Header("Automation loop (runs)")]
         [SerializeField] private bool _enableAutomationRunLoop = true;
         [Tooltip(
@@ -136,6 +147,8 @@ namespace iStick2War_V2
         private float _lastAimAtEnemyUnscaledTime;
         private float _lastShootHeldUnscaledTime;
         private bool _heroHpTestOverrideApplied;
+        private float _nextLowHpWarningAtUnscaled;
+        private bool _lowHpWarningActiveLastTick;
 
         private enum PendingAutomationAction
         {
@@ -276,6 +289,7 @@ namespace iStick2War_V2
             }
 
             _input.SetBotDriving(true);
+            TickLowHpWarningSoundForDebug();
 
             if (_waveManager == null)
             {
@@ -991,6 +1005,11 @@ namespace iStick2War_V2
                 hasTarget = true;
             }
 
+            bool isImmediateGroundParatrooperThreat =
+                target != null &&
+                IsParatrooperCollider(target) &&
+                IsGroundCombatParatrooper(target);
+
             RefreshAimNoiseForProfile(hasTarget);
             if (hasTarget && _testProfile != AutoHeroTestProfileKind_V2.Perfect)
             {
@@ -1054,7 +1073,7 @@ namespace iStick2War_V2
                 shootFrustumPlanes == null ||
                 GeometryUtility.TestPlanesAABB(shootFrustumPlanes, target.bounds);
 
-            bool shootBlockedByBunkerMove = wantBunker;
+            bool shootBlockedByBunkerMove = wantBunker && !isImmediateGroundParatrooperThreat;
             if (shootBlockedByBunkerMove &&
                 wantBunkerFromBombs &&
                 bombThreat &&
@@ -1083,6 +1102,43 @@ namespace iStick2War_V2
 
             _view.SetAutoAimWorldOverride(hasTarget ? aimPoint : heroPos + Vector2.right * 6f);
             _input.SetBotFrame(move, shootHeld, reload);
+        }
+
+        private void TickLowHpWarningSoundForDebug()
+        {
+            if (!_enableLowHpWarningSoundForDebug || _model == null || _model.isDead || _lowHpWarningClip == null)
+            {
+                _lowHpWarningActiveLastTick = false;
+                return;
+            }
+
+            int threshold = Mathf.Max(1, _lowHpWarningThresholdHp);
+            bool lowHpActive = _model.currentHealth > 0 && _model.currentHealth <= threshold;
+            if (!lowHpActive)
+            {
+                _lowHpWarningActiveLastTick = false;
+                return;
+            }
+
+            bool justActivated = !_lowHpWarningActiveLastTick;
+            if (!justActivated && Time.unscaledTime < _nextLowHpWarningAtUnscaled)
+            {
+                _lowHpWarningActiveLastTick = true;
+                return;
+            }
+
+            if (_lowHpWarningAudioSource != null)
+            {
+                _lowHpWarningAudioSource.PlayOneShot(_lowHpWarningClip);
+            }
+            else
+            {
+                AudioSource.PlayClipAtPoint(_lowHpWarningClip, _model.transform.position, 1f);
+            }
+
+            _nextLowHpWarningAtUnscaled =
+                Time.unscaledTime + Mathf.Max(0.1f, _lowHpWarningRepeatSeconds);
+            _lowHpWarningActiveLastTick = true;
         }
 
         private void TryPreventAmmoDeadlockInAutomation()
@@ -1226,6 +1282,34 @@ namespace iStick2War_V2
                 _hero.HasUnlockedWeaponOfType(WeaponType.Thompson) &&
                 _hero.HasUsableAmmoForWeaponType(WeaponType.Thompson);
 
+            // Grounded/combat-ready paratroopers can throw/shoot right after landing.
+            // Prefer high sustained DPS weapons over range heuristics in this case.
+            if (targetCollider != null &&
+                IsParatrooperCollider(targetCollider) &&
+                IsGroundCombatParatrooper(targetCollider))
+            {
+                if (thompsonAmmo)
+                {
+                    _hero.TrySwitchToWeaponType(WeaponType.Thompson);
+                    return;
+                }
+
+                if (carbineAmmo)
+                {
+                    _hero.TrySwitchToWeaponType(WeaponType.Carbine);
+                    return;
+                }
+
+                if (bazookaAmmo)
+                {
+                    _hero.TrySwitchToWeaponType(WeaponType.Bazooka);
+                    return;
+                }
+
+                _hero.TrySwitchToAnyWeaponWithAmmo();
+                return;
+            }
+
             if (wantBazookaRange)
             {
                 if (bazookaAmmo)
@@ -1312,7 +1396,15 @@ namespace iStick2War_V2
             int count = Physics2D.OverlapCircle(from, _enemySearchRadius, filter, _overlapBuffer);
             if (count <= 0)
             {
-                return null;
+                Collider2D fallbackOnEmptyOverlap = FindAnyLivingParatrooperColliderFallback(from);
+                if (_debugFallbackTargetingLogs && fallbackOnEmptyOverlap != null)
+                {
+                    Vector2 c = fallbackOnEmptyOverlap.bounds.center;
+                    Debug.Log(
+                        $"[AutoHero_V2 Fallback] overlap-empty -> selected='{fallbackOnEmptyOverlap.name}' center=({c.x:0.##},{c.y:0.##}).");
+                }
+
+                return fallbackOnEmptyOverlap;
             }
 
             Collider2D bestAny = null;
@@ -1488,8 +1580,62 @@ namespace iStick2War_V2
                 return bestAircraft;
             }
 
+            Collider2D fallback = FindAnyLivingParatrooperColliderFallback(from);
+            if (fallback != null)
+            {
+                if (_debugFallbackTargetingLogs)
+                {
+                    Vector2 c = fallback.bounds.center;
+                    Debug.Log(
+                        $"[AutoHero_V2 Fallback] post-filter-no-target -> selected='{fallback.name}' center=({c.x:0.##},{c.y:0.##}).");
+                }
+                MaybeLogTargetSelectionDebug(fallback, float.NegativeInfinity, "fallback-living-paratrooper");
+                return fallback;
+            }
+
             MaybeLogTargetSelectionDebug(null, float.NegativeInfinity, "no-target");
             return bestAny;
+        }
+
+        /// <summary>
+        /// Safety fallback for watchdog-sensitive end-of-wave cases where overlap/frustum/layer filtering misses
+        /// the last living paratrooper even though one is still active in the scene.
+        /// </summary>
+        private static Collider2D FindAnyLivingParatrooperColliderFallback(Vector2 from)
+        {
+            ParatrooperBodyPart_V2[] parts = Object.FindObjectsByType<ParatrooperBodyPart_V2>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            if (parts == null || parts.Length == 0)
+            {
+                return null;
+            }
+
+            Collider2D best = null;
+            float bestDist = float.MaxValue;
+            for (int i = 0; i < parts.Length; i++)
+            {
+                ParatrooperBodyPart_V2 part = parts[i];
+                if (part == null || !part.isActiveAndEnabled || !part.IsLivingCharacterForTargeting())
+                {
+                    continue;
+                }
+
+                Collider2D col = part.GetComponent<Collider2D>();
+                if (col == null || !col.enabled)
+                {
+                    continue;
+                }
+
+                float d = (((Vector2)col.bounds.center) - from).sqrMagnitude;
+                if (d < bestDist)
+                {
+                    bestDist = d;
+                    best = col;
+                }
+            }
+
+            return best;
         }
 
         private void MaybeLogTargetSelectionDebug(Collider2D selected, float score, string reason)
