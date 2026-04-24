@@ -89,6 +89,11 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
             return;
         }
 
+        if (info.SourceWeapon == WeaponType.Tesla)
+        {
+            _model.lastUnscaledTimeReceivedHeroTeslaHit = Time.unscaledTime;
+        }
+
         float hpBefore = _model.health;
 
         float multiplier = _model.GetMultiplier(info.BodyPart);
@@ -115,7 +120,35 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
             shouldExplode = true;
         }
 
-        if (isDead || shouldExplode)
+        bool teslaKillShowElectrocuteFirst =
+            isDead &&
+            !shouldExplode &&
+            info.SourceWeapon == WeaponType.Tesla &&
+            !_deathStateSent;
+
+        if (teslaKillShowElectrocuteFirst)
+        {
+            _deathStateSent = true;
+            _model.pendingDieAfterElectrocuteAnim = true;
+            _model.hasResumeStateAfterTeslaElectrocute = false;
+            StickmanBodyState before = _stateMachine.CurrentState;
+            // Include GlideElectrocuted: a prior non-lethal Tesla tick can already be in this state when the killing hit lands.
+            // Routing that kill to Electrocuted (ground) snaps physics and never advances to GlideDie.
+            bool isAirbornePara =
+                before == StickmanBodyState.Glide ||
+                before == StickmanBodyState.Deploy ||
+                before == StickmanBodyState.GlideElectrocuted;
+            StickmanBodyState target =
+                isAirbornePara ? StickmanBodyState.GlideElectrocuted : StickmanBodyState.Electrocuted;
+            _stateMachine.ChangeState(target);
+            // Already electrocuted (non-lethal Tesla): ChangeState is a no-op — replay clip so death sequencing runs.
+            if (before == _stateMachine.CurrentState && before == target && _paratrooper != null)
+            {
+                ParatrooperView_V2 view = _paratrooper.GetComponentInChildren<ParatrooperView_V2>(true);
+                view?.PlayAnimation(target);
+            }
+        }
+        else if (isDead || shouldExplode)
         {
             if (!_deathStateSent)
             {
@@ -144,9 +177,31 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
             // Also keep combat states while taking damage on the ground so we do not
             // break Grenade -> Shoot flow by forcing a Land restart.
             var currentState = _stateMachine.CurrentState;
-            bool isAirborne = currentState == StickmanBodyState.Glide || currentState == StickmanBodyState.Deploy;
+            bool isAirborne =
+                currentState == StickmanBodyState.Glide ||
+                currentState == StickmanBodyState.Deploy ||
+                currentState == StickmanBodyState.GlideElectrocuted;
             bool isGroundCombat = currentState == StickmanBodyState.Shoot || currentState == StickmanBodyState.Grenade;
-            if (!isAirborne && !isGroundCombat)
+
+            if (info.SourceWeapon == WeaponType.Tesla)
+            {
+                StickmanBodyState cur = _stateMachine.CurrentState;
+                if (cur != StickmanBodyState.GlideElectrocuted && cur != StickmanBodyState.Electrocuted)
+                {
+                    _model.resumeStateAfterTeslaElectrocute = cur;
+                    _model.hasResumeStateAfterTeslaElectrocute = true;
+                }
+
+                if (isAirborne)
+                {
+                    _stateMachine.ChangeState(StickmanBodyState.GlideElectrocuted);
+                }
+                else
+                {
+                    _stateMachine.ChangeState(StickmanBodyState.Electrocuted);
+                }
+            }
+            else if (!isAirborne && !isGroundCombat)
             {
                 _stateMachine.ChangeState(StickmanBodyState.Land);
             }
@@ -174,6 +229,21 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
         {
             Debug.Log($"[ParatrooperDamageReceiver_V2] Low-damage limb hit ({info.BodyPart}).");
         }
+    }
+
+    /// <summary>
+    /// Called by presentation after lethal Tesla electrocute clip (or timeout). Enters normal death state.
+    /// </summary>
+    public void CompletePendingElectrocuteDeath()
+    {
+        if (_model == null || _stateMachine == null || !_model.pendingDieAfterElectrocuteAnim)
+        {
+            return;
+        }
+
+        _model.pendingDieAfterElectrocuteAnim = false;
+        bool useAirborneDeath = _paratrooper != null && _paratrooper.ShouldUseAirborneDeathFlow();
+        _stateMachine.ChangeState(useAirborneDeath ? StickmanBodyState.GlideDie : StickmanBodyState.Die);
     }
 
     private float GetBodyPartMultiplier(BodyPartType bodyPart)

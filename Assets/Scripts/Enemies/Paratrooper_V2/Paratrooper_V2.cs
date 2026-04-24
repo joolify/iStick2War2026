@@ -195,6 +195,12 @@ public class Paratrooper : MonoBehaviour
     [SerializeField] private bool _onlyLogWhenSummaryChanges = true;
     [SerializeField] private bool _warnWhenColliderSummaryIsNotFull = true;
     [SerializeField] private bool _autoFixBodyPartLayerToEnemyBodyPart = true;
+
+    [Header("Tesla shock")]
+    [Tooltip(
+        "After this long without a Tesla hit-scan tick, non-lethal electrocute ends and prior animation resumes. " +
+        "Must exceed weapon fire interval so gaps between damage ticks do not flicker the shock pose.")]
+    [SerializeField] private float _teslaElectrocuteResumeAfterSeconds = 0.22f;
     
     [Header("Safety - Orphan Cleanup")]
     [Tooltip("If enabled, despawns the paratrooper after leaving the MainCamera view for a short time.")]
@@ -694,7 +700,9 @@ public class Paratrooper : MonoBehaviour
         // This guarantees GlideDeath animation (_glideDeathAnim) before any ground death clip.
         // Deploy/Glide: always glide-death — IsGrounded() can wrongly report true near the surface while parachuting.
         if (to == StickmanBodyState.Die &&
-            (from == StickmanBodyState.Glide || from == StickmanBodyState.Deploy))
+            (from == StickmanBodyState.Glide ||
+             from == StickmanBodyState.Deploy ||
+             from == StickmanBodyState.GlideElectrocuted))
         {
             Debug.Log($"[Paratrooper_V2] Converted Die -> GlideDie (from parachute state {from}).");
             _stateMachine.ChangeState(StickmanBodyState.GlideDie);
@@ -708,7 +716,8 @@ public class Paratrooper : MonoBehaviour
             from == StickmanBodyState.Grenade ||
             from == StickmanBodyState.Land ||
             from == StickmanBodyState.Idle ||
-            from == StickmanBodyState.Run;
+            from == StickmanBodyState.Run ||
+            from == StickmanBodyState.Electrocuted;
         if (to == StickmanBodyState.Die && wasGroundCombatState)
         {
             Debug.Log($"[Paratrooper_V2] Keeping ground death from {from} (skip GlideDie conversion).");
@@ -728,6 +737,11 @@ public class Paratrooper : MonoBehaviour
         UpdateAirborneBunkerCollisionExclusion(to);
 
         if (to == StickmanBodyState.Land && (from == StickmanBodyState.Glide || from == StickmanBodyState.GlideDie))
+        {
+            SnapRigidbodyToGroundUnderProbe();
+        }
+
+        if (to == StickmanBodyState.Electrocuted && from == StickmanBodyState.GlideElectrocuted)
         {
             SnapRigidbodyToGroundUnderProbe();
         }
@@ -754,7 +768,8 @@ public class Paratrooper : MonoBehaviour
         bool airborne =
             to == StickmanBodyState.Deploy ||
             to == StickmanBodyState.Glide ||
-            to == StickmanBodyState.GlideDie;
+            to == StickmanBodyState.GlideDie ||
+            to == StickmanBodyState.GlideElectrocuted;
 
         if (!airborne)
         {
@@ -852,11 +867,56 @@ public class Paratrooper : MonoBehaviour
 
     private void LateUpdate()
     {
+        TryResumeFromTeslaElectrocuteWhenBeamLost();
         ApplyGroundedCombatPhysicsSuppression();
         if (_clampDeathFallToGround)
         {
             ClampFeetAboveGroundDuringDeathFall();
         }
+    }
+
+    /// <summary>
+    /// Tesla hit-scan only damages on frames the beam connects; when Hero aims away, leave electrocute and restore prior state.
+    /// </summary>
+    private void TryResumeFromTeslaElectrocuteWhenBeamLost()
+    {
+        if (_stateMachine == null || _model == null)
+        {
+            return;
+        }
+
+        if (_model.IsDead() || _model.pendingDieAfterElectrocuteAnim)
+        {
+            return;
+        }
+
+        StickmanBodyState s = _stateMachine.CurrentState;
+        if (s != StickmanBodyState.GlideElectrocuted && s != StickmanBodyState.Electrocuted)
+        {
+            return;
+        }
+
+        float gap = Time.unscaledTime - _model.lastUnscaledTimeReceivedHeroTeslaHit;
+        if (gap < Mathf.Max(0.05f, _teslaElectrocuteResumeAfterSeconds))
+        {
+            return;
+        }
+
+        if (!_model.hasResumeStateAfterTeslaElectrocute)
+        {
+            return;
+        }
+
+        StickmanBodyState resume = _model.resumeStateAfterTeslaElectrocute;
+        _model.hasResumeStateAfterTeslaElectrocute = false;
+
+        if (resume == StickmanBodyState.Glide && IsGrounded())
+        {
+            _stateMachine.ChangeState(StickmanBodyState.Land);
+            return;
+        }
+
+        _stateMachine.ChangeState(resume);
     }
     
     private void HandleWorldBoundsSafetyDespawn()
@@ -1015,7 +1075,8 @@ public class Paratrooper : MonoBehaviour
         }
 
         StickmanBodyState s = _stateMachine.CurrentState;
-        if (s == StickmanBodyState.Land || s == StickmanBodyState.Shoot || s == StickmanBodyState.Grenade)
+        if (s == StickmanBodyState.Land || s == StickmanBodyState.Shoot || s == StickmanBodyState.Grenade ||
+            s == StickmanBodyState.Electrocuted)
         {
             if (!_airborneGravityScaleCachedValid)
             {
@@ -1035,7 +1096,8 @@ public class Paratrooper : MonoBehaviour
         }
 
         if (_airborneGravityScaleCachedValid &&
-            (s == StickmanBodyState.Deploy || s == StickmanBodyState.Glide || s == StickmanBodyState.GlideDie))
+            (s == StickmanBodyState.Deploy || s == StickmanBodyState.Glide || s == StickmanBodyState.GlideDie ||
+             s == StickmanBodyState.GlideElectrocuted))
         {
             _rigidbody2D.gravityScale = _airborneGravityScaleCached;
         }
@@ -1049,7 +1111,9 @@ public class Paratrooper : MonoBehaviour
         }
 
         var currentState = _stateMachine.CurrentState;
-        bool isGlide = currentState == StickmanBodyState.Glide || currentState == StickmanBodyState.Deploy;
+        bool isGlide = currentState == StickmanBodyState.Glide ||
+                       currentState == StickmanBodyState.Deploy ||
+                       currentState == StickmanBodyState.GlideElectrocuted;
         bool isGlideDeath = currentState == StickmanBodyState.GlideDie;
         if (!isGlide && !isGlideDeath)
         {
@@ -1193,7 +1257,39 @@ public class Paratrooper : MonoBehaviour
 
     private void HandleNearGroundLandingTransition()
     {
-        if (_stateMachine == null || _stateMachine.CurrentState != StickmanBodyState.Glide)
+        if (_stateMachine == null)
+        {
+            return;
+        }
+
+        StickmanBodyState s = _stateMachine.CurrentState;
+        if (s == StickmanBodyState.GlideElectrocuted)
+        {
+            // Lethal Tesla: stay in glide electrocute until the clip completes, then CompletePendingElectrocuteDeath
+            // sends us to GlideDie — do not switch to ground Electrocuted here (that snaps RB / kills glide feel).
+            if (_model != null && _model.pendingDieAfterElectrocuteAnim)
+            {
+                return;
+            }
+
+            if (!IsGrounded())
+            {
+                return;
+            }
+
+            Debug.Log("[Paratrooper_V2] Grounded probe passed -> switching GlideElectrocuted to Electrocuted.");
+            if (_model != null)
+            {
+                // When the beam stops, resume from ground shock should return to Land (not Glide in air).
+                _model.resumeStateAfterTeslaElectrocute = StickmanBodyState.Land;
+                _model.hasResumeStateAfterTeslaElectrocute = true;
+            }
+
+            _stateMachine.ChangeState(StickmanBodyState.Electrocuted);
+            return;
+        }
+
+        if (s != StickmanBodyState.Glide)
         {
             return;
         }
@@ -1278,7 +1374,8 @@ public class Paratrooper : MonoBehaviour
         }
 
         StickmanBodyState s = _stateMachine.CurrentState;
-        if (s == StickmanBodyState.Glide || s == StickmanBodyState.Deploy || s == StickmanBodyState.GlideDie)
+        if (s == StickmanBodyState.Glide || s == StickmanBodyState.Deploy || s == StickmanBodyState.GlideDie ||
+            s == StickmanBodyState.GlideElectrocuted)
         {
             return true;
         }

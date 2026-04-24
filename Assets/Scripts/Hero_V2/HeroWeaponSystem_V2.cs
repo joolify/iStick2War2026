@@ -191,6 +191,11 @@ namespace iStick2War_V2
             float aircraftDamage = activeWeapon != null ? activeWeapon.Definition.DamageVsAircraft : baseDamage;
             bool debugRay = activeWeapon != null ? activeWeapon.Definition.DebugDrawShotRay : defaultDebugDrawShotRay;
 
+            WeaponType weaponForDamage =
+                activeWeapon != null && activeWeapon.Definition != null
+                    ? activeWeapon.Definition.WeaponType
+                    : _model.currentWeaponType;
+
             return new HeroShotContext_V2
             {
                 Origin = origin,
@@ -199,7 +204,8 @@ namespace iStick2War_V2
                 WhatToHit = LayerMask.GetMask("EnemyBodyPart"),
                 BaseDamage = baseDamage,
                 AircraftDamage = aircraftDamage,
-                DebugDrawShotRay = debugRay
+                DebugDrawShotRay = debugRay,
+                WeaponType = weaponForDamage
             };
         }
 

@@ -204,7 +204,8 @@ namespace iStick2War_V2
                         BodyPart = BodyPartType.Torso,
                         HitPoint = explosionCenter,
                         IsExplosive = true,
-                        ExplosionForce = Mathf.Lerp(3.5f, 9f, damageMultiplier)
+                        ExplosionForce = Mathf.Lerp(3.5f, 9f, damageMultiplier),
+                        SourceWeapon = WeaponType.Bazooka
                     };
                     receiver.TakeDamage(damageInfo);
                     continue;

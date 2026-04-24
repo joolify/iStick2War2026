@@ -101,6 +101,14 @@ public class ParatrooperView_V2 : MonoBehaviour
     public AnimationReferenceAsset _landFallDownBack3Anim;
 
     public AnimationReferenceAsset _shootingMP40Anim;
+    [Tooltip("Ground electrocute (e.g. Hero Tesla).")]
+    public AnimationReferenceAsset electrocutedAnim;
+    [Tooltip("Airborne electrocute while gliding / deploying (e.g. Hero Tesla).")]
+    public AnimationReferenceAsset glideElectrocuted;
+    [Tooltip("Spine slot used by E/electrocuted and E/glide_electrocuted (e.g. Infantry: skeleton-electro). Cleared when leaving those states.")]
+    [SerializeField] private string _teslaElectrocuteSlotName = "skeleton-electro";
+    [Tooltip("If lethal Tesla electrocute clip never ends (e.g. looped in Spine), death starts after this many seconds.")]
+    [SerializeField] private float _teslaElectrocuteDeathFallbackSeconds = 3f;
     [SerializeField] private bool _debugAnimationLogs = false;
     [SerializeField] private bool _debugParachuteLogs = false;
     [Header("Explosive Death")]
@@ -130,8 +138,51 @@ public class ParatrooperView_V2 : MonoBehaviour
         ResolveAimBones();
     }
 
+    /// <summary>
+    /// Electrocute timelines set <c>skeleton-electro</c>; other clips often do not key that slot, so the attachment can stick
+    /// until we reset the slot to setup (matches legacy ParatrooperView clear).
+    /// </summary>
+    private void ClearTeslaElectrocuteSkeletonSlot()
+    {
+        if (_skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_teslaElectrocuteSlotName))
+        {
+            return;
+        }
+
+        Slot slot = _skeletonAnimation.Skeleton.FindSlot(_teslaElectrocuteSlotName);
+        if (slot == null)
+        {
+            return;
+        }
+
+        slot.SetToSetupPose();
+    }
+
+    /// <summary>
+    /// <c>E/electrocuted</c> / <c>E/glide_electrocuted</c> key many body slots to empty attachments; most other clips do not
+    /// restore them, so the mesh stays hidden until we reset slots to setup and re-apply the active <see cref="AnimationState"/>.
+    /// </summary>
+    private void RestoreSkeletonAfterTeslaElectrocuteClip()
+    {
+        if (_skeletonAnimation == null || _skeletonAnimation.Skeleton == null || _skeletonAnimation.AnimationState == null)
+        {
+            return;
+        }
+
+        _skeletonAnimation.Skeleton.SetSlotsToSetupPose();
+        _skeletonAnimation.AnimationState.Update(0f);
+        _skeletonAnimation.AnimationState.Apply(_skeletonAnimation.Skeleton);
+        _skeletonAnimation.LateUpdate();
+    }
+
     private void OnDestroy()
     {
+        CancelInvoke(nameof(ResolvePendingTeslaElectrocuteDeathTimeout));
         if (_stateMachine != null)
             _stateMachine.OnStateChanged -= HandleStateChanged;
     }
@@ -143,7 +194,9 @@ public class ParatrooperView_V2 : MonoBehaviour
         // If we play ground death here first, we hide the parachute and show the wrong clip. Always use glide
         // death visuals when dying from parachute deploy/glide.
         if (to == StickmanBodyState.Die &&
-            (from == StickmanBodyState.Glide || from == StickmanBodyState.Deploy))
+            (from == StickmanBodyState.Glide ||
+             from == StickmanBodyState.Deploy ||
+             from == StickmanBodyState.GlideElectrocuted))
         {
             PlayAnimation(StickmanBodyState.GlideDie);
             return;
@@ -163,6 +216,7 @@ public class ParatrooperView_V2 : MonoBehaviour
     /// </summary>
     public void ResetVisualStateForSpawn()
     {
+        CancelInvoke(nameof(ResolvePendingTeslaElectrocuteDeathTimeout));
         _isExploded = false;
         _deathAnimationLocked = false;
         _suppressParachuteVisuals = false;
@@ -189,6 +243,7 @@ public class ParatrooperView_V2 : MonoBehaviour
             }
             _skeletonAnimation.Update(0f);
             _skeletonAnimation.LateUpdate();
+            ClearTeslaElectrocuteSkeletonSlot();
 
             SkeletonRenderer renderer = _skeletonAnimation.GetComponent<SkeletonRenderer>();
             if (renderer != null)
@@ -208,6 +263,11 @@ public class ParatrooperView_V2 : MonoBehaviour
         }
 
         ResolveAimBones();
+    }
+
+    private static Spine.Animation AnimationFromRef(AnimationReferenceAsset reference)
+    {
+        return reference != null ? reference.Animation : null;
     }
 
     private void CheckAnimationNames()
@@ -327,6 +387,20 @@ public class ParatrooperView_V2 : MonoBehaviour
                 loop = true;
                 trackIndex = 1;
                 break;
+            case StickmanBodyState.Electrocuted:
+                nextAnimation = AnimationFromRef(electrocutedAnim)
+                    ?? AnimationFromRef(_shootingMP40Anim)
+                    ?? AnimationFromRef(_glideAnim);
+                loop = !(_model != null && _model.pendingDieAfterElectrocuteAnim);
+                trackIndex = 0;
+                break;
+            case StickmanBodyState.GlideElectrocuted:
+                nextAnimation = AnimationFromRef(glideElectrocuted)
+                    ?? AnimationFromRef(electrocutedAnim)
+                    ?? AnimationFromRef(_glideAnim);
+                loop = !(_model != null && _model.pendingDieAfterElectrocuteAnim);
+                trackIndex = 1;
+                break;
         }
 
         if (_skeletonAnimation == null || _skeletonAnimation.AnimationState == null)
@@ -337,12 +411,25 @@ public class ParatrooperView_V2 : MonoBehaviour
 
         if (nextAnimation == null)
         {
-            Debug.LogWarning($"[ParatrooperView_V2] PlayAnimation skipped: no animation mapped for state {state}.");
+            if ((state == StickmanBodyState.Electrocuted || state == StickmanBodyState.GlideElectrocuted) &&
+                _model != null &&
+                _model.pendingDieAfterElectrocuteAnim)
+            {
+                Debug.LogWarning(
+                    "[ParatrooperView_V2] Lethal Tesla electrocute has no resolvable clip; completing death immediately.");
+                RequestCompletePendingElectrocuteDeath();
+            }
+            else
+            {
+                Debug.LogWarning($"[ParatrooperView_V2] PlayAnimation skipped: no animation mapped for state {state}.");
+            }
+
             return;
         }
 
         if (isDeathState)
         {
+            CancelInvoke(nameof(ResolvePendingTeslaElectrocuteDeathTimeout));
             // Death must own the full pose and must not be mixed with prior layers.
             _deathAnimationLocked = true;
             _skeletonAnimation.AnimationState.ClearTracks();
@@ -356,7 +443,7 @@ public class ParatrooperView_V2 : MonoBehaviour
         {
             // Deploy/Glide run on track 1, but stale full-body clips on track 0 can visually override them.
             // Always clear track 0 for air states so pooled reuse cannot keep death/impact pose.
-            if (state == StickmanBodyState.Deploy || state == StickmanBodyState.Glide)
+            if (state == StickmanBodyState.Deploy || state == StickmanBodyState.Glide || state == StickmanBodyState.GlideElectrocuted)
             {
                 _skeletonAnimation.AnimationState.ClearTrack(0);
             }
@@ -365,6 +452,11 @@ public class ParatrooperView_V2 : MonoBehaviour
             if (state == StickmanBodyState.Idle || state == StickmanBodyState.Shoot)
             {
                 _skeletonAnimation.AnimationState.ClearTrack(0);
+            }
+
+            if (state == StickmanBodyState.Electrocuted)
+            {
+                _skeletonAnimation.AnimationState.ClearTrack(1);
             }
 
             // Clear previous entry on this track to avoid stale blends.
@@ -384,6 +476,28 @@ public class ParatrooperView_V2 : MonoBehaviour
                 // Grenade may leave MP40 track stale; always restart the loop from t=0 when resuming fire.
                 trackEntry.TrackTime = 0f;
             }
+
+            if ((state == StickmanBodyState.Electrocuted || state == StickmanBodyState.GlideElectrocuted) &&
+                _model != null &&
+                _model.pendingDieAfterElectrocuteAnim)
+            {
+                // Lethal path must not loop (e.g. fallback uses E_glide); otherwise Complete never runs and death never starts.
+                trackEntry.Loop = false;
+                trackEntry.Complete -= OnPendingTeslaElectrocuteDeathTrackComplete;
+                trackEntry.Complete += OnPendingTeslaElectrocuteDeathTrackComplete;
+                CancelInvoke(nameof(ResolvePendingTeslaElectrocuteDeathTimeout));
+                Invoke(
+                    nameof(ResolvePendingTeslaElectrocuteDeathTimeout),
+                    Mathf.Max(0.35f, _teslaElectrocuteDeathFallbackSeconds));
+            }
+        }
+        else if ((state == StickmanBodyState.Electrocuted || state == StickmanBodyState.GlideElectrocuted) &&
+                 _model != null &&
+                 _model.pendingDieAfterElectrocuteAnim)
+        {
+            Debug.LogWarning(
+                "[ParatrooperView_V2] SetAnimation returned null for Tesla electrocute; completing death via fallback.");
+            RequestCompletePendingElectrocuteDeath();
         }
         if (isDeathState)
         {
@@ -407,6 +521,22 @@ public class ParatrooperView_V2 : MonoBehaviour
                 trackEntry.Complete -= OnGlideDieGroundImpactLandClipComplete;
                 trackEntry.Complete += OnGlideDieGroundImpactLandClipComplete;
             }
+        }
+
+        bool leftTeslaElectrocuteClip =
+            (_lastStateBeforeChange == StickmanBodyState.Electrocuted ||
+             _lastStateBeforeChange == StickmanBodyState.GlideElectrocuted) &&
+            state != StickmanBodyState.Electrocuted &&
+            state != StickmanBodyState.GlideElectrocuted;
+
+        if (leftTeslaElectrocuteClip)
+        {
+            RestoreSkeletonAfterTeslaElectrocuteClip();
+        }
+
+        if (state != StickmanBodyState.Electrocuted && state != StickmanBodyState.GlideElectrocuted)
+        {
+            ClearTeslaElectrocuteSkeletonSlot();
         }
 
         LogAnimation($"[ParatrooperView_V2] SetAnimation track={trackIndex}, state={state}, clip={nextAnimation.Name}, loop={loop}");
@@ -470,6 +600,39 @@ public class ParatrooperView_V2 : MonoBehaviour
         {
             _controller.OnAnimationEvent(AnimationEventType.LandFinished);
         }
+    }
+
+    private void OnPendingTeslaElectrocuteDeathTrackComplete(TrackEntry trackEntry)
+    {
+        if (trackEntry != null)
+        {
+            trackEntry.Complete -= OnPendingTeslaElectrocuteDeathTrackComplete;
+        }
+
+        CancelInvoke(nameof(ResolvePendingTeslaElectrocuteDeathTimeout));
+        RequestCompletePendingElectrocuteDeath();
+    }
+
+    private void ResolvePendingTeslaElectrocuteDeathTimeout()
+    {
+        RequestCompletePendingElectrocuteDeath();
+    }
+
+    private void RequestCompletePendingElectrocuteDeath()
+    {
+        if (_model == null || !_model.pendingDieAfterElectrocuteAnim)
+        {
+            return;
+        }
+
+        ParatrooperDamageReceiver_V2 receiver = GetComponentInParent<ParatrooperDamageReceiver_V2>();
+        if (receiver == null)
+        {
+            _model.pendingDieAfterElectrocuteAnim = false;
+            return;
+        }
+
+        receiver.CompletePendingElectrocuteDeath();
     }
 
     private AnimationReferenceAsset GetRandomGroundDeathAnimation()
@@ -536,6 +699,7 @@ public class ParatrooperView_V2 : MonoBehaviour
         var track = _skeletonAnimation.AnimationState.SetAnimation(1, _glideAnim, true);
         //track.AttachmentThreshold = 1f;
         track.MixDuration = 0f;
+        ClearTeslaElectrocuteSkeletonSlot();
 
         //TODO Add sound
     }

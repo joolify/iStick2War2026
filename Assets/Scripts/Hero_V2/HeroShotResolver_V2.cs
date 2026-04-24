@@ -1,4 +1,5 @@
 using Assets.Scripts.Components;
+using iStick2War;
 using UnityEngine;
 
 namespace iStick2War_V2
@@ -13,6 +14,7 @@ namespace iStick2War_V2
         /// <summary>Hit-scan damage to aircraft (AircraftHealth_V2), per weapon.</summary>
         public float AircraftDamage;
         public bool DebugDrawShotRay;
+        public WeaponType WeaponType;
     }
 
     public struct HeroShotResult_V2
@@ -94,6 +96,7 @@ namespace iStick2War_V2
                 {
                     BaseDamage = context.BaseDamage,
                     HitPoint = hit.point,
+                    SourceWeapon = context.WeaponType,
                 };
 
                 try
