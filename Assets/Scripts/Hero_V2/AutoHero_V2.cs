@@ -149,6 +149,18 @@ namespace iStick2War_V2
         private bool _heroHpTestOverrideApplied;
         private float _nextLowHpWarningAtUnscaled;
         private bool _lowHpWarningActiveLastTick;
+        private bool _telemetryHasTarget;
+        private bool _telemetryInRange;
+        private bool _telemetryCanHoldFire;
+        private bool _telemetryTargetShootableOnCamera;
+        private bool _telemetryShootBlockedByBunkerMove;
+        private bool _telemetryRawShootHeld;
+        private bool _telemetryImmediateGroundParatrooperThreat;
+        private string _telemetryTargetKind = "none";
+        private StickmanBodyState _telemetryTargetParatrooperState = StickmanBodyState.Die;
+        private string _telemetryLastFallbackStage = "not_used";
+        private int _telemetryFallbackLivingParatrooperModels;
+        private int _telemetryFallbackEnabledEnemyBodyPartColliders;
 
         private enum PendingAutomationAction
         {
@@ -171,6 +183,18 @@ namespace iStick2War_V2
         public AutoHeroTestProfileKind_V2 TestProfile => _testProfile;
         public float LastAimAtEnemyUnscaledTime => _lastAimAtEnemyUnscaledTime;
         public float LastShootHeldUnscaledTime => _lastShootHeldUnscaledTime;
+        public bool TelemetryHasTarget => _telemetryHasTarget;
+        public bool TelemetryInRange => _telemetryInRange;
+        public bool TelemetryCanHoldFire => _telemetryCanHoldFire;
+        public bool TelemetryTargetShootableOnCamera => _telemetryTargetShootableOnCamera;
+        public bool TelemetryShootBlockedByBunkerMove => _telemetryShootBlockedByBunkerMove;
+        public bool TelemetryRawShootHeld => _telemetryRawShootHeld;
+        public bool TelemetryImmediateGroundParatrooperThreat => _telemetryImmediateGroundParatrooperThreat;
+        public string TelemetryTargetKind => _telemetryTargetKind ?? "none";
+        public string TelemetryTargetParatrooperState => _telemetryTargetParatrooperState.ToString();
+        public string TelemetryLastFallbackStage => _telemetryLastFallbackStage ?? "not_used";
+        public int TelemetryFallbackLivingParatrooperModels => _telemetryFallbackLivingParatrooperModels;
+        public int TelemetryFallbackEnabledEnemyBodyPartColliders => _telemetryFallbackEnabledEnemyBodyPartColliders;
 
         private void Awake()
         {
@@ -1072,6 +1096,12 @@ namespace iStick2War_V2
                 target == null ||
                 shootFrustumPlanes == null ||
                 GeometryUtility.TestPlanesAABB(shootFrustumPlanes, target.bounds);
+            if (isImmediateGroundParatrooperThreat)
+            {
+                // Emergency override: a grounded paratrooper actively threatening the hero/bunker must not be
+                // blocked by camera-frustum gating (can fail transiently with large bounds/camera transitions).
+                targetShootableOnCamera = true;
+            }
 
             bool shootBlockedByBunkerMove = wantBunker && !isImmediateGroundParatrooperThreat;
             if (shootBlockedByBunkerMove &&
@@ -1090,6 +1120,34 @@ namespace iStick2War_V2
             if (shootHeld)
             {
                 _lastShootHeldUnscaledTime = Time.unscaledTime;
+            }
+
+            _telemetryHasTarget = hasTarget;
+            _telemetryInRange = inRange;
+            _telemetryCanHoldFire = canHoldFire;
+            _telemetryTargetShootableOnCamera = targetShootableOnCamera;
+            _telemetryShootBlockedByBunkerMove = shootBlockedByBunkerMove;
+            _telemetryRawShootHeld = rawShootHeld;
+            _telemetryImmediateGroundParatrooperThreat = isImmediateGroundParatrooperThreat;
+            if (target == null)
+            {
+                _telemetryTargetKind = "none";
+                _telemetryTargetParatrooperState = StickmanBodyState.Die;
+            }
+            else if (IsParatrooperCollider(target))
+            {
+                _telemetryTargetKind = "paratrooper";
+                _telemetryTargetParatrooperState = GetParatrooperStateOrDie(target);
+            }
+            else if (IsAircraftCollider(target))
+            {
+                _telemetryTargetKind = "aircraft";
+                _telemetryTargetParatrooperState = StickmanBodyState.Die;
+            }
+            else
+            {
+                _telemetryTargetKind = "other";
+                _telemetryTargetParatrooperState = StickmanBodyState.Die;
             }
 
             // Watchdog uses max(aim, shoot): firing with a fallback aim point must still count as "aim" activity.
@@ -1401,7 +1459,9 @@ namespace iStick2War_V2
                 {
                     Vector2 c = fallbackOnEmptyOverlap.bounds.center;
                     Debug.Log(
-                        $"[AutoHero_V2 Fallback] overlap-empty -> selected='{fallbackOnEmptyOverlap.name}' center=({c.x:0.##},{c.y:0.##}).");
+                        $"[AutoHero_V2 Fallback] overlap-empty stage={_telemetryLastFallbackStage} " +
+                        $"livingModels={_telemetryFallbackLivingParatrooperModels} enabledHitboxes={_telemetryFallbackEnabledEnemyBodyPartColliders} " +
+                        $"-> selected='{fallbackOnEmptyOverlap.name}' center=({c.x:0.##},{c.y:0.##}).");
                 }
 
                 return fallbackOnEmptyOverlap;
@@ -1550,18 +1610,21 @@ namespace iStick2War_V2
                 bestBombingAircraft != null &&
                 (_prioritizeInfantryOverAircraft ? bestInfantry != null : true))
             {
+                _telemetryLastFallbackStage = "not_used";
                 MaybeLogTargetSelectionDebug(bestBombingAircraft, -bestBombingAircraftDist, "bombplane-override");
                 return bestBombingAircraft;
             }
 
             if (_prioritizeInfantryOverAircraft && bestInfantry != null)
             {
+                _telemetryLastFallbackStage = "not_used";
                 MaybeLogTargetSelectionDebug(bestInfantry, bestInfantryScore, "infantry-priority");
                 return bestInfantry;
             }
 
             if (bestInfantry != null && bestAircraft != null)
             {
+                _telemetryLastFallbackStage = "not_used";
                 Collider2D selected = bestInfantryDist <= bestAircraftDist ? bestInfantry : bestAircraft;
                 float selectedScore = selected == bestInfantry ? bestInfantryScore : -bestAircraftDist;
                 MaybeLogTargetSelectionDebug(selected, selectedScore, "nearest-infantry-vs-aircraft");
@@ -1570,12 +1633,14 @@ namespace iStick2War_V2
 
             if (bestInfantry != null)
             {
+                _telemetryLastFallbackStage = "not_used";
                 MaybeLogTargetSelectionDebug(bestInfantry, bestInfantryScore, "infantry-only");
                 return bestInfantry;
             }
 
             if (bestAircraft != null)
             {
+                _telemetryLastFallbackStage = "not_used";
                 MaybeLogTargetSelectionDebug(bestAircraft, -bestAircraftDist, "aircraft-only");
                 return bestAircraft;
             }
@@ -1587,12 +1652,15 @@ namespace iStick2War_V2
                 {
                     Vector2 c = fallback.bounds.center;
                     Debug.Log(
-                        $"[AutoHero_V2 Fallback] post-filter-no-target -> selected='{fallback.name}' center=({c.x:0.##},{c.y:0.##}).");
+                        $"[AutoHero_V2 Fallback] post-filter-no-target stage={_telemetryLastFallbackStage} " +
+                        $"livingModels={_telemetryFallbackLivingParatrooperModels} enabledHitboxes={_telemetryFallbackEnabledEnemyBodyPartColliders} " +
+                        $"-> selected='{fallback.name}' center=({c.x:0.##},{c.y:0.##}).");
                 }
                 MaybeLogTargetSelectionDebug(fallback, float.NegativeInfinity, "fallback-living-paratrooper");
                 return fallback;
             }
 
+            _telemetryLastFallbackStage = "none_found";
             MaybeLogTargetSelectionDebug(null, float.NegativeInfinity, "no-target");
             return bestAny;
         }
@@ -1601,40 +1669,100 @@ namespace iStick2War_V2
         /// Safety fallback for watchdog-sensitive end-of-wave cases where overlap/frustum/layer filtering misses
         /// the last living paratrooper even though one is still active in the scene.
         /// </summary>
-        private static Collider2D FindAnyLivingParatrooperColliderFallback(Vector2 from)
+        private Collider2D FindAnyLivingParatrooperColliderFallback(Vector2 from)
         {
+            _telemetryLastFallbackStage = "none_found";
+            _telemetryFallbackLivingParatrooperModels = 0;
+            _telemetryFallbackEnabledEnemyBodyPartColliders = 0;
+
             ParatrooperBodyPart_V2[] parts = Object.FindObjectsByType<ParatrooperBodyPart_V2>(
                 FindObjectsInactive.Exclude,
                 FindObjectsSortMode.None);
-            if (parts == null || parts.Length == 0)
+            Collider2D best = null;
+            float bestDist = float.MaxValue;
+            int enemyBodyPartLayer = LayerMask.NameToLayer("EnemyBodyPart");
+            if (parts != null)
+            {
+                for (int i = 0; i < parts.Length; i++)
+                {
+                    ParatrooperBodyPart_V2 part = parts[i];
+                    if (part == null || !part.isActiveAndEnabled || !part.IsLivingCharacterForTargeting())
+                    {
+                        continue;
+                    }
+
+                    Collider2D col = part.GetComponent<Collider2D>();
+                    if (col == null || !col.enabled)
+                    {
+                        continue;
+                    }
+                    if (col.gameObject.layer == enemyBodyPartLayer)
+                    {
+                        _telemetryFallbackEnabledEnemyBodyPartColliders++;
+                    }
+
+                    float d = (((Vector2)col.bounds.center) - from).sqrMagnitude;
+                    if (d < bestDist)
+                    {
+                        bestDist = d;
+                        best = col;
+                    }
+                }
+            }
+
+            if (best != null)
+            {
+                _telemetryLastFallbackStage = "bodypart";
+                return best;
+            }
+
+            // Second-pass fallback by model/state in case bodypart cache or component wiring is temporarily stale.
+            ParatrooperModel_V2[] models = Object.FindObjectsByType<ParatrooperModel_V2>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            if (models == null || models.Length == 0)
             {
                 return null;
             }
 
-            Collider2D best = null;
-            float bestDist = float.MaxValue;
-            for (int i = 0; i < parts.Length; i++)
+            for (int i = 0; i < models.Length; i++)
             {
-                ParatrooperBodyPart_V2 part = parts[i];
-                if (part == null || !part.isActiveAndEnabled || !part.IsLivingCharacterForTargeting())
+                ParatrooperModel_V2 model = models[i];
+                if (model == null || model.IsDead())
                 {
                     continue;
                 }
+                _telemetryFallbackLivingParatrooperModels++;
 
-                Collider2D col = part.GetComponent<Collider2D>();
-                if (col == null || !col.enabled)
+                Collider2D[] cols = model.GetComponentsInChildren<Collider2D>(true);
+                for (int c = 0; c < cols.Length; c++)
                 {
-                    continue;
-                }
+                    Collider2D col = cols[c];
+                    if (col == null || !col.enabled)
+                    {
+                        continue;
+                    }
 
-                float d = (((Vector2)col.bounds.center) - from).sqrMagnitude;
-                if (d < bestDist)
-                {
-                    bestDist = d;
-                    best = col;
+                    // Prefer true hitboxes used by targeting/raycasting.
+                    if (col.gameObject.layer != enemyBodyPartLayer)
+                    {
+                        continue;
+                    }
+                    _telemetryFallbackEnabledEnemyBodyPartColliders++;
+
+                    float d = (((Vector2)col.bounds.center) - from).sqrMagnitude;
+                    if (d < bestDist)
+                    {
+                        bestDist = d;
+                        best = col;
+                    }
                 }
             }
 
+            if (best != null)
+            {
+                _telemetryLastFallbackStage = "model";
+            }
             return best;
         }
 

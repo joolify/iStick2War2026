@@ -95,6 +95,12 @@ public class ParatrooperBodyPart_V2 : MonoBehaviour
     /// </summary>
     public bool IsLivingCharacterForTargeting()
     {
+        // Pooling/reparent edge-case: cached model can be null if this bodypart was initialized before parent wiring.
+        if (_model == null)
+        {
+            _model = GetComponentInParent<ParatrooperModel_V2>();
+        }
+
         return _model != null && !_model.IsDead();
     }
 

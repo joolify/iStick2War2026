@@ -155,6 +155,18 @@ namespace iStick2War_V2
             public string weapon;
             public string weaponType;
             public string autoHeroTestProfile;
+            public bool autoHeroHasTarget;
+            public bool autoHeroInRange;
+            public bool autoHeroCanHoldFire;
+            public bool autoHeroTargetShootableOnCamera;
+            public bool autoHeroShootBlockedByBunkerMove;
+            public bool autoHeroRawShootHeld;
+            public bool autoHeroImmediateGroundParatrooperThreat;
+            public string autoHeroTargetKind;
+            public string autoHeroTargetParatrooperState;
+            public string autoHeroFallbackStage;
+            public int autoHeroFallbackLivingParatrooperModels;
+            public int autoHeroFallbackEnabledEnemyBodyPartColliders;
             public string sceneProfileId;
             public float heroPosX;
             public float heroPosY;
@@ -335,6 +347,18 @@ namespace iStick2War_V2
             public string weaponType;
             /// <summary><see cref="AutoHeroTestProfileKind_V2"/> on the hero when present; empty if no bot / disabled.</summary>
             public string autoHeroTestProfile;
+            public bool autoHeroHasTarget;
+            public bool autoHeroInRange;
+            public bool autoHeroCanHoldFire;
+            public bool autoHeroTargetShootableOnCamera;
+            public bool autoHeroShootBlockedByBunkerMove;
+            public bool autoHeroRawShootHeld;
+            public bool autoHeroImmediateGroundParatrooperThreat;
+            public string autoHeroTargetKind;
+            public string autoHeroTargetParatrooperState;
+            public string autoHeroFallbackStage;
+            public int autoHeroFallbackLivingParatrooperModels;
+            public int autoHeroFallbackEnabledEnemyBodyPartColliders;
 
             /// <summary><see cref="GameplaySceneRules_V2.ProfileId"/> when a scene profile applier is active; empty otherwise.</summary>
             public string sceneProfileId;
@@ -999,6 +1023,27 @@ namespace iStick2War_V2
             string weaponLabel = h != null ? h.GetCurrentWeaponDisplayName() : "";
             string weaponTypeStr = h != null ? h.CurrentWeaponType.ToString() : "";
             string autoHeroProfile = ResolveAutoHeroTestProfileLabel(h);
+            AutoHero_V2 autoHero = h != null ? h.GetComponent<AutoHero_V2>() : null;
+            bool autoHeroHasTarget = autoHero != null && autoHero.isActiveAndEnabled && autoHero.TelemetryHasTarget;
+            bool autoHeroInRange = autoHero != null && autoHero.isActiveAndEnabled && autoHero.TelemetryInRange;
+            bool autoHeroCanHoldFire = autoHero != null && autoHero.isActiveAndEnabled && autoHero.TelemetryCanHoldFire;
+            bool autoHeroTargetShootableOnCamera =
+                autoHero != null && autoHero.isActiveAndEnabled && autoHero.TelemetryTargetShootableOnCamera;
+            bool autoHeroShootBlockedByBunkerMove =
+                autoHero != null && autoHero.isActiveAndEnabled && autoHero.TelemetryShootBlockedByBunkerMove;
+            bool autoHeroRawShootHeld = autoHero != null && autoHero.isActiveAndEnabled && autoHero.TelemetryRawShootHeld;
+            bool autoHeroImmediateGroundThreat =
+                autoHero != null && autoHero.isActiveAndEnabled && autoHero.TelemetryImmediateGroundParatrooperThreat;
+            string autoHeroTargetKind =
+                autoHero != null && autoHero.isActiveAndEnabled ? autoHero.TelemetryTargetKind : "";
+            string autoHeroTargetParatrooperState =
+                autoHero != null && autoHero.isActiveAndEnabled ? autoHero.TelemetryTargetParatrooperState : "";
+            string autoHeroFallbackStage =
+                autoHero != null && autoHero.isActiveAndEnabled ? autoHero.TelemetryLastFallbackStage : "";
+            int autoHeroFallbackLivingParatrooperModels =
+                autoHero != null && autoHero.isActiveAndEnabled ? autoHero.TelemetryFallbackLivingParatrooperModels : 0;
+            int autoHeroFallbackEnabledEnemyBodyPartColliders =
+                autoHero != null && autoHero.isActiveAndEnabled ? autoHero.TelemetryFallbackEnabledEnemyBodyPartColliders : 0;
             string sceneProfileIdValue = GameplaySceneRules_V2.IsActive ? GameplaySceneRules_V2.ProfileId : "";
             int bunkerHpSnap = _waveManager != null ? _waveManager.BunkerHealth : -1;
             int bunkerMaxSnap = _waveManager != null ? _waveManager.BunkerMaxHealth : -1;
@@ -1107,6 +1152,18 @@ namespace iStick2War_V2
                 currencyWaveStart = _currencyAtWaveStart,
                 weaponType = weaponTypeStr,
                 autoHeroTestProfile = autoHeroProfile,
+                autoHeroHasTarget = autoHeroHasTarget,
+                autoHeroInRange = autoHeroInRange,
+                autoHeroCanHoldFire = autoHeroCanHoldFire,
+                autoHeroTargetShootableOnCamera = autoHeroTargetShootableOnCamera,
+                autoHeroShootBlockedByBunkerMove = autoHeroShootBlockedByBunkerMove,
+                autoHeroRawShootHeld = autoHeroRawShootHeld,
+                autoHeroImmediateGroundParatrooperThreat = autoHeroImmediateGroundThreat,
+                autoHeroTargetKind = autoHeroTargetKind,
+                autoHeroTargetParatrooperState = autoHeroTargetParatrooperState,
+                autoHeroFallbackStage = autoHeroFallbackStage,
+                autoHeroFallbackLivingParatrooperModels = autoHeroFallbackLivingParatrooperModels,
+                autoHeroFallbackEnabledEnemyBodyPartColliders = autoHeroFallbackEnabledEnemyBodyPartColliders,
                 sceneProfileId = sceneProfileIdValue,
                 bunkerBreached = bunkerBreached,
                 bunkerCriticalLow = bunkerCriticalLow,
@@ -1798,6 +1855,27 @@ namespace iStick2War_V2
             string weaponLabel = h != null ? h.GetCurrentWeaponDisplayName() : "";
             string weaponTypeStr = h != null ? h.CurrentWeaponType.ToString() : "";
             string autoHeroProfile = ResolveAutoHeroTestProfileLabel(h);
+            AutoHero_V2 autoHero = h != null ? h.GetComponent<AutoHero_V2>() : null;
+            bool autoHeroHasTarget = autoHero != null && autoHero.isActiveAndEnabled && autoHero.TelemetryHasTarget;
+            bool autoHeroInRange = autoHero != null && autoHero.isActiveAndEnabled && autoHero.TelemetryInRange;
+            bool autoHeroCanHoldFire = autoHero != null && autoHero.isActiveAndEnabled && autoHero.TelemetryCanHoldFire;
+            bool autoHeroTargetShootableOnCamera =
+                autoHero != null && autoHero.isActiveAndEnabled && autoHero.TelemetryTargetShootableOnCamera;
+            bool autoHeroShootBlockedByBunkerMove =
+                autoHero != null && autoHero.isActiveAndEnabled && autoHero.TelemetryShootBlockedByBunkerMove;
+            bool autoHeroRawShootHeld = autoHero != null && autoHero.isActiveAndEnabled && autoHero.TelemetryRawShootHeld;
+            bool autoHeroImmediateGroundThreat =
+                autoHero != null && autoHero.isActiveAndEnabled && autoHero.TelemetryImmediateGroundParatrooperThreat;
+            string autoHeroTargetKind =
+                autoHero != null && autoHero.isActiveAndEnabled ? autoHero.TelemetryTargetKind : "";
+            string autoHeroTargetParatrooperState =
+                autoHero != null && autoHero.isActiveAndEnabled ? autoHero.TelemetryTargetParatrooperState : "";
+            string autoHeroFallbackStage =
+                autoHero != null && autoHero.isActiveAndEnabled ? autoHero.TelemetryLastFallbackStage : "";
+            int autoHeroFallbackLivingParatrooperModels =
+                autoHero != null && autoHero.isActiveAndEnabled ? autoHero.TelemetryFallbackLivingParatrooperModels : 0;
+            int autoHeroFallbackEnabledEnemyBodyPartColliders =
+                autoHero != null && autoHero.isActiveAndEnabled ? autoHero.TelemetryFallbackEnabledEnemyBodyPartColliders : 0;
             string sceneProfileIdValue = GameplaySceneRules_V2.IsActive ? GameplaySceneRules_V2.ProfileId : "";
             float px = 0f;
             float py = 0f;
@@ -1870,6 +1948,18 @@ namespace iStick2War_V2
                 weapon = weaponLabel,
                 weaponType = weaponTypeStr,
                 autoHeroTestProfile = autoHeroProfile,
+                autoHeroHasTarget = autoHeroHasTarget,
+                autoHeroInRange = autoHeroInRange,
+                autoHeroCanHoldFire = autoHeroCanHoldFire,
+                autoHeroTargetShootableOnCamera = autoHeroTargetShootableOnCamera,
+                autoHeroShootBlockedByBunkerMove = autoHeroShootBlockedByBunkerMove,
+                autoHeroRawShootHeld = autoHeroRawShootHeld,
+                autoHeroImmediateGroundParatrooperThreat = autoHeroImmediateGroundThreat,
+                autoHeroTargetKind = autoHeroTargetKind,
+                autoHeroTargetParatrooperState = autoHeroTargetParatrooperState,
+                autoHeroFallbackStage = autoHeroFallbackStage,
+                autoHeroFallbackLivingParatrooperModels = autoHeroFallbackLivingParatrooperModels,
+                autoHeroFallbackEnabledEnemyBodyPartColliders = autoHeroFallbackEnabledEnemyBodyPartColliders,
                 sceneProfileId = sceneProfileIdValue,
                 heroPosX = px,
                 heroPosY = py,
