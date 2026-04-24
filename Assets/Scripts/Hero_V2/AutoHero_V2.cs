@@ -63,7 +63,7 @@ namespace iStick2War_V2
         [SerializeField] private bool _debugTargetSelectionLogs;
         [SerializeField] private float _debugTargetSelectionLogIntervalSeconds = 0.5f;
         [Tooltip("Logs when fallback scan picks a living paratrooper because normal overlap/filter produced no valid target.")]
-        [SerializeField] private bool _debugFallbackTargetingLogs;
+        [SerializeField] private bool _debugFallbackTargetingLogs = false;
         [Tooltip("When true, airborne paratroopers are ignored if any grounded paratrooper is targetable.")]
         [SerializeField] private bool _ignoreAirborneWhenGroundedExists = true;
 
@@ -158,6 +158,7 @@ namespace iStick2War_V2
         private bool _telemetryImmediateGroundParatrooperThreat;
         private string _telemetryTargetKind = "none";
         private StickmanBodyState _telemetryTargetParatrooperState = StickmanBodyState.Die;
+        // Keep these fallback diagnostics in telemetry for future regression triage.
         private string _telemetryLastFallbackStage = "not_used";
         private int _telemetryFallbackLivingParatrooperModels;
         private int _telemetryFallbackEnabledEnemyBodyPartColliders;
