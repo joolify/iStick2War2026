@@ -41,12 +41,12 @@ namespace iStick2War_V2
             // Keep this to avoid stale collider/bone positions before raycast checks.
             Physics2D.SyncTransforms();
 
-            RaycastHit2D hit = Physics2D.Raycast(context.Origin, normalizedDirection, range, context.WhatToHit);
+            RaycastHit2D hit = FindPrimaryHit(context, normalizedDirection, range, useCircleCast: false);
             bool usedFallbackCast = false;
             if (hit.collider == null)
             {
                 // Small forgiving cast to reduce visual "through body" misses on thin/animated hitboxes.
-                hit = Physics2D.CircleCast(context.Origin, FallbackHitRadius, normalizedDirection, range, context.WhatToHit);
+                hit = FindPrimaryHit(context, normalizedDirection, range, useCircleCast: true);
                 usedFallbackCast = hit.collider != null;
             }
             if (context.DebugDrawShotRay)
@@ -85,6 +85,52 @@ namespace iStick2War_V2
                 Hit = hit,
                 FinalPos = hit.collider != null ? hit.point : context.Origin + normalizedDirection * range
             };
+        }
+
+        private static RaycastHit2D FindPrimaryHit(
+            HeroShotContext_V2 context,
+            Vector2 normalizedDirection,
+            float range,
+            bool useCircleCast)
+        {
+            RaycastHit2D[] hits = useCircleCast
+                ? Physics2D.CircleCastAll(context.Origin, FallbackHitRadius, normalizedDirection, range, context.WhatToHit)
+                : Physics2D.RaycastAll(context.Origin, normalizedDirection, range, context.WhatToHit);
+
+            if (hits == null || hits.Length == 0)
+            {
+                return default;
+            }
+
+            for (int i = 0; i < hits.Length; i++)
+            {
+                if (IsValidHitForContext(hits[i], context))
+                {
+                    return hits[i];
+                }
+            }
+
+            return default;
+        }
+
+        private static bool IsValidHitForContext(RaycastHit2D hit, HeroShotContext_V2 context)
+        {
+            if (hit.collider == null)
+            {
+                return false;
+            }
+
+            // Tesla should not keep connecting to already-dead paratrooper hitboxes.
+            if (context.WeaponType == WeaponType.Tesla)
+            {
+                ParatrooperBodyPart_V2 bodyPart = hit.collider.GetComponent<ParatrooperBodyPart_V2>();
+                if (bodyPart != null && !bodyPart.IsLivingCharacterForTargeting())
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private static void ApplyDamage(RaycastHit2D hit, HeroShotContext_V2 context)
