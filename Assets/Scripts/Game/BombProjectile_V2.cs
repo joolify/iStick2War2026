@@ -8,6 +8,8 @@ namespace iStick2War_V2
         [SerializeField] private Rigidbody2D _rigidbody2D;
         [SerializeField] private float _gravityScale = 2.4f;
         [SerializeField] private float _lifetimeSeconds = 9f;
+        [Tooltip("Ignores collision/trigger impacts for a short time right after spawn to avoid instant self-collisions.")]
+        [SerializeField] private float _armingDelaySeconds = 0.08f;
         [SerializeField] private int _damage = 30;
         [SerializeField] private float _explosionRadius = 1.9f;
         [SerializeField] private GameObject _explosionEffectPrefab;
@@ -19,6 +21,7 @@ namespace iStick2War_V2
 
         private bool _exploded;
         private float _expireAt;
+        private float _armedAt;
 
         public void Initialize(Vector2 inheritedVelocity, int damage, float explosionRadius)
         {
@@ -26,6 +29,7 @@ namespace iStick2War_V2
             _explosionRadius = Mathf.Max(0.2f, explosionRadius);
             _exploded = false;
             _expireAt = Time.time + Mathf.Max(0.5f, _lifetimeSeconds);
+            _armedAt = Time.time + Mathf.Max(0f, _armingDelaySeconds);
 
             if (_rigidbody2D == null)
             {
@@ -66,12 +70,22 @@ namespace iStick2War_V2
                 return;
             }
 
+            if (Time.time < _armedAt)
+            {
+                return;
+            }
+
             Explode();
         }
 
         private void Update()
         {
             if (_exploded)
+            {
+                return;
+            }
+
+            if (Time.time < _armedAt)
             {
                 return;
             }
@@ -85,6 +99,11 @@ namespace iStick2War_V2
         private void OnTriggerEnter2D(Collider2D other)
         {
             if (other == null || other.GetComponentInParent<AircraftHealth_V2>() != null)
+            {
+                return;
+            }
+
+            if (Time.time < _armedAt)
             {
                 return;
             }
@@ -210,6 +229,7 @@ namespace iStick2War_V2
 
             _exploded = false;
             _expireAt = 0f;
+            _armedAt = 0f;
             SimplePrefabPool_V2.Despawn(gameObject);
         }
     }

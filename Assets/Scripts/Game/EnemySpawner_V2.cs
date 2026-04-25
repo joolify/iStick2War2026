@@ -287,8 +287,17 @@ namespace iStick2War_V2
             float spawnIntervalSeconds = -1f)
         {
             StopWave();
-            if (config == null || _paratrooperPrefab == null)
+            if (config == null)
             {
+                return;
+            }
+
+            // Allow pure air-threat waves (EnemyCount == 0) even when paratrooper prefab is not assigned.
+            if (_paratrooperPrefab == null && config.EnemyCount > 0)
+            {
+                Debug.LogWarning(
+                    "[EnemySpawner_V2] Wave has EnemyCount > 0 but Paratrooper prefab is missing. " +
+                    "Cannot spawn paratroopers for this wave.");
                 return;
             }
 
@@ -316,42 +325,54 @@ namespace iStick2War_V2
             _spawnStarvationRecoveryCount = 0;
             _lastSpawnAbortReason = "";
             _spawnRoutineExitReason = "running";
+            _activeAirThreatSpawnRoutines = 0;
             _spawnRoutine = StartCoroutine(SpawnRoutine(config));
             if (config.BomberPassCount > 0 && _bomberPrefab != null)
             {
-                StartCoroutine(RunTrackedAirThreatRoutine(
-                    SpawnBomberPassRoutine(config.BomberPassCount, _runtimeSpawnIntervalSeconds)));
+                StartTrackedAirThreatRoutine(
+                    SpawnBomberPassRoutine(config.BomberPassCount, _runtimeSpawnIntervalSeconds));
             }
-            else if (config.BomberPassCount > 0 && _debugSpawnLogs)
+            else if (config.BomberPassCount > 0)
             {
-                Debug.Log(
+                Debug.LogWarning(
                     "[EnemySpawner_V2] This wave requests " + config.BomberPassCount +
                     " bomber pass(es) but no bomber prefab is assigned.");
             }
 
             if (config.KamikazeDroneCount > 0 && _kamikazeDronePrefab != null)
             {
-                StartCoroutine(RunTrackedAirThreatRoutine(
-                    SpawnKamikazeDroneRoutine(config.KamikazeDroneCount, _runtimeSpawnIntervalSeconds)));
+                StartTrackedAirThreatRoutine(
+                    SpawnKamikazeDroneRoutine(config.KamikazeDroneCount, _runtimeSpawnIntervalSeconds));
             }
-            else if (config.KamikazeDroneCount > 0 && _debugSpawnLogs)
+            else if (config.KamikazeDroneCount > 0)
             {
-                Debug.Log(
+                Debug.LogWarning(
                     "[EnemySpawner_V2] This wave requests " + config.KamikazeDroneCount +
                     " kamikaze drone(s) but no kamikaze prefab is assigned.");
             }
 
             if (config.BombDroneCount > 0 && _bombDronePrefab != null)
             {
-                StartCoroutine(RunTrackedAirThreatRoutine(
-                    SpawnBombDroneRoutine(config.BombDroneCount, _runtimeSpawnIntervalSeconds)));
+                StartTrackedAirThreatRoutine(
+                    SpawnBombDroneRoutine(config.BombDroneCount, _runtimeSpawnIntervalSeconds));
             }
-            else if (config.BombDroneCount > 0 && _debugSpawnLogs)
+            else if (config.BombDroneCount > 0)
             {
-                Debug.Log(
+                Debug.LogWarning(
                     "[EnemySpawner_V2] This wave requests " + config.BombDroneCount +
                     " bomb drone(s) but no bomb drone prefab is assigned.");
             }
+        }
+
+        private void StartTrackedAirThreatRoutine(IEnumerator routine)
+        {
+            if (routine == null)
+            {
+                return;
+            }
+
+            _activeAirThreatSpawnRoutines++;
+            StartCoroutine(RunTrackedAirThreatRoutine(routine));
         }
 
         public void StopWave()
@@ -401,7 +422,6 @@ namespace iStick2War_V2
 
         private IEnumerator RunTrackedAirThreatRoutine(IEnumerator routine)
         {
-            _activeAirThreatSpawnRoutines++;
             while (_isWaveActive && routine != null && routine.MoveNext())
             {
                 yield return routine.Current;
@@ -563,8 +583,18 @@ namespace iStick2War_V2
         {
             int waveSession = _waveSessionId;
             int count = Mathf.Max(0, droneCount);
+            if (_debugSpawnLogs)
+            {
+                Debug.Log(
+                    $"[EnemySpawner_V2 BombDrone] Routine start: requested={count}, waveSession={waveSession}, " +
+                    $"isWaveActive={_isWaveActive}, prefabAssigned={(_bombDronePrefab != null)}");
+            }
             if (count == 0)
             {
+                if (_debugSpawnLogs)
+                {
+                    Debug.Log("[EnemySpawner_V2 BombDrone] Routine exit: requested count is 0.");
+                }
                 yield break;
             }
 
@@ -573,19 +603,38 @@ namespace iStick2War_V2
             {
                 interval = Mathf.Max(0.5f, Mathf.Max(_bombDroneSpawnIntervalSeconds, basedOnSpawnIntervalSeconds * 1.15f));
             }
+            if (_debugSpawnLogs)
+            {
+                Debug.Log($"[EnemySpawner_V2 BombDrone] Spawn interval={interval:0.###}s (base={_bombDroneSpawnIntervalSeconds:0.###}).");
+            }
 
             for (int i = 0; i < count; i++)
             {
                 if (!_isWaveActive || waveSession != _waveSessionId)
                 {
+                    if (_debugSpawnLogs)
+                    {
+                        Debug.LogWarning(
+                            $"[EnemySpawner_V2 BombDrone] Routine aborted at index={i}: " +
+                            $"isWaveActive={_isWaveActive}, waveSession={waveSession}, currentSession={_waveSessionId}.");
+                    }
                     yield break;
                 }
 
+                if (_debugSpawnLogs)
+                {
+                    Debug.Log($"[EnemySpawner_V2 BombDrone] Spawn attempt {i + 1}/{count}.");
+                }
                 SpawnOneBombDrone(i);
                 if (i < count - 1)
                 {
                     yield return new WaitForSeconds(interval);
                 }
+            }
+
+            if (_debugSpawnLogs)
+            {
+                Debug.Log($"[EnemySpawner_V2 BombDrone] Routine completed: spawned attempts={count}.");
             }
         }
 
@@ -918,6 +967,7 @@ namespace iStick2War_V2
                 spawnIndexInWave,
                 applyGenericHorizontalFlight: false,
                 applyAutoDespawnTimer: false,
+                applyApproachStagger: false,
                 onSpawned: go =>
                 {
                     EnemyKamikazeDrone_V2 drone = go.GetComponent<EnemyKamikazeDrone_V2>();
@@ -930,19 +980,40 @@ namespace iStick2War_V2
 
         private void SpawnOneBombDrone(int spawnIndexInWave)
         {
+            int beforeTrackedAircraft = _trackedAircraftDeaths.Count;
+            int beforeActiveAirThreats = _spawnedAircraftInstances.Count;
             SpawnOneAirThreat(
                 _bombDronePrefab,
                 spawnIndexInWave,
                 applyGenericHorizontalFlight: false,
                 applyAutoDespawnTimer: false,
+                applyApproachStagger: false,
                 onSpawned: go =>
                 {
                     EnemyBombDrone_V2 drone = go.GetComponent<EnemyBombDrone_V2>();
+                    if (drone == null)
+                    {
+                        drone = go.AddComponent<EnemyBombDrone_V2>();
+                        Debug.LogWarning(
+                            "[EnemySpawner_V2] Bomb drone prefab missing EnemyBombDrone_V2; component added at runtime.");
+                    }
+
                     if (drone != null)
                     {
                         drone.BeginRun();
                     }
                 });
+
+            if (_debugSpawnLogs)
+            {
+                bool spawnedSomething =
+                    _trackedAircraftDeaths.Count > beforeTrackedAircraft ||
+                    _spawnedAircraftInstances.Count > beforeActiveAirThreats;
+                Debug.Log(
+                    $"[EnemySpawner_V2 BombDrone] Spawn result index={spawnIndexInWave}: " +
+                    $"spawned={spawnedSomething}, trackedAircraft={_trackedAircraftDeaths.Count}, " +
+                    $"activeAirThreats={_spawnedAircraftInstances.Count}.");
+            }
         }
 
         private void SpawnOneAirThreat(
@@ -950,10 +1021,16 @@ namespace iStick2War_V2
             int spawnIndexInWave,
             bool applyGenericHorizontalFlight,
             bool applyAutoDespawnTimer,
+            bool applyApproachStagger,
             Action<GameObject> onSpawned)
         {
             if (!_isWaveActive || prefab == null)
             {
+                if (_debugSpawnLogs)
+                {
+                    Debug.LogWarning(
+                        $"[EnemySpawner_V2 AirThreat] Spawn skipped: isWaveActive={_isWaveActive}, prefabNull={prefab == null}, index={spawnIndexInWave}.");
+                }
                 return;
             }
 
@@ -975,10 +1052,15 @@ namespace iStick2War_V2
             }
             else
             {
+                if (_debugSpawnLogs)
+                {
+                    Debug.LogWarning(
+                        $"[EnemySpawner_V2 AirThreat] Spawn skipped: no anchor/frustum position resolved, index={spawnIndexInWave}.");
+                }
                 return;
             }
 
-            float stagger = Mathf.Max(0f, _aircraftSameWaveApproachAxisStagger);
+            float stagger = applyApproachStagger ? Mathf.Max(0f, _aircraftSameWaveApproachAxisStagger) : 0f;
             if (stagger > 0f && spawnIndexInWave > 0)
             {
                 Vector3 furtherOutside = fromLeft ? Vector3.left : Vector3.right;
@@ -988,7 +1070,18 @@ namespace iStick2War_V2
             GameObject spawned = SimplePrefabPool_V2.Spawn(prefab, aircraftWorldPos, aircraftRotation);
             if (spawned == null)
             {
+                if (_debugSpawnLogs)
+                {
+                    Debug.LogWarning(
+                        $"[EnemySpawner_V2 AirThreat] Pool spawn returned null for '{prefab.name}', index={spawnIndexInWave}, pos={aircraftWorldPos}.");
+                }
                 return;
+            }
+
+            if (_debugSpawnLogs)
+            {
+                Debug.Log(
+                    $"[EnemySpawner_V2 AirThreat] Spawned '{spawned.name}' from prefab '{prefab.name}' at {aircraftWorldPos}, index={spawnIndexInWave}.");
             }
 
             EnsureAirThreatTargetingComponents(spawned);

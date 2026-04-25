@@ -36,15 +36,31 @@ namespace iStick2War_V2
             _bombDropped = false;
             _started = true;
 
-            bool positiveScaleMeansFacingRight = _spriteFacesRightWhenScaleXPositive;
-            bool facingRight = transform.lossyScale.x >= 0f
-                ? positiveScaleMeansFacingRight
-                : !positiveScaleMeansFacingRight;
-            _directionX = facingRight ? 1f : -1f;
+            _directionX = ResolveInitialDirectionX();
             if (_invertFlightDirectionX)
             {
                 _directionX *= -1f;
             }
+        }
+
+        private float ResolveInitialDirectionX()
+        {
+            // Prefer a deterministic route through the playfield: fly toward bunker X first.
+            if (_bunkerHitbox != null)
+            {
+                float dx = _bunkerHitbox.transform.position.x - transform.position.x;
+                if (Mathf.Abs(dx) > 0.05f)
+                {
+                    return Mathf.Sign(dx);
+                }
+            }
+
+            // Fallback to sprite-facing calibration when bunker reference is unavailable.
+            bool positiveScaleMeansFacingRight = _spriteFacesRightWhenScaleXPositive;
+            bool facingRight = transform.lossyScale.x >= 0f
+                ? positiveScaleMeansFacingRight
+                : !positiveScaleMeansFacingRight;
+            return facingRight ? 1f : -1f;
         }
 
         private void Start()
