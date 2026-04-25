@@ -1073,9 +1073,11 @@ namespace iStick2War_V2
             }
 
             float maxShootDist = weaponRange * rangeFactor;
+            bool isImmediateAirThreat = hasTarget && target != null && IsAircraftCollider(target);
             bool inRange;
-            if (hasTarget && target != null && IsAircraftCollider(target))
+            if (isImmediateAirThreat)
             {
+                // Drone/aircraft fights should not be gated by strict box checks; allow generous world-distance fire.
                 float slack = Mathf.Max(1f, _aircraftShootRangeSlackMultiplier);
                 inRange = Vector2.Distance(aimPoint, heroPos) <= maxShootDist * slack;
             }
@@ -1097,14 +1099,14 @@ namespace iStick2War_V2
                 target == null ||
                 shootFrustumPlanes == null ||
                 GeometryUtility.TestPlanesAABB(shootFrustumPlanes, target.bounds);
-            if (isImmediateGroundParatrooperThreat)
+            if (isImmediateGroundParatrooperThreat || isImmediateAirThreat)
             {
-                // Emergency override: a grounded paratrooper actively threatening the hero/bunker must not be
-                // blocked by camera-frustum gating (can fail transiently with large bounds/camera transitions).
+                // Emergency override: immediate threats (ground combat paratrooper / active air threat) should not be
+                // blocked by transient frustum gating failures.
                 targetShootableOnCamera = true;
             }
 
-            bool shootBlockedByBunkerMove = wantBunker && !isImmediateGroundParatrooperThreat;
+            bool shootBlockedByBunkerMove = wantBunker && !isImmediateGroundParatrooperThreat && !isImmediateAirThreat;
             if (shootBlockedByBunkerMove &&
                 wantBunkerFromBombs &&
                 bombThreat &&
@@ -1456,6 +1458,10 @@ namespace iStick2War_V2
             if (count <= 0)
             {
                 Collider2D fallbackOnEmptyOverlap = FindAnyLivingParatrooperColliderFallback(from);
+                if (fallbackOnEmptyOverlap == null)
+                {
+                    fallbackOnEmptyOverlap = FindAnyAircraftColliderFallback(from, shootFrustumPlanes);
+                }
                 if (_debugFallbackTargetingLogs && fallbackOnEmptyOverlap != null)
                 {
                     Vector2 c = fallbackOnEmptyOverlap.bounds.center;
@@ -1647,6 +1653,10 @@ namespace iStick2War_V2
             }
 
             Collider2D fallback = FindAnyLivingParatrooperColliderFallback(from);
+            if (fallback == null)
+            {
+                fallback = FindAnyAircraftColliderFallback(from, shootFrustumPlanes);
+            }
             if (fallback != null)
             {
                 if (_debugFallbackTargetingLogs)
@@ -1664,6 +1674,86 @@ namespace iStick2War_V2
             _telemetryLastFallbackStage = "none_found";
             MaybeLogTargetSelectionDebug(null, float.NegativeInfinity, "no-target");
             return bestAny;
+        }
+
+        private static Collider2D FindAnyAircraftColliderFallback(Vector2 from, Plane[] shootFrustumPlanes)
+        {
+            Collider2D best = null;
+            float bestDist = float.MaxValue;
+
+            void ConsiderColliderSet(Collider2D[] cols)
+            {
+                if (cols == null)
+                {
+                    return;
+                }
+
+                for (int c = 0; c < cols.Length; c++)
+                {
+                    Collider2D col = cols[c];
+                    if (col == null || !col.enabled || !col.gameObject.activeInHierarchy)
+                    {
+                        continue;
+                    }
+
+                    if (shootFrustumPlanes != null &&
+                        !GeometryUtility.TestPlanesAABB(shootFrustumPlanes, col.bounds))
+                    {
+                        continue;
+                    }
+
+                    float d = (((Vector2)col.bounds.center) - from).sqrMagnitude;
+                    if (d < bestDist)
+                    {
+                        bestDist = d;
+                        best = col;
+                    }
+                }
+            }
+
+            AircraftHealth_V2[] aircraft = Object.FindObjectsByType<AircraftHealth_V2>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            for (int i = 0; aircraft != null && i < aircraft.Length; i++)
+            {
+                AircraftHealth_V2 a = aircraft[i];
+                if (a == null || !a.isActiveAndEnabled)
+                {
+                    continue;
+                }
+
+                ConsiderColliderSet(a.GetComponentsInChildren<Collider2D>(true));
+            }
+
+            EnemyKamikazeDrone_V2[] kamikazeDrones = Object.FindObjectsByType<EnemyKamikazeDrone_V2>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            for (int i = 0; kamikazeDrones != null && i < kamikazeDrones.Length; i++)
+            {
+                EnemyKamikazeDrone_V2 drone = kamikazeDrones[i];
+                if (drone == null || !drone.isActiveAndEnabled)
+                {
+                    continue;
+                }
+
+                ConsiderColliderSet(drone.GetComponentsInChildren<Collider2D>(true));
+            }
+
+            EnemyBombDrone_V2[] bombDrones = Object.FindObjectsByType<EnemyBombDrone_V2>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            for (int i = 0; bombDrones != null && i < bombDrones.Length; i++)
+            {
+                EnemyBombDrone_V2 drone = bombDrones[i];
+                if (drone == null || !drone.isActiveAndEnabled)
+                {
+                    continue;
+                }
+
+                ConsiderColliderSet(drone.GetComponentsInChildren<Collider2D>(true));
+            }
+
+            return best;
         }
 
         /// <summary>
@@ -1837,7 +1927,11 @@ namespace iStick2War_V2
             }
 
             return c.GetComponent<AircraftHealth_V2>() != null ||
-                   c.GetComponentInParent<AircraftHealth_V2>() != null;
+                   c.GetComponentInParent<AircraftHealth_V2>() != null ||
+                   c.GetComponent<EnemyKamikazeDrone_V2>() != null ||
+                   c.GetComponentInParent<EnemyKamikazeDrone_V2>() != null ||
+                   c.GetComponent<EnemyBombDrone_V2>() != null ||
+                   c.GetComponentInParent<EnemyBombDrone_V2>() != null;
         }
 
         private static bool IsBombingAircraftCollider(Collider2D c)

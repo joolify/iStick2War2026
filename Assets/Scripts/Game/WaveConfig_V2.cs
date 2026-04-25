@@ -33,6 +33,14 @@ namespace iStick2War_V2
             "How many bomber flyovers to schedule this wave. Independent of EnemyCount (helicopter paratrooper drops). " +
             "EnemySpawner_V2 spawns bombers only when a bomber prefab is assigned there.")]
         [SerializeField] private int _bomberPassCount;
+        [Tooltip(
+            "How many enemy kamikaze drones to schedule this wave. " +
+            "EnemySpawner_V2 spawns them only when a kamikaze drone prefab is assigned.")]
+        [SerializeField] private int _kamikazeDroneCount;
+        [Tooltip(
+            "How many enemy bomb drones to schedule this wave. " +
+            "EnemySpawner_V2 spawns them only when a bomb drone prefab is assigned.")]
+        [SerializeField] private int _bombDroneCount;
 
         [Header("Economy Reward")]
         [SerializeField] private int _waveRewardCurrency = 80;
@@ -43,6 +51,8 @@ namespace iStick2War_V2
         public float EnemyHealthMultiplier => Mathf.Max(0.1f, _enemyHealthMultiplier);
         public float EnemyDamageMultiplier => Mathf.Max(0.1f, _enemyDamageMultiplier);
         public int BomberPassCount => Mathf.Max(0, _bomberPassCount);
+        public int KamikazeDroneCount => Mathf.Max(0, _kamikazeDroneCount);
+        public int BombDroneCount => Mathf.Max(0, _bombDroneCount);
         public int WaveRewardCurrency => Mathf.Max(0, _waveRewardCurrency);
     }
 }

@@ -55,6 +55,12 @@ namespace iStick2War_V2
         [Tooltip("Optional bomber pass prefab (Bombplane_V2 + AircraftHealth_V2). Spawned by WaveConfig.BomberPassCount.")]
         [SerializeField] private GameObject _bomberPrefab;
         [SerializeField] private float _bomberPassIntervalSeconds = 4.5f;
+        [Tooltip("Optional kamikaze drone prefab (EnemyKamikazeDrone_V2 + AircraftHealth_V2).")]
+        [SerializeField] private GameObject _kamikazeDronePrefab;
+        [SerializeField] private float _kamikazeDroneSpawnIntervalSeconds = 3.2f;
+        [Tooltip("Optional bomb drone prefab (EnemyBombDrone_V2 + AircraftHealth_V2).")]
+        [SerializeField] private GameObject _bombDronePrefab;
+        [SerializeField] private float _bombDroneSpawnIntervalSeconds = 4.1f;
         [SerializeField] private float _aircraftAutoDestroySeconds = 8f;
         [Tooltip("Child transform name on aircraft used as paratrooper drop origin (recommended: place at helicopter door center).")]
         [SerializeField] private string _paratrooperMountChildName = "ParatrooperDoorMount";
@@ -181,6 +187,7 @@ namespace iStick2War_V2
         private int _spawnStarvationRecoveryCount;
         private string _lastSpawnAbortReason = "";
         private string _spawnRoutineExitReason = "not_started";
+        private int _activeAirThreatSpawnRoutines;
 
         public float LastParatrooperSpawnUnscaledTime => _lastParatrooperSpawnUnscaledTime;
         public float LastSpawnAttemptUnscaledTime => _lastSpawnAttemptUnscaledTime;
@@ -223,12 +230,13 @@ namespace iStick2War_V2
         {
             PruneInactiveTrackedDeaths();
             float lastSpawnAgeSec = Time.unscaledTime - _lastParatrooperSpawnUnscaledTime;
+            PruneDestroyedAircraftFromTracking();
             return string.Format(
                 CultureInfo.InvariantCulture,
                 "isWaveActive={0} waveDiag={1} targetSpawn={2} spawned={3} spawnRoutineFinished={4} pendingDrops={5} " +
-                "trackedLiving={6} trackedAircraft={7} lastParatrooperSpawnAgeSec={8:0.###} " +
-                "lastSpawnAttemptAgeSec={9:0.###} spawnStarved={10} spawnExit='{11}' failedSpawnAttempts={12} " +
-                "spawnRecoveries={13} lastAbort='{14}' waveSession={15}",
+                "trackedLiving={6} trackedAircraft={7} activeAirThreatRoutines={8} activeAirThreats={9} " +
+                "lastParatrooperSpawnAgeSec={10:0.###} lastSpawnAttemptAgeSec={11:0.###} spawnStarved={12} spawnExit='{13}' failedSpawnAttempts={14} " +
+                "spawnRecoveries={15} lastAbort='{16}' waveSession={17}",
                 _isWaveActive,
                 FormatWaveNumberLabel(),
                 _targetSpawnCount,
@@ -237,6 +245,8 @@ namespace iStick2War_V2
                 _pendingDelayedDropCoroutines,
                 _trackedDeaths.Count,
                 _trackedAircraftDeaths.Count,
+                _activeAirThreatSpawnRoutines,
+                _spawnedAircraftInstances.Count,
                 lastSpawnAgeSec,
                 Mathf.Max(0f, Time.unscaledTime - _lastSpawnAttemptUnscaledTime),
                 IsSpawnStarvedThisWave,
@@ -309,13 +319,38 @@ namespace iStick2War_V2
             _spawnRoutine = StartCoroutine(SpawnRoutine(config));
             if (config.BomberPassCount > 0 && _bomberPrefab != null)
             {
-                StartCoroutine(SpawnBomberPassRoutine(config.BomberPassCount, _runtimeSpawnIntervalSeconds));
+                StartCoroutine(RunTrackedAirThreatRoutine(
+                    SpawnBomberPassRoutine(config.BomberPassCount, _runtimeSpawnIntervalSeconds)));
             }
             else if (config.BomberPassCount > 0 && _debugSpawnLogs)
             {
                 Debug.Log(
                     "[EnemySpawner_V2] This wave requests " + config.BomberPassCount +
                     " bomber pass(es) but no bomber prefab is assigned.");
+            }
+
+            if (config.KamikazeDroneCount > 0 && _kamikazeDronePrefab != null)
+            {
+                StartCoroutine(RunTrackedAirThreatRoutine(
+                    SpawnKamikazeDroneRoutine(config.KamikazeDroneCount, _runtimeSpawnIntervalSeconds)));
+            }
+            else if (config.KamikazeDroneCount > 0 && _debugSpawnLogs)
+            {
+                Debug.Log(
+                    "[EnemySpawner_V2] This wave requests " + config.KamikazeDroneCount +
+                    " kamikaze drone(s) but no kamikaze prefab is assigned.");
+            }
+
+            if (config.BombDroneCount > 0 && _bombDronePrefab != null)
+            {
+                StartCoroutine(RunTrackedAirThreatRoutine(
+                    SpawnBombDroneRoutine(config.BombDroneCount, _runtimeSpawnIntervalSeconds)));
+            }
+            else if (config.BombDroneCount > 0 && _debugSpawnLogs)
+            {
+                Debug.Log(
+                    "[EnemySpawner_V2] This wave requests " + config.BombDroneCount +
+                    " bomb drone(s) but no bomb drone prefab is assigned.");
             }
         }
 
@@ -357,10 +392,22 @@ namespace iStick2War_V2
             _spawnStarvationRecoveryCount = 0;
             _lastSpawnAbortReason = "";
             _spawnRoutineExitReason = "stopped";
+            _activeAirThreatSpawnRoutines = 0;
             // Keep a sane timestamp after StopWave: EnterGameErrorState calls StopWave while the watchdog may still
             // evaluate this frame; 0 would look like "no spawn since boot" and false-trigger no-spawn detection.
             _lastParatrooperSpawnUnscaledTime = Time.unscaledTime;
             _lastSpawnAttemptUnscaledTime = _lastParatrooperSpawnUnscaledTime;
+        }
+
+        private IEnumerator RunTrackedAirThreatRoutine(IEnumerator routine)
+        {
+            _activeAirThreatSpawnRoutines++;
+            while (_isWaveActive && routine != null && routine.MoveNext())
+            {
+                yield return routine.Current;
+            }
+
+            _activeAirThreatSpawnRoutines = Mathf.Max(0, _activeAirThreatSpawnRoutines - 1);
         }
 
         private void OnDisable()
@@ -475,6 +522,66 @@ namespace iStick2War_V2
                 }
 
                 SpawnOneBomberPass(i);
+                if (i < count - 1)
+                {
+                    yield return new WaitForSeconds(interval);
+                }
+            }
+        }
+
+        private IEnumerator SpawnKamikazeDroneRoutine(int droneCount, float basedOnSpawnIntervalSeconds)
+        {
+            int waveSession = _waveSessionId;
+            int count = Mathf.Max(0, droneCount);
+            if (count == 0)
+            {
+                yield break;
+            }
+
+            float interval = Mathf.Max(0.35f, _kamikazeDroneSpawnIntervalSeconds);
+            if (basedOnSpawnIntervalSeconds > 0f)
+            {
+                interval = Mathf.Max(0.35f, Mathf.Max(_kamikazeDroneSpawnIntervalSeconds, basedOnSpawnIntervalSeconds * 0.9f));
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                if (!_isWaveActive || waveSession != _waveSessionId)
+                {
+                    yield break;
+                }
+
+                SpawnOneKamikazeDrone(i);
+                if (i < count - 1)
+                {
+                    yield return new WaitForSeconds(interval);
+                }
+            }
+        }
+
+        private IEnumerator SpawnBombDroneRoutine(int droneCount, float basedOnSpawnIntervalSeconds)
+        {
+            int waveSession = _waveSessionId;
+            int count = Mathf.Max(0, droneCount);
+            if (count == 0)
+            {
+                yield break;
+            }
+
+            float interval = Mathf.Max(0.5f, _bombDroneSpawnIntervalSeconds);
+            if (basedOnSpawnIntervalSeconds > 0f)
+            {
+                interval = Mathf.Max(0.5f, Mathf.Max(_bombDroneSpawnIntervalSeconds, basedOnSpawnIntervalSeconds * 1.15f));
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                if (!_isWaveActive || waveSession != _waveSessionId)
+                {
+                    yield break;
+                }
+
+                SpawnOneBombDrone(i);
                 if (i < count - 1)
                 {
                     yield return new WaitForSeconds(interval);
@@ -801,6 +908,179 @@ namespace iStick2War_V2
             if (aircraftHealth != null && _trackedAircraftDeaths.Add(aircraftHealth))
             {
                 aircraftHealth.OnDestroyed += HandleTrackedAircraftDestroyed;
+            }
+        }
+
+        private void SpawnOneKamikazeDrone(int spawnIndexInWave)
+        {
+            SpawnOneAirThreat(
+                _kamikazeDronePrefab,
+                spawnIndexInWave,
+                applyGenericHorizontalFlight: false,
+                applyAutoDespawnTimer: false,
+                onSpawned: go =>
+                {
+                    EnemyKamikazeDrone_V2 drone = go.GetComponent<EnemyKamikazeDrone_V2>();
+                    if (drone != null)
+                    {
+                        drone.BeginRun();
+                    }
+                });
+        }
+
+        private void SpawnOneBombDrone(int spawnIndexInWave)
+        {
+            SpawnOneAirThreat(
+                _bombDronePrefab,
+                spawnIndexInWave,
+                applyGenericHorizontalFlight: false,
+                applyAutoDespawnTimer: false,
+                onSpawned: go =>
+                {
+                    EnemyBombDrone_V2 drone = go.GetComponent<EnemyBombDrone_V2>();
+                    if (drone != null)
+                    {
+                        drone.BeginRun();
+                    }
+                });
+        }
+
+        private void SpawnOneAirThreat(
+            GameObject prefab,
+            int spawnIndexInWave,
+            bool applyGenericHorizontalFlight,
+            bool applyAutoDespawnTimer,
+            Action<GameObject> onSpawned)
+        {
+            if (!_isWaveActive || prefab == null)
+            {
+                return;
+            }
+
+            bool fromLeft;
+            Vector3 rawWorldForLog;
+            Vector3 aircraftWorldPos;
+            Quaternion aircraftRotation;
+            Transform anchor = null;
+
+            if (TryGetSpawnAnchor(out anchor, out fromLeft))
+            {
+                rawWorldForLog = anchor.position;
+                aircraftWorldPos = AdjustAnchorSpawnWorldPosition(rawWorldForLog, fromLeft);
+                aircraftRotation = Quaternion.identity;
+            }
+            else if (TryComputeOffscreenFrustumSpawn(out fromLeft, out rawWorldForLog, out aircraftWorldPos))
+            {
+                aircraftRotation = Quaternion.identity;
+            }
+            else
+            {
+                return;
+            }
+
+            float stagger = Mathf.Max(0f, _aircraftSameWaveApproachAxisStagger);
+            if (stagger > 0f && spawnIndexInWave > 0)
+            {
+                Vector3 furtherOutside = fromLeft ? Vector3.left : Vector3.right;
+                aircraftWorldPos += furtherOutside * (spawnIndexInWave * stagger);
+            }
+
+            GameObject spawned = SimplePrefabPool_V2.Spawn(prefab, aircraftWorldPos, aircraftRotation);
+            if (spawned == null)
+            {
+                return;
+            }
+
+            EnsureAirThreatTargetingComponents(spawned);
+            ApplyAircraftFacing(spawned, fromLeft);
+            ApplyAircraftSpriteSorting(spawned);
+            EnsureAirThreatCollidersUseEnemyBodyPartLayer(spawned);
+            _spawnedAircraftInstances.Add(spawned);
+            onSpawned?.Invoke(spawned);
+
+            if (applyGenericHorizontalFlight && _aircraftEnableHorizontalFlight && _aircraftHorizontalFlySpeed > 0f)
+            {
+                AircraftFlyAcrossScreen_V2 flight = spawned.GetComponent<AircraftFlyAcrossScreen_V2>();
+                if (flight == null)
+                {
+                    flight = spawned.AddComponent<AircraftFlyAcrossScreen_V2>();
+                }
+
+                flight.BeginFlight(
+                    fromLeft,
+                    _aircraftHorizontalFlySpeed,
+                    _spawnCamera,
+                    _aircraftFlyOffscreenMarginWorld,
+                    _aircraftFlightMaxLifetimeSeconds,
+                    _invertAircraftFlightDirectionX);
+            }
+            else if (applyAutoDespawnTimer && _aircraftAutoDestroySeconds > 0f)
+            {
+                PooledAutoDespawn_V2 timer = spawned.GetComponent<PooledAutoDespawn_V2>();
+                if (timer == null)
+                {
+                    timer = spawned.AddComponent<PooledAutoDespawn_V2>();
+                }
+
+                timer.Arm(_aircraftAutoDestroySeconds);
+            }
+
+            AircraftHealth_V2 aircraftHealth = spawned.GetComponent<AircraftHealth_V2>();
+            if (aircraftHealth != null && _trackedAircraftDeaths.Add(aircraftHealth))
+            {
+                aircraftHealth.OnDestroyed += HandleTrackedAircraftDestroyed;
+            }
+        }
+
+        private static void EnsureAirThreatTargetingComponents(GameObject root)
+        {
+            if (root == null)
+            {
+                return;
+            }
+
+            // AutoHero/hero raycasts expect an aircraft-like damage receiver.
+            if (root.GetComponentInChildren<AircraftHealth_V2>(true) == null)
+            {
+                root.AddComponent<AircraftHealth_V2>();
+            }
+
+            // Some drone prefabs are visual-only and miss colliders. Add a trigger collider so
+            // overlap/raycast targeting can still pick the drone.
+            Collider2D[] existing = root.GetComponentsInChildren<Collider2D>(true);
+            if (existing != null && existing.Length > 0)
+            {
+                return;
+            }
+
+            CircleCollider2D cc = root.AddComponent<CircleCollider2D>();
+            cc.radius = 0.65f;
+            cc.isTrigger = true;
+        }
+
+        private static void EnsureAirThreatCollidersUseEnemyBodyPartLayer(GameObject root)
+        {
+            if (root == null)
+            {
+                return;
+            }
+
+            int enemyBodyPartLayer = LayerMask.NameToLayer("EnemyBodyPart");
+            if (enemyBodyPartLayer < 0)
+            {
+                return;
+            }
+
+            Collider2D[] cols = root.GetComponentsInChildren<Collider2D>(true);
+            for (int i = 0; i < cols.Length; i++)
+            {
+                Collider2D col = cols[i];
+                if (col == null)
+                {
+                    continue;
+                }
+
+                col.gameObject.layer = enemyBodyPartLayer;
             }
         }
 
@@ -1374,6 +1654,7 @@ namespace iStick2War_V2
         public bool IsWaveCleared()
         {
             PruneInactiveTrackedDeaths();
+            PruneDestroyedAircraftFromTracking();
 
             // BeginWave failed (null prefab / config) leaves target 0 and no active wave config.
             // Valid bomber-only waves intentionally use target 0 helicopter drops.
@@ -1388,8 +1669,10 @@ namespace iStick2War_V2
             bool allSpawned = _spawnRoutineFinished && _spawnedCount >= _targetSpawnCount;
             return allSpawned
                 && _pendingDelayedDropCoroutines == 0
+                && _activeAirThreatSpawnRoutines == 0
                 && _trackedDeaths.Count == 0
-                && _trackedAircraftDeaths.Count == 0;
+                && _trackedAircraftDeaths.Count == 0
+                && _spawnedAircraftInstances.Count == 0;
         }
 
         private void PruneInactiveTrackedDeaths()

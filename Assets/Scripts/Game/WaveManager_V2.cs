@@ -1019,6 +1019,10 @@ namespace iStick2War_V2
                 sb.Append(waveCfg.EnemyDamageMultiplier.ToString("0.###", CultureInfo.InvariantCulture));
                 sb.Append(" bomberPasses=");
                 sb.Append(waveCfg.BomberPassCount);
+                sb.Append(" kamikazeDrones=");
+                sb.Append(waveCfg.KamikazeDroneCount);
+                sb.Append(" bombDrones=");
+                sb.Append(waveCfg.BombDroneCount);
                 sb.Append(" rewardCurrency=");
                 sb.Append(waveCfg.WaveRewardCurrency);
                 sb.AppendLine();

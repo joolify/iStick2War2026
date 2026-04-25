@@ -4728,30 +4728,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a7c3e2d14b5648390ab1c2d3e4f50671, type: 3}
   m_Name: 
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.GameplayDevTestHarness_V2
-  _harnessEnabled: 1
-  _onlyInEditorAndDevBuild: 1
-  _waveManager: {fileID: 796613714}
-  _hero: {fileID: 150875445}
-  _autoHero: {fileID: 1193300243}
-  _timeScalePresets:
-  - 1
-  - 2
-  - 3
-  - 5
-  _startAtTimeScalePresetIndex: 0
-  _ignoreHotkeysWhileTimePaused: 1
-  _cycleTimeScaleHotkey: 292
-  _stabilizePhysicsFixedStepForTimeScale: 1
-  _physicsFixedDeltaTimeAtTimeScaleOne: 0.02
-  _autoHeroAutomationWallClockScale: 1
-  _syncAutoHeroAutomationDelaysWithTimeScale: 1
-  _applyAutomationBatchFromHarness: 0
-  _automationBatchRuns: 10
-  _jumpToWaveOneBasedOnStart: 1
-  _forceCompleteWaveHotkey: 290
-  _jumpToTargetWaveHotkey: 291
-  _jumpToWaveTargetOneBased: 5
-  _toggleGodModeHotkey: 293
 --- !u!1 &796613713
 GameObject:
   m_ObjectHideFlags: 0
@@ -6011,17 +5987,6 @@ MonoBehaviour:
   groundLayer:
     serializedVersion: 2
     m_Bits: 64
---- !u!114 &1193300243 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 3453683051127376714, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
-  m_PrefabInstance: {fileID: 1640422542864705052}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 657bf09dca1ffa1499aea9a7d3a50913, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.AutoHero_V2
 --- !u!1 &1227363692
 GameObject:
   m_ObjectHideFlags: 0
@@ -8476,6 +8441,10 @@ MonoBehaviour:
   _aircraftPrefab: {fileID: 7381843924167722091, guid: e4631d7f4e27c5b4f93ab8ce44f5b27b, type: 3}
   _bomberPrefab: {fileID: 8930508886528286439, guid: dd72830279b832340bc03637823f0e92, type: 3}
   _bomberPassIntervalSeconds: 4.5
+  _kamikazeDronePrefab: {fileID: 569943819618404009, guid: f6ca343e50ff0f44c9b3b7d3e4052d6e, type: 3}
+  _kamikazeDroneSpawnIntervalSeconds: 3.2
+  _bombDronePrefab: {fileID: 2886576470817135857, guid: 9449e99e58fa4ee4892c0965881c3d47, type: 3}
+  _bombDroneSpawnIntervalSeconds: 4.1
   _aircraftAutoDestroySeconds: 4
   _paratrooperMountChildName: ParatrooperDrop
   _paratrooperOffsetFromMount: {x: 0, y: 0, z: 0}
