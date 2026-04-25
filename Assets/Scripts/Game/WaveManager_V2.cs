@@ -1085,7 +1085,7 @@ namespace iStick2War_V2
                 sb.AppendLine("hero: (null)");
             }
 
-            if (_autoHero != null)
+            if (_autoHero != null && _autoHero.isActiveAndEnabled)
             {
                 float now = Time.unscaledTime;
                 sb.Append("autoHero: lastAimUnscaledAge=");
@@ -1094,6 +1094,10 @@ namespace iStick2War_V2
                 sb.Append((now - _autoHero.LastShootHeldUnscaledTime).ToString("0.###", CultureInfo.InvariantCulture));
                 sb.Append("s");
                 sb.AppendLine();
+            }
+            else if (_autoHero != null)
+            {
+                sb.AppendLine("autoHero: attached but inactive/disabled");
             }
             else
             {
@@ -1368,7 +1372,7 @@ namespace iStick2War_V2
                 _enemySpawner.IsSpawnStarvedThisWave &&
                 _enemySpawner.GetLivingParatroopersTrackedCountForTelemetry() <= 0;
 
-            if (_autoHero != null)
+            if (_autoHero != null && _autoHero.isActiveAndEnabled)
             {
                 float noAimOrShootSeconds = Mathf.Max(
                     0f,

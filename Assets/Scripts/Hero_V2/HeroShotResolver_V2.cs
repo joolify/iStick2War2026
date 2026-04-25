@@ -120,14 +120,11 @@ namespace iStick2War_V2
                 return false;
             }
 
-            // Tesla should not keep connecting to already-dead paratrooper hitboxes.
-            if (context.WeaponType == WeaponType.Tesla)
+            // Any hero hitscan weapon should pass through already-dead paratrooper hitboxes.
+            ParatrooperBodyPart_V2 bodyPart = hit.collider.GetComponent<ParatrooperBodyPart_V2>();
+            if (bodyPart != null && !bodyPart.IsLivingCharacterForTargeting())
             {
-                ParatrooperBodyPart_V2 bodyPart = hit.collider.GetComponent<ParatrooperBodyPart_V2>();
-                if (bodyPart != null && !bodyPart.IsLivingCharacterForTargeting())
-                {
-                    return false;
-                }
+                return false;
             }
 
             return true;
