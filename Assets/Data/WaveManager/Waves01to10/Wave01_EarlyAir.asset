@@ -18,6 +18,6 @@ MonoBehaviour:
   _enemyHealthMultiplier: 1
   _enemyDamageMultiplier: 1
   _bomberPassCount: 0
-  _kamikazeDroneCount: 10
-  _bombDroneCount: 0
+  _kamikazeDroneCount: 0
+  _bombDroneCount: 10
   _waveRewardCurrency: 70

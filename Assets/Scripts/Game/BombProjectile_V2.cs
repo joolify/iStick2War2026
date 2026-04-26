@@ -158,16 +158,22 @@ namespace iStick2War_V2
             Vector2 center = transform.position;
 
             WaveManager_V2 waveManager = FindAnyObjectByType<WaveManager_V2>();
-            if (waveManager != null)
+            int bunkerHpBefore = waveManager != null ? waveManager.BunkerHealth : 0;
+            int absorbedByBunker = Mathf.Min(_damage, Mathf.Max(0, bunkerHpBefore));
+            if (absorbedByBunker > 0 && waveManager != null)
             {
-                waveManager.ApplyBunkerDamage(_damage);
+                waveManager.ApplyBunkerDamage(absorbedByBunker);
             }
 
+            int heroDamage = _damage - absorbedByBunker;
             Hero_V2 hero = FindAnyObjectByType<Hero_V2>();
-            if (hero != null && !hero.IsDead() && IsHeroWithinExplosionRadius(center, hero, _explosionRadius))
+            if (heroDamage > 0 &&
+                hero != null &&
+                !hero.IsDead() &&
+                IsHeroWithinExplosionRadius(center, hero, _explosionRadius))
             {
-                // Bunker safe zone blocks infantry fire to hero HP; bomb splash ignores that (and has no effect once bunker HP is 0).
-                hero.ReceiveDamage(_damage, ignoreBunkerSafeZone: true);
+                // Remaining splash only after bunker cover is breached (same hit can overflow if bunker HP was low).
+                hero.ReceiveDamage(heroDamage, ignoreBunkerSafeZone: true);
             }
 
             if (_explosionEffectPrefab != null)

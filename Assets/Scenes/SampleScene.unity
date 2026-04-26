@@ -8487,7 +8487,7 @@ MonoBehaviour:
   _clampSpawnInsideCameraView: 1
   _spawnCamera: {fileID: 330585545}
   _orthographicFrustumInsetPadding: 0.6
-  _debugSpawnLogs: 0
+  _debugSpawnLogs: 1
   _masterDebugGrenadeOnly: 0
   _debugAnchorSpawnDiagnostics: 1
 --- !u!1 &1791821114
@@ -10798,6 +10798,10 @@ PrefabInstance:
       propertyPath: 'm_Materials.Array.data[3]'
       value: 
       objectReference: {fileID: 2100000, guid: e050c904119847043afec7d5b6ed2746, type: 2}
+    - target: {fileID: 3453683051127376714, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 3453683051127376714, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: _waveManager
       value: 

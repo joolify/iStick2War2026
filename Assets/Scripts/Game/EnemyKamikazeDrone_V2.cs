@@ -195,17 +195,20 @@ namespace iStick2War_V2
             _detonated = true;
             Vector2 center = transform.position;
             int damage = Mathf.Max(1, _explosionDamage);
-            if (_waveManager != null)
+            int bunkerHpBefore = _waveManager != null ? _waveManager.BunkerHealth : 0;
+            int absorbedByBunker = Mathf.Min(damage, Mathf.Max(0, bunkerHpBefore));
+            if (absorbedByBunker > 0 && _waveManager != null)
             {
-                _waveManager.ApplyBunkerDamage(damage);
+                _waveManager.ApplyBunkerDamage(absorbedByBunker);
             }
 
-            if (_hero != null && !_hero.IsDead())
+            int heroDamage = damage - absorbedByBunker;
+            if (heroDamage > 0 && _hero != null && !_hero.IsDead())
             {
                 float radius = Mathf.Max(0f, _heroExplosionRadius);
                 if (radius > 0f && ((Vector2)_hero.transform.position - center).sqrMagnitude <= radius * radius)
                 {
-                    _hero.ReceiveDamage(damage, ignoreBunkerSafeZone: true);
+                    _hero.ReceiveDamage(heroDamage, ignoreBunkerSafeZone: true);
                 }
             }
 

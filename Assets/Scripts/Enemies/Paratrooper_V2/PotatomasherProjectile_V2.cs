@@ -101,18 +101,23 @@ namespace iStick2War_V2
             Vector2 center = transform.position;
 
             WaveManager_V2 waveManager = FindAnyObjectByType<WaveManager_V2>();
-            if (waveManager != null)
+            int bunkerHpBefore = waveManager != null ? waveManager.BunkerHealth : 0;
+            int absorbedByBunker = Mathf.Min(_damage, Mathf.Max(0, bunkerHpBefore));
+            if (absorbedByBunker > 0 && waveManager != null)
             {
-                waveManager.ApplyBunkerDamage(_damage);
+                waveManager.ApplyBunkerDamage(absorbedByBunker);
             }
 
+            int heroDamage = _damage - absorbedByBunker;
             Hero_V2 hero = FindAnyObjectByType<Hero_V2>();
-            if (hero != null && !hero.IsDead())
+            if (heroDamage > 0 &&
+                hero != null &&
+                !hero.IsDead())
             {
                 float heroDist = Vector2.Distance(center, hero.transform.position);
                 if (heroDist <= _radius)
                 {
-                    hero.ReceiveDamage(_damage);
+                    hero.ReceiveDamage(heroDamage, ignoreBunkerSafeZone: true);
                 }
             }
 
