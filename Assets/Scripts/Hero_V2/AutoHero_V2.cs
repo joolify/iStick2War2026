@@ -1541,7 +1541,9 @@ namespace iStick2War_V2
                     {
                         infantryScore += Mathf.Max(0f, _combatParatrooperPriorityBonus);
                     }
-                    else if (paratrooperState == StickmanBodyState.Deploy || paratrooperState == StickmanBodyState.Glide)
+                    else if (paratrooperState == StickmanBodyState.Deploy ||
+                             paratrooperState == StickmanBodyState.Glide ||
+                             paratrooperState == StickmanBodyState.GlideElectrocuted)
                     {
                         infantryScore -= Mathf.Max(0f, _airborneParatrooperPriorityPenalty);
                     }
@@ -2092,7 +2094,8 @@ namespace iStick2War_V2
                 return 2;
             }
 
-            if (s == StickmanBodyState.Deploy || s == StickmanBodyState.Glide || s == StickmanBodyState.GlideDie)
+            if (s == StickmanBodyState.Deploy || s == StickmanBodyState.Glide || s == StickmanBodyState.GlideDie ||
+                s == StickmanBodyState.GlideElectrocuted)
             {
                 return 0;
             }
@@ -2111,7 +2114,8 @@ namespace iStick2War_V2
                    s == StickmanBodyState.CrouchWalk ||
                    s == StickmanBodyState.CrouchReload ||
                    s == StickmanBodyState.Run ||
-                   s == StickmanBodyState.Idle;
+                   s == StickmanBodyState.Idle ||
+                   s == StickmanBodyState.Electrocuted;
         }
         
         private static StickmanBodyState GetParatrooperStateOrDie(Collider2D c)

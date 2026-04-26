@@ -585,6 +585,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d529b52d36edb27498ae0a3a5dcaebf8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Hero_V2.Hero_V2
+--- !u!114 &189361720 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4773936492376633156, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+  m_PrefabInstance: {fileID: 1640422542864705052}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c38ffe61d4e86c14e9a30775f5f576f9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &194176245
 GameObject:
   m_ObjectHideFlags: 0
@@ -6339,6 +6350,68 @@ MonoBehaviour:
   bodyPartBoneName: foot-front
   damageable: {fileID: 569340914}
   model: {fileID: 1721460133}
+--- !u!1001 &1271393039
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1795512125}
+    m_Modifications:
+    - target: {fileID: 4069757096226940895, guid: a8feee918fd3ac24facd17fd272183f9, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.85
+      objectReference: {fileID: 0}
+    - target: {fileID: 4069757096226940895, guid: a8feee918fd3ac24facd17fd272183f9, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 3.07
+      objectReference: {fileID: 0}
+    - target: {fileID: 4069757096226940895, guid: a8feee918fd3ac24facd17fd272183f9, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4069757096226940895, guid: a8feee918fd3ac24facd17fd272183f9, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4069757096226940895, guid: a8feee918fd3ac24facd17fd272183f9, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4069757096226940895, guid: a8feee918fd3ac24facd17fd272183f9, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4069757096226940895, guid: a8feee918fd3ac24facd17fd272183f9, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4069757096226940895, guid: a8feee918fd3ac24facd17fd272183f9, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4069757096226940895, guid: a8feee918fd3ac24facd17fd272183f9, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4069757096226940895, guid: a8feee918fd3ac24facd17fd272183f9, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5205153334000988418, guid: a8feee918fd3ac24facd17fd272183f9, type: 3}
+      propertyPath: m_Name
+      value: shop_teslaGun
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: a8feee918fd3ac24facd17fd272183f9, type: 3}
+--- !u!4 &1271393040 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4069757096226940895, guid: a8feee918fd3ac24facd17fd272183f9, type: 3}
+  m_PrefabInstance: {fileID: 1271393039}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1275965427
 GameObject:
   m_ObjectHideFlags: 0
@@ -7690,6 +7763,14 @@ MonoBehaviour:
     _bunkerMaxIncrease: 0
     _weapon: {fileID: 11400000, guid: 6558c37908f5c664f915fa7c826ae5c7, type: 2}
     _previewObject: {fileID: 851034351}
+  - _displayName: Tesla gun
+    _kind: 2
+    _cost: 40
+    _healthAmount: 0
+    _bunkerRepairAmount: 0
+    _bunkerMaxIncrease: 0
+    _weapon: {fileID: 11400000, guid: c7a91f2e4b3d4e5f8061728394a5b0c1, type: 2}
+    _previewObject: {fileID: 5205153334000988418, guid: a8feee918fd3ac24facd17fd272183f9, type: 3}
   _offerTitleText: {fileID: 0}
   _offerSubtitleText: {fileID: 0}
   _buyButtonText: {fileID: 606058596}
@@ -8597,6 +8678,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 1271393040}
   - {fileID: 5778934538977439502}
   - {fileID: 6216605965611922756}
   - {fileID: 2034365237}
@@ -10685,10 +10767,6 @@ PrefabInstance:
       propertyPath: m_Mesh
       value: 
       objectReference: {fileID: 0}
-    - target: {fileID: 4799644363124035344, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
-      propertyPath: _potatomasherProjectilePrefab
-      value: 
-      objectReference: {fileID: 0}
     - target: {fileID: 6008574131695582798, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
       propertyPath: m_LocalPosition.x
       value: 2.63
@@ -10830,10 +10908,26 @@ PrefabInstance:
       propertyPath: m_Name
       value: HERO V2
       objectReference: {fileID: 0}
+    - target: {fileID: 8158568889302826421, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: _startingWeapon
+      value: 11
+      objectReference: {fileID: 0}
+    - target: {fileID: 8158568889302826421, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: '_initialWeapons.Array.data[0]'
+      value: 
+      objectReference: {fileID: 11400000, guid: c7a91f2e4b3d4e5f8061728394a5b0c1, type: 2}
     - target: {fileID: 8349641459453035569, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: _cam
       value: 
       objectReference: {fileID: 330585545}
+    - target: {fileID: 8349641459453035569, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: teslaLightningBolt
+      value: 
+      objectReference: {fileID: 189361720}
+    - target: {fileID: 8718769911246656012, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

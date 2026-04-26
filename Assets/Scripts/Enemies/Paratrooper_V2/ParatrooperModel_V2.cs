@@ -59,6 +59,19 @@ public class ParatrooperModel_V2 : MonoBehaviour
     /// <summary>Skip a second ground-death clip: impact already ran on <see cref="StickmanBodyState.Land"/> after <see cref="StickmanBodyState.GlideDie"/>.</summary>
     public bool suppressDieAnimationFromAirborneImpact;
 
+    /// <summary>
+    /// Health is already zero; play Tesla electrocute clip first, then <see cref="ParatrooperDamageReceiver_V2.CompletePendingElectrocuteDeath"/>.
+    /// </summary>
+    public bool pendingDieAfterElectrocuteAnim;
+
+    /// <summary><see cref="Time.unscaledTime"/> of the last Hero Tesla hit-scan that damaged this unit.</summary>
+    public float lastUnscaledTimeReceivedHeroTeslaHit = -9999f;
+
+    /// <summary>State to restore when Tesla stops hitting this unit (non-lethal shock only).</summary>
+    public bool hasResumeStateAfterTeslaElectrocute;
+
+    public StickmanBodyState resumeStateAfterTeslaElectrocute;
+
     public Dictionary<BodyPartType, float> damageMultipliers;
 
     void Awake()
@@ -71,6 +84,9 @@ public class ParatrooperModel_V2 : MonoBehaviour
         ApplyDamageProfile();
         pendingDieAfterLandAnim = false;
         suppressDieAnimationFromAirborneImpact = false;
+        pendingDieAfterElectrocuteAnim = false;
+        lastUnscaledTimeReceivedHeroTeslaHit = -9999f;
+        hasResumeStateAfterTeslaElectrocute = false;
         currentState = StickmanBodyState.Idle;
     }
 
