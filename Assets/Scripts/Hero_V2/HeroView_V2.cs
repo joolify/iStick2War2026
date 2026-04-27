@@ -157,6 +157,7 @@ namespace iStick2War_V2
             deathHandler.OnDeathHandled += HandleDeath;
 
             _isInitialized = true;
+            StopFlamethrowerVfxIfActive();
 
             if (_debugViewLogs)
             {
@@ -206,6 +207,7 @@ namespace iStick2War_V2
                 PlayLoop(idle);
             }
             PlayAimLoop();
+            StopFlamethrowerVfxIfActive();
         }
 
         void Update()
@@ -220,6 +222,15 @@ namespace iStick2War_V2
             FaceTowardWorldX(_touchPos);
             SetCrosshair(_touchPos);
             UpdateFlamethrowerVfxPose();
+
+            // Runtime failsafe: even if ParticleSystem has Play On Awake, never show flamethrower
+            // unless controller currently holds shoot.
+            if (_model == null ||
+                _model.currentWeaponType != WeaponType.Flamethrower ||
+                !_model.isShootingPressed)
+            {
+                StopFlamethrowerVfxIfActive();
+            }
         }
 
         /// <summary>Optional world-space aim target for automated playtests.</summary>
@@ -910,7 +921,7 @@ namespace iStick2War_V2
                 return;
             }
 
-            if (_flamethrowerTestPs.isPlaying)
+            if (_flamethrowerTestPs.isPlaying || _flamethrowerTestPs.isEmitting || _flamethrowerTestPs.particleCount > 0)
             {
                 _flamethrowerTestPs.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             }

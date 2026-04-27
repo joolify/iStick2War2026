@@ -47,7 +47,7 @@ namespace iStick2War_V2
         private readonly HeroStateMachine_V2 _stateMachine;
         private readonly HeroMovementSystem_V2 _movementSystem;
         private readonly HeroWeaponSystem_V2 _weaponSystem;
-        private const bool DebugDrawShotRay = true;
+        private const bool DebugDrawShotRay = false;
         private static readonly bool DebugCombatLogs = false;
         private bool _isShootLoopActive;
         private bool _outOfAmmoLatched;
@@ -359,7 +359,10 @@ namespace iStick2War_V2
 
             if (_weaponSystem.Shoot(shotContext, out var shotResult))
             {
-                _view.PlayShotTrail(aimPos, shotResult.FinalPos);
+                if (!isFlamethrower)
+                {
+                    _view.PlayShotTrail(aimPos, shotResult.FinalPos);
+                }
                 if (isFlamethrower && Time.time >= _nextFlamethrowerDebugLogAt)
                 {
                     _nextFlamethrowerDebugLogAt = Time.time + 0.2f;
