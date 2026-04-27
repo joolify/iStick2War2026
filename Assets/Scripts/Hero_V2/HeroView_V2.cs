@@ -102,6 +102,7 @@ namespace iStick2War_V2
         [Header("Flamethrower spray tuning")]
         [SerializeField] private float _flamethrowerSprayDistanceMeters = 10f;
         [SerializeField] private float _flamethrowerSprayTravelSeconds = 0.22f;
+        [SerializeField] private bool _overrideFlamethrowerParticleSettings = false;
         [SerializeField] private bool _autoTuneFlamethrowerParticleSpeed = true;
         [SerializeField] private bool _autoConfigureFlamethrowerAsBeam = true;
         [SerializeField] private float _flamethrowerBeamSpreadAngle = 1.2f;
@@ -110,7 +111,9 @@ namespace iStick2War_V2
         [SerializeField] private bool _autoConfigureFlamethrowerBeamRenderer = true;
         [SerializeField] private float _flamethrowerBeamLengthScale = 12f;
         [SerializeField] private float _flamethrowerBeamSpeedScale = 1.6f;
-        [SerializeField] private bool _lockFlamethrowerDirectionWhileShooting = true;
+        [SerializeField] private bool _lockFlamethrowerDirectionWhileShooting = false;
+        [SerializeField] private bool _driveFlamethrowerForceFromAim = true;
+        [SerializeField] private float _flamethrowerAimForceStrength = 20f;
         private Vector2 _lockedFlamethrowerDirection = Vector2.right;
         private bool _hasLockedFlamethrowerDirection;
 
@@ -876,7 +879,10 @@ namespace iStick2War_V2
                 }
             }
 
-            ApplyFlamethrowerSprayProfile();
+            if (_overrideFlamethrowerParticleSettings)
+            {
+                ApplyFlamethrowerSprayProfile();
+            }
             UpdateFlamethrowerVfxPose();
             if (!_flamethrowerTestPs.isPlaying)
             {
@@ -922,6 +928,44 @@ namespace iStick2War_V2
             float z = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg + _flamethrowerVfxAngleOffsetDegrees;
             Transform vfxTransform = _flamethrowerTestPs.transform;
             vfxTransform.SetPositionAndRotation(origin, Quaternion.Euler(0f, 0f, z));
+            EnsureFlamethrowerSimulationSpaceLocal();
+            ApplyFlamethrowerForceFromAim(dir);
+        }
+
+        private void EnsureFlamethrowerSimulationSpaceLocal()
+        {
+            if (_flamethrowerTestPs == null)
+            {
+                return;
+            }
+
+            ParticleSystem.MainModule main = _flamethrowerTestPs.main;
+            if (main.simulationSpace != ParticleSystemSimulationSpace.Local)
+            {
+                main.simulationSpace = ParticleSystemSimulationSpace.Local;
+            }
+        }
+
+        private void ApplyFlamethrowerForceFromAim(Vector2 direction)
+        {
+            if (!_driveFlamethrowerForceFromAim || _flamethrowerTestPs == null)
+            {
+                return;
+            }
+
+            if (direction.sqrMagnitude <= 0.0001f)
+            {
+                return;
+            }
+
+            Vector2 dir = direction.normalized;
+            float strength = Mathf.Max(0f, _flamethrowerAimForceStrength);
+
+            ParticleSystem.ForceOverLifetimeModule force = _flamethrowerTestPs.forceOverLifetime;
+            force.enabled = true;
+            force.space = ParticleSystemSimulationSpace.World;
+            force.x = new ParticleSystem.MinMaxCurve(dir.x * strength);
+            force.y = new ParticleSystem.MinMaxCurve(dir.y * strength);
         }
 
         private bool TryGetFlamethrowerPose(out Vector2 origin, out Vector2 direction)
