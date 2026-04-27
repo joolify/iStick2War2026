@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eae1b068af140bb4b8118d27aca56663, type: 3}
+  m_Name: Flamethrower_Def
+  m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Hero_V2.HeroWeaponDefinition_V2
+  _weaponType: 4
+  _displayName: Flamethrower
+  _maxAmmo: 30
+  _fireRate: 0.06
+  _reloadDuration: 0.5
+  _baseDamage: 14
+  _damageVsAircraft: 10
+  _range: 55
+  _maxReserveAmmo: 120
+  _startingReserveAmmo: 120
+  _debugDrawShotRay: 1
+  _useProjectile: 0
+  _projectilePrefab: {fileID: 0}
+  _projectileSpeed: 14
+  _projectileLifetime: 5
+  _idleAnimation: {fileID: 11400000, guid: 58c15f7aad20305489cef6fa637e6862, type: 2}
+  _aimAnimation: {fileID: 11400000, guid: 22dcca0157d2a194c8a5be86f7a16958, type: 2}
+  _shootAnimation: {fileID: 11400000, guid: 543fb3ebd1149864a8242a3601e5e94c, type: 2}
+  _runAnimation: {fileID: 11400000, guid: 0466352db45b3ba4b823ebad0e74b144, type: 2}
+  _jumpAnimation: {fileID: 11400000, guid: 2a7dadcd6d9dac94b8979e8eb2d960e5, type: 2}
+  _reloadAnimation: {fileID: 0}
+  _dryFireAnimation: {fileID: 0}

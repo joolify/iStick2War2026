@@ -77,6 +77,10 @@ public class ParatrooperView_V2 : MonoBehaviour
     private bool _suppressParachuteVisuals;
     private bool _groundDeathParachuteLogPrinted;
     private bool _isExploded;
+    private Spine.Animation _cachedBurnRunAnimation;
+    private Spine.Animation _cachedBurnDeathAnimation;
+    private Spine.Animation _cachedBurnGlideAnimation;
+    private Spine.Animation _cachedBurnGlideDeathAnimation;
 
     //Add animation mapping (cleaner than switch)
     private Dictionary<StickmanBodyState, string> animationMap;
@@ -109,6 +113,15 @@ public class ParatrooperView_V2 : MonoBehaviour
     [SerializeField] private string _teslaElectrocuteSlotName = "skeleton-electro";
     [Tooltip("If lethal Tesla electrocute clip never ends (e.g. looped in Spine), death starts after this many seconds.")]
     [SerializeField] private float _teslaElectrocuteDeathFallbackSeconds = 3f;
+    [Header("Flamethrower burn animations")]
+    public AnimationReferenceAsset _fireRunAnim;
+    public AnimationReferenceAsset _fireRunDeathAnim;
+    public AnimationReferenceAsset _glideFireAnim;
+    public AnimationReferenceAsset _glideFireDeathAnim;
+    [Header("Flamethrower burn VFX")]
+    [SerializeField] private GameObject _burnFirePrefab;
+    [SerializeField] private Vector3 _burnFireLocalOffset = new Vector3(0f, 0.45f, 0f);
+    [SerializeField] private bool _debugBurnVfxLogs = false;
     [SerializeField] private bool _debugAnimationLogs = false;
     [SerializeField] private bool _debugParachuteLogs = false;
     [Header("Explosive Death")]
@@ -122,6 +135,8 @@ public class ParatrooperView_V2 : MonoBehaviour
     [SerializeField] private int _gibSortingOrder = 6000;
     [SerializeField] private float _gibWorldZ = 0f;
     [SerializeField] private string _gibPhysicsLayerName = "";
+    private GameObject _activeBurnFireVfx;
+    private const string DefaultBurnFirePrefabPath = "Assets/Prefabs/Paratrooper/Paratrooper_Fire Variant.prefab";
 
     public void Initialize(
         ParatrooperStateMachine_V2 stateMachine,
@@ -217,6 +232,7 @@ public class ParatrooperView_V2 : MonoBehaviour
     public void ResetVisualStateForSpawn()
     {
         CancelInvoke(nameof(ResolvePendingTeslaElectrocuteDeathTimeout));
+        StopBurnVfx();
         _isExploded = false;
         _deathAnimationLocked = false;
         _suppressParachuteVisuals = false;
@@ -326,7 +342,9 @@ public class ParatrooperView_V2 : MonoBehaviour
                 trackIndex = 1;
                 break;
             case StickmanBodyState.Glide:
-                nextAnimation = _glideAnim;
+                nextAnimation = (_model != null && _model.isBurning && _model.burnFromAirborneFlamethrower)
+                    ? GetBurnGlideAnimation()
+                    : _glideAnim;
                 loop = true;
                 trackIndex = 1;
                 break;
@@ -338,7 +356,9 @@ public class ParatrooperView_V2 : MonoBehaviour
                     return;
                 }
 
-                nextAnimation = GetRandomGroundDeathAnimation();
+                nextAnimation = (_model != null && _model.isBurning)
+                    ? GetBurnDeathAnimation()
+                    : GetRandomGroundDeathAnimation();
                 loop = false;
                 trackIndex = 0;
                 break;
@@ -350,7 +370,9 @@ public class ParatrooperView_V2 : MonoBehaviour
                     _lastStateBeforeChange == StickmanBodyState.Land ||
                     _lastStateBeforeChange == StickmanBodyState.Idle ||
                     _lastStateBeforeChange == StickmanBodyState.Run;
-                nextAnimation = cameFromGroundCombat ? GetRandomGroundDeathAnimation() : _glideDeathAnim;
+                nextAnimation = (_model != null && _model.isBurning && _model.burnFromAirborneFlamethrower)
+                    ? GetBurnGlideDeathAnimation()
+                    : (cameFromGroundCombat ? GetRandomGroundDeathAnimation() : _glideDeathAnim);
                 loop = false;
                 trackIndex = 0;
                 break;
@@ -382,8 +404,9 @@ public class ParatrooperView_V2 : MonoBehaviour
                 }
                 break;
             case StickmanBodyState.Run:
-                // Temporary fallback while dedicated clips for these states are migrated.
-                nextAnimation = _glideAnim;
+                nextAnimation = (_model != null && _model.isBurning)
+                    ? GetBurnRunAnimation()
+                    : _glideAnim;
                 loop = true;
                 trackIndex = 1;
                 break;
@@ -807,7 +830,22 @@ public class ParatrooperView_V2 : MonoBehaviour
     {
         if (_isExploded)
         {
+            StopBurnVfx();
             return;
+        }
+
+        SyncBurnVfx();
+
+        if (_model != null && _model.isBurning && _stateMachine != null)
+        {
+            if (_stateMachine.CurrentState == StickmanBodyState.Run && !_model.burnFromAirborneFlamethrower)
+            {
+                EnsureBurnRunVisualActive();
+            }
+            else if (_stateMachine.CurrentState == StickmanBodyState.Glide && _model.burnFromAirborneFlamethrower)
+            {
+                EnsureBurnGlideVisualActive();
+            }
         }
 
         if (!_suppressParachuteVisuals)
@@ -817,6 +855,164 @@ public class ParatrooperView_V2 : MonoBehaviour
         }
 
         HideParachuteVisualsForGroundDeath();
+    }
+
+    private Spine.Animation GetBurnRunAnimation()
+    {
+        if (_fireRunAnim != null && _fireRunAnim.Animation != null)
+        {
+            return _fireRunAnim.Animation;
+        }
+
+        if (_cachedBurnRunAnimation != null)
+        {
+            return _cachedBurnRunAnimation;
+        }
+
+        _cachedBurnRunAnimation = FindAnimationByCandidates("fire_run", "E/fire_run", "E_fire_run");
+
+        return _cachedBurnRunAnimation != null ? _cachedBurnRunAnimation : _glideAnim;
+    }
+
+    private Spine.Animation GetBurnDeathAnimation()
+    {
+        if (_fireRunDeathAnim != null && _fireRunDeathAnim.Animation != null)
+        {
+            return _fireRunDeathAnim.Animation;
+        }
+
+        if (_cachedBurnDeathAnimation != null)
+        {
+            return _cachedBurnDeathAnimation;
+        }
+
+        _cachedBurnDeathAnimation = FindAnimationByCandidates("fire_run_death", "E/fire_run_death", "E_fire_run_death");
+
+        return _cachedBurnDeathAnimation != null ? _cachedBurnDeathAnimation : GetRandomGroundDeathAnimation();
+    }
+
+    private Spine.Animation GetBurnGlideAnimation()
+    {
+        if (_glideFireAnim != null && _glideFireAnim.Animation != null)
+        {
+            return _glideFireAnim.Animation;
+        }
+
+        if (_cachedBurnGlideAnimation != null)
+        {
+            return _cachedBurnGlideAnimation;
+        }
+
+        _cachedBurnGlideAnimation = FindAnimationByCandidates("glide_fire", "E/glide_fire", "E_glide_fire");
+
+        return _cachedBurnGlideAnimation != null ? _cachedBurnGlideAnimation : _glideAnim;
+    }
+
+    private Spine.Animation GetBurnGlideDeathAnimation()
+    {
+        if (_glideFireDeathAnim != null && _glideFireDeathAnim.Animation != null)
+        {
+            return _glideFireDeathAnim.Animation;
+        }
+
+        if (_cachedBurnGlideDeathAnimation != null)
+        {
+            return _cachedBurnGlideDeathAnimation;
+        }
+
+        _cachedBurnGlideDeathAnimation = FindAnimationByCandidates("glide_fire_death", "E/glide_fire_death", "E_glide_fire_death");
+
+        return _cachedBurnGlideDeathAnimation != null ? _cachedBurnGlideDeathAnimation : _glideDeathAnim;
+    }
+
+    private Spine.Animation FindAnimationByCandidates(params string[] candidateNames)
+    {
+        if (_skeletonAnimation == null || _skeletonAnimation.Skeleton == null || _skeletonAnimation.Skeleton.Data == null || candidateNames == null)
+        {
+            return null;
+        }
+
+        Spine.Animation matched = null;
+        for (int i = 0; i < candidateNames.Length; i++)
+        {
+            string candidate = candidateNames[i];
+            if (string.IsNullOrWhiteSpace(candidate))
+            {
+                continue;
+            }
+
+            matched = _skeletonAnimation.Skeleton.Data.FindAnimation(candidate);
+            if (matched != null)
+            {
+                LogAnimation($"[ParatrooperView_V2] Burn animation resolved: '{candidate}' -> '{matched.Name}'.");
+                return matched;
+            }
+        }
+
+        if (_debugAnimationLogs)
+        {
+            Debug.LogWarning($"[ParatrooperView_V2] Burn animation lookup failed. Tried: {string.Join(", ", candidateNames)}");
+        }
+
+        return null;
+    }
+
+    private void EnsureBurnRunVisualActive()
+    {
+        if (_skeletonAnimation == null || _skeletonAnimation.AnimationState == null)
+        {
+            return;
+        }
+
+        Spine.Animation expected = GetBurnRunAnimation();
+        if (expected == null)
+        {
+            return;
+        }
+
+        var tracks = _skeletonAnimation.AnimationState.Tracks;
+        TrackEntry track1 = (tracks != null && tracks.Count > 1) ? tracks.Items[1] : null;
+        bool alreadyPlaying = track1 != null && track1.Animation == expected;
+        if (alreadyPlaying)
+        {
+            return;
+        }
+
+        _skeletonAnimation.AnimationState.ClearTrack(0);
+        TrackEntry e = _skeletonAnimation.AnimationState.SetAnimation(1, expected, true);
+        if (e != null)
+        {
+            e.MixDuration = 0f;
+        }
+    }
+
+    private void EnsureBurnGlideVisualActive()
+    {
+        if (_skeletonAnimation == null || _skeletonAnimation.AnimationState == null)
+        {
+            return;
+        }
+
+        Spine.Animation expected = GetBurnGlideAnimation();
+        if (expected == null)
+        {
+            return;
+        }
+
+        var tracks = _skeletonAnimation.AnimationState.Tracks;
+        TrackEntry track1 = (tracks != null && tracks.Count > 1) ? tracks.Items[1] : null;
+        bool alreadyPlaying = track1 != null && track1.Animation == expected;
+        if (alreadyPlaying)
+        {
+            return;
+        }
+
+        _skeletonAnimation.AnimationState.ClearTrack(0);
+        TrackEntry e = _skeletonAnimation.AnimationState.SetAnimation(1, expected, true);
+        if (e != null)
+        {
+            e.MixDuration = 0f;
+        }
     }
 
     private static bool ContainsParachuteKeyword(string value)
@@ -925,6 +1121,80 @@ public class ParatrooperView_V2 : MonoBehaviour
         }
     }
 
+    private void SyncBurnVfx()
+    {
+        bool shouldShow = _model != null && _model.isBurning;
+        if (!shouldShow)
+        {
+            StopBurnVfx();
+            return;
+        }
+
+        EnsureBurnVfx();
+    }
+
+    private void EnsureBurnVfx()
+    {
+        if (_activeBurnFireVfx != null)
+        {
+            if (_activeBurnFireVfx.transform.parent != transform)
+            {
+                _activeBurnFireVfx.transform.SetParent(transform, false);
+            }
+
+            _activeBurnFireVfx.transform.localPosition = _burnFireLocalOffset;
+            _activeBurnFireVfx.transform.localRotation = Quaternion.identity;
+            return;
+        }
+
+        if (_burnFirePrefab == null)
+        {
+            if (_debugBurnVfxLogs)
+            {
+                Debug.LogWarning("[ParatrooperView_V2] Burn VFX prefab is missing. Assign Basic_fire.prefab to _burnFirePrefab.");
+            }
+
+            return;
+        }
+
+        _activeBurnFireVfx = Instantiate(_burnFirePrefab, transform);
+        _activeBurnFireVfx.SetActive(true);
+        _activeBurnFireVfx.transform.localPosition = _burnFireLocalOffset;
+        _activeBurnFireVfx.transform.localRotation = Quaternion.identity;
+        ParticleSystem[] particleSystems = _activeBurnFireVfx.GetComponentsInChildren<ParticleSystem>(true);
+        for (int i = 0; i < particleSystems.Length; i++)
+        {
+            ParticleSystem ps = particleSystems[i];
+            if (ps == null)
+            {
+                continue;
+            }
+
+            if (!ps.gameObject.activeSelf)
+            {
+                ps.gameObject.SetActive(true);
+            }
+
+            ps.Clear(true);
+            ps.Play(true);
+        }
+        if (_debugBurnVfxLogs)
+        {
+            Debug.Log($"[ParatrooperView_V2] Burn VFX spawned: {_activeBurnFireVfx.name}");
+        }
+    }
+
+    private void StopBurnVfx()
+    {
+        if (_activeBurnFireVfx == null)
+        {
+            return;
+        }
+
+        Destroy(_activeBurnFireVfx);
+        _activeBurnFireVfx = null;
+    }
+
     public void ExplodeIntoPieces(Vector2 explosionOrigin, float forceMultiplier)
     {
         if (_isExploded)
@@ -932,6 +1202,7 @@ public class ParatrooperView_V2 : MonoBehaviour
             return;
         }
 
+        StopBurnVfx();
         _isExploded = true;
         _deathAnimationLocked = true;
         _suppressParachuteVisuals = true;
@@ -1006,6 +1277,23 @@ public class ParatrooperView_V2 : MonoBehaviour
             Destroy(part.gameObject, life);
         }
     }
+
+    private void OnDisable()
+    {
+        StopBurnVfx();
+    }
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        if (_burnFirePrefab != null)
+        {
+            return;
+        }
+
+        _burnFirePrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(DefaultBurnFirePrefabPath);
+    }
+#endif
 
     private bool SpawnConfiguredGibPrefabs(Vector2 explosionOrigin, float launchForce, float life)
     {

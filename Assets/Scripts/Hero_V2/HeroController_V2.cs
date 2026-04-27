@@ -47,10 +47,11 @@ namespace iStick2War_V2
         private readonly HeroStateMachine_V2 _stateMachine;
         private readonly HeroMovementSystem_V2 _movementSystem;
         private readonly HeroWeaponSystem_V2 _weaponSystem;
-        private const bool DebugDrawShotRay = true;
+        private const bool DebugDrawShotRay = false;
         private static readonly bool DebugCombatLogs = false;
         private bool _isShootLoopActive;
         private bool _outOfAmmoLatched;
+        private float _nextFlamethrowerDebugLogAt;
 
         public HeroController_V2(
             HeroModel_V2 model,
@@ -346,9 +347,16 @@ namespace iStick2War_V2
                 return;
             }
 
+            bool isFlamethrower = _model.currentWeaponType == WeaponType.Flamethrower;
+
             if (!_view.TryGetAimData(out var aimPos, out var direction))
             {
                 Debug.LogWarning("[HeroController_V2] TryShootNow: TryGetAimData failed.");
+                if (isFlamethrower && Time.time >= _nextFlamethrowerDebugLogAt)
+                {
+                    _nextFlamethrowerDebugLogAt = Time.time + 0.2f;
+                    Debug.LogWarning("[HeroController_V2] Flamethrower debug: aim data invalid this tick.");
+                }
                 return;
             }
 
@@ -371,9 +379,20 @@ namespace iStick2War_V2
 
                 bool usedTeslaBolt = _model.currentWeaponType == WeaponType.Tesla &&
                     _view.TryPlayTeslaLightningForShot(aimPos, shotVisualEnd);
-                if (!usedTeslaBolt)
+                if (!usedTeslaBolt && !isFlamethrower)
                 {
                     _view.PlayShotTrail(aimPos, shotVisualEnd);
+                }
+
+                if (isFlamethrower && Time.time >= _nextFlamethrowerDebugLogAt)
+                {
+                    _nextFlamethrowerDebugLogAt = Time.time + 0.2f;
+                    string hitName = shotResult.DidHit && shotResult.Hit.collider != null
+                        ? shotResult.Hit.collider.name
+                        : "none";
+                    Debug.Log(
+                        $"[HeroController_V2] Flamethrower debug: shot committed. didHit={shotResult.DidHit}, " +
+                        $"hitCollider={hitName}, aimPos={aimPos}, dir={direction}, ammo={_model.currentAmmo}");
                 }
             }
         }

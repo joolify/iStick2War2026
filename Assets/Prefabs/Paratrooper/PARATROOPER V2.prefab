@@ -511,6 +511,9 @@ MonoBehaviour:
   _enableExplosiveGibDeath: 1
   _explodeOnAnyExplosiveHit: 1
   _explosiveGibDamageThreshold: 40
+  _enableFlamethrowerBurnDeath: 1
+  _flamethrowerBurnDeathDelaySeconds: 1.8
+  _flamethrowerAirborneBurnDeathDelaySeconds: 1.3
 --- !u!114 &3884552245145279488
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -545,7 +548,9 @@ MonoBehaviour:
   currentState: 0
   pendingDieAfterLandAnim: 0
   suppressDieAnimationFromAirborneImpact: 0
-  pendingDieAfterElectrocuteAnim: 0
+  isBurning: 0
+  burnDieAtTime: 0
+  burnFromAirborneFlamethrower: 0
 --- !u!114 &2782605750978404735
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2351,9 +2356,13 @@ MonoBehaviour:
   _landFallDownBack2Anim: {fileID: 11400000, guid: f0dcdae40f9ca6e46ae57a281c51aa5f, type: 2}
   _landFallDownBack3Anim: {fileID: 11400000, guid: 71a254a9373ecf541beea850bacb8b26, type: 2}
   _shootingMP40Anim: {fileID: 11400000, guid: 672b08387407ca147b3ae4fc3152da67, type: 2}
-  electrocutedAnim: {fileID: 11400000, guid: 9ef5ae72f74b5514e86ad14206f8ce2b, type: 2}
-  glideElectrocuted: {fileID: 11400000, guid: dfa6a0a04073e8141afc9cd955077d5b, type: 2}
-  _teslaElectrocuteDeathFallbackSeconds: 3
+  _fireRunAnim: {fileID: 11400000, guid: e7501a15d121b2f478a202f56e79795c, type: 2}
+  _fireRunDeathAnim: {fileID: 11400000, guid: e459eb22154a8eb47a9dc4913b2942f4, type: 2}
+  _glideFireAnim: {fileID: 11400000, guid: 8a8c2d9ecc990ee47ab655c52a4b18f0, type: 2}
+  _glideFireDeathAnim: {fileID: 11400000, guid: aca2e5108809094408cc3c0ce5021fc6, type: 2}
+  _burnFirePrefab: {fileID: 8531375049152256315, guid: 1d20462e92000ea438d829d964b3c6a0, type: 3}
+  _burnFireLocalOffset: {x: 0, y: 0.45, z: 0}
+  _debugBurnVfxLogs: 0
   _debugAnimationLogs: 1
   _debugParachuteLogs: 1
   _gibForce: 9.5

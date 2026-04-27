@@ -42,6 +42,10 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
     [SerializeField] private bool _enableExplosiveGibDeath = true;
     [SerializeField] private bool _explodeOnAnyExplosiveHit = true;
     [SerializeField] private float _explosiveGibDamageThreshold = 40f;
+    [Header("Flamethrower burn death")]
+    [SerializeField] private bool _enableFlamethrowerBurnDeath = true;
+    [SerializeField] private float _flamethrowerBurnDeathDelaySeconds = 1.8f;
+    [SerializeField] private float _flamethrowerAirborneBurnDeathDelaySeconds = 1.3f;
 
     private ParatrooperModel_V2 _model;
     private ParatrooperStateMachine_V2 _stateMachine;
@@ -70,7 +74,7 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        
+        TickBurnDeath();
     }
 
     /// <summary>
@@ -92,6 +96,28 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
         if (info.SourceWeapon == WeaponType.Tesla)
         {
             _model.lastUnscaledTimeReceivedHeroTeslaHit = Time.unscaledTime;
+        }
+
+        bool isFlamethrowerHit = info.SourceWeapon == WeaponType.Flamethrower;
+        bool isGroundedTarget = _paratrooper == null || !_paratrooper.ShouldUseAirborneDeathFlow();
+        if (_enableFlamethrowerBurnDeath &&
+            isFlamethrowerHit &&
+            !_deathStateSent &&
+            !_model.isBurning)
+        {
+            bool airborneBurn = !isGroundedTarget;
+            float delay = airborneBurn
+                ? _flamethrowerAirborneBurnDeathDelaySeconds
+                : _flamethrowerBurnDeathDelaySeconds;
+            _model.StartBurning(delay, airborneBurn);
+            _stateMachine.ChangeState(airborneBurn ? StickmanBodyState.Glide : StickmanBodyState.Run);
+            Debug.Log($"[ParatrooperDamageReceiver_V2] Burn started by flamethrower. dieAt={_model.burnDieAtTime:0.##}");
+            return;
+        }
+
+        if (_model.isBurning && isFlamethrowerHit)
+        {
+            return;
         }
 
         float hpBefore = _model.health;
@@ -244,6 +270,34 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
         _model.pendingDieAfterElectrocuteAnim = false;
         bool useAirborneDeath = _paratrooper != null && _paratrooper.ShouldUseAirborneDeathFlow();
         _stateMachine.ChangeState(useAirborneDeath ? StickmanBodyState.GlideDie : StickmanBodyState.Die);
+    }
+
+    private void TickBurnDeath()
+    {
+        if (_model == null || _stateMachine == null || _deathStateSent)
+        {
+            return;
+        }
+
+        if (!_model.isBurning)
+        {
+            return;
+        }
+
+        if (Time.time < _model.burnDieAtTime)
+        {
+            return;
+        }
+
+        bool airborneBurnDeath = _model.burnFromAirborneFlamethrower;
+        _model.StopBurning();
+        _model.ApplyDamage(_model.health + 1f);
+        if (_model.IsDead())
+        {
+            _deathStateSent = true;
+            _stateMachine.ChangeState(
+                airborneBurnDeath ? StickmanBodyState.GlideDie : StickmanBodyState.Die);
+        }
     }
 
     private float GetBodyPartMultiplier(BodyPartType bodyPart)

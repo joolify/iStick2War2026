@@ -190,6 +190,10 @@ namespace iStick2War_V2
             float baseDamage = activeWeapon != null ? activeWeapon.Definition.BaseDamage : 30f;
             float aircraftDamage = activeWeapon != null ? activeWeapon.Definition.DamageVsAircraft : baseDamage;
             bool debugRay = activeWeapon != null ? activeWeapon.Definition.DebugDrawShotRay : defaultDebugDrawShotRay;
+            if (_model.currentWeaponType == WeaponType.Flamethrower)
+            {
+                debugRay = false;
+            }
 
             WeaponType weaponForDamage =
                 activeWeapon != null && activeWeapon.Definition != null

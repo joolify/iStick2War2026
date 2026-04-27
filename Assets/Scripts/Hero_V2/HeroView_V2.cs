@@ -3,6 +3,7 @@ using System.Reflection;
 using Spine;
 using Spine.Unity;
 using UnityEngine;
+using UnityEngine.Rendering;
 using iStick2War;
 
 namespace iStick2War_V2
@@ -66,11 +67,13 @@ namespace iStick2War_V2
         private HeroDeathHandler_V2 _deathHandler;
         public Bone _crossHairBone;
         public Bone _aimPointBone;
+        public Bone _flamethrowerAimBone;
         private bool _facingRight;
 
         [SpineBone(dataField: "skeletonAnimation")] public string aimPointBoneName;
 
         [SpineBone(dataField: "skeletonAnimation")] public string crossHairBoneName;
+        [SpineBone(dataField: "skeletonAnimation")] public string flamethrowerAimBoneName = "flamegun-aim";
 
         private Vector2 _touchPos;
 
@@ -88,6 +91,33 @@ namespace iStick2War_V2
         [Header("Animations")]
         [SerializeField] private HeroWeaponDefinition_V2 _fallbackWeaponDefinition;
         public AnimationReferenceAsset _landFallDownBackAnim;
+        [Header("Flamethrower animation override (optional)")]
+        public AnimationReferenceAsset aimFlamethrowerAnim;
+        public AnimationReferenceAsset grenadeFlamethrowerAnim;
+        public AnimationReferenceAsset idleFlamethrowerAnim;
+        public AnimationReferenceAsset jumpFlamethrowerAnim;
+        public AnimationReferenceAsset runFlamethrowerAnim;
+        public AnimationReferenceAsset shootingFlamethrowerAnim;
+        [Header("Flamethrower VFX (optional)")]
+        [SerializeField] private ParticleSystem _flamethrowerTestPs;
+        [SerializeField] private float _flamethrowerVfxAngleOffsetDegrees;
+        [Header("Flamethrower spray tuning")]
+        [SerializeField] private float _flamethrowerSprayDistanceMeters = 10f;
+        [SerializeField] private float _flamethrowerSprayTravelSeconds = 0.22f;
+        [SerializeField] private bool _overrideFlamethrowerParticleSettings = false;
+        [SerializeField] private bool _autoTuneFlamethrowerParticleSpeed = true;
+        [SerializeField] private bool _autoConfigureFlamethrowerAsBeam = true;
+        [SerializeField] private float _flamethrowerBeamSpreadAngle = 1.2f;
+        [SerializeField] private float _flamethrowerBeamStartSize = 0.06f;
+        [SerializeField] private float _flamethrowerBeamEmissionRate = 420f;
+        [SerializeField] private bool _autoConfigureFlamethrowerBeamRenderer = true;
+        [SerializeField] private float _flamethrowerBeamLengthScale = 12f;
+        [SerializeField] private float _flamethrowerBeamSpeedScale = 1.6f;
+        [SerializeField] private bool _lockFlamethrowerDirectionWhileShooting = false;
+        [SerializeField] private bool _driveFlamethrowerForceFromAim = true;
+        [SerializeField] private float _flamethrowerAimForceStrength = 20f;
+        private Vector2 _lockedFlamethrowerDirection = Vector2.right;
+        private bool _hasLockedFlamethrowerDirection;
 
         [Header("Tesla animation overrides (optional)")]
         [Tooltip("When the active weapon is Tesla, non-null entries replace the weapon-definition set (grenade: reserved for future grenade playback).")]
@@ -145,6 +175,7 @@ namespace iStick2War_V2
             deathHandler.OnDeathHandled += HandleDeath;
 
             _isInitialized = true;
+            StopFlamethrowerVfxIfActive();
 
             if (_debugViewLogs)
             {
@@ -177,6 +208,16 @@ namespace iStick2War_V2
                 Debug.LogError("Cross hair bone not found!");
             }
 
+            if (!string.IsNullOrEmpty(flamethrowerAimBoneName))
+            {
+                _flamethrowerAimBone = _skeletonAnimation.Skeleton.FindBone(flamethrowerAimBoneName);
+            }
+
+            if (_flamethrowerAimBone == null)
+            {
+                Debug.LogWarning($"Flamethrower aim bone '{flamethrowerAimBoneName}' not found.");
+            }
+
             // Ensure desktop aim is active from frame 1, even before first input/state transition.
             AnimationReferenceAsset idle = GetIdleAnimationForCurrentWeapon();
             if (idle != null)
@@ -184,7 +225,7 @@ namespace iStick2War_V2
                 PlayLoop(idle);
             }
             PlayAimLoop();
-
+            StopFlamethrowerVfxIfActive();
             StopTeslaLightningVfxIfActive();
         }
 
@@ -199,6 +240,16 @@ namespace iStick2War_V2
             _touchPos = ResolveAimWorldPoint();
             FaceTowardWorldX(_touchPos);
             SetCrosshair(_touchPos);
+            UpdateFlamethrowerVfxPose();
+
+            // Runtime failsafe: even if ParticleSystem has Play On Awake, never show flamethrower
+            // unless controller currently holds shoot.
+            if (_model == null ||
+                _model.currentWeaponType != WeaponType.Flamethrower ||
+                !_model.isShootingPressed)
+            {
+                StopFlamethrowerVfxIfActive();
+            }
         }
 
         /// <summary>Optional world-space aim target for automated playtests.</summary>
@@ -249,6 +300,7 @@ namespace iStick2War_V2
             switch (to)
             {
                 case HeroState.Idle:
+                    StopFlamethrowerVfxIfActive();
                     PlayLoop(GetIdleAnimationForCurrentWeapon());
                     PlayAimLoop();
                     _jumpCombatInitialized = false;
@@ -274,12 +326,14 @@ namespace iStick2War_V2
                 //    break;
 
                 case HeroState.Moving:
+                    StopFlamethrowerVfxIfActive();
                     PlayLoop(GetRunAnimationForCurrentWeapon());
                     PlayAimLoop();
                     _jumpCombatInitialized = false;
                     break;
 
                 case HeroState.Jumping:
+                    StopFlamethrowerVfxIfActive();
                     AnimationReferenceAsset jumpAnim = GetJumpAnimationForCurrentWeapon();
                     if (jumpAnim != null)
                     {
@@ -293,6 +347,7 @@ namespace iStick2War_V2
                     break;
 
                 case HeroState.Dead:
+                    StopFlamethrowerVfxIfActive();
                     StopTeslaLightningVfxIfActive();
                     PlayDeathAnimation();
                     break;
@@ -500,6 +555,7 @@ namespace iStick2War_V2
             }
 
             _skeletonAnimation.AnimationState.SetAnimation(1, shootAnim, true);
+            TryPlayFlamethrowerVfx();
         }
 
         internal void UpdateShootLocomotion(bool isMoving)
@@ -758,8 +814,8 @@ namespace iStick2War_V2
 
         internal void StopShoot()
         {
+            StopFlamethrowerVfxIfActive();
             StopTeslaLightningVfxIfActive();
-
             AnimationReferenceAsset aimAnim = GetAimAnimationForCurrentWeapon();
             if (aimAnim != null)
             {
@@ -863,6 +919,22 @@ namespace iStick2War_V2
         private WeaponAnimationSet GetAnimationSetForCurrentWeapon()
         {
             WeaponAnimationSet fallbackSet = GetFallbackAnimationSet();
+            WeaponType currentWeaponType = _model != null ? _model.currentWeaponType : WeaponType.None;
+
+            // Compatibility bridge: keep old explicit flamethrower slots available in HeroView_V2
+            // while the rest of the weapon pipeline remains definition-driven.
+            if (currentWeaponType == WeaponType.Flamethrower)
+            {
+                WeaponAnimationSet flamethrowerOverride = CreateAnimationSet(
+                    idleFlamethrowerAnim,
+                    aimFlamethrowerAnim,
+                    shootingFlamethrowerAnim,
+                    runFlamethrowerAnim,
+                    jumpFlamethrowerAnim,
+                    null,
+                    null);
+                return MergeWithFallback(flamethrowerOverride, fallbackSet);
+            }
 
             HeroWeaponDefinition_V2 currentWeaponDefinition = _model != null
                 ? _model.currentWeaponDefinition
@@ -892,6 +964,266 @@ namespace iStick2War_V2
                 Reload = baseSet.Reload,
                 DryFire = baseSet.DryFire
             };
+        }
+
+        private void TryPlayFlamethrowerVfx()
+        {
+            if (_model == null || _model.currentWeaponType != WeaponType.Flamethrower)
+            {
+                StopFlamethrowerVfxIfActive();
+                return;
+            }
+
+            // Safety gate: never emit flamethrower VFX unless fire input is actually held.
+            if (!_model.isShootingPressed)
+            {
+                StopFlamethrowerVfxIfActive();
+                return;
+            }
+
+            if (_flamethrowerTestPs == null)
+            {
+                return;
+            }
+
+            if (_lockFlamethrowerDirectionWhileShooting && !_hasLockedFlamethrowerDirection)
+            {
+                if (TryGetFlamethrowerPose(out _, out Vector2 initialDir))
+                {
+                    _lockedFlamethrowerDirection = initialDir;
+                    _hasLockedFlamethrowerDirection = true;
+                }
+            }
+
+            if (_overrideFlamethrowerParticleSettings)
+            {
+                ApplyFlamethrowerSprayProfile();
+            }
+            UpdateFlamethrowerVfxPose();
+            if (!_flamethrowerTestPs.isPlaying)
+            {
+                _flamethrowerTestPs.Play(true);
+            }
+
+            if (_debugViewLogs)
+            {
+                LogFlamethrowerParticleDebug();
+            }
+        }
+
+        private void StopFlamethrowerVfxIfActive()
+        {
+            _hasLockedFlamethrowerDirection = false;
+            if (_flamethrowerTestPs == null)
+            {
+                return;
+            }
+
+            if (_flamethrowerTestPs.isPlaying || _flamethrowerTestPs.isEmitting || _flamethrowerTestPs.particleCount > 0)
+            {
+                _flamethrowerTestPs.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
+        }
+
+        private void UpdateFlamethrowerVfxPose()
+        {
+            if (_flamethrowerTestPs == null)
+            {
+                return;
+            }
+
+            if (!TryGetFlamethrowerPose(out Vector2 origin, out Vector2 liveDirection))
+            {
+                return;
+            }
+
+            Vector2 dir = (_lockFlamethrowerDirectionWhileShooting && _hasLockedFlamethrowerDirection)
+                ? _lockedFlamethrowerDirection
+                : liveDirection;
+
+            float z = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg + _flamethrowerVfxAngleOffsetDegrees;
+            Transform vfxTransform = _flamethrowerTestPs.transform;
+            vfxTransform.SetPositionAndRotation(origin, Quaternion.Euler(0f, 0f, z));
+            EnsureFlamethrowerSimulationSpaceLocal();
+            ApplyFlamethrowerForceFromAim(dir);
+        }
+
+        private void EnsureFlamethrowerSimulationSpaceLocal()
+        {
+            if (_flamethrowerTestPs == null)
+            {
+                return;
+            }
+
+            ParticleSystem.MainModule main = _flamethrowerTestPs.main;
+            if (main.simulationSpace != ParticleSystemSimulationSpace.Local)
+            {
+                main.simulationSpace = ParticleSystemSimulationSpace.Local;
+            }
+        }
+
+        private void ApplyFlamethrowerForceFromAim(Vector2 direction)
+        {
+            if (!_driveFlamethrowerForceFromAim || _flamethrowerTestPs == null)
+            {
+                return;
+            }
+
+            if (direction.sqrMagnitude <= 0.0001f)
+            {
+                return;
+            }
+
+            Vector2 dir = direction.normalized;
+            float strength = Mathf.Max(0f, _flamethrowerAimForceStrength);
+
+            ParticleSystem.ForceOverLifetimeModule force = _flamethrowerTestPs.forceOverLifetime;
+            force.enabled = true;
+            force.space = ParticleSystemSimulationSpace.World;
+            force.x = new ParticleSystem.MinMaxCurve(dir.x * strength);
+            force.y = new ParticleSystem.MinMaxCurve(dir.y * strength);
+        }
+
+        private bool TryGetFlamethrowerPose(out Vector2 origin, out Vector2 direction)
+        {
+            origin = default;
+            direction = default;
+
+            if (_skeletonAnimation == null || _flamethrowerAimBone == null || _crossHairBone == null)
+            {
+                return false;
+            }
+
+            origin = _skeletonAnimation.transform.TransformPoint(
+                new Vector3(_flamethrowerAimBone.WorldX, _flamethrowerAimBone.WorldY, 0f));
+            Vector2 target = _skeletonAnimation.transform.TransformPoint(
+                new Vector3(_crossHairBone.WorldX, _crossHairBone.WorldY, 0f));
+            Vector2 dir = target - origin;
+            if (dir.sqrMagnitude <= 0.0001f)
+            {
+                return false;
+            }
+
+            direction = dir.normalized;
+            return true;
+        }
+
+        private void ApplyFlamethrowerSprayProfile()
+        {
+            if (!_autoTuneFlamethrowerParticleSpeed || _flamethrowerTestPs == null)
+            {
+                return;
+            }
+
+            float lifetime = Mathf.Max(0.05f, _flamethrowerSprayTravelSeconds);
+            float distance = Mathf.Max(0.5f, _flamethrowerSprayDistanceMeters);
+            float requiredSpeed = distance / lifetime;
+
+            ParticleSystem.MainModule main = _flamethrowerTestPs.main;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(lifetime);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(requiredSpeed);
+            main.startSize = new ParticleSystem.MinMaxCurve(Mathf.Max(0.01f, _flamethrowerBeamStartSize));
+            main.simulationSpace = ParticleSystemSimulationSpace.Local;
+            main.gravityModifier = new ParticleSystem.MinMaxCurve(0f);
+            main.emitterVelocityMode = ParticleSystemEmitterVelocityMode.Transform;
+
+            ParticleSystem.EmissionModule emission = _flamethrowerTestPs.emission;
+            if (!emission.enabled)
+            {
+                emission.enabled = true;
+            }
+            emission.rateOverTime = new ParticleSystem.MinMaxCurve(Mathf.Max(1f, _flamethrowerBeamEmissionRate));
+
+            if (_autoConfigureFlamethrowerAsBeam)
+            {
+                ParticleSystem.ShapeModule shape = _flamethrowerTestPs.shape;
+                shape.enabled = true;
+                shape.shapeType = ParticleSystemShapeType.Cone;
+                shape.angle = Mathf.Clamp(_flamethrowerBeamSpreadAngle, 0.1f, 25f);
+                shape.radius = 0.01f;
+                shape.radiusThickness = 1f;
+                shape.arc = 360f;
+                shape.alignToDirection = true;
+                shape.randomDirectionAmount = 0f;
+                shape.sphericalDirectionAmount = 0f;
+
+                // Many imported fire presets rely on noise/turbulence for campfires.
+                // Disable these for a narrow flamethrower jet profile.
+                ParticleSystem.NoiseModule noise = _flamethrowerTestPs.noise;
+                if (noise.enabled)
+                {
+                    noise.enabled = false;
+                }
+
+                ParticleSystem.VelocityOverLifetimeModule velocity = _flamethrowerTestPs.velocityOverLifetime;
+                if (velocity.enabled)
+                {
+                    velocity.enabled = false;
+                }
+
+                ParticleSystem.ForceOverLifetimeModule force = _flamethrowerTestPs.forceOverLifetime;
+                if (force.enabled)
+                {
+                    force.enabled = false;
+                }
+
+                ParticleSystem.LimitVelocityOverLifetimeModule limitVelocity = _flamethrowerTestPs.limitVelocityOverLifetime;
+                if (limitVelocity.enabled)
+                {
+                    limitVelocity.enabled = false;
+                }
+
+                ParticleSystem.InheritVelocityModule inheritVelocity = _flamethrowerTestPs.inheritVelocity;
+                if (inheritVelocity.enabled)
+                {
+                    inheritVelocity.enabled = false;
+                }
+            }
+
+            if (_autoConfigureFlamethrowerBeamRenderer &&
+                _flamethrowerTestPs.TryGetComponent(out ParticleSystemRenderer psRenderer))
+            {
+                psRenderer.renderMode = ParticleSystemRenderMode.Stretch;
+                psRenderer.lengthScale = Mathf.Max(0.1f, _flamethrowerBeamLengthScale);
+                psRenderer.velocityScale = Mathf.Max(0f, _flamethrowerBeamSpeedScale);
+                psRenderer.cameraVelocityScale = 0f;
+                psRenderer.normalDirection = 1f;
+                psRenderer.alignment = ParticleSystemRenderSpace.View;
+                psRenderer.sortMode = ParticleSystemSortMode.None;
+                psRenderer.shadowCastingMode = ShadowCastingMode.Off;
+                psRenderer.receiveShadows = false;
+            }
+        }
+
+        private void LogFlamethrowerParticleDebug()
+        {
+            if (_flamethrowerTestPs == null)
+            {
+                Debug.Log("[HeroView_V2 FlamethrowerVfx] Missing particle system reference.");
+                return;
+            }
+
+            ParticleSystem.MainModule main = _flamethrowerTestPs.main;
+            ParticleSystem.ShapeModule shape = _flamethrowerTestPs.shape;
+            ParticleSystem.EmissionModule emission = _flamethrowerTestPs.emission;
+            ParticleSystem.NoiseModule noise = _flamethrowerTestPs.noise;
+            ParticleSystem.VelocityOverLifetimeModule velocity = _flamethrowerTestPs.velocityOverLifetime;
+            ParticleSystem.ForceOverLifetimeModule force = _flamethrowerTestPs.forceOverLifetime;
+            ParticleSystem.LimitVelocityOverLifetimeModule limitVelocity = _flamethrowerTestPs.limitVelocityOverLifetime;
+            ParticleSystem.InheritVelocityModule inheritVelocity = _flamethrowerTestPs.inheritVelocity;
+            Transform t = _flamethrowerTestPs.transform;
+
+            Debug.Log(
+                "[HeroView_V2 FlamethrowerVfx] " +
+                $"playing={_flamethrowerTestPs.isPlaying} simSpace={main.simulationSpace} " +
+                $"lifetime={main.startLifetime.constant:0.###} speed={main.startSpeed.constant:0.###} size={main.startSize.constant:0.###} " +
+                $"gravity={main.gravityModifier.constant:0.###} emitterVelMode={main.emitterVelocityMode} " +
+                $"shapeEnabled={shape.enabled} shapeType={shape.shapeType} angle={shape.angle:0.###} radius={shape.radius:0.###} " +
+                $"randDir={shape.randomDirectionAmount:0.###} sphericalDir={shape.sphericalDirectionAmount:0.###} alignToDir={shape.alignToDirection} " +
+                $"emissionEnabled={emission.enabled} rate={emission.rateOverTime.constant:0.###} " +
+                $"noise={noise.enabled} velocityOverLifetime={velocity.enabled} forceOverLifetime={force.enabled} " +
+                $"limitVelocity={limitVelocity.enabled} inheritVelocity={inheritVelocity.enabled} " +
+                $"worldPos=({t.position.x:0.##},{t.position.y:0.##},{t.position.z:0.##}) eulerZ={t.eulerAngles.z:0.##}");
         }
 
         private static WeaponAnimationSet CreateAnimationSet(
