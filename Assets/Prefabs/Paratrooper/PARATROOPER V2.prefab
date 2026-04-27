@@ -2360,6 +2360,9 @@ MonoBehaviour:
   _fireRunDeathAnim: {fileID: 11400000, guid: e459eb22154a8eb47a9dc4913b2942f4, type: 2}
   _glideFireAnim: {fileID: 11400000, guid: 8a8c2d9ecc990ee47ab655c52a4b18f0, type: 2}
   _glideFireDeathAnim: {fileID: 11400000, guid: aca2e5108809094408cc3c0ce5021fc6, type: 2}
+  _burnFirePrefab: {fileID: 8531375049152256315, guid: 1d20462e92000ea438d829d964b3c6a0, type: 3}
+  _burnFireLocalOffset: {x: 0, y: 0.45, z: 0}
+  _debugBurnVfxLogs: 0
   _debugAnimationLogs: 1
   _debugParachuteLogs: 1
   _gibForce: 9.5
