@@ -58,6 +58,9 @@ public class ParatrooperModel_V2 : MonoBehaviour
 
     /// <summary>Skip a second ground-death clip: impact already ran on <see cref="StickmanBodyState.Land"/> after <see cref="StickmanBodyState.GlideDie"/>.</summary>
     public bool suppressDieAnimationFromAirborneImpact;
+    public bool isBurning;
+    public float burnDieAtTime;
+    public bool burnFromAirborneFlamethrower;
 
     public Dictionary<BodyPartType, float> damageMultipliers;
 
@@ -71,7 +74,24 @@ public class ParatrooperModel_V2 : MonoBehaviour
         ApplyDamageProfile();
         pendingDieAfterLandAnim = false;
         suppressDieAnimationFromAirborneImpact = false;
+        isBurning = false;
+        burnDieAtTime = -1f;
+        burnFromAirborneFlamethrower = false;
         currentState = StickmanBodyState.Idle;
+    }
+
+    public void StartBurning(float durationSeconds, bool airborneBurn)
+    {
+        isBurning = true;
+        burnDieAtTime = Time.time + Mathf.Max(0.1f, durationSeconds);
+        burnFromAirborneFlamethrower = airborneBurn;
+    }
+
+    public void StopBurning()
+    {
+        isBurning = false;
+        burnDieAtTime = -1f;
+        burnFromAirborneFlamethrower = false;
     }
 
     private void OnValidate()

@@ -467,6 +467,16 @@ MonoBehaviour:
   _onlyLogWhenSummaryChanges: 1
   _warnWhenColliderSummaryIsNotFull: 1
   _autoFixBodyPartLayerToEnemyBodyPart: 1
+  _autoDespawnWhenOutsideMainCamera: 1
+  _offscreenViewportMargin: 0.05
+  _offscreenDespawnDelaySeconds: 0.75
+  _requireVisibleBeforeOffscreenDespawn: 1
+  _enableWorldBoundsSafetyDespawn: 1
+  _worldBoundsMin: {x: -40, y: -20}
+  _worldBoundsMax: {x: 40, y: 25}
+  _enableLifetimeSafetyDespawn: 1
+  _maxLifetimeSeconds: 90
+  _debugSafetyDespawnLogs: 0
 --- !u!114 &6969535851954692921
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -482,7 +492,10 @@ MonoBehaviour:
   _tryImmediateGrenadeOnLand: 1
   _forcedGrenadeDelayAfterLandingSeconds: 1.25
   _grenadeToShootFallbackSeconds: 0.9
+  _maxSecondsInGrenadeState: 4
   _debugGrenadeOnlyMode: 0
+  _debugParatrooperCombatLogs: 0
+  _debugCombatLogThrottleSeconds: 0.35
 --- !u!114 &5122995855953606031
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -498,6 +511,9 @@ MonoBehaviour:
   _enableExplosiveGibDeath: 1
   _explodeOnAnyExplosiveHit: 1
   _explosiveGibDamageThreshold: 40
+  _enableFlamethrowerBurnDeath: 1
+  _flamethrowerBurnDeathDelaySeconds: 1.8
+  _flamethrowerAirborneBurnDeathDelaySeconds: 1.3
 --- !u!114 &3884552245145279488
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -511,6 +527,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperDeathHandler_V2
   scoreValue: 0
+  _groundDeathDespawnDelaySeconds: 2
+  _airborneImpactDespawnDelaySeconds: 1.6
+  _maxWaitForAirborneGroundImpactSeconds: 12
 --- !u!114 &577552315399567751
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -529,6 +548,9 @@ MonoBehaviour:
   currentState: 0
   pendingDieAfterLandAnim: 0
   suppressDieAnimationFromAirborneImpact: 0
+  isBurning: 0
+  burnDieAtTime: 0
+  burnFromAirborneFlamethrower: 0
 --- !u!114 &2782605750978404735
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -587,7 +609,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   _debugDisableMp40Shooting: 0
-  _potatomasherProjectilePrefab: {fileID: 7106101186618047853, guid: 4c0e7ad0db2ad264db837d66759d68a9, type: 3}
+  _potatomasherProjectilePrefab: {fileID: 0}
   _grenadeThrowPoint: {fileID: 0}
   _grenadeBoneName: grenadeBone
   _grenadeThrowSpeed: 7.5
@@ -2334,6 +2356,10 @@ MonoBehaviour:
   _landFallDownBack2Anim: {fileID: 11400000, guid: f0dcdae40f9ca6e46ae57a281c51aa5f, type: 2}
   _landFallDownBack3Anim: {fileID: 11400000, guid: 71a254a9373ecf541beea850bacb8b26, type: 2}
   _shootingMP40Anim: {fileID: 11400000, guid: 672b08387407ca147b3ae4fc3152da67, type: 2}
+  _fireRunAnim: {fileID: 11400000, guid: e7501a15d121b2f478a202f56e79795c, type: 2}
+  _fireRunDeathAnim: {fileID: 11400000, guid: e459eb22154a8eb47a9dc4913b2942f4, type: 2}
+  _glideFireAnim: {fileID: 11400000, guid: 8a8c2d9ecc990ee47ab655c52a4b18f0, type: 2}
+  _glideFireDeathAnim: {fileID: 11400000, guid: aca2e5108809094408cc3c0ce5021fc6, type: 2}
   _debugAnimationLogs: 1
   _debugParachuteLogs: 1
   _gibForce: 9.5

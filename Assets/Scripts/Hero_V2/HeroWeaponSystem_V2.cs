@@ -199,6 +199,7 @@ namespace iStick2War_V2
                 WhatToHit = LayerMask.GetMask("EnemyBodyPart"),
                 BaseDamage = baseDamage,
                 AircraftDamage = aircraftDamage,
+                WeaponType = _model.currentWeaponType,
                 DebugDrawShotRay = debugRay
             };
         }

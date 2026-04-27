@@ -865,6 +865,13 @@ namespace iStick2War_V2
                 return;
             }
 
+            // Safety gate: never emit flamethrower VFX unless fire input is actually held.
+            if (!_model.isShootingPressed)
+            {
+                StopFlamethrowerVfxIfActive();
+                return;
+            }
+
             if (_flamethrowerTestPs == null)
             {
                 return;

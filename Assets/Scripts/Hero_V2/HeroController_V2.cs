@@ -51,6 +51,7 @@ namespace iStick2War_V2
         private static readonly bool DebugCombatLogs = false;
         private bool _isShootLoopActive;
         private bool _outOfAmmoLatched;
+        private float _nextFlamethrowerDebugLogAt;
 
         public HeroController_V2(
             HeroModel_V2 model,
@@ -265,6 +266,14 @@ namespace iStick2War_V2
                     // Allow strafe/run while the shoot loop is active.
                     _movementSystem.Move(_model.moveInput, deltaTime);
                     _view.UpdateShootLocomotion(_model.moveInput != Vector2.zero);
+                    // Flamethrower must deal continuous damage while held, even if Spine shoot events
+                    // are sparse/missing in a looped clip.
+                    if (_isShootLoopActive &&
+                        _input.IsShootingHeld &&
+                        _model.currentWeaponType == WeaponType.Flamethrower)
+                    {
+                        TryShootNow();
+                    }
                     break;
 
                 case HeroState.Reloading:
@@ -327,9 +336,16 @@ namespace iStick2War_V2
                 return;
             }
 
+            bool isFlamethrower = _model.currentWeaponType == WeaponType.Flamethrower;
+
             if (!_view.TryGetAimData(out var aimPos, out var direction))
             {
                 Debug.LogWarning("[HeroController_V2] TryShootNow: TryGetAimData failed.");
+                if (isFlamethrower && Time.time >= _nextFlamethrowerDebugLogAt)
+                {
+                    _nextFlamethrowerDebugLogAt = Time.time + 0.2f;
+                    Debug.LogWarning("[HeroController_V2] Flamethrower debug: aim data invalid this tick.");
+                }
                 return;
             }
 
@@ -344,6 +360,16 @@ namespace iStick2War_V2
             if (_weaponSystem.Shoot(shotContext, out var shotResult))
             {
                 _view.PlayShotTrail(aimPos, shotResult.FinalPos);
+                if (isFlamethrower && Time.time >= _nextFlamethrowerDebugLogAt)
+                {
+                    _nextFlamethrowerDebugLogAt = Time.time + 0.2f;
+                    string hitName = shotResult.DidHit && shotResult.Hit.collider != null
+                        ? shotResult.Hit.collider.name
+                        : "none";
+                    Debug.Log(
+                        $"[HeroController_V2] Flamethrower debug: shot committed. didHit={shotResult.DidHit}, " +
+                        $"hitCollider={hitName}, aimPos={aimPos}, dir={direction}, ammo={_model.currentAmmo}");
+                }
             }
         }
 

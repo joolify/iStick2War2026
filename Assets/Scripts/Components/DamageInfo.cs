@@ -13,5 +13,6 @@ namespace Assets.Scripts.Components
         public Vector2 HitPoint;
         public bool IsExplosive;
         public float ExplosionForce;
+        public WeaponType WeaponType;
     }
 }

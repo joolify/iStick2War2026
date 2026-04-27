@@ -1,4 +1,5 @@
 using Assets.Scripts.Components;
+using iStick2War;
 using UnityEngine;
 
 namespace iStick2War_V2
@@ -12,6 +13,7 @@ namespace iStick2War_V2
         public float BaseDamage;
         /// <summary>Hit-scan damage to aircraft (AircraftHealth_V2), per weapon.</summary>
         public float AircraftDamage;
+        public WeaponType WeaponType;
         public bool DebugDrawShotRay;
     }
 
@@ -30,6 +32,7 @@ namespace iStick2War_V2
     {
         private const float FallbackHitRadius = 0.12f;
         private static readonly bool DebugShotLogs = false;
+        private static float _nextFlamethrowerDebugLogAt;
 
         public HeroShotResult_V2 ResolveShot(HeroShotContext_V2 context)
         {
@@ -77,6 +80,8 @@ namespace iStick2War_V2
                 }
             }
 
+            LogFlamethrowerShotTrace(context, normalizedDirection, range, hit);
+
             return new HeroShotResult_V2
             {
                 DidHit = hit.collider != null,
@@ -94,11 +99,18 @@ namespace iStick2War_V2
                 {
                     BaseDamage = context.BaseDamage,
                     HitPoint = hit.point,
+                    WeaponType = context.WeaponType,
                 };
 
                 try
                 {
                     bodyPart.OnHit(damageInfo);
+                    if (context.WeaponType == WeaponType.Flamethrower)
+                    {
+                        Debug.Log(
+                            $"[HeroShotResolver_V2] Flamethrower damage applied to body part '{bodyPart.bodyPart}' " +
+                            $"on collider '{hit.collider.name}' at {hit.point}.");
+                    }
                 }
                 catch (System.Exception ex)
                 {
@@ -132,6 +144,31 @@ namespace iStick2War_V2
             {
                 Debug.LogWarning(message);
             }
+        }
+
+        private static void LogFlamethrowerShotTrace(
+            HeroShotContext_V2 context,
+            Vector2 normalizedDirection,
+            float range,
+            RaycastHit2D hit)
+        {
+            if (context.WeaponType != WeaponType.Flamethrower)
+            {
+                return;
+            }
+
+            if (Time.time < _nextFlamethrowerDebugLogAt)
+            {
+                return;
+            }
+
+            _nextFlamethrowerDebugLogAt = Time.time + 0.2f;
+            string colliderName = hit.collider != null ? hit.collider.name : "none";
+            string colliderLayer = hit.collider != null ? LayerMask.LayerToName(hit.collider.gameObject.layer) : "none";
+            Debug.Log(
+                $"[HeroShotResolver_V2] Flamethrower trace: origin={context.Origin}, dir={normalizedDirection}, " +
+                $"range={range:0.##}, mask={context.WhatToHit.value}, hit={hit.collider != null}, " +
+                $"collider={colliderName}, layer={colliderLayer}");
         }
     }
 }
