@@ -202,7 +202,21 @@ namespace iStick2War_V2
                     $"[ShopPanel_V2] BUY clicked: offer='{offer.DisplayName}', kind={offer.Kind}, cost={offer.Cost}");
             }
 
-            bool ok = _waveManager.TryPurchaseOffer(offer);
+            bool ok;
+            // UX guard: if player is on an AmmoRefill row for a locked weapon, BUY should still progress
+            // by purchasing the matching WeaponUnlock row first (if configured).
+            if (offer.Kind == ShopOfferKind_V2.AmmoRefill &&
+                offer.Weapon != null &&
+                !_waveManager.IsWeaponOwned(offer.Weapon))
+            {
+                ShopOfferConfig_V2 unlockOffer = FindWeaponUnlockOfferFor(offer.Weapon);
+                ok = unlockOffer != null && _waveManager.TryPurchaseOffer(unlockOffer);
+            }
+            else
+            {
+                ok = _waveManager.TryPurchaseOffer(offer);
+            }
+
             if (_debugShopNavigationLogs)
             {
                 Debug.Log($"[ShopPanel_V2] TryPurchaseOffer -> {ok}");
@@ -472,7 +486,9 @@ namespace iStick2War_V2
 
                     if (!_waveManager.IsWeaponOwned(offer.Weapon))
                     {
-                        return "LOCKED";
+                        return FindWeaponUnlockOfferFor(offer.Weapon) != null
+                            ? "BUY WEAPON"
+                            : "LOCKED";
                     }
 
                     if (_waveManager.IsWeaponAmmoFull(offer.Weapon))
@@ -485,6 +501,31 @@ namespace iStick2War_V2
                 default:
                     return _buyButtonDefaultLabel;
             }
+        }
+
+        private ShopOfferConfig_V2 FindWeaponUnlockOfferFor(HeroWeaponDefinition_V2 weapon)
+        {
+            if (_shopOffers == null || weapon == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < _shopOffers.Count; i++)
+            {
+                ShopOfferConfig_V2 candidate = _shopOffers[i];
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                if (candidate.Kind == ShopOfferKind_V2.WeaponUnlock &&
+                    candidate.Weapon == weapon)
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
         }
 
         private void HandleMetaChanged(int wave, int currency, int bunkerHp)

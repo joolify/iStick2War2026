@@ -36,6 +36,26 @@ namespace iStick2War_V2
 
         private void OnMouseDown()
         {
+            WaveManager_V2 waveManager = Object.FindAnyObjectByType<WaveManager_V2>();
+            if (waveManager != null)
+            {
+                WaveLoopState_V2 state = waveManager.State;
+                bool gameplayOwnsInput =
+                    state == WaveLoopState_V2.Preparing ||
+                    state == WaveLoopState_V2.InWave ||
+                    state == WaveLoopState_V2.Shop;
+                if (gameplayOwnsInput)
+                {
+                    if (_debugLogs)
+                    {
+                        Debug.Log(
+                            $"[MainMenuNavButton_V2] Ignored click on '{name}' while gameplay state is {state}.");
+                    }
+
+                    return;
+                }
+            }
+
             if (_action == MenuAction.ReturnToMainMenu)
             {
                 if (_debugLogs)
