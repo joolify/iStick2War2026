@@ -342,7 +342,9 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
 
     private bool TrySeverBodyPart(DamageInfo info, float finalDamage, bool isDead)
     {
-        if (!_enableBodyPartSevering || isDead)
+        // Allow severing even on lethal hits.
+        // Otherwise, high-damage hits (commonly headshots) kill the enemy before severing can trigger.
+        if (!_enableBodyPartSevering)
         {
             return false;
         }
