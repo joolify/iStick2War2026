@@ -1,5 +1,6 @@
 using Assets.Scripts.Components;
 using iStick2War;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -46,16 +47,25 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
     [SerializeField] private bool _enableFlamethrowerBurnDeath = true;
     [SerializeField] private float _flamethrowerBurnDeathDelaySeconds = 1.8f;
     [SerializeField] private float _flamethrowerAirborneBurnDeathDelaySeconds = 1.3f;
+    [Header("Body part severing")]
+    [SerializeField] private bool _enableBodyPartSevering = true;
+    [SerializeField] private float _minFinalDamageToSever = 18f;
+    [SerializeField] private bool _allowTorsoSever = false;
+    [SerializeField] private bool _allowHeadSever = true;
+    [SerializeField] private bool _debugDamagePathLogs = true;
 
     private ParatrooperModel_V2 _model;
     private ParatrooperStateMachine_V2 _stateMachine;
     private Paratrooper _paratrooper;
     private bool _deathStateSent;
+    private readonly HashSet<BodyPartType> _severedParts = new HashSet<BodyPartType>();
     public event System.Action<Vector2, float> OnExploded;
+    public event System.Action<BodyPartType, Vector2, float> OnBodyPartSevered;
 
     private void OnEnable()
     {
         _deathStateSent = false;
+        _severedParts.Clear();
     }
 
     void Awake()
@@ -131,6 +141,7 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
 
         float remainingHealth = _model.ApplyDamage(finalDamage);
         bool isDead = _model.IsDead();
+        bool severedPart = TrySeverBodyPart(info, finalDamage, isDead);
 
         if (shouldExplode && !isDead)
         {
@@ -154,6 +165,13 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
 
         if (teslaKillShowElectrocuteFirst)
         {
+            LogDamagePath(
+                "tesla_lethal_electrocute",
+                info,
+                finalDamage,
+                isDead,
+                shouldExplode,
+                severedPart);
             _deathStateSent = true;
             _model.pendingDieAfterElectrocuteAnim = true;
             _model.hasResumeStateAfterTeslaElectrocute = false;
@@ -176,6 +194,13 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
         }
         else if (isDead || shouldExplode)
         {
+            LogDamagePath(
+                shouldExplode ? "explosive_death" : "lethal_death",
+                info,
+                finalDamage,
+                isDead,
+                shouldExplode,
+                severedPart);
             if (!_deathStateSent)
             {
                 _deathStateSent = true;
@@ -199,6 +224,13 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
         }
         else
         {
+            LogDamagePath(
+                severedPart ? "body_part_sever" : "normal_damage",
+                info,
+                finalDamage,
+                isDead,
+                shouldExplode,
+                severedPart);
             // Keep air states when shot in the air so parachute glide movement is not interrupted.
             // Also keep combat states while taking damage on the ground so we do not
             // break Grenade -> Shoot flow by forcing a Land restart.
@@ -306,6 +338,59 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
             return value;
 
         return 1f;
+    }
+
+    private bool TrySeverBodyPart(DamageInfo info, float finalDamage, bool isDead)
+    {
+        if (!_enableBodyPartSevering || isDead)
+        {
+            return false;
+        }
+
+        if (info.IsExplosive || info.SourceWeapon == WeaponType.Tesla || info.SourceWeapon == WeaponType.Flamethrower)
+        {
+            return false;
+        }
+
+        if (finalDamage < _minFinalDamageToSever)
+        {
+            return false;
+        }
+
+        BodyPartType part = info.BodyPart;
+        if ((!_allowHeadSever && part == BodyPartType.Head) ||
+            (!_allowTorsoSever && part == BodyPartType.Torso))
+        {
+            return false;
+        }
+
+        if (_severedParts.Contains(part))
+        {
+            return false;
+        }
+
+        _severedParts.Add(part);
+        OnBodyPartSevered?.Invoke(part, info.HitPoint, Mathf.Max(0.2f, finalDamage / 22f));
+        return true;
+    }
+
+    private void LogDamagePath(
+        string pathTag,
+        DamageInfo info,
+        float finalDamage,
+        bool isDead,
+        bool shouldExplode,
+        bool severedPart)
+    {
+        if (!_debugDamagePathLogs)
+        {
+            return;
+        }
+
+        Debug.Log(
+            $"[ParatrooperDamageReceiver_V2] DamagePath={pathTag}, weapon={info.SourceWeapon}, part={info.BodyPart}, " +
+            $"finalDamage={finalDamage:0.##}, explosiveHit={info.IsExplosive}, shouldExplode={shouldExplode}, " +
+            $"severed={severedPart}, hp={_model.health:0.##}, dead={isDead}");
     }
 }
 }

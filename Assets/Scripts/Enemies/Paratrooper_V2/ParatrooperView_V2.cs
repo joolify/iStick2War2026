@@ -2,8 +2,10 @@ using Assets.Scripts.Components;
 using iStick2War;
 using Spine;
 using Spine.Unity;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 /// <summary>
 /// ParatrooperView (Visual & Presentation Layer)
@@ -40,6 +42,7 @@ using UnityEngine;
 /// </remarks>
 namespace iStick2War_V2
 {
+[DefaultExecutionOrder(1000)]
 public class ParatrooperView_V2 : MonoBehaviour
 {
     private static readonly string[] DefaultGibBoneNames =
@@ -65,6 +68,17 @@ public class ParatrooperView_V2 : MonoBehaviour
         public string Label;
         public string BoneName;
         public GameObject Prefab;
+        public Vector3 LocalOffset = Vector3.zero;
+        public float Scale = 1f;
+    }
+
+    [Serializable]
+    private class SeveredPartEntry
+    {
+        public BodyPartType BodyPart;
+        public string BoneName;
+        public GameObject Prefab;
+        public List<string> SlotsToHide = new List<string>();
         public Vector3 LocalOffset = Vector3.zero;
         public float Scale = 1f;
     }
@@ -135,8 +149,20 @@ public class ParatrooperView_V2 : MonoBehaviour
     [SerializeField] private int _gibSortingOrder = 6000;
     [SerializeField] private float _gibWorldZ = 0f;
     [SerializeField] private string _gibPhysicsLayerName = "";
+    [Header("Body part severing")]
+    [SerializeField] private List<SeveredPartEntry> _severedPartEntries = new List<SeveredPartEntry>();
+    [SerializeField] private float _severedPartLifetime = 5f;
+    [SerializeField] private float _severedPartForce = 6.5f;
+    [SerializeField] private float _severedPartTorque = 160f;
+    [SerializeField] private bool _debugSeverLogs = true;
     private GameObject _activeBurnFireVfx;
     private const string DefaultBurnFirePrefabPath = "Assets/Prefabs/Paratrooper/Paratrooper_Fire Variant.prefab";
+    private readonly HashSet<BodyPartType> _alreadySeveredParts = new HashSet<BodyPartType>();
+    // Stable variant selections so we can re-apply hiding/showing in LateUpdate without flicker.
+    private string _torsoShootChoice;
+    private string _legUpperShootChoice;
+    private string _legLowerShootChoice;
+    private string _armUpperShootChoice;
 
     public void Initialize(
         ParatrooperStateMachine_V2 stateMachine,
@@ -238,6 +264,7 @@ public class ParatrooperView_V2 : MonoBehaviour
         _suppressParachuteVisuals = false;
         _groundDeathParachuteLogPrinted = false;
         _lastStateBeforeChange = StickmanBodyState.Idle;
+        _alreadySeveredParts.Clear();
 
         if (_skeletonAnimation == null)
         {
@@ -279,6 +306,35 @@ public class ParatrooperView_V2 : MonoBehaviour
         }
 
         ResolveAimBones();
+    }
+
+    public void HandleBodyPartSevered(BodyPartType bodyPart, Vector2 hitPoint, float severity)
+    {
+        if (_alreadySeveredParts.Contains(bodyPart))
+        {
+            return;
+        }
+
+        SeveredPartEntry entry = FindSeveredPartEntry(bodyPart);
+        string boneName = entry != null && !string.IsNullOrWhiteSpace(entry.BoneName)
+            ? entry.BoneName
+            : ResolveDefaultBoneForBodyPart(bodyPart);
+
+        if (string.IsNullOrWhiteSpace(boneName) || _skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
+        {
+            return;
+        }
+
+        Bone bone = _skeletonAnimation.Skeleton.FindBone(boneName);
+        if (bone == null)
+        {
+            return;
+        }
+
+        _alreadySeveredParts.Add(bodyPart);
+        HideSeveredSlots(entry);
+        UpdateSkinPlaceholdersAfterSever(bodyPart);
+        SpawnSeveredPartVisual(entry, bone, hitPoint, severity);
     }
 
     private static Spine.Animation AnimationFromRef(AnimationReferenceAsset reference)
@@ -846,6 +902,12 @@ public class ParatrooperView_V2 : MonoBehaviour
             {
                 EnsureBurnGlideVisualActive();
             }
+        }
+
+        // Re-apply severing placeholder visibility after Spine animation update, so animations don't re-show hidden body-part slots.
+        if (_alreadySeveredParts.Count > 0)
+        {
+            ApplySeveredBodyPartPlaceholdersFromState();
         }
 
         if (!_suppressParachuteVisuals)
@@ -1556,6 +1618,552 @@ public class ParatrooperView_V2 : MonoBehaviour
                 }
             }
         }
+    }
+
+    private SeveredPartEntry FindSeveredPartEntry(BodyPartType bodyPart)
+    {
+        if (_severedPartEntries == null)
+        {
+            return null;
+        }
+
+        for (int i = 0; i < _severedPartEntries.Count; i++)
+        {
+            SeveredPartEntry candidate = _severedPartEntries[i];
+            if (candidate != null && candidate.BodyPart == bodyPart)
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static string ResolveDefaultBoneForBodyPart(BodyPartType bodyPart)
+    {
+        switch (bodyPart)
+        {
+            case BodyPartType.Head: return "head";
+            case BodyPartType.ArmUpperFront: return "arm-upper-front";
+            case BodyPartType.ArmUpperBack: return "arm-upper-back";
+            case BodyPartType.ArmLowerFront: return "arm-lower-front";
+            case BodyPartType.ArmLowerBack: return "arm-lower-back";
+            case BodyPartType.LegUpperFront: return "leg-upper-front";
+            case BodyPartType.LegUpperBack: return "leg-upper-back";
+            case BodyPartType.LegLowerFront: return "leg-lower-front";
+            case BodyPartType.LegLowerBack: return "leg-lower-back";
+            case BodyPartType.FootFront: return "foot-front";
+            case BodyPartType.FootBack: return "foot-back";
+            case BodyPartType.Torso: return "chest";
+            default: return string.Empty;
+        }
+    }
+
+    private void HideSeveredSlots(SeveredPartEntry entry)
+    {
+        if (entry == null || entry.SlotsToHide == null || _skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < entry.SlotsToHide.Count; i++)
+        {
+            string slotName = entry.SlotsToHide[i];
+            if (string.IsNullOrWhiteSpace(slotName))
+            {
+                continue;
+            }
+
+            Slot slot = _skeletonAnimation.Skeleton.FindSlot(slotName);
+            if (slot != null)
+            {
+                slot.Attachment = null;
+                slot.A = 0f; // ensure animation/keyed visibility cannot re-show this slot
+            }
+        }
+    }
+
+    private void SpawnSeveredPartVisual(SeveredPartEntry entry, Bone bone, Vector2 hitPoint, float severity)
+    {
+        if (bone == null || _skeletonAnimation == null)
+        {
+            return;
+        }
+
+        string boneName = bone.Data != null ? bone.Data.Name : string.Empty;
+        GameObject prefab = entry != null ? entry.Prefab : null;
+        if (prefab == null)
+        {
+            prefab = ResolveFallbackSeverPrefabByBoneName(boneName);
+        }
+
+        if (prefab == null)
+        {
+            if (_debugSeverLogs)
+            {
+                Debug.LogWarning(
+                    $"[ParatrooperView_V2] Body sever requested but no prefab found for bone '{boneName}'. " +
+                    "Assign a prefab in SeveredPartEntries or GibPartPrefabs.");
+            }
+            return;
+        }
+
+        Vector3 worldBone = _skeletonAnimation.transform.TransformPoint(new Vector3(bone.WorldX, bone.WorldY, 0f));
+        Vector3 localOffset = entry != null ? entry.LocalOffset : Vector3.zero;
+        Vector3 spawnPos = worldBone + localOffset;
+        spawnPos.z = _gibWorldZ;
+
+        Vector2 launchDir = ((Vector2)spawnPos - hitPoint);
+        if (launchDir.sqrMagnitude < 0.0001f)
+        {
+            launchDir = UnityEngine.Random.insideUnitCircle;
+        }
+        launchDir.Normalize();
+        launchDir.y = Mathf.Max(0.08f, launchDir.y);
+
+        float angle = Mathf.Atan2(launchDir.y, launchDir.x) * Mathf.Rad2Deg + UnityEngine.Random.Range(-16f, 16f);
+        GameObject severed = Instantiate(prefab, spawnPos, Quaternion.Euler(0f, 0f, angle));
+        float severScale = entry != null ? entry.Scale : 1f;
+        if (severScale > 0.001f)
+        {
+            severed.transform.localScale *= severScale;
+        }
+
+        ForceGibVisible(severed);
+
+        Rigidbody2D rb = severed.GetComponent<Rigidbody2D>();
+        if (rb == null)
+        {
+            rb = severed.AddComponent<Rigidbody2D>();
+        }
+
+        rb.bodyType = RigidbodyType2D.Dynamic;
+        rb.simulated = true;
+        rb.gravityScale = 1f;
+        rb.linearDamping = 0.24f;
+        rb.angularDamping = 0.14f;
+        rb.linearVelocity = Vector2.zero;
+        rb.angularVelocity = 0f;
+        float force = _severedPartForce * Mathf.Max(0.35f, severity);
+        rb.AddForce(launchDir * force, ForceMode2D.Impulse);
+        rb.AddTorque(UnityEngine.Random.Range(-_severedPartTorque, _severedPartTorque), ForceMode2D.Impulse);
+
+        if (_debugSeverLogs)
+        {
+            Debug.Log(
+                $"[ParatrooperView_V2] Sever spawn OK bone='{boneName}', prefab='{prefab.name}', " +
+                $"force={force:0.##}, severity={severity:0.##}");
+        }
+
+        Destroy(severed, Mathf.Max(0.3f, _severedPartLifetime));
+    }
+
+    private void UpdateSkinPlaceholdersAfterSever(BodyPartType newlySeveredPart)
+    {
+        if (_skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
+        {
+            return;
+        }
+
+        bool bothUpperLegsSevered =
+            _alreadySeveredParts.Contains(BodyPartType.LegUpperBack) &&
+            _alreadySeveredParts.Contains(BodyPartType.LegUpperFront);
+
+        // For stable LateUpdate re-application, pick the random variant once per sever event.
+        if (bothUpperLegsSevered)
+        {
+            _torsoShootChoice = null; // force new random torso-shoot variant
+            ApplySeveredBodyPartPlaceholdersFromState();
+            return;
+        }
+
+        switch (newlySeveredPart)
+        {
+            case BodyPartType.Head:
+                _torsoShootChoice = null;
+                break;
+
+            case BodyPartType.LegLowerBack:
+            case BodyPartType.LegLowerFront:
+            case BodyPartType.LegUpperBack:
+            case BodyPartType.LegUpperFront:
+                _legUpperShootChoice = null;
+                break;
+
+            case BodyPartType.FootBack:
+            case BodyPartType.FootFront:
+                _legLowerShootChoice = null;
+                break;
+
+            case BodyPartType.ArmLowerFront:
+            case BodyPartType.ArmLowerBack:
+            case BodyPartType.ArmUpperFront:
+            case BodyPartType.ArmUpperBack:
+                _armUpperShootChoice = null;
+                break;
+        }
+
+        ApplySeveredBodyPartPlaceholdersFromState();
+    }
+
+    private void ApplySeveredBodyPartPlaceholdersFromState()
+    {
+        if (_skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
+        {
+            return;
+        }
+
+        if (_alreadySeveredParts.Count == 0)
+        {
+            return;
+        }
+
+        string[] torsoOptions = { "torso-shoot", "torso-shoot2", "torso-shoot3" };
+        string[] legUpperShootOptions =
+            { "leg-upper-shoot", "leg-upper-shoot2", "leg-upper-shoot3", "leg-upper-shoot4" };
+        string[] legLowerShootOptions =
+            { "leg-lower-shoot1", "leg-lower-shoot2", "leg-lower-shoot3", "leg-lower-shoot4" };
+        string[] armUpperShootOptions = { "arm-upper-shoot", "arm-upper-shoot2" };
+
+        bool bothUpperLegsSevered =
+            _alreadySeveredParts.Contains(BodyPartType.LegUpperBack) &&
+            _alreadySeveredParts.Contains(BodyPartType.LegUpperFront);
+
+        // 1) Combined rule (both upper legs severed) has priority over any other leg rule.
+        if (bothUpperLegsSevered)
+        {
+            if (_debugSeverLogs)
+            {
+                Debug.Log(
+                    $"[ParatrooperView_V2] Combined legs severed: hide leg-upper/back/front + leg-lower/back/front + foot/back/front. " +
+                    $"alreadySevered={_alreadySeveredParts.Count}");
+            }
+
+            if (string.IsNullOrWhiteSpace(_torsoShootChoice))
+            {
+                _torsoShootChoice = torsoOptions[Random.Range(0, torsoOptions.Length)];
+            }
+
+            HidePlaceholderAttachment("leg-upper-back");
+            HidePlaceholderAttachment("leg-upper-front");
+            HidePlaceholderAttachment("leg-lower-back");
+            HidePlaceholderAttachment("leg-lower-front");
+            HidePlaceholderAttachment("foot-back");
+            HidePlaceholderAttachment("foot-front");
+
+            HidePlaceholderAttachments(legUpperShootOptions);
+            HidePlaceholderAttachments(legLowerShootOptions);
+            HidePlaceholderAttachments(torsoOptions);
+            ShowPlaceholderAttachment(_torsoShootChoice);
+        }
+        else
+        {
+            // 2) Leg rules (single-side severing).
+            if (_alreadySeveredParts.Contains(BodyPartType.LegUpperBack))
+            {
+                if (string.IsNullOrWhiteSpace(_legUpperShootChoice))
+                {
+                    _legUpperShootChoice = legUpperShootOptions[Random.Range(0, legUpperShootOptions.Length)];
+                }
+
+                HidePlaceholderAttachment("leg-upper-back");
+                HidePlaceholderAttachment("leg-lower-back");
+                HidePlaceholderAttachment("foot-back");
+                HidePlaceholderAttachments(legUpperShootOptions);
+                ShowPlaceholderAttachment(_legUpperShootChoice);
+            }
+
+            if (_alreadySeveredParts.Contains(BodyPartType.LegUpperFront))
+            {
+                if (string.IsNullOrWhiteSpace(_legUpperShootChoice))
+                {
+                    _legUpperShootChoice = legUpperShootOptions[Random.Range(0, legUpperShootOptions.Length)];
+                }
+
+                HidePlaceholderAttachment("leg-upper-front");
+                HidePlaceholderAttachment("leg-lower-front");
+                HidePlaceholderAttachment("foot-front");
+                HidePlaceholderAttachments(legUpperShootOptions);
+                ShowPlaceholderAttachment(_legUpperShootChoice);
+            }
+
+            if (_alreadySeveredParts.Contains(BodyPartType.LegLowerBack))
+            {
+                if (string.IsNullOrWhiteSpace(_legUpperShootChoice))
+                {
+                    _legUpperShootChoice = legUpperShootOptions[Random.Range(0, legUpperShootOptions.Length)];
+                }
+
+                HidePlaceholderAttachment("leg-lower-back");
+                HidePlaceholderAttachment("foot-back");
+                HidePlaceholderAttachments(legUpperShootOptions);
+                ShowPlaceholderAttachment(_legUpperShootChoice);
+            }
+
+            if (_alreadySeveredParts.Contains(BodyPartType.LegLowerFront))
+            {
+                if (string.IsNullOrWhiteSpace(_legUpperShootChoice))
+                {
+                    _legUpperShootChoice = legUpperShootOptions[Random.Range(0, legUpperShootOptions.Length)];
+                }
+
+                HidePlaceholderAttachment("leg-lower-front");
+                HidePlaceholderAttachment("foot-front");
+                HidePlaceholderAttachments(legUpperShootOptions);
+                ShowPlaceholderAttachment(_legUpperShootChoice);
+            }
+
+            if (_alreadySeveredParts.Contains(BodyPartType.FootBack))
+            {
+                if (string.IsNullOrWhiteSpace(_legLowerShootChoice))
+                {
+                    _legLowerShootChoice = legLowerShootOptions[Random.Range(0, legLowerShootOptions.Length)];
+                }
+
+                HidePlaceholderAttachment("foot-back");
+                HidePlaceholderAttachments(legLowerShootOptions);
+                ShowPlaceholderAttachment(_legLowerShootChoice);
+            }
+
+            if (_alreadySeveredParts.Contains(BodyPartType.FootFront))
+            {
+                if (string.IsNullOrWhiteSpace(_legLowerShootChoice))
+                {
+                    _legLowerShootChoice = legLowerShootOptions[Random.Range(0, legLowerShootOptions.Length)];
+                }
+
+                HidePlaceholderAttachment("foot-front");
+                HidePlaceholderAttachments(legLowerShootOptions);
+                ShowPlaceholderAttachment(_legLowerShootChoice);
+            }
+        }
+
+        // 3) Head rule.
+        if (_alreadySeveredParts.Contains(BodyPartType.Head))
+        {
+            HidePlaceholderAttachment("head");
+            if (!bothUpperLegsSevered)
+            {
+                if (string.IsNullOrWhiteSpace(_torsoShootChoice))
+                {
+                    _torsoShootChoice = torsoOptions[Random.Range(0, torsoOptions.Length)];
+                }
+
+                HidePlaceholderAttachments(torsoOptions);
+                ShowPlaceholderAttachment(_torsoShootChoice);
+            }
+        }
+
+        // 4) Arm rules.
+        // Spec mapping:
+        // - arm-lower-*
+        // - arm-upper-front -> hide arm-lower-front
+        // - arm-upper-back  -> hide arm-lower-back
+        bool wantArmFront = _alreadySeveredParts.Contains(BodyPartType.ArmLowerFront) ||
+                             _alreadySeveredParts.Contains(BodyPartType.ArmUpperFront);
+        bool wantArmBack = _alreadySeveredParts.Contains(BodyPartType.ArmLowerBack) ||
+                            _alreadySeveredParts.Contains(BodyPartType.ArmUpperBack);
+
+        if (wantArmFront || wantArmBack)
+        {
+            if (string.IsNullOrWhiteSpace(_armUpperShootChoice))
+            {
+                _armUpperShootChoice = armUpperShootOptions[Random.Range(0, armUpperShootOptions.Length)];
+            }
+
+            if (wantArmFront)
+            {
+                HidePlaceholderAttachment("arm-lower-front");
+            }
+
+            if (wantArmBack)
+            {
+                HidePlaceholderAttachment("arm-lower-back");
+            }
+
+            HidePlaceholderAttachments(armUpperShootOptions);
+            ShowPlaceholderAttachment(_armUpperShootChoice);
+        }
+    }
+
+    private void HidePlaceholderAttachment(string attachmentName)
+    {
+        if (string.IsNullOrWhiteSpace(attachmentName) || _skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
+        {
+            return;
+        }
+
+        string prefixedName = attachmentName.StartsWith("skin placeholder ", StringComparison.OrdinalIgnoreCase)
+            ? attachmentName
+            : $"skin placeholder {attachmentName}";
+
+        var slots = _skeletonAnimation.Skeleton.Slots;
+        if (slots == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            Spine.Slot slot = slots.Items[i];
+            if (slot == null)
+            {
+                continue;
+            }
+
+            string current = slot.Attachment != null ? slot.Attachment.Name : null;
+            bool matchesExact =
+                current != null &&
+                (string.Equals(current, attachmentName, StringComparison.Ordinal) ||
+                 string.Equals(current, prefixedName, StringComparison.Ordinal));
+
+            bool matchesSubstring =
+                current != null &&
+                // Bidirectional substring match:
+                // - slot attachment can be less specific (e.g. "leg-lower") while the rule asks more specific
+                //   (e.g. "leg-lower-back")
+                // - or vice versa, depending on authoring/naming in Spine
+                (current.IndexOf(attachmentName, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 attachmentName.IndexOf(current, StringComparison.OrdinalIgnoreCase) >= 0);
+
+            bool debugLegFootRelevant =
+                _debugSeverLogs &&
+                (attachmentName.Equals("leg-lower-back", StringComparison.OrdinalIgnoreCase) ||
+                 attachmentName.Equals("leg-lower-front", StringComparison.OrdinalIgnoreCase) ||
+                 attachmentName.Equals("foot-back", StringComparison.OrdinalIgnoreCase) ||
+                 attachmentName.Equals("foot-front", StringComparison.OrdinalIgnoreCase));
+
+            if (debugLegFootRelevant && current != null)
+            {
+                // Keep logs focused on the problematic region: when attempting to hide leg-lower/foot placeholders,
+                // report what Spine attachment name we actually see in the slot.
+                if (current.IndexOf("leg-lower", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    current.IndexOf("foot", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    string slotNameForLog = slot.Data != null ? slot.Data.Name : string.Empty;
+                    Debug.Log(
+                        $"[ParatrooperView_V2] HidePlaceholderAttachment('{attachmentName}') slot='{slotNameForLog}' currentAtt='{current}' " +
+                        $"matchesExact={matchesExact} matchesSubstring={matchesSubstring}");
+                }
+            }
+
+            if (matchesExact || matchesSubstring)
+            {
+                slot.Attachment = null;
+                slot.A = 0f; // also force alpha down so it cannot be keyed back in the same frame
+
+                // Keep logs focused on the problematic region: confirm that the slot got hidden.
+                if (debugLegFootRelevant && current != null)
+                {
+                    string slotNameForLog = slot.Data != null ? slot.Data.Name : string.Empty;
+                    Debug.Log(
+                        $"[ParatrooperView_V2] Hide OK: '{attachmentName}' slot='{slotNameForLog}' currentWas='{current}' " +
+                        $"matchesExact={matchesExact} matchesSubstring={matchesSubstring}");
+                }
+            }
+        }
+    }
+
+    private void HidePlaceholderAttachments(string[] attachmentNames)
+    {
+        if (attachmentNames == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < attachmentNames.Length; i++)
+        {
+            HidePlaceholderAttachment(attachmentNames[i]);
+        }
+    }
+
+    private void ShowPlaceholderAttachment(string attachmentName)
+    {
+        if (string.IsNullOrWhiteSpace(attachmentName) || _skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
+        {
+            return;
+        }
+
+        string prefixedName = attachmentName.StartsWith("skin placeholder ", StringComparison.OrdinalIgnoreCase)
+            ? attachmentName
+            : $"skin placeholder {attachmentName}";
+
+        // Find the slot which contains this attachment name in the skeleton's default skin.
+        // Then set slot.Attachment to that attachment instance.
+        var slots = _skeletonAnimation.Skeleton.Slots;
+        if (slots == null)
+        {
+            return;
+        }
+
+        bool shown = false;
+        for (int i = 0; i < slots.Count; i++)
+        {
+            Spine.Slot slot = slots.Items[i];
+            if (slot == null)
+            {
+                continue;
+            }
+
+            string slotName = slot.Data != null ? slot.Data.Name : string.Empty;
+            if (string.IsNullOrWhiteSpace(slotName))
+            {
+                continue;
+            }
+
+            // Try both raw and "skin placeholder X" variants.
+            Attachment att = _skeletonAnimation.Skeleton.GetAttachment(slotName, attachmentName);
+            if (att == null)
+            {
+                att = _skeletonAnimation.Skeleton.GetAttachment(slotName, prefixedName);
+            }
+            if (att == null) continue;
+
+            slot.Attachment = att;
+            slot.A = 1f;
+            shown = true;
+        }
+
+        if (_debugSeverLogs && !shown)
+        {
+            Debug.LogWarning($"[ParatrooperView_V2] Could not find placeholder attachment '{attachmentName}' in any slot.");
+        }
+    }
+
+    private void ShowRandomPlaceholderSet(string[] options)
+    {
+        if (options == null || options.Length == 0)
+        {
+            return;
+        }
+
+        HidePlaceholderAttachments(options);
+        string choice = options[Random.Range(0, options.Length)];
+        ShowPlaceholderAttachment(choice);
+    }
+
+    private GameObject ResolveFallbackSeverPrefabByBoneName(string boneName)
+    {
+        if (_gibPartPrefabs == null || _gibPartPrefabs.Count == 0 || string.IsNullOrWhiteSpace(boneName))
+        {
+            return null;
+        }
+
+        for (int i = 0; i < _gibPartPrefabs.Count; i++)
+        {
+            GibPartPrefabEntry candidate = _gibPartPrefabs[i];
+            if (candidate == null || candidate.Prefab == null || string.IsNullOrWhiteSpace(candidate.BoneName))
+            {
+                continue;
+            }
+
+            if (string.Equals(candidate.BoneName, boneName, StringComparison.OrdinalIgnoreCase))
+            {
+                return candidate.Prefab;
+            }
+        }
+
+        return null;
     }
 }
 }

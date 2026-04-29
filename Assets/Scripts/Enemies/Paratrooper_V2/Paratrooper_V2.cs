@@ -645,6 +645,7 @@ public class Paratrooper : MonoBehaviour
         if (_damageReceiver != null && _view != null)
         {
             _damageReceiver.OnExploded += _view.ExplodeIntoPieces;
+            _damageReceiver.OnBodyPartSevered += _view.HandleBodyPartSevered;
         }
     }
 
@@ -655,6 +656,7 @@ public class Paratrooper : MonoBehaviour
         if (_damageReceiver != null && _view != null)
         {
             _damageReceiver.OnExploded -= _view.ExplodeIntoPieces;
+            _damageReceiver.OnBodyPartSevered -= _view.HandleBodyPartSevered;
         }
 
         ClearAirborneBunkerCollisionExclusion();
