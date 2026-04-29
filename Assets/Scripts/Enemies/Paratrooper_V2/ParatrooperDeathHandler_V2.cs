@@ -31,7 +31,25 @@ namespace iStick2War_V2
 {
 public class ParatrooperDeathHandler_V2 : MonoBehaviour
 {
-    bool useRagdoll;
+    [Header("Ragdoll")]
+    [Tooltip("If enabled, convert the Paratrooper death into physics pieces (gibs) instead of playing Spine death visuals.")]
+    [SerializeField] private bool _useRagdoll = true;
+
+    [Tooltip("How much of the Paratrooper root velocity is inherited by each body-part rigidbody.")]
+    [SerializeField] private float _ragdollVelocityInheritanceMultiplier = 1f;
+
+    [Tooltip(
+        "Radial impulse applied on top of inherited velocity.\n" +
+        "Set to 0 to let bounding box geometry + ground collisions drive the scatter direction.")]
+    [SerializeField] private float _ragdollRadialImpulseMultiplier = 0f;
+
+    [Tooltip("Small random torque to help pieces keep moving. Keep this modest (e.g. 0.2-0.5).")]
+    [SerializeField] private float _ragdollRandomTorqueImpulseMultiplier = 0.35f;
+
+    private ParatrooperView_V2 _view;
+
+    private Rigidbody2D _rootRigidbody2D;
+    private Collider2D _rootCollider2D;
     public int scoreValue;
     [Header("Despawn timing")]
     [Tooltip("Delay before despawn for normal (ground) deaths.")]
@@ -44,6 +62,13 @@ public class ParatrooperDeathHandler_V2 : MonoBehaviour
     private ParatrooperStateMachine_V2 _stateMachine;
     private bool _isDying;
     public event System.Action<ParatrooperDeathHandler_V2> OnDeathStarted;
+
+    private void Awake()
+    {
+        _view = GetComponentInChildren<ParatrooperView_V2>(true);
+        _rootRigidbody2D = GetComponent<Rigidbody2D>();
+        _rootCollider2D = GetComponent<Collider2D>();
+    }
 
     private void OnEnable()
     {
@@ -101,9 +126,14 @@ public class ParatrooperDeathHandler_V2 : MonoBehaviour
 
     IEnumerator DeathRoutine()
     {
-        PlayRagdollOrSpineDeath();
-
         bool startedAirborneDeath = _stateMachine != null && _stateMachine.CurrentState == StickmanBodyState.GlideDie;
+        bool shouldDelayRagdollUntilImpact = _useRagdoll && startedAirborneDeath;
+
+        if (!shouldDelayRagdollUntilImpact)
+        {
+            PlayRagdollOrSpineDeath();
+        }
+
         if (startedAirborneDeath)
         {
             float maxWait = Mathf.Max(0.5f, _maxWaitForAirborneGroundImpactSeconds);
@@ -113,6 +143,12 @@ public class ParatrooperDeathHandler_V2 : MonoBehaviour
                    Time.unscaledTime - startedAt < maxWait)
             {
                 yield return null;
+            }
+
+            // StateMachine has left GlideDie (typically Land/Die): now convert to physics pieces.
+            if (shouldDelayRagdollUntilImpact)
+            {
+                PlayRagdollOrSpineDeath();
             }
 
             yield return new WaitForSeconds(Mathf.Max(0.05f, _airborneImpactDespawnDelaySeconds));
@@ -131,7 +167,42 @@ public class ParatrooperDeathHandler_V2 : MonoBehaviour
     /// </summary>
     private void PlayRagdollOrSpineDeath()
     {
-        // Decide between ragdoll or animation
+        if (_useRagdoll)
+        {
+            if (_view != null)
+            {
+                Vector2 inheritedVel = _rootRigidbody2D != null ? _rootRigidbody2D.linearVelocity : Vector2.zero;
+                float inheritedAngVel = _rootRigidbody2D != null ? _rootRigidbody2D.angularVelocity : 0f;
+
+                Vector2 origin = _view.transform.position;
+                // Spawn visible physics pieces (severed-part prefabs) so the paratrooper
+                // doesn't "disappear" due to hitbox-only renderer absence.
+                _view.RagdollScatterUsingSeveredPartPrefabs(
+                    explosionOrigin: origin,
+                    inheritedLinearVelocity: inheritedVel * _ragdollVelocityInheritanceMultiplier,
+                    inheritedAngularVelocity: inheritedAngVel,
+                    radialImpulseMultiplier: _ragdollRadialImpulseMultiplier,
+                    randomTorqueImpulseMultiplier: _ragdollRandomTorqueImpulseMultiplier,
+                    positionJitterRadius: 0.03f);
+            }
+
+            // Stop root physics so the remaining (severed/exploded) pieces fully drive the look.
+            if (_rootRigidbody2D != null)
+            {
+                _rootRigidbody2D.linearVelocity = Vector2.zero;
+                _rootRigidbody2D.angularVelocity = 0f;
+                _rootRigidbody2D.simulated = false;
+            }
+
+            if (_rootCollider2D != null)
+            {
+                _rootCollider2D.enabled = false;
+            }
+            return;
+        }
+
+        // Spine death visuals are handled by ParatrooperView_V2 via state-machine events.
+        // Leaving this empty keeps the default "play animation" behavior.
     }
 
     /// <summary>

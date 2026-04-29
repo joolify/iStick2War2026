@@ -305,6 +305,29 @@ public class ParatrooperView_V2 : MonoBehaviour
             }
         }
 
+        // Explosion/ragdoll paths may have disabled body-part scripts + their colliders.
+        // Re-enable them for pooled reuse so the paratrooper can move/land and be hittable again.
+        ParatrooperBodyPart_V2[] parts = GetComponentsInChildren<ParatrooperBodyPart_V2>(true);
+        for (int i = 0; i < parts.Length; i++)
+        {
+            ParatrooperBodyPart_V2 part = parts[i];
+            if (part == null)
+            {
+                continue;
+            }
+
+            part.enabled = true;
+
+            Collider2D[] colliders = part.GetComponents<Collider2D>();
+            for (int c = 0; c < colliders.Length; c++)
+            {
+                if (colliders[c] != null)
+                {
+                    colliders[c].enabled = true;
+                }
+            }
+        }
+
         ResolveAimBones();
     }
 
@@ -1297,6 +1320,16 @@ public class ParatrooperView_V2 : MonoBehaviour
             return;
         }
 
+        // Robust fallback:
+        // If no explosion-gib prefabs are configured in _gibPartPrefabs, use the severed-part prefabs
+        // (already authored for dismemberment) so ragdoll always shows visible pieces.
+        bool spawnedSeveredPrefabs = SpawnSeveredPartPrefabsAsGibs(explosionOrigin, launchForce, life);
+        if (spawnedSeveredPrefabs)
+        {
+            DisableBodyPartCollidersOnly();
+            return;
+        }
+
         ParatrooperBodyPart_V2[] parts = GetComponentsInChildren<ParatrooperBodyPart_V2>(true);
         for (int i = 0; i < parts.Length; i++)
         {
@@ -1318,6 +1351,9 @@ public class ParatrooperView_V2 : MonoBehaviour
 
             part.enabled = false;
             partTransform.SetParent(null, true);
+            // DisableOriginalCharacterRenderers() ran above, so if we fall back to using
+            // ParatrooperBodyPart_V2 as the physics pieces, we must re-enable renderers here.
+            ForceGibVisible(part.gameObject);
 
             Rigidbody2D rb = part.GetComponent<Rigidbody2D>();
             if (rb == null)
@@ -1338,6 +1374,352 @@ public class ParatrooperView_V2 : MonoBehaviour
 
             Destroy(part.gameObject, life);
         }
+    }
+
+    /// <summary>
+    /// Ragdoll-style conversion that relies on actual hitbox/collider collisions (bounding boxes)
+    /// instead of radial explosion impulses.
+    ///
+    /// This is intentionally more "physical" than <see cref="ExplodeIntoPieces"/>:
+    /// we set each body-part rigidbody velocity from the current paratrooper motion and apply only
+    /// tiny random torque. Result: landing impacts + collider geometry drive the spread direction.
+    /// </summary>
+    public void RagdollIntoPiecesUsingBodyParts(
+        Vector2 explosionOrigin,
+        Vector2 inheritedLinearVelocity,
+        float inheritedAngularVelocity,
+        float radialImpulseMultiplier,
+        float randomTorqueImpulseMultiplier)
+    {
+        if (_isExploded)
+        {
+            return;
+        }
+
+        StopBurnVfx();
+        _isExploded = true;
+        _deathAnimationLocked = true;
+        _suppressParachuteVisuals = true;
+
+        // Freeze / hide Spine visuals so only physics pieces are visible.
+        if (_skeletonAnimation != null)
+        {
+            if (_skeletonAnimation.AnimationState != null)
+            {
+                _skeletonAnimation.AnimationState.ClearTracks();
+            }
+
+            SkeletonRenderer renderer = _skeletonAnimation.GetComponent<SkeletonRenderer>();
+            if (renderer != null)
+            {
+                renderer.enabled = false;
+            }
+
+            _skeletonAnimation.enabled = false;
+        }
+
+        DisableOriginalCharacterRenderers();
+
+        float life = Mathf.Max(0.25f, _gibLifetime);
+
+        ParatrooperBodyPart_V2[] parts = GetComponentsInChildren<ParatrooperBodyPart_V2>(true);
+        for (int i = 0; i < parts.Length; i++)
+        {
+            ParatrooperBodyPart_V2 part = parts[i];
+            if (part == null)
+            {
+                continue;
+            }
+
+            Transform partTransform = part.transform;
+            Vector2 partPosition = partTransform.position;
+
+            // Avoid initial deep interpenetration explosions by slightly lifting pieces.
+            partTransform.position += new Vector3(0f, 0.02f, 0f);
+
+            // BodyPart's MonoBehaviour can be disabled; colliders remain active for physics.
+            part.enabled = false;
+
+            // Detach from root so the pieces are fully controlled by their rigidbodies.
+            partTransform.SetParent(null, true);
+
+            ForceGibVisible(part.gameObject);
+
+            Rigidbody2D rb = part.GetComponent<Rigidbody2D>();
+            if (rb == null)
+            {
+                rb = part.gameObject.AddComponent<Rigidbody2D>();
+            }
+
+            rb.bodyType = RigidbodyType2D.Dynamic;
+            rb.simulated = true;
+            rb.gravityScale = 1f;
+            rb.linearDamping = 0.2f;
+            rb.angularDamping = 0.12f;
+            rb.freezeRotation = false;
+
+            // Keep the "impact momentum" so which parts hit the ground first
+            // (driven by bounding box geometry) controls the spread.
+            rb.linearVelocity = inheritedLinearVelocity;
+            rb.angularVelocity = inheritedAngularVelocity;
+
+            if (radialImpulseMultiplier > 0.0001f)
+            {
+                Vector2 away = ((Vector2)partTransform.position - explosionOrigin);
+                if (away.sqrMagnitude < 0.0001f)
+                {
+                    away = Random.insideUnitCircle;
+                }
+                away.Normalize();
+                away.y = Mathf.Max(0.05f, away.y);
+
+                float radialLaunchForce = _gibForce * radialImpulseMultiplier;
+                if (radialLaunchForce > 0f)
+                {
+                    rb.AddForce(away * radialLaunchForce, ForceMode2D.Impulse);
+                }
+            }
+
+            // Small extra rotation helps break "sticking" without turning it into an explosion.
+            float torqueScale = Mathf.Max(0f, randomTorqueImpulseMultiplier);
+            if (torqueScale > 0.0001f)
+            {
+                rb.AddTorque(Random.Range(-_gibTorque, _gibTorque) * torqueScale, ForceMode2D.Impulse);
+            }
+
+            // Keep pieces around long enough to see scatter.
+            Destroy(part.gameObject, life);
+        }
+    }
+
+    /// <summary>
+    /// Ragdoll conversion that spawns the already-authored severed-part prefabs (visual + collider)
+    /// and lets their colliders scatter on impact with the ground.
+    ///
+    /// Compared to <see cref="RagdollIntoPiecesUsingBodyParts"/>, this avoids using hitbox-only
+    /// objects that may not have visible renderers.
+    /// </summary>
+    public void RagdollScatterUsingSeveredPartPrefabs(
+        Vector2 explosionOrigin,
+        Vector2 inheritedLinearVelocity,
+        float inheritedAngularVelocity,
+        float radialImpulseMultiplier,
+        float randomTorqueImpulseMultiplier,
+        float positionJitterRadius = 0.03f)
+    {
+        if (_isExploded)
+        {
+            return;
+        }
+
+        float life = Mathf.Max(0.25f, _severedPartLifetime);
+
+        if (_severedPartEntries == null || _severedPartEntries.Count == 0 || _skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
+        {
+            if (_debugGibLogs)
+            {
+                Debug.LogWarning("[ParatrooperView_V2] RagdollScatterUsingSeveredPartPrefabs: missing severed part entries or skeleton.");
+            }
+            return;
+        }
+
+        bool spawnedAny = false;
+        int spawnedCount = 0;
+
+        for (int i = 0; i < _severedPartEntries.Count; i++)
+        {
+            SeveredPartEntry entry = _severedPartEntries[i];
+            if (entry == null || entry.Prefab == null || string.IsNullOrWhiteSpace(entry.BoneName))
+            {
+                continue;
+            }
+
+            Bone bone = _skeletonAnimation.Skeleton.FindBone(entry.BoneName);
+            if (bone == null)
+            {
+                continue;
+            }
+
+            Vector3 boneWorld = _skeletonAnimation.transform.TransformPoint(new Vector3(bone.WorldX, bone.WorldY, 0f));
+            Vector3 jitter = Random.insideUnitCircle * Mathf.Max(0f, positionJitterRadius);
+            Vector3 spawnPos = boneWorld + entry.LocalOffset + jitter;
+            spawnPos.z = _gibWorldZ;
+
+            Quaternion rot = Quaternion.Euler(0f, 0f, Random.Range(-180f, 180f));
+            GameObject piece = Instantiate(entry.Prefab, spawnPos, rot);
+
+            float scaleMultiplier = entry.Scale > 0.001f ? entry.Scale : 1f;
+            piece.transform.localScale *= scaleMultiplier;
+
+            ForceGibVisible(piece);
+
+            Rigidbody2D rb = piece.GetComponent<Rigidbody2D>();
+            if (rb == null)
+            {
+                rb = piece.AddComponent<Rigidbody2D>();
+            }
+
+            rb.bodyType = RigidbodyType2D.Dynamic;
+            rb.simulated = true;
+            rb.gravityScale = 1f;
+            rb.linearDamping = 0.2f;
+            rb.angularDamping = 0.12f;
+            rb.freezeRotation = false;
+            rb.linearVelocity = inheritedLinearVelocity;
+            rb.angularVelocity = inheritedAngularVelocity;
+
+            // Optional radial impulse (keep 0 to rely on bounding-box impact scatter).
+            if (radialImpulseMultiplier > 0.0001f)
+            {
+                Vector2 away = ((Vector2)spawnPos - explosionOrigin);
+                if (away.sqrMagnitude < 0.0001f)
+                {
+                    away = Random.insideUnitCircle;
+                }
+                away.Normalize();
+                away.y = Mathf.Max(0.05f, away.y);
+
+                float radialLaunchForce = _gibForce * radialImpulseMultiplier;
+                rb.AddForce(away * radialLaunchForce, ForceMode2D.Impulse);
+            }
+
+            float torqueScale = Mathf.Max(0f, randomTorqueImpulseMultiplier);
+            if (torqueScale > 0.0001f)
+            {
+                rb.AddTorque(Random.Range(-_gibTorque, _gibTorque) * torqueScale, ForceMode2D.Impulse);
+            }
+
+            Destroy(piece, life);
+
+            spawnedAny = true;
+            spawnedCount++;
+        }
+
+        if (!spawnedAny)
+        {
+            // Nothing spawned -> do not enter ragdoll "exploded" mode and do not hide the original model.
+            // Otherwise the paratrooper can look like it "disappears" instantly.
+            return;
+        }
+
+        if (spawnedCount < 2)
+        {
+            if (_debugGibLogs)
+            {
+                Debug.LogWarning(
+                    $"[ParatrooperView_V2] RagdollScatter spawned too few pieces (spawned={spawnedCount}). Keeping original visuals to avoid disappearance. Check SeveredPartEntries BoneName/prefab setup.");
+            }
+            return;
+        }
+
+        // Switch to ragdoll visuals.
+        StopBurnVfx();
+        _isExploded = true;
+        _deathAnimationLocked = true;
+        _suppressParachuteVisuals = true;
+
+        // Hide Spine visuals.
+        if (_skeletonAnimation != null)
+        {
+            if (_skeletonAnimation.AnimationState != null)
+            {
+                _skeletonAnimation.AnimationState.ClearTracks();
+            }
+
+            SkeletonRenderer renderer = _skeletonAnimation.GetComponent<SkeletonRenderer>();
+            if (renderer != null)
+            {
+                renderer.enabled = false;
+            }
+
+            _skeletonAnimation.enabled = false;
+        }
+
+        DisableOriginalCharacterRenderers();
+
+        // Prevent the original hitboxes from colliding with the spawned pieces.
+        DisableBodyPartCollidersOnly();
+
+        if (_debugGibLogs)
+        {
+            Debug.Log($"[ParatrooperView_V2] RagdollScatter spawn result: spawned={spawnedCount}, severedEntries={_severedPartEntries.Count}");
+        }
+    }
+
+    private bool SpawnSeveredPartPrefabsAsGibs(Vector2 explosionOrigin, float launchForce, float life)
+    {
+        if (_severedPartEntries == null || _severedPartEntries.Count == 0 || _skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
+        {
+            return false;
+        }
+
+        bool spawnedAny = false;
+        int spawnedCount = 0;
+
+        for (int i = 0; i < _severedPartEntries.Count; i++)
+        {
+            SeveredPartEntry entry = _severedPartEntries[i];
+            if (entry == null || entry.Prefab == null || string.IsNullOrWhiteSpace(entry.BoneName))
+            {
+                continue;
+            }
+
+            Bone bone = _skeletonAnimation.Skeleton.FindBone(entry.BoneName);
+            if (bone == null)
+            {
+                continue;
+            }
+
+            Vector3 boneWorld = _skeletonAnimation.transform.TransformPoint(new Vector3(bone.WorldX, bone.WorldY, 0f));
+            Vector3 spawnPos = boneWorld + entry.LocalOffset;
+            spawnPos.z = _gibWorldZ;
+
+            Vector2 away = ((Vector2)spawnPos - explosionOrigin);
+            if (away.sqrMagnitude < 0.0001f)
+            {
+                away = Random.insideUnitCircle;
+            }
+            away.Normalize();
+            away.y = Mathf.Max(0.12f, away.y);
+
+            float angle = Mathf.Atan2(away.y, away.x) * Mathf.Rad2Deg + Random.Range(-20f, 20f);
+
+            GameObject gib = Instantiate(entry.Prefab, spawnPos, Quaternion.Euler(0f, 0f, angle));
+            float scaleMultiplier = entry.Scale > 0.001f ? entry.Scale : 1f;
+            gib.transform.localScale *= scaleMultiplier;
+
+            ForceGibVisible(gib);
+
+            Rigidbody2D rb = gib.GetComponent<Rigidbody2D>();
+            if (rb == null)
+            {
+                rb = gib.AddComponent<Rigidbody2D>();
+            }
+
+            rb.bodyType = RigidbodyType2D.Dynamic;
+            rb.simulated = true;
+            rb.gravityScale = 1f;
+            rb.linearDamping = 0.2f;
+            rb.angularDamping = 0.12f;
+            rb.freezeRotation = false;
+            rb.linearVelocity = Vector2.zero;
+            rb.angularVelocity = 0f;
+
+            rb.AddForce(away * launchForce, ForceMode2D.Impulse);
+            rb.AddTorque(Random.Range(-_gibTorque, _gibTorque), ForceMode2D.Impulse);
+
+            Destroy(gib, life);
+
+            spawnedAny = true;
+            spawnedCount++;
+        }
+
+        if (_debugGibLogs)
+        {
+            Debug.Log($"[ParatrooperView_V2] Severed-prefab gib spawn result: spawned={spawnedCount}, configured={_severedPartEntries.Count}");
+        }
+
+        return spawnedAny;
     }
 
     private void OnDisable()

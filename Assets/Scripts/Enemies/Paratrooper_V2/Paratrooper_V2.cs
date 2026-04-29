@@ -343,6 +343,24 @@ public class Paratrooper : MonoBehaviour
         if (_deathHandler == null) _deathHandler = GetComponent<ParatrooperDeathHandler_V2>();
         if (_view == null) _view = GetComponent<ParatrooperView_V2>();
         if (_rigidbody2D == null) _rigidbody2D = GetComponent<Rigidbody2D>();
+        if (_mainCollider2D == null) _mainCollider2D = GetComponent<Collider2D>();
+
+        // If this instance died earlier in ragdoll mode, the death handler can disable the root
+        // Rigidbody2D simulation/collider. Reset them here so pooled instances can move again.
+        if (_rigidbody2D != null)
+        {
+            _rigidbody2D.simulated = true;
+            if (_rigidbody2D.bodyType != RigidbodyType2D.Dynamic)
+            {
+                _rigidbody2D.bodyType = RigidbodyType2D.Dynamic;
+            }
+            _rigidbody2D.linearVelocity = Vector2.zero;
+            _rigidbody2D.angularVelocity = 0f;
+        }
+        if (_mainCollider2D != null)
+        {
+            _mainCollider2D.enabled = true;
+        }
 
         _warnedAttachedColliderBufferTruncation = false;
         _warnedGroundProbeAnchorRejected = false;
