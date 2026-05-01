@@ -49,6 +49,14 @@ namespace iStick2War_V2
         private float lastShootTime;
         private float _reloadEndTime;
         private bool _isReloading;
+        private float _minigunHeat01;
+        private float _lastMinigunHeatUpdateTime;
+
+        private const float MinigunHeatPerShot = 0.105f;
+        private const float MinigunCooldownPerSecond = 0.42f;
+        private const float MinigunOverheatBlockThreshold = 1f;
+        private const float MinigunOverheatRecoverThreshold = 0.35f;
+        private const float MinigunMaxSpreadDegreesAtFullHeat = 7f;
 
         /// <summary>weaponType, isProjectile, rayHit (meaningless when isProjectile).</summary>
         public event System.Action<WeaponType, bool, bool> OnCommittedAttack;
@@ -70,11 +78,18 @@ namespace iStick2War_V2
         // -------------------------
         public bool CanShoot()
         {
+            TickMinigunHeat();
+
             if (_inventory.ActiveWeapon == null) return false;
             if (isDisabled) return false;
             if (_model.isDead) return false;
             if (_isReloading) return false;
             if (_model.currentAmmo <= 0) return false;
+            if (_model.currentWeaponType == WeaponType.Minigun &&
+                _minigunHeat01 >= MinigunOverheatBlockThreshold)
+            {
+                return false;
+            }
 
             float timeSinceLastShot = Time.time - lastShootTime;
             return timeSinceLastShot >= _model.fireRate;
@@ -110,6 +125,7 @@ namespace iStick2War_V2
 
             lastShootTime = Time.time;
             ConsumeAmmo(1);
+            AccumulateMinigunHeatFromShot();
 
             shotResult = _shotResolver.ResolveShot(shotContext);
             OnCommittedAttack?.Invoke(_model.currentWeaponType, false, shotResult.DidHit);
@@ -177,6 +193,13 @@ namespace iStick2War_V2
             _isReloading = false;
         }
 
+        public void Enable()
+        {
+            isDisabled = false;
+            _isReloading = false;
+            _lastMinigunHeatUpdateTime = Time.time;
+        }
+
         internal void Shoot()
         {
             // Backwards-compatible entry point while caller migration is in progress.
@@ -185,6 +208,7 @@ namespace iStick2War_V2
 
         public HeroShotContext_V2 CreateShotContext(Vector2 origin, Vector2 direction, bool defaultDebugDrawShotRay)
         {
+            TickMinigunHeat();
             HeroWeaponRuntimeState_V2 activeWeapon = _inventory.ActiveWeapon;
             float range = activeWeapon != null ? activeWeapon.Definition.Range : 100f;
             float baseDamage = activeWeapon != null ? activeWeapon.Definition.BaseDamage : 30f;
@@ -200,10 +224,16 @@ namespace iStick2War_V2
                     ? activeWeapon.Definition.WeaponType
                     : _model.currentWeaponType;
 
+            Vector2 adjustedDirection = direction;
+            if (weaponForDamage == WeaponType.Minigun)
+            {
+                adjustedDirection = ApplyMinigunSpread(direction);
+            }
+
             return new HeroShotContext_V2
             {
                 Origin = origin,
-                Direction = direction,
+                Direction = adjustedDirection,
                 Range = range,
                 WhatToHit = LayerMask.GetMask("EnemyBodyPart"),
                 BaseDamage = baseDamage,
@@ -244,6 +274,7 @@ namespace iStick2War_V2
 
             lastShootTime = Time.time;
             ConsumeAmmo(1);
+            AccumulateMinigunHeatFromShot();
 
             GameObject projectileObject = Object.Instantiate(definition.ProjectilePrefab, origin, Quaternion.identity);
             Vector2 dir = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector2.right;
@@ -531,8 +562,59 @@ namespace iStick2War_V2
             }
 
             _isReloading = false;
+            if (_model.currentWeaponType != WeaponType.Minigun)
+            {
+                _minigunHeat01 = 0f;
+            }
             ApplyActiveWeaponToModel();
             return true;
+        }
+
+        private void TickMinigunHeat()
+        {
+            float now = Time.time;
+            float dt = Mathf.Max(0f, now - _lastMinigunHeatUpdateTime);
+            _lastMinigunHeatUpdateTime = now;
+            if (dt <= 0f)
+            {
+                return;
+            }
+
+            if (_model.currentWeaponType != WeaponType.Minigun)
+            {
+                _minigunHeat01 = Mathf.Max(0f, _minigunHeat01 - dt * (MinigunCooldownPerSecond * 1.75f));
+                return;
+            }
+
+            _minigunHeat01 = Mathf.Max(0f, _minigunHeat01 - dt * MinigunCooldownPerSecond);
+            if (_minigunHeat01 < MinigunOverheatRecoverThreshold)
+            {
+                // Allows firing again after a clear recover window.
+                _minigunHeat01 = Mathf.Min(_minigunHeat01, MinigunOverheatRecoverThreshold - 0.0001f);
+            }
+        }
+
+        private void AccumulateMinigunHeatFromShot()
+        {
+            if (_model.currentWeaponType != WeaponType.Minigun)
+            {
+                return;
+            }
+
+            _minigunHeat01 = Mathf.Clamp01(_minigunHeat01 + MinigunHeatPerShot);
+        }
+
+        private Vector2 ApplyMinigunSpread(Vector2 direction)
+        {
+            Vector2 baseDir = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector2.right;
+            float spread = Mathf.Lerp(1.25f, MinigunMaxSpreadDegreesAtFullHeat, Mathf.Clamp01(_minigunHeat01));
+            float angle = UnityEngine.Random.Range(-spread, spread);
+            float rad = angle * Mathf.Deg2Rad;
+            float cos = Mathf.Cos(rad);
+            float sin = Mathf.Sin(rad);
+            return new Vector2(
+                baseDir.x * cos - baseDir.y * sin,
+                baseDir.x * sin + baseDir.y * cos).normalized;
         }
 
         private static void LogWeapon(string message)

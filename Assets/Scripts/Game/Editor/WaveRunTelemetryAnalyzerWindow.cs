@@ -421,6 +421,7 @@ namespace iStick2War_V2.Editor
                     $"poolStats (root): prefabs={root.poolStats.prefabTypeCount}, inactive={root.poolStats.totalInactiveCount}, " +
                     $"created={root.poolStats.totalCreatedCount}, reused={root.poolStats.totalReusedCount}, despawn={root.poolStats.totalDespawnCount}");
             }
+            AppendBaselineKpiSingleFileReport(sb, root);
             AppendFeelKpisSingleFileReport(sb, root);
             int onboardMax = Mathf.Max(0, _onboardingMaxWaveInclusive);
             sb.AppendLine(
@@ -1156,6 +1157,38 @@ namespace iStick2War_V2.Editor
                 sb.AppendLine($"{flag}: {100f * n / batchRuns:0.#} % ({n}/{batchRuns})");
             }
 
+            sb.AppendLine();
+            sb.AppendLine("--- Weekly telemetry gates (retention v1) ---");
+            int runsWithDeath = failWaves.Count;
+            float avgFailWave = runsWithDeath > 0 ? MeanInt(failWaves) : 0f;
+            float gameWonRate = 100f * runsWon / Mathf.Max(1, batchRuns);
+            float shopConversionRunRate = 0f;
+            if (perFileLines.Count > 0)
+            {
+                int withFirstShop = 0;
+                for (int i = 0; i < perFileLines.Count; i++)
+                {
+                    // TSV: feel_firstShopSec is column index 17 (0-based).
+                    string[] cols = perFileLines[i].Split('\t');
+                    if (cols.Length > 17 && !string.IsNullOrWhiteSpace(cols[17]))
+                    {
+                        withFirstShop++;
+                    }
+                }
+
+                shopConversionRunRate = 100f * withFirstShop / perFileLines.Count;
+            }
+
+            bool gateFailWave = runsWithDeath == 0 || avgFailWave >= 6f;
+            bool gateShop = shopConversionRunRate >= 65f;
+            bool gateWin = gameWonRate >= 20f;
+            sb.AppendLine(
+                $"Gate_A_avgFailWave>=6: {(gateFailWave ? "PASS" : "FAIL")} (avgFailWave={avgFailWave:0.##}, runsWithDeath={runsWithDeath})");
+            sb.AppendLine(
+                $"Gate_B_shopConversionRuns>=65%: {(gateShop ? "PASS" : "FAIL")} (shopConversionRuns={shopConversionRunRate:0.##}%)");
+            sb.AppendLine(
+                $"Gate_C_gameWonRate>=20%: {(gateWin ? "PASS" : "FAIL")} (gameWonRate={gameWonRate:0.##}%)");
+
             if (totalWaveEndRows > 0 && flagRowCount.Count > 0)
             {
                 sb.AppendLine();
@@ -1760,6 +1793,76 @@ namespace iStick2War_V2.Editor
             }
 
             return endRt - shopRt;
+        }
+
+        private static void AppendBaselineKpiSingleFileReport(StringBuilder sb, TelemetryFileRootDto root)
+        {
+            TelemetryEventDto[] events = root != null ? root.events : null;
+            if (events == null || events.Length == 0)
+            {
+                return;
+            }
+
+            int maxWaveCleared = 0;
+            int deathWave = -1;
+            bool hasGameWon = false;
+            int wavesWithShopPrior = 0;
+            int totalWaveClearedRows = 0;
+            bool firstShopPurchaseSeen =
+                root.feelSession != null &&
+                root.feelSession.firstShopPurchaseSecSinceSessionBegin >= 0f;
+
+            float firstRt = events[0] != null ? events[0].realtimeSinceStartup : 0f;
+            float lastRt = firstRt;
+            for (int i = 0; i < events.Length; i++)
+            {
+                TelemetryEventDto e = events[i];
+                if (e == null)
+                {
+                    continue;
+                }
+
+                lastRt = e.realtimeSinceStartup;
+                string kind = NormalizeKind(e.kind);
+                if (kind == "wave_cleared")
+                {
+                    totalWaveClearedRows++;
+                    maxWaveCleared = Mathf.Max(maxWaveCleared, e.wave);
+                    if (e.shopPurchasesPrior > 0)
+                    {
+                        wavesWithShopPrior++;
+                    }
+                }
+                else if (kind == "run_end")
+                {
+                    bool isWin = !string.IsNullOrEmpty(e.endReason) &&
+                                 e.endReason.Equals("game_won", StringComparison.OrdinalIgnoreCase);
+                    if (isWin)
+                    {
+                        hasGameWon = true;
+                    }
+                    else
+                    {
+                        deathWave = e.wave;
+                    }
+                }
+            }
+
+            float runLengthSec = Mathf.Max(0f, lastRt - firstRt);
+            float shopConversion01 = totalWaveClearedRows > 0
+                ? (float)wavesWithShopPrior / totalWaveClearedRows
+                : 0f;
+
+            sb.AppendLine("--- Baseline KPIs (single run) ---");
+            sb.AppendLine($"wave_reach_maxCleared={maxWaveCleared}");
+            sb.AppendLine($"run_length_sec={runLengthSec:0.##}");
+            sb.AppendLine(
+                $"death_point_wave={(deathWave > 0 ? deathWave.ToString(CultureInfo.InvariantCulture) : (hasGameWon ? "game_won" : "none"))}");
+            sb.AppendLine(
+                $"shop_conversion_waveCleared01={shopConversion01:0.###} " +
+                $"(wavesWithShopPrior={wavesWithShopPrior}/{Mathf.Max(1, totalWaveClearedRows)})");
+            sb.AppendLine($"shop_conversion_firstPurchaseSeen={(firstShopPurchaseSeen ? "yes" : "no")}");
+            sb.AppendLine();
         }
 
         private static void AppendFeelKpisSingleFileReport(StringBuilder sb, TelemetryFileRootDto root)

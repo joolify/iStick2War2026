@@ -117,7 +117,9 @@ namespace iStick2War_V2
                 float heroDist = Vector2.Distance(center, hero.transform.position);
                 if (heroDist <= _radius)
                 {
-                    hero.ReceiveDamage(heroDamage, ignoreBunkerSafeZone: true);
+                    Vector2 toHero = (Vector2)hero.transform.position - center;
+                    Vector2 shotDir = toHero.sqrMagnitude > 0.0001f ? toHero.normalized : Vector2.left;
+                    hero.ReceiveDamage(heroDamage, ignoreBunkerSafeZone: true, incomingShotWorldDirection: shotDir);
                 }
             }
 

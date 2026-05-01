@@ -90,6 +90,7 @@ namespace iStick2War_V2
         private int _rayMissesDuringWave;
         private int _projectileLaunchesDuringWave;
         private int _reloadsDuringWave;
+        private int _empStunsAppliedDuringWave;
 
         // Snapshots at wave start (InWave)
         private int _heroHpAtWaveStart;
@@ -338,6 +339,7 @@ namespace iStick2War_V2
             public int rayMisses;
             public int projectileLaunches;
             public int reloads;
+            public int empStunsApplied;
             public int shopPurchasesPrior;
             public int shopCurrencySpentPrior;
             public string[] shopOffersBoughtPrior;
@@ -610,6 +612,12 @@ namespace iStick2War_V2
             ActiveInstance?.RegisterFirstEnemyKillRealtime();
         }
 
+        /// <summary>Call when a combat stun/EMP is applied to an enemy during InWave.</summary>
+        public static void NotifyEmpCombatStunApplied()
+        {
+            ActiveInstance?.RegisterEmpCombatStunApplied();
+        }
+
         /// <summary>
         /// Record a non-Unity exception signal (watchdog, sanity check, etc.) into <c>unityLogs[]</c> with the same
         /// gameplay snapshot as console errors. Thread-safe: can be called from any thread; flushed on the main thread.
@@ -701,6 +709,16 @@ namespace iStick2War_V2
             }
 
             _feelFirstKillRealtime = Time.realtimeSinceStartup;
+        }
+
+        private void RegisterEmpCombatStunApplied()
+        {
+            if (!_telemetryEnabled || _waveManager == null || _waveManager.State != WaveLoopState_V2.InWave)
+            {
+                return;
+            }
+
+            _empStunsAppliedDuringWave++;
         }
 
         private void ResolveWaveManager()
@@ -932,6 +950,7 @@ namespace iStick2War_V2
             _rayMissesDuringWave = 0;
             _projectileLaunchesDuringWave = 0;
             _reloadsDuringWave = 0;
+            _empStunsAppliedDuringWave = 0;
             _bunkerLowPressureTimeUnscaledDuringWave = 0f;
             _bunkerLowPressureTimeAfterFirstDamageUnscaledDuringWave = 0f;
             _bunkerDamageReceivedThisWave = false;
@@ -1144,6 +1163,7 @@ namespace iStick2War_V2
                 rayMisses = _rayMissesDuringWave,
                 projectileLaunches = _projectileLaunchesDuringWave,
                 reloads = _reloadsDuringWave,
+                empStunsApplied = _empStunsAppliedDuringWave,
                 shopPurchasesPrior = _shopPurchasesPriorToWaveJustCleared,
                 shopCurrencySpentPrior = _shopCurrencySpentPriorToWaveJustCleared,
                 shopOffersBoughtPrior = _shopOffersBoughtPriorToWaveJustCleared ?? Array.Empty<string>(),

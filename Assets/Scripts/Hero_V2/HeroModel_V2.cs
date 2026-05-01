@@ -97,6 +97,14 @@ namespace iStick2War_V2
             currentState = HeroState.Dead;
         }
 
+        public void ReviveToHealthFraction(float healthFraction01)
+        {
+            float f = Mathf.Clamp01(healthFraction01);
+            isDead = false;
+            currentHealth = Mathf.Clamp(Mathf.RoundToInt(maxHealth * f), 1, maxHealth);
+            currentState = HeroState.Idle;
+        }
+
         // -------------------------
         // HEALTH LOGIC (safe)
         // -------------------------

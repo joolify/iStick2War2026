@@ -135,6 +135,10 @@ namespace iStick2War_V2
 
         private static void ApplyDamage(RaycastHit2D hit, HeroShotContext_V2 context)
         {
+            Vector2 shotDirection = context.Direction.sqrMagnitude > 0.0001f
+                ? context.Direction.normalized
+                : Vector2.right;
+
             ParatrooperBodyPart_V2 bodyPart = hit.collider.GetComponent<ParatrooperBodyPart_V2>();
             if (bodyPart != null)
             {
@@ -142,6 +146,7 @@ namespace iStick2War_V2
                 {
                     BaseDamage = context.BaseDamage,
                     HitPoint = hit.point,
+                    ShotDirection = shotDirection,
                     SourceWeapon = context.WeaponType,
                 };
 

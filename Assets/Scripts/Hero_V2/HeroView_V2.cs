@@ -147,6 +147,12 @@ namespace iStick2War_V2
         [SerializeField] private bool _debugTrailLogs = false;
         [SerializeField] private bool _debugViewLogs = false;
 
+        [Header("Hero damage VFX (optional)")]
+        [Tooltip("Small blood or impact burst; leave empty to skip.")]
+        [SerializeField] private GameObject _heroBloodHitPrefab;
+        [SerializeField] private Vector2 _heroBloodWorldOffset = new Vector2(0f, 0.35f);
+        [SerializeField] private float _heroBloodReferenceDamage = 14f;
+
         // -------------------------
         // INIT
         // -------------------------
@@ -539,6 +545,24 @@ namespace iStick2War_V2
         internal void PlayHitEffect(int obj)
         {
             HandleDamageTaken(obj);
+        }
+
+        internal void PlayHitBloodVfx(int damage, Vector2? incomingShotWorldDirection)
+        {
+            if (_heroBloodHitPrefab == null || damage <= 0 || IsDead())
+            {
+                return;
+            }
+
+            Vector2 origin = (_model != null ? (Vector2)_model.transform.position : (Vector2)transform.position) +
+                _heroBloodWorldOffset;
+            Vector2 dir = incomingShotWorldDirection ?? Vector2.left;
+            BloodHitVfx_V2.Spawn(
+                _heroBloodHitPrefab,
+                origin,
+                dir,
+                damage,
+                _heroBloodReferenceDamage);
         }
 
         internal void PlayDeathEffect()

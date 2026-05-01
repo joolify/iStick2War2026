@@ -15,6 +15,7 @@ namespace iStick2War
         MagicStaff,
         Mk2,
         MP40,
+        Minigun,
         Potatomasher,
         SterlingL2A3,
         Tesla,

@@ -45,6 +45,10 @@ namespace iStick2War_V2
         [SerializeField]
         private string _scalingVersion = "default";
 
+        [Tooltip("When _rows is empty, resolve waves 1-10 from a built-in retention-focused curve.")]
+        [SerializeField]
+        private bool _useBuiltInDefaultCurveWhenRowsEmpty = true;
+
         [Tooltip("Row[i] applies to wave i+1. Extra waves repeat the last row. Empty list = all multipliers 1.")]
         [SerializeField]
         private List<WaveBalanceWaveRow> _rows = new List<WaveBalanceWaveRow>();
@@ -57,7 +61,9 @@ namespace iStick2War_V2
             int wave = Mathf.Max(1, waveNumberOneBased);
             if (_rows == null || _rows.Count == 0)
             {
-                return WaveBalanceWaveRow.Identity;
+                return _useBuiltInDefaultCurveWhenRowsEmpty
+                    ? ResolveBuiltInCurveWaveRow(wave)
+                    : WaveBalanceWaveRow.Identity;
             }
 
             int idx = Mathf.Min(wave - 1, _rows.Count - 1);
@@ -68,6 +74,19 @@ namespace iStick2War_V2
                 enemyDamageMultiplier = Mathf.Max(0.01f, src.enemyDamageMultiplier),
                 spawnRateMultiplier = Mathf.Max(0.01f, src.spawnRateMultiplier),
                 waveRewardMultiplier = Mathf.Max(0f, src.waveRewardMultiplier)
+            };
+        }
+
+        private static WaveBalanceWaveRow ResolveBuiltInCurveWaveRow(int wave)
+        {
+            // Mild ramp for waves 1-3, steeper pressure from 4-10 with matching reward.
+            float t = Mathf.Clamp01((wave - 1f) / 9f);
+            return new WaveBalanceWaveRow
+            {
+                enemyHpMultiplier = Mathf.Lerp(1f, 1.42f, t),
+                enemyDamageMultiplier = Mathf.Lerp(1f, 1.36f, t),
+                spawnRateMultiplier = Mathf.Lerp(1f, 1.52f, t),
+                waveRewardMultiplier = Mathf.Lerp(1f, 1.34f, t)
             };
         }
     }

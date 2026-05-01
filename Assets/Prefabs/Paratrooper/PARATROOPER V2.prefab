@@ -467,6 +467,7 @@ MonoBehaviour:
   _onlyLogWhenSummaryChanges: 1
   _warnWhenColliderSummaryIsNotFull: 1
   _autoFixBodyPartLayerToEnemyBodyPart: 1
+  _teslaElectrocuteResumeAfterSeconds: 0.22
   _autoDespawnWhenOutsideMainCamera: 1
   _offscreenViewportMargin: 0.05
   _offscreenDespawnDelaySeconds: 0.75
@@ -508,12 +509,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0c71d3e8a4d36284b81c4bd5a7707784, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperDamageReceiver_V2
+  _enableTeslaEmpCombatStun: 1
+  _teslaEmpCombatStunSeconds: 0.35
   _enableExplosiveGibDeath: 1
   _explodeOnAnyExplosiveHit: 1
   _explosiveGibDamageThreshold: 40
   _enableFlamethrowerBurnDeath: 1
   _flamethrowerBurnDeathDelaySeconds: 1.8
   _flamethrowerAirborneBurnDeathDelaySeconds: 1.3
+  _enableBodyPartSevering: 1
+  _minFinalDamageToSever: 18
+  _allowTorsoSever: 0
+  _allowHeadSever: 1
+  _debugDamagePathLogs: 1
 --- !u!114 &3884552245145279488
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -526,6 +534,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8ba2e7bcc9de16d49a2186e5abfd2d0e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperDeathHandler_V2
+  _useRagdoll: 1
+  _ragdollVelocityInheritanceMultiplier: 1
+  _ragdollRadialImpulseMultiplier: 0
+  _ragdollRandomTorqueImpulseMultiplier: 0.35
   scoreValue: 0
   _groundDeathDespawnDelaySeconds: 2
   _airborneImpactDespawnDelaySeconds: 1.6
@@ -551,6 +563,10 @@ MonoBehaviour:
   isBurning: 0
   burnDieAtTime: 0
   burnFromAirborneFlamethrower: 0
+  pendingDieAfterElectrocuteAnim: 0
+  lastUnscaledTimeReceivedHeroTeslaHit: -9999
+  hasResumeStateAfterTeslaElectrocute: 0
+  resumeStateAfterTeslaElectrocute: 0
 --- !u!114 &2782605750978404735
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2356,6 +2372,10 @@ MonoBehaviour:
   _landFallDownBack2Anim: {fileID: 11400000, guid: f0dcdae40f9ca6e46ae57a281c51aa5f, type: 2}
   _landFallDownBack3Anim: {fileID: 11400000, guid: 71a254a9373ecf541beea850bacb8b26, type: 2}
   _shootingMP40Anim: {fileID: 11400000, guid: 672b08387407ca147b3ae4fc3152da67, type: 2}
+  electrocutedAnim: {fileID: 0}
+  glideElectrocuted: {fileID: 0}
+  _teslaElectrocuteSlotName: skeleton-electro
+  _teslaElectrocuteDeathFallbackSeconds: 3
   _fireRunAnim: {fileID: 11400000, guid: e7501a15d121b2f478a202f56e79795c, type: 2}
   _fireRunDeathAnim: {fileID: 11400000, guid: e459eb22154a8eb47a9dc4913b2942f4, type: 2}
   _glideFireAnim: {fileID: 11400000, guid: 8a8c2d9ecc990ee47ab655c52a4b18f0, type: 2}
@@ -2435,6 +2455,97 @@ MonoBehaviour:
   _gibSortingOrder: 6000
   _gibWorldZ: 0
   _gibPhysicsLayerName: Enemy
+  _severedPartEntries:
+  - BodyPart: 0
+    BoneName: head
+    Prefab: {fileID: 8234748875205000058, guid: 97bc6fe0e35bf1b41868dba3a2db2169, type: 3}
+    SlotsToHide:
+    - 
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 0
+  - BodyPart: 1
+    BoneName: arm-lower-front
+    Prefab: {fileID: 3748769315888407729, guid: 8b399ed2fa1ff174a9ed37351c7c3480, type: 3}
+    SlotsToHide:
+    - 
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 0
+  - BodyPart: 2
+    BoneName: arm-lower-back
+    Prefab: {fileID: 3748769315888407729, guid: 8b399ed2fa1ff174a9ed37351c7c3480, type: 3}
+    SlotsToHide:
+    - 
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 0
+  - BodyPart: 3
+    BoneName: arm-upper-front
+    Prefab: {fileID: 5076545372327710606, guid: 1fe0cb539811c8144a6396ec68066fcf, type: 3}
+    SlotsToHide:
+    - 
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 0
+  - BodyPart: 4
+    BoneName: arm-upper-back
+    Prefab: {fileID: 5076545372327710606, guid: 1fe0cb539811c8144a6396ec68066fcf, type: 3}
+    SlotsToHide:
+    - 
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 0
+  - BodyPart: 5
+    BoneName: torso
+    Prefab: {fileID: 2930776776331952244, guid: 21cca77e9f2a74c4c885dae371da0f46, type: 3}
+    SlotsToHide:
+    - 
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 0
+  - BodyPart: 6
+    BoneName: leg-lower-front
+    Prefab: {fileID: 252143440619229420, guid: 5309804a9115ad94493c7be5505c5e0e, type: 3}
+    SlotsToHide:
+    - 
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 0
+  - BodyPart: 7
+    BoneName: leg-lower-back
+    Prefab: {fileID: 252143440619229420, guid: 5309804a9115ad94493c7be5505c5e0e, type: 3}
+    SlotsToHide:
+    - 
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 0
+  - BodyPart: 8
+    BoneName: leg-upper-front
+    Prefab: {fileID: 7370333474758703664, guid: 424edd1af285a3c41808abd89bf9beeb, type: 3}
+    SlotsToHide:
+    - 
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 0
+  - BodyPart: 9
+    BoneName: leg-upper-back
+    Prefab: {fileID: 7370333474758703664, guid: 424edd1af285a3c41808abd89bf9beeb, type: 3}
+    SlotsToHide:
+    - 
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 0
+  - BodyPart: 10
+    BoneName: foot-front
+    Prefab: {fileID: 4187462531866338815, guid: ea19c6958e607aa4294ccf03111df778, type: 3}
+    SlotsToHide:
+    - 
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 0
+  - BodyPart: 10
+    BoneName: foot-back
+    Prefab: {fileID: 4187462531866338815, guid: ea19c6958e607aa4294ccf03111df778, type: 3}
+    SlotsToHide:
+    - 
+    LocalOffset: {x: 0, y: 0, z: 0}
+    Scale: 0
+  _severedPartLifetime: 5
+  _severedPartForce: 6.5
+  _severedPartTorque: 160
+  _debugSeverLogs: 1
+  _bloodHitPrefab: {fileID: 100000, guid: 5ea5b0532c1004e4aba8a7f9fbe4d4b0, type: 3}
+  _bloodHitReferenceDamage: 28
 --- !u!114 &357004263934065529
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2469,7 +2580,6 @@ GameObject:
   m_Component:
   - component: {fileID: 2161251068689475119}
   - component: {fileID: 2518398710765254560}
-  - component: {fileID: 2491622116261004670}
   - component: {fileID: 3009565735555275128}
   - component: {fileID: 5894018900088633540}
   - component: {fileID: 4608557550293844595}
@@ -2513,61 +2623,6 @@ MonoBehaviour:
   usedByEffector: 0
   usedByComposite: 0
   clearStateOnDisable: 1
---- !u!60 &2491622116261004670
-PolygonCollider2D:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8428395232643671833}
-  m_Enabled: 0
-  serializedVersion: 3
-  m_Density: 1
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ForceSendLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_ForceReceiveLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_ContactCaptureLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_CallbackLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_IsTrigger: 0
-  m_UsedByEffector: 0
-  m_CompositeOperation: 0
-  m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
-  m_SpriteTilingProperty:
-    border: {x: 0, y: 0, z: 0, w: 0}
-    pivot: {x: 0, y: 0}
-    oldSize: {x: 0, y: 0}
-    newSize: {x: 0, y: 0}
-    adaptiveTilingThreshold: 0
-    drawMode: 0
-    adaptiveTiling: 0
-  m_AutoTiling: 0
-  m_Points:
-    m_Paths:
-    - - {x: 0.47919998, y: 0.044}
-      - {x: 0.3797, y: 0.21459998}
-      - {x: 0.1563, y: 0.25169998}
-      - {x: -0.0161, y: 0.0932}
-      - {x: -0.020799998, y: -0.126}
-      - {x: 0.16860001, y: -0.2827}
-      - {x: 0.3818, y: -0.2411}
-      - {x: 0.4679, y: -0.1243}
-  m_UseDelaunayMesh: 1
 --- !u!114 &3009565735555275128
 MonoBehaviour:
   m_ObjectHideFlags: 0

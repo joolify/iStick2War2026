@@ -105,5 +105,13 @@ namespace iStick2War_V2
             // 4. Signalera till resten av spelet
             OnDeathHandled?.Invoke();
         }
+
+        public void ResetAfterRevive()
+        {
+            hasHandledDeath = false;
+            _movementSystem.Enable();
+            _weaponSystem.Enable();
+            _stateMachine.ChangeState(HeroState.Idle);
+        }
     }
 }

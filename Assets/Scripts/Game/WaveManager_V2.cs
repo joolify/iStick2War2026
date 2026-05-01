@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Text;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 using iStick2War;
 using TMPro;
 
@@ -18,6 +19,13 @@ namespace iStick2War_V2
         GameOver,
         GameWon,
         GameError
+    }
+
+    public enum DeathContinueTier_V2
+    {
+        RestartRun,
+        CheckpointContinue,
+        ClutchSave
     }
 
     public sealed class WaveManager_V2 : MonoBehaviour
@@ -36,6 +44,10 @@ namespace iStick2War_V2
         [SerializeField] private TMP_Text _topBarCurrentAmmoText;
         [SerializeField] private TMP_Text _topBarReloadText;
         [SerializeField] private TMP_Text _topBarBunkerHealthText;
+        [Tooltip("Optional UI Image (Type: Filled) for hero HP ratio.")]
+        [SerializeField] private Image _topBarHeroHealthFill;
+        [Tooltip("Optional UI Image (Type: Filled) for bunker HP ratio.")]
+        [SerializeField] private Image _topBarBunkerHealthFill;
         [SerializeField] private TMP_Text _topBarWaveText;
         [Header("Game Over UI")]
         [Tooltip("Optional; if unset, resolved once when entering Game Over. Shown only when the hero is dead.")]
@@ -114,6 +126,14 @@ namespace iStick2War_V2
         [SerializeField] private int _bunkerMaxHealthCap;
         [Tooltip("Multiply cost after each completed purchase of that category (e.g. 1.08 ≈ +8%).")]
         [SerializeField] private float _shopCostScalePerPurchase = 1.08f;
+        [Header("Death continue (3-layer)")]
+        [SerializeField] private int _checkpointContinueCost = 120;
+        [SerializeField] private int _clutchSaveCost = 200;
+        [Tooltip("Checkpoint continue applies extra pressure to keep stakes high.")]
+        [SerializeField] [Range(1f, 2f)] private float _checkpointEnemyPressureMultiplier = 1.2f;
+        [Tooltip("Clutch save revives hero with this HP fraction and restarts current wave quickly.")]
+        [SerializeField] [Range(0.1f, 1f)] private float _clutchReviveHealthFraction = 0.6f;
+        [SerializeField] [Range(0f, 0.5f)] private float _restartRunPermanentDamageBonusStep = 0.05f;
 
         [Header("Debug")]
         [SerializeField] private bool _debugWaveLogs = false;
@@ -128,6 +148,7 @@ namespace iStick2War_V2
         private int _bunkerHealth;
         private int _bunkerMaxHealthRuntime;
         private int _healthPurchasesThisRun;
+        private int _bunkerRepairsThisRun;
         private int _bunkerMaxUpgradesThisRun;
         private int _enemiesKilledThisWave;
         private Color _reloadPromptBaseColor = Color.white;
@@ -144,6 +165,8 @@ namespace iStick2War_V2
         private float _inWaveEnteredUnscaledTime;
         private string _lastGameErrorReason = "";
         private float _extraPrepareDelaySecondsForNextWave;
+        private float _continueEnemyPressureMultiplierRuntime = 1f;
+        private static float s_restartRunPermanentDamageBonus01;
 
         public event Action<WaveLoopState_V2> OnStateChanged;
         public event Action<int, int, int> OnMetaChanged;
@@ -162,6 +185,9 @@ namespace iStick2War_V2
         public Hero_V2 Hero => _hero;
         /// <summary>Kill counter for the active wave (reset when a new wave starts).</summary>
         public int EnemiesKilledThisWave => _enemiesKilledThisWave;
+        public int CheckpointContinueCost => Mathf.Max(0, _checkpointContinueCost);
+        public int ClutchSaveCost => Mathf.Max(0, _clutchSaveCost);
+        public float RestartRunPermanentDamageBonus01 => s_restartRunPermanentDamageBonus01;
 
         /// <summary>
         /// Last scaling snapshot for the wave that entered <see cref="WaveLoopState_V2.InWave"/> (still valid in Shop until the next wave starts).
@@ -479,7 +505,7 @@ namespace iStick2War_V2
                         return false;
                     }
 
-                    int repairCost = Mathf.Max(0, offer.Cost);
+                    int repairCost = GetOfferEffectiveCost(offer);
                     if (!TrySpend(repairCost))
                     {
                         return false;
@@ -487,6 +513,7 @@ namespace iStick2War_V2
 
                     int repair = offer.BunkerRepairAmount > 0 ? offer.BunkerRepairAmount : _bunkerRepairAmount;
                     _bunkerHealth = Mathf.Min(_bunkerMaxHealthRuntime, _bunkerHealth + repair);
+                    _bunkerRepairsThisRun++;
                     Log($"Bunker repaired (+{repair}) for {repairCost}. hp={_bunkerHealth}/{_bunkerMaxHealthRuntime}");
                     WaveRunTelemetry_V2.NotifyShopPurchase("BunkerRepair", repairCost);
                     EmitMetaChanged();
@@ -628,6 +655,58 @@ namespace iStick2War_V2
             return _currency >= Mathf.Max(0, cost);
         }
 
+        public bool TryChooseDeathContinue(DeathContinueTier_V2 tier)
+        {
+            switch (tier)
+            {
+                case DeathContinueTier_V2.RestartRun:
+                    ChooseRestartRun();
+                    return true;
+                case DeathContinueTier_V2.CheckpointContinue:
+                    return TryCheckpointContinue();
+                case DeathContinueTier_V2.ClutchSave:
+                    return TryClutchSave();
+                default:
+                    return false;
+            }
+        }
+
+        public void ChooseRestartRun()
+        {
+            if (_state != WaveLoopState_V2.GameOver && _state != WaveLoopState_V2.GameError)
+            {
+                return;
+            }
+
+            s_restartRunPermanentDamageBonus01 =
+                Mathf.Clamp01(s_restartRunPermanentDamageBonus01 + Mathf.Max(0f, _restartRunPermanentDamageBonusStep));
+            Time.timeScale = 1f;
+            Scene active = SceneManager.GetActiveScene();
+            SceneManager.LoadScene(active.path.Length > 0 ? active.path : active.name);
+        }
+
+        public bool TryCheckpointContinue()
+        {
+            if (!TryStartContinueFromGameOver(CheckpointContinueCost, 0.7f, true))
+            {
+                return false;
+            }
+
+            WaveRunTelemetry_V2.NotifyShopPurchase("DeathCheckpointContinue", CheckpointContinueCost);
+            return true;
+        }
+
+        public bool TryClutchSave()
+        {
+            if (!TryStartContinueFromGameOver(ClutchSaveCost, _clutchReviveHealthFraction, false))
+            {
+                return false;
+            }
+
+            WaveRunTelemetry_V2.NotifyShopPurchase("DeathClutchSave", ClutchSaveCost);
+            return true;
+        }
+
         public bool PurchaseBunkerRepair()
         {
             if (_state != WaveLoopState_V2.Shop)
@@ -640,15 +719,17 @@ namespace iStick2War_V2
                 return false;
             }
 
-            if (!TrySpend(_bunkerRepairCost))
+            int repairCost = GetScaledBunkerRepairCost();
+            if (!TrySpend(repairCost))
             {
                 return false;
             }
 
             _bunkerHealth = Mathf.Min(_bunkerMaxHealthRuntime, _bunkerHealth + _bunkerRepairAmount);
+            _bunkerRepairsThisRun++;
             Log(
-                $"Bunker repaired (+{_bunkerRepairAmount}) for {_bunkerRepairCost}. hp={_bunkerHealth}/{_bunkerMaxHealthRuntime}");
-            WaveRunTelemetry_V2.NotifyShopPurchase("bunker_repair_top_bar", _bunkerRepairCost);
+                $"Bunker repaired (+{_bunkerRepairAmount}) for {repairCost}. hp={_bunkerHealth}/{_bunkerMaxHealthRuntime}");
+            WaveRunTelemetry_V2.NotifyShopPurchase("bunker_repair_top_bar", repairCost);
             EmitMetaChanged();
             return true;
         }
@@ -684,6 +765,11 @@ namespace iStick2War_V2
         }
 
         public int GetBunkerRepairCost() => Mathf.Max(0, _bunkerRepairCost);
+        
+        public int GetScaledBunkerRepairCost()
+        {
+            return GetScaledPurchaseCost(Mathf.Max(0, _bunkerRepairCost), _bunkerRepairsThisRun);
+        }
 
         public int GetBunkerMaxUpgradeCost()
         {
@@ -711,6 +797,11 @@ namespace iStick2War_V2
                 {
                     int basis = offer.Cost > 0 ? offer.Cost : _bunkerMaxUpgradeBaseCost;
                     return GetScaledPurchaseCost(Mathf.Max(0, basis), _bunkerMaxUpgradesThisRun);
+                }
+                case ShopOfferKind_V2.BunkerRepair:
+                {
+                    int basis = offer.Cost > 0 ? offer.Cost : _bunkerRepairCost;
+                    return GetScaledPurchaseCost(Mathf.Max(0, basis), _bunkerRepairsThisRun);
                 }
                 default:
                     return Mathf.Max(0, offer.Cost);
@@ -856,6 +947,10 @@ namespace iStick2War_V2
                 _autoHero = _hero.GetComponent<AutoHero_V2>();
             }
             _scalingForActiveWave = BuildScalingSnapshot(wave, CurrentWaveNumber);
+            if (_continueEnemyPressureMultiplierRuntime > 1f)
+            {
+                _scalingForActiveWave = BuildContinuePressureSnapshot(_scalingForActiveWave, _continueEnemyPressureMultiplierRuntime);
+            }
             _hasScalingForActiveWave = true;
             if (_enemySpawner != null)
             {
@@ -871,6 +966,60 @@ namespace iStick2War_V2
                 $"Wave {CurrentWaveNumber} started. enemies={wave.EnemyCount}, " +
                 $"configDuration={wave.WaveDurationSeconds:0.0}s (not used as hard cap when spawner active), " +
                 $"spawnerFailSafe={failSafeBasis:0.0}s");
+            _continueEnemyPressureMultiplierRuntime = 1f;
+        }
+
+        private static WaveRunScalingSnapshot BuildContinuePressureSnapshot(
+            WaveRunScalingSnapshot source,
+            float pressureMultiplier)
+        {
+            float p = Mathf.Max(1f, pressureMultiplier);
+            return new WaveRunScalingSnapshot(
+                scalingVersion: source.ScalingVersion + "+continue",
+                balanceEnemyHpMultiplier: source.BalanceEnemyHpMultiplier,
+                balanceEnemyDamageMultiplier: source.BalanceEnemyDamageMultiplier,
+                balanceSpawnRateMultiplier: source.BalanceSpawnRateMultiplier,
+                balanceWaveRewardMultiplier: source.BalanceWaveRewardMultiplier,
+                configEnemyHpMultiplier: source.ConfigEnemyHpMultiplier,
+                configEnemyDamageMultiplier: source.ConfigEnemyDamageMultiplier,
+                configSpawnIntervalSeconds: source.ConfigSpawnIntervalSeconds,
+                configWaveRewardCurrency: source.ConfigWaveRewardCurrency,
+                effectiveEnemyHpMultiplier: source.EffectiveEnemyHpMultiplier * p,
+                effectiveEnemyDamageMultiplier: source.EffectiveEnemyDamageMultiplier * p,
+                effectiveSpawnIntervalSeconds: source.EffectiveSpawnIntervalSeconds / p,
+                effectiveWaveRewardCurrency: source.EffectiveWaveRewardCurrency);
+        }
+
+        private bool TryStartContinueFromGameOver(int cost, float reviveHealthFraction, bool applyCheckpointPressure)
+        {
+            if ((_state != WaveLoopState_V2.GameOver && _state != WaveLoopState_V2.GameError) ||
+                _hero == null ||
+                !TrySpend(cost))
+            {
+                return false;
+            }
+
+            if (!_hero.TryReviveWithHealthFraction(reviveHealthFraction))
+            {
+                _currency += cost;
+                return false;
+            }
+
+            if (_enemySpawner != null)
+            {
+                _enemySpawner.StopWave();
+            }
+
+            SetHeroDeathGameOverUiVisible(false);
+            SetGameErrorUiVisible(false);
+            SetGameWonUiVisible(false);
+            SetCameraFollowEnabled(true);
+            _continueEnemyPressureMultiplierRuntime =
+                applyCheckpointPressure ? Mathf.Max(1f, _checkpointEnemyPressureMultiplier) : 1f;
+            _extraPrepareDelaySecondsForNextWave = 0f;
+            EnterPreparingState();
+            EmitMetaChanged();
+            return true;
         }
 
         private WaveRunScalingSnapshot BuildScalingSnapshot(WaveConfig_V2 wave, int waveNumberOneBased)
@@ -1564,6 +1713,12 @@ namespace iStick2War_V2
                 _topBarBunkerHealthText.text = $"Bunker: {_bunkerHealth}/{_bunkerMaxHealthRuntime}";
             }
 
+            if (_topBarBunkerHealthFill != null)
+            {
+                int maxBunker = Mathf.Max(1, _bunkerMaxHealthRuntime);
+                _topBarBunkerHealthFill.fillAmount = Mathf.Clamp01((float)_bunkerHealth / maxBunker);
+            }
+
             if (_hero == null)
             {
                 return;
@@ -1572,6 +1727,12 @@ namespace iStick2War_V2
             if (_topBarHealthText != null)
             {
                 _topBarHealthText.text = $"HP: {_hero.GetCurrentHealth()}/{_hero.GetMaxHealth()}";
+            }
+
+            if (_topBarHeroHealthFill != null)
+            {
+                int maxHero = Mathf.Max(1, _hero.GetMaxHealth());
+                _topBarHeroHealthFill.fillAmount = Mathf.Clamp01((float)_hero.GetCurrentHealth() / maxHero);
             }
 
             if (_topBarCurrentWeaponText != null)

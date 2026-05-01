@@ -120,7 +120,7 @@ namespace iStick2War_V2
                 $"Bunker HP: {_waveManager.BunkerHealth}/{_waveManager.BunkerMaxHealth}");
             SetText(_buyButtonText, _buyButtonDefaultLabel);
             SetText(_healthCostText, $"Heal cost: {_waveManager.GetHealthPurchaseCost()}");
-            SetText(_bunkerCostText, $"Repair cost: {_waveManager.GetBunkerRepairCost()}");
+            SetText(_bunkerCostText, $"Repair cost: {_waveManager.GetScaledBunkerRepairCost()}");
             EnsureLooseShopPreviewReparentedOnce();
             RefreshOfferSelection();
         }
@@ -402,9 +402,19 @@ namespace iStick2War_V2
                     return $"Cost: {_waveManager.GetOfferEffectiveCost(offer)} (+max HP)";
 
                 case ShopOfferKind_V2.WeaponUnlock:
-                    return _waveManager.IsWeaponOwned(offer.Weapon)
-                        ? "Owned"
-                        : $"Cost: {offer.Cost}";
+                    if (_waveManager.IsWeaponOwned(offer.Weapon))
+                    {
+                        return "Owned";
+                    }
+
+                    string role = offer.Weapon != null && offer.Weapon.WeaponType == iStick2War.WeaponType.Minigun
+                        ? "Role: DPS"
+                        : offer.Weapon != null && offer.Weapon.WeaponType == iStick2War.WeaponType.Tesla
+                            ? "Role: Control"
+                            : "";
+                    return string.IsNullOrEmpty(role)
+                        ? $"Cost: {offer.Cost}"
+                        : $"Cost: {offer.Cost} ({role})";
 
                 case ShopOfferKind_V2.AmmoRefill:
                     if (offer.Weapon == null)

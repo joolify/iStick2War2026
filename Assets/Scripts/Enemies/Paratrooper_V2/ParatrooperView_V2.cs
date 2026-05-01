@@ -155,6 +155,13 @@ public class ParatrooperView_V2 : MonoBehaviour
     [SerializeField] private float _severedPartForce = 6.5f;
     [SerializeField] private float _severedPartTorque = 160f;
     [SerializeField] private bool _debugSeverLogs = true;
+    [Header("Blood hit VFX (optional)")]
+    [Tooltip("Assign a small particle or sprite burst prefab. Leave empty to disable.")]
+    [SerializeField] private GameObject _bloodHitPrefab;
+    [SerializeField] private float _bloodHitReferenceDamage = 28f;
+    [Tooltip("Move splat opposite bullet travel (toward hero) to correct Spine vs hitbox depth.")]
+    [SerializeField] private float _bloodHitTowardShooterMeters = 0.022f;
+    private ParatrooperDamageReceiver_V2 _damageReceiver;
     private GameObject _activeBurnFireVfx;
     private const string DefaultBurnFirePrefabPath = "Assets/Prefabs/Paratrooper/Paratrooper_Fire Variant.prefab";
     private readonly HashSet<BodyPartType> _alreadySeveredParts = new HashSet<BodyPartType>();
@@ -167,7 +174,8 @@ public class ParatrooperView_V2 : MonoBehaviour
     public void Initialize(
         ParatrooperStateMachine_V2 stateMachine,
         ParatrooperModel_V2 model,
-        ParatrooperController_V2 controller)
+        ParatrooperController_V2 controller,
+        ParatrooperDamageReceiver_V2 damageReceiver)
     {
         _skeletonAnimation = GetComponent<SkeletonAnimation>();
 
@@ -175,8 +183,49 @@ public class ParatrooperView_V2 : MonoBehaviour
         _model = model;
         _controller = controller;
 
+        EnsureDamagePresentationSubscribed(damageReceiver);
+
         _stateMachine.OnStateChanged += HandleStateChanged;
         ResolveAimBones();
+    }
+
+    /// <summary>
+    /// Pool-safe: re-subscribe after <see cref="Paratrooper.PrepareForSpawn"/> so hits always reach VFX.
+    /// </summary>
+    public void EnsureDamagePresentationSubscribed(ParatrooperDamageReceiver_V2 damageReceiver)
+    {
+        if (_damageReceiver != null)
+        {
+            _damageReceiver.OnDamagePresentation -= HandleDamagePresentation;
+        }
+
+        _damageReceiver = damageReceiver;
+        if (_damageReceiver != null)
+        {
+            _damageReceiver.OnDamagePresentation += HandleDamagePresentation;
+        }
+    }
+
+    private void HandleDamagePresentation(DamageInfo info, float finalDamage)
+    {
+        if (_bloodHitPrefab == null)
+        {
+            return;
+        }
+
+        if (info.SourceWeapon == WeaponType.Tesla || info.SourceWeapon == WeaponType.Flamethrower)
+        {
+            return;
+        }
+
+        BloodHitVfx_V2.Spawn(
+            _bloodHitPrefab,
+            info.HitPoint,
+            info.ShotDirection,
+            finalDamage,
+            _bloodHitReferenceDamage,
+            0f,
+            _bloodHitTowardShooterMeters);
     }
 
     /// <summary>
@@ -226,6 +275,8 @@ public class ParatrooperView_V2 : MonoBehaviour
         CancelInvoke(nameof(ResolvePendingTeslaElectrocuteDeathTimeout));
         if (_stateMachine != null)
             _stateMachine.OnStateChanged -= HandleStateChanged;
+        if (_damageReceiver != null)
+            _damageReceiver.OnDamagePresentation -= HandleDamagePresentation;
     }
 
     private void HandleStateChanged(StickmanBodyState from, StickmanBodyState to)

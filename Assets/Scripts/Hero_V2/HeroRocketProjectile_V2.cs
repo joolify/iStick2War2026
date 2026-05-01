@@ -198,11 +198,14 @@ namespace iStick2War_V2
                     }
 
                     damagedParatroopers.Add(receiver);
+                    Vector2 toTarget = closestOnHit - explosionCenter;
+                    Vector2 shotDir = toTarget.sqrMagnitude > 0.0001f ? toTarget.normalized : Vector2.right;
                     DamageInfo damageInfo = new DamageInfo
                     {
                         BaseDamage = finalDamage,
                         BodyPart = BodyPartType.Torso,
-                        HitPoint = explosionCenter,
+                        HitPoint = closestOnHit,
+                        ShotDirection = shotDir,
                         IsExplosive = true,
                         ExplosionForce = Mathf.Lerp(3.5f, 9f, damageMultiplier),
                         SourceWeapon = WeaponType.Bazooka

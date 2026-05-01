@@ -173,7 +173,9 @@ namespace iStick2War_V2
                 IsHeroWithinExplosionRadius(center, hero, _explosionRadius))
             {
                 // Remaining splash only after bunker cover is breached (same hit can overflow if bunker HP was low).
-                hero.ReceiveDamage(heroDamage, ignoreBunkerSafeZone: true);
+                Vector2 toHero = (Vector2)hero.transform.position - center;
+                Vector2 shotDir = toHero.sqrMagnitude > 0.0001f ? toHero.normalized : Vector2.left;
+                hero.ReceiveDamage(heroDamage, ignoreBunkerSafeZone: true, incomingShotWorldDirection: shotDir);
             }
 
             if (_explosionEffectPrefab != null)

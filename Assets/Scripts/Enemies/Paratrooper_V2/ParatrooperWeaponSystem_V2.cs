@@ -99,6 +99,8 @@ namespace iStick2War_V2
 
         private float _lastFireTime = -999f;
         private float _lastGrenadeTime = -999f;
+        private float _combatStunUntilUnscaledTime = -999f;
+        private string _combatStunReason = "";
         private Coroutine _lineCoroutine;
         private int _lineSortingLayerId = -1;
         private Collider2D _cachedHeroCollider;
@@ -170,10 +172,24 @@ namespace iStick2War_V2
         {
             _lastFireTime = -999f;
             _lastGrenadeTime = -999f;
+            _combatStunUntilUnscaledTime = -999f;
+            _combatStunReason = "";
             _lineCoroutine = null;
             _heroRoot = FindAnyObjectByType<Hero_V2>();
             _heroModel = _heroRoot != null ? _heroRoot.GetComponent<HeroModel_V2>() : FindAnyObjectByType<HeroModel_V2>();
             CacheHeroCollider();
+        }
+
+        public void ApplyCombatStun(float durationSeconds, string reason = "")
+        {
+            float duration = Mathf.Max(0.05f, durationSeconds);
+            _combatStunUntilUnscaledTime = Mathf.Max(_combatStunUntilUnscaledTime, Time.unscaledTime + duration);
+            _combatStunReason = string.IsNullOrWhiteSpace(reason) ? "stun" : reason.Trim();
+        }
+
+        public bool IsCombatStunned()
+        {
+            return Time.unscaledTime < _combatStunUntilUnscaledTime;
         }
 
         /// <summary>
@@ -181,6 +197,11 @@ namespace iStick2War_V2
         /// </summary>
         public bool CanShoot()
         {
+            if (IsCombatStunned())
+            {
+                return false;
+            }
+
             if (_debugDisableMp40Shooting)
             {
                 return false;
@@ -204,6 +225,12 @@ namespace iStick2War_V2
             if (_debugDisableMp40Shooting)
             {
                 return "debug MP40 disabled";
+            }
+
+            if (IsCombatStunned())
+            {
+                float secLeft = Mathf.Max(0f, _combatStunUntilUnscaledTime - Time.unscaledTime);
+                return $"combat stunned ({_combatStunReason}, {secLeft:0.00}s left)";
             }
 
             if (_model == null)
@@ -241,6 +268,12 @@ namespace iStick2War_V2
             if (_model == null)
             {
                 return "model missing";
+            }
+
+            if (IsCombatStunned())
+            {
+                float secLeft = Mathf.Max(0f, _combatStunUntilUnscaledTime - Time.unscaledTime);
+                return $"combat stunned ({_combatStunReason}, {secLeft:0.00}s left)";
             }
 
             EnsurePotatomasherPrefabAssigned();
@@ -681,7 +714,7 @@ namespace iStick2War_V2
                             Debug.Log($"[ParatrooperWeaponSystem_V2] Hit Hero_V2 for {_baseDamage} damage.");
                         }
 
-                        heroRoot.ReceiveDamage(_baseDamage);
+                        heroRoot.ReceiveDamage(_baseDamage, incomingShotWorldDirection: direction);
                         didApplyDamage = true;
                         damageHit = h;
                         break;
@@ -715,7 +748,7 @@ namespace iStick2War_V2
 
                         if (heroForZone != null)
                         {
-                            heroForZone.ReceiveDamage(_baseDamage);
+                            heroForZone.ReceiveDamage(_baseDamage, incomingShotWorldDirection: direction);
                         }
                         else
                         {

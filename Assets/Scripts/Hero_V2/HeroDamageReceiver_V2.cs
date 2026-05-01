@@ -53,6 +53,8 @@ namespace iStick2War_V2
 
         // Events (extremt viktigt för clean architecture)
         public event Action<int> OnDamageTaken;
+        /// <summary>Optional world direction the damage traveled (e.g. enemy bullet toward hero).</summary>
+        public event Action<int, Vector2?> OnDamageTakenVfx;
         public event Action OnDeath;
 
         public HeroDamageReceiver_V2(HeroModel_V2 model)
@@ -68,7 +70,7 @@ namespace iStick2War_V2
         // -------------------------
         // PUBLIC API
         // -------------------------
-        public void ApplyDamage(int damage)
+        public void ApplyDamage(int damage, Vector2? incomingShotWorldDirection = null)
         {
             if (!CanTakeDamage()) return;
 
@@ -85,6 +87,7 @@ namespace iStick2War_V2
             if (actualDamage > 0)
             {
                 OnDamageTaken?.Invoke(actualDamage);
+                OnDamageTakenVfx?.Invoke(actualDamage, incomingShotWorldDirection);
             }
 
             if (_model.isDead)

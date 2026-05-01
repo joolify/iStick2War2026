@@ -388,6 +388,7 @@ public class Paratrooper : MonoBehaviour
         _controller?.ResetForSpawn();
         _weaponSystem?.ResetForSpawn();
         _view?.ResetVisualStateForSpawn();
+        _view?.EnsureDamagePresentationSubscribed(_damageReceiver);
         _controller?.StartGame();
         CaptureSpineWorldAnchorForPostSpawnFacingReconcile();
     }
@@ -637,7 +638,7 @@ public class Paratrooper : MonoBehaviour
         _controller.Initialize(_model, _stateMachine, _damageReceiver, _weaponSystem);
 
         // 5. Init View
-        _view.Initialize(_stateMachine, _model, _controller);
+        _view.Initialize(_stateMachine, _model, _controller, _damageReceiver);
 
         // 6. Init DeathHandler
         _deathHandler.Initialize(_stateMachine);

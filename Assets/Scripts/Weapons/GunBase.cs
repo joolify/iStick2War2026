@@ -147,6 +147,7 @@ namespace iStick2War
                     {
                         BaseDamage = 10f,
                         HitPoint = hit.point,
+                        ShotDirection = new Vector2(direction.x, direction.y),
                     };
                     bodyPart.OnHit(damageInfo);
                 }

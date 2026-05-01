@@ -231,6 +231,11 @@ namespace iStick2War_V2
             _model.velocity = Vector2.zero;
         }
 
+        public void Enable()
+        {
+            isDisabled = false;
+        }
+
         // -------------------------
         // OPTIONAL: grounded setter (from raycast / collision system)
         // -------------------------

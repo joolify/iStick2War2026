@@ -1,5 +1,6 @@
 using Assets.Scripts.Components;
 using iStick2War;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -39,6 +40,10 @@ namespace iStick2War_V2
 {
 public class ParatrooperDamageReceiver_V2 : MonoBehaviour
 {
+    [Header("EMP / combat stun")]
+    [SerializeField] private bool _enableTeslaEmpCombatStun = true;
+    [SerializeField] private float _teslaEmpCombatStunSeconds = 0.35f;
+
     [Header("Explosive Death")]
     [SerializeField] private bool _enableExplosiveGibDeath = true;
     [SerializeField] private bool _explodeOnAnyExplosiveHit = true;
@@ -61,6 +66,8 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
     private readonly HashSet<BodyPartType> _severedParts = new HashSet<BodyPartType>();
     public event System.Action<Vector2, float> OnExploded;
     public event System.Action<BodyPartType, Vector2, float> OnBodyPartSevered;
+    /// <summary>Raised after HP was reduced this frame; for VFX only (final damage amount after armor/multipliers).</summary>
+    public event Action<DamageInfo, float> OnDamagePresentation;
 
     private void OnEnable()
     {
@@ -106,6 +113,18 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
         if (info.SourceWeapon == WeaponType.Tesla)
         {
             _model.lastUnscaledTimeReceivedHeroTeslaHit = Time.unscaledTime;
+            if (_enableTeslaEmpCombatStun)
+            {
+                ParatrooperWeaponSystem_V2 ws =
+                    _paratrooper != null
+                        ? _paratrooper.GetComponentInChildren<ParatrooperWeaponSystem_V2>(true)
+                        : GetComponentInChildren<ParatrooperWeaponSystem_V2>(true);
+                if (ws != null)
+                {
+                    ws.ApplyCombatStun(_teslaEmpCombatStunSeconds, "tesla_emp");
+                    WaveRunTelemetry_V2.NotifyEmpCombatStunApplied();
+                }
+            }
         }
 
         bool isFlamethrowerHit = info.SourceWeapon == WeaponType.Flamethrower;
@@ -263,6 +282,12 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
             {
                 _stateMachine.ChangeState(StickmanBodyState.Land);
             }
+        }
+
+        float totalDealt = hpBefore - _model.health;
+        if (totalDealt > 0.001f)
+        {
+            OnDamagePresentation?.Invoke(info, totalDealt);
         }
 
         Debug.Log(

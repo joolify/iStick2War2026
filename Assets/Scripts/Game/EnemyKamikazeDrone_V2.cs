@@ -208,7 +208,9 @@ namespace iStick2War_V2
                 float radius = Mathf.Max(0f, _heroExplosionRadius);
                 if (radius > 0f && ((Vector2)_hero.transform.position - center).sqrMagnitude <= radius * radius)
                 {
-                    _hero.ReceiveDamage(heroDamage, ignoreBunkerSafeZone: true);
+                    Vector2 toHero = (Vector2)_hero.transform.position - center;
+                    Vector2 shotDir = toHero.sqrMagnitude > 0.0001f ? toHero.normalized : Vector2.left;
+                    _hero.ReceiveDamage(heroDamage, ignoreBunkerSafeZone: true, incomingShotWorldDirection: shotDir);
                 }
             }
 

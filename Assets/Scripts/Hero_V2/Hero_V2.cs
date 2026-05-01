@@ -97,7 +97,7 @@ namespace iStick2War_V2
             // EVENTS
             // -------------------------
 
-            _damageReceiver.OnDamageTaken += _view.PlayHitEffect;
+            _damageReceiver.OnDamageTakenVfx += _view.PlayHitBloodVfx;
 
             _damageReceiver.OnDeath += _deathHandler.HandleDeath;
 
@@ -108,6 +108,11 @@ namespace iStick2War_V2
 
         private void OnDestroy()
         {
+            if (_damageReceiver != null && _view != null)
+            {
+                _damageReceiver.OnDamageTakenVfx -= _view.PlayHitBloodVfx;
+            }
+
             ClearHeroRigidbodyBunkerContactExclusion();
         }
 
@@ -151,11 +156,10 @@ namespace iStick2War_V2
         }
 
         /*
-         * damageReceiver.OnDamageTaken += view.PlayHitEffect;
-damageReceiver.OnDeath += deathHandler.HandleDeath;
-        deathHandler.OnDeathHandled += view.PlayDeathEffect;
-        deathHandler.OnDeathHandled += () => Debug.Log("GAME OVER");
-        */
+         * damageReceiver.OnDamageTakenVfx += view.PlayHitBloodVfx;
+         * damageReceiver.OnDeath += deathHandler.HandleDeath;
+         * deathHandler.OnDeathHandled += view.PlayDeathEffect;
+         */
 
         private void Update()
         {
@@ -259,7 +263,7 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
         /// <param name="ignoreBunkerSafeZone">
         /// When true, bunker cover does not block damage (e.g. bomb splash / heavy ordnance). Small-arms paths keep false.
         /// </param>
-        public void ReceiveDamage(int damage, bool ignoreBunkerSafeZone = false)
+        public void ReceiveDamage(int damage, bool ignoreBunkerSafeZone = false, Vector2? incomingShotWorldDirection = null)
         {
             if (damage > 0 && !ignoreBunkerSafeZone)
             {
@@ -283,7 +287,7 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
             }
             if (_damageReceiver != null)
             {
-                _damageReceiver.ApplyDamage(damage);
+                _damageReceiver.ApplyDamage(damage, incomingShotWorldDirection);
                 return;
             }
 
@@ -348,6 +352,18 @@ damageReceiver.OnDeath += deathHandler.HandleDeath;
         public bool IsDead()
         {
             return _model != null && _model.isDead;
+        }
+
+        public bool TryReviveWithHealthFraction(float healthFraction01)
+        {
+            if (_model == null || _deathHandler == null)
+            {
+                return false;
+            }
+
+            _model.ReviveToHealthFraction(healthFraction01);
+            _deathHandler.ResetAfterRevive();
+            return true;
         }
 
         public int GetCurrentHealth()
