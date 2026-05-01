@@ -17,6 +17,11 @@ namespace iStick2War_V2
         [Tooltip("Billboard toward camera (typical for world-space UI).")]
         [SerializeField] private bool _faceCamera = true;
 
+        [Tooltip(
+            "When facing the camera: ON = use the camera's rotation (bar stays parallel to the view plane; best for 2D ortho " +
+            "and avoids a slight skew from LookRotation + world up). OFF = legacy point-at-camera pivot.")]
+        [SerializeField] private bool _matchCameraRotation = true;
+
         [SerializeField] private Camera _camera;
 
         [Tooltip("When true, disables this behaviour if Follow Target is null (avoids warnings every frame).")]
@@ -149,6 +154,12 @@ namespace iStick2War_V2
             Camera cam = _camera != null ? _camera : Camera.main;
             if (cam == null)
             {
+                return;
+            }
+
+            if (_matchCameraRotation)
+            {
+                transform.rotation = cam.transform.rotation;
                 return;
             }
 

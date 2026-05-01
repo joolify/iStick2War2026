@@ -123,8 +123,11 @@ public class Paratrooper : MonoBehaviour
     [SerializeField] private bool _debugVisualRootOffsetFixLogs;
 
     [Header("UI")]
-    [Tooltip("Optional. Instantiated under this root on spawn so HealthBarCanvas_V2 (Paratrooper mode) can resolve ParatrooperModel_V2.")]
+    [Tooltip("Optional. Instantiated on spawn so HealthBarCanvas_V2 (Paratrooper mode) can resolve ParatrooperModel_V2.")]
     [SerializeField] private GameObject _worldHealthBarCanvasPrefab;
+
+    /// <summary>Unparented world UI so paratrooper scale / negative X flip does not shear the bar.</summary>
+    private GameObject _runtimeHealthBarRoot;
 
     [Header("Body Parts")]
     [SerializeField] private ParatrooperBodyPart_V2[] _bodyParts;
@@ -457,29 +460,44 @@ public class Paratrooper : MonoBehaviour
             return;
         }
 
-        HealthBarCanvas_V2 existing = GetComponentInChildren<HealthBarCanvas_V2>(true);
-        if (existing != null)
+        if (_runtimeHealthBarRoot == null)
         {
-            existing.gameObject.SetActive(true);
-            WorldHealthBarFollower_V2 follower = existing.GetComponent<WorldHealthBarFollower_V2>();
-            if (follower == null)
+            HealthBarCanvas_V2 existing = GetComponentInChildren<HealthBarCanvas_V2>(true);
+            if (existing != null)
             {
-                follower = existing.GetComponentInChildren<WorldHealthBarFollower_V2>(true);
+                _runtimeHealthBarRoot = existing.gameObject;
             }
-
-            follower?.SetFollowTarget(transform);
-            return;
+            else
+            {
+                _runtimeHealthBarRoot = Instantiate(_worldHealthBarCanvasPrefab, null);
+                _runtimeHealthBarRoot.name = "ParatrooperHealthBarCanvas";
+            }
         }
 
-        GameObject instance = Instantiate(_worldHealthBarCanvasPrefab, transform);
-        instance.name = "ParatrooperHealthBarCanvas";
-        WorldHealthBarFollower_V2 newFollower = instance.GetComponent<WorldHealthBarFollower_V2>();
-        if (newFollower == null)
+        if (_runtimeHealthBarRoot.transform.parent != null)
         {
-            newFollower = instance.GetComponentInChildren<WorldHealthBarFollower_V2>(true);
+            _runtimeHealthBarRoot.transform.SetParent(null, true);
         }
 
-        newFollower?.SetFollowTarget(transform);
+        _runtimeHealthBarRoot.SetActive(true);
+        WorldHealthBarFollower_V2 follower = _runtimeHealthBarRoot.GetComponent<WorldHealthBarFollower_V2>();
+        if (follower == null)
+        {
+            follower = _runtimeHealthBarRoot.GetComponentInChildren<WorldHealthBarFollower_V2>(true);
+        }
+
+        follower?.SetFollowTarget(transform);
+
+        if (_model == null)
+        {
+            _model = GetComponent<ParatrooperModel_V2>();
+        }
+
+        HealthBarCanvas_V2 barCanvas = _runtimeHealthBarRoot.GetComponentInChildren<HealthBarCanvas_V2>(true);
+        if (barCanvas != null && _model != null)
+        {
+            barCanvas.SetParatrooperModelExternal(_model);
+        }
     }
 
     private void SanitizeVisualRootAlignment()
@@ -718,11 +736,22 @@ public class Paratrooper : MonoBehaviour
         }
 
         ClearAirborneBunkerCollisionExclusion();
+
+        if (_runtimeHealthBarRoot != null)
+        {
+            Destroy(_runtimeHealthBarRoot);
+            _runtimeHealthBarRoot = null;
+        }
     }
 
     private void OnDisable()
     {
         ClearAirborneBunkerCollisionExclusion();
+
+        if (_runtimeHealthBarRoot != null)
+        {
+            _runtimeHealthBarRoot.SetActive(false);
+        }
     }
 
     /*

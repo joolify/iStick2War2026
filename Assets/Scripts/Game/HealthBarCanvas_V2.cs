@@ -45,6 +45,16 @@ namespace iStick2War_V2
         private bool _warnedHealthImageNotFilled;
         private bool _warnedParatrooperModelMissing;
         private bool _warnedBunkerWaveManagerMissing;
+        private bool _paratrooperModelFromExternal;
+
+        /// <summary>
+        /// Use when this canvas is not parented under the paratrooper (unparented world bar avoids scale shear).
+        /// </summary>
+        public void SetParatrooperModelExternal(ParatrooperModel_V2 model)
+        {
+            _paratrooperModel = model;
+            _paratrooperModelFromExternal = model != null;
+        }
 
         protected virtual void Awake()
         {
@@ -177,11 +187,13 @@ namespace iStick2War_V2
 
                 case HealthBarCanvasBindMode.Paratrooper:
                 {
-                    // Always prefer the model on the instantiated paratrooper (parent chain), not a stale prefab reference.
-                    ParatrooperModel_V2 fromParents = GetComponentInParent<ParatrooperModel_V2>();
-                    if (fromParents != null)
+                    if (!_paratrooperModelFromExternal)
                     {
-                        _paratrooperModel = fromParents;
+                        ParatrooperModel_V2 fromParents = GetComponentInParent<ParatrooperModel_V2>();
+                        if (fromParents != null)
+                        {
+                            _paratrooperModel = fromParents;
+                        }
                     }
 
                     break;
