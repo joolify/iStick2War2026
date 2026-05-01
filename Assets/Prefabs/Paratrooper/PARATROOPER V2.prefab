@@ -478,6 +478,7 @@ MonoBehaviour:
   _enableLifetimeSafetyDespawn: 1
   _maxLifetimeSeconds: 90
   _debugSafetyDespawnLogs: 0
+  _worldHealthBarCanvasPrefab: {fileID: 8662522561283412324, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
 --- !u!114 &6969535851954692921
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -35,6 +35,10 @@ public class ParatrooperModel_V2 : MonoBehaviour
     [SerializeField] private DamageProfileMode _damageProfileMode = DamageProfileMode.CS16Mode;
 
     public float health = 55f;
+
+    /// <summary>Spawn/max HP for UI ratio; kept in sync with <see cref="health"/> on profile reset and wave multipliers.</summary>
+    public float maxHealth = 55f;
+
     public float armorMultiplier = 1f;
 
     /// <summary>Scales <see cref="health"/> after Awake profile setup (e.g. per-wave difficulty).</summary>
@@ -46,6 +50,7 @@ public class ParatrooperModel_V2 : MonoBehaviour
         }
 
         health *= multiplier;
+        maxHealth *= multiplier;
     }
 
     public StickmanBodyState currentState;
@@ -126,6 +131,7 @@ public class ParatrooperModel_V2 : MonoBehaviour
         {
             case DamageProfileMode.TestMode:
                 health = 220f;
+                maxHealth = health;
                 armorMultiplier = 0.7f;
                 damageMultipliers = new Dictionary<BodyPartType, float>
                 {
@@ -147,6 +153,7 @@ public class ParatrooperModel_V2 : MonoBehaviour
             case DamageProfileMode.CS16Mode:
             default:
                 health = 60f;
+                maxHealth = health;
                 armorMultiplier = 1f;
                 damageMultipliers = new Dictionary<BodyPartType, float>
                 {

@@ -122,6 +122,10 @@ public class Paratrooper : MonoBehaviour
     [SerializeField] private float _maxAllowedVisualRootLocalOffset = 2.5f;
     [SerializeField] private bool _debugVisualRootOffsetFixLogs;
 
+    [Header("UI")]
+    [Tooltip("Optional. Instantiated under this root on spawn so HealthBarCanvas_V2 (Paratrooper mode) can resolve ParatrooperModel_V2.")]
+    [SerializeField] private GameObject _worldHealthBarCanvasPrefab;
+
     [Header("Body Parts")]
     [SerializeField] private ParatrooperBodyPart_V2[] _bodyParts;
 
@@ -327,6 +331,8 @@ public class Paratrooper : MonoBehaviour
 
         WireSystems();
 
+        EnsureWorldHealthBar();
+
         _controller.StartGame();
         CaptureSpineWorldAnchorForPostSpawnFacingReconcile();
     }
@@ -389,6 +395,7 @@ public class Paratrooper : MonoBehaviour
         _weaponSystem?.ResetForSpawn();
         _view?.ResetVisualStateForSpawn();
         _view?.EnsureDamagePresentationSubscribed(_damageReceiver);
+        EnsureWorldHealthBar();
         _controller?.StartGame();
         CaptureSpineWorldAnchorForPostSpawnFacingReconcile();
     }
@@ -441,6 +448,38 @@ public class Paratrooper : MonoBehaviour
         {
             _attachedCollidersScratch = new Collider2D[cap];
         }
+    }
+
+    private void EnsureWorldHealthBar()
+    {
+        if (_worldHealthBarCanvasPrefab == null)
+        {
+            return;
+        }
+
+        HealthBarCanvas_V2 existing = GetComponentInChildren<HealthBarCanvas_V2>(true);
+        if (existing != null)
+        {
+            existing.gameObject.SetActive(true);
+            WorldHealthBarFollower_V2 follower = existing.GetComponent<WorldHealthBarFollower_V2>();
+            if (follower == null)
+            {
+                follower = existing.GetComponentInChildren<WorldHealthBarFollower_V2>(true);
+            }
+
+            follower?.SetFollowTarget(transform);
+            return;
+        }
+
+        GameObject instance = Instantiate(_worldHealthBarCanvasPrefab, transform);
+        instance.name = "ParatrooperHealthBarCanvas";
+        WorldHealthBarFollower_V2 newFollower = instance.GetComponent<WorldHealthBarFollower_V2>();
+        if (newFollower == null)
+        {
+            newFollower = instance.GetComponentInChildren<WorldHealthBarFollower_V2>(true);
+        }
+
+        newFollower?.SetFollowTarget(transform);
     }
 
     private void SanitizeVisualRootAlignment()

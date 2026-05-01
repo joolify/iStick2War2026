@@ -95,11 +95,13 @@ public class ReadmeEditor : Editor
     protected override void OnHeaderGUI()
     {
         var readme = (Readme)target;
-        Init();
+        // Do not use GUILayout.BeginHorizontal("In BigTitle") — the named style requires a current GUI.skin.
+        // In UI Toolkit–backed Inspectors that skin is not always set during RedrawFromNative, which spams console errors.
+        InitIfGuiSkinReady();
 
         var iconWidth = Mathf.Min(EditorGUIUtility.currentViewWidth / 3f - 20f, 128f);
 
-        GUILayout.BeginHorizontal("In BigTitle");
+        EditorGUILayout.BeginHorizontal();
         {
             if (readme.icon != null)
             {
@@ -109,32 +111,34 @@ public class ReadmeEditor : Editor
             GUILayout.Space(k_Space);
             GUILayout.BeginVertical();
             {
-
                 GUILayout.FlexibleSpace();
-                GUILayout.Label(readme.title, TitleStyle);
+                GUILayout.Label(readme.title, m_Initialized ? TitleStyle : EditorStyles.boldLabel);
                 GUILayout.FlexibleSpace();
             }
             GUILayout.EndVertical();
             GUILayout.FlexibleSpace();
         }
-        GUILayout.EndHorizontal();
+        EditorGUILayout.EndHorizontal();
     }
 
     public override void OnInspectorGUI()
     {
         var readme = (Readme)target;
-        Init();
+        InitIfGuiSkinReady();
+
+        GUIStyle heading = m_Initialized ? HeadingStyle : EditorStyles.boldLabel;
+        GUIStyle body = m_Initialized ? BodyStyle : EditorStyles.wordWrappedLabel;
 
         foreach (var section in readme.sections)
         {
             if (!string.IsNullOrEmpty(section.heading))
             {
-                GUILayout.Label(section.heading, HeadingStyle);
+                GUILayout.Label(section.heading, heading);
             }
 
             if (!string.IsNullOrEmpty(section.text))
             {
-                GUILayout.Label(section.text, BodyStyle);
+                GUILayout.Label(section.text, body);
             }
 
             if (!string.IsNullOrEmpty(section.linkText))
@@ -148,7 +152,9 @@ public class ReadmeEditor : Editor
             GUILayout.Space(k_Space);
         }
 
-        if (GUILayout.Button("Remove Readme Assets", ButtonStyle))
+        if (m_Initialized
+            ? GUILayout.Button("Remove Readme Assets", ButtonStyle)
+            : GUILayout.Button("Remove Readme Assets"))
         {
             RemoveTutorial();
         }
@@ -196,10 +202,16 @@ public class ReadmeEditor : Editor
     [SerializeField]
     GUIStyle m_ButtonStyle;
 
-    void Init()
+    void InitIfGuiSkinReady()
     {
         if (m_Initialized)
             return;
+        // EditorStyles / new GUIStyle(EditorStyles.*) need a valid editor GUI context.
+        if (GUI.skin == null)
+        {
+            return;
+        }
+
         m_BodyStyle = new GUIStyle(EditorStyles.label);
         m_BodyStyle.wordWrap = true;
         m_BodyStyle.fontSize = 14;
@@ -227,6 +239,16 @@ public class ReadmeEditor : Editor
 
     bool LinkLabel(GUIContent label, params GUILayoutOption[] options)
     {
+        if (!m_Initialized)
+        {
+            InitIfGuiSkinReady();
+        }
+
+        if (!m_Initialized)
+        {
+            return GUILayout.Button(label);
+        }
+
         var position = GUILayoutUtility.GetRect(label, LinkStyle, options);
 
         Handles.BeginGUI();
