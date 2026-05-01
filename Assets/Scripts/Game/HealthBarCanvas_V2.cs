@@ -1,3 +1,5 @@
+using Assets.Scripts.Components;
+using iStick2War;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
@@ -41,11 +43,28 @@ namespace iStick2War_V2
         [Tooltip("When bound unit is dead (hero or paratrooper), force empty green / full damage fill.")]
         [SerializeField] private bool _zeroBarWhenDead = true;
 
+        [Header("Reveal on damage")]
+        [Tooltip("Hide the bar until the bound target takes damage, then show it for Visible Seconds After Hit.")]
+        [SerializeField] private bool _revealOnDamage = true;
+
+        [SerializeField] private float _visibleSecondsAfterHit = 2.25f;
+
+        [Tooltip(
+            "Paratrooper mode only: when on, Tesla / Flamethrower and explosive hits do not trigger the reveal " +
+            "(typical gunfire only).")]
+        [SerializeField] private bool _revealOnlyBulletLikeParatrooperHits = true;
+
         private WaveManager_V2 _cachedWaveManager;
         private bool _warnedHealthImageNotFilled;
         private bool _warnedParatrooperModelMissing;
         private bool _warnedBunkerWaveManagerMissing;
         private bool _paratrooperModelFromExternal;
+
+        private CanvasGroup _revealCanvasGroup;
+        private float _revealUntilUnscaledTime = float.NegativeInfinity;
+        private ParatrooperDamageReceiver_V2 _subscribedParatrooperReceiver;
+        private Hero_V2 _subscribedHeroForReveal;
+        private WaveManager_V2 _subscribedWaveForBunkerReveal;
 
         /// <summary>
         /// Use when this canvas is not parented under the paratrooper (unparented world bar avoids scale shear).
@@ -54,15 +73,34 @@ namespace iStick2War_V2
         {
             _paratrooperModel = model;
             _paratrooperModelFromExternal = model != null;
+            if (isActiveAndEnabled)
+            {
+                MaintainRevealSubscriptions();
+            }
         }
 
         protected virtual void Awake()
         {
             ResolveSourcesIfNeeded();
+            EnsureRevealCanvasGroup();
+        }
+
+        private void OnEnable()
+        {
+            MaintainRevealSubscriptions();
+        }
+
+        private void OnDisable()
+        {
+            UnsubscribeAllReveal();
         }
 
         private void LateUpdate()
         {
+            ResolveSourcesIfNeeded();
+            MaintainRevealSubscriptions();
+            TickRevealVisibility();
+
             if (_healthFill == null)
             {
                 return;
@@ -76,8 +114,6 @@ namespace iStick2War_V2
                     "With Simple, changing fillAmount does not change what you see on screen.",
                     this);
             }
-
-            ResolveSourcesIfNeeded();
 
             if (!TryGetHealthRatio(out float ratio, out bool dead))
             {
@@ -249,6 +285,193 @@ namespace iStick2War_V2
 
             UnityEngine.SceneManagement.Scene s = hero.gameObject.scene;
             return s.IsValid() && s.isLoaded;
+        }
+
+        private void EnsureRevealCanvasGroup()
+        {
+            if (!_revealOnDamage)
+            {
+                return;
+            }
+
+            _revealCanvasGroup = GetComponent<CanvasGroup>();
+            if (_revealCanvasGroup == null)
+            {
+                _revealCanvasGroup = gameObject.AddComponent<CanvasGroup>();
+            }
+
+            _revealCanvasGroup.alpha = 0f;
+            _revealCanvasGroup.blocksRaycasts = false;
+            _revealCanvasGroup.interactable = false;
+        }
+
+        private void MaintainRevealSubscriptions()
+        {
+            if (!_revealOnDamage)
+            {
+                return;
+            }
+
+            switch (_bindMode)
+            {
+                case HealthBarCanvasBindMode.Paratrooper:
+                {
+                    ParatrooperDamageReceiver_V2 r = _paratrooperModel != null
+                        ? _paratrooperModel.GetComponent<ParatrooperDamageReceiver_V2>()
+                        : null;
+                    if (r != _subscribedParatrooperReceiver)
+                    {
+                        UnsubscribeParatrooperReveal();
+                        if (r != null)
+                        {
+                            r.OnDamagePresentation += OnParatrooperDamagedReveal;
+                            _subscribedParatrooperReceiver = r;
+                        }
+                    }
+
+                    break;
+                }
+
+                case HealthBarCanvasBindMode.Hero:
+                {
+                    if (_hero != _subscribedHeroForReveal)
+                    {
+                        UnsubscribeHeroReveal();
+                        if (_hero != null && _hero.DamageReceiver != null)
+                        {
+                            _hero.DamageReceiver.OnDamageTaken += OnHeroDamagedReveal;
+                            _subscribedHeroForReveal = _hero;
+                        }
+                    }
+
+                    break;
+                }
+
+                case HealthBarCanvasBindMode.Bunker:
+                {
+                    WaveManager_V2 wm = ResolveWaveManagerForBunker();
+                    if (wm != _subscribedWaveForBunkerReveal)
+                    {
+                        UnsubscribeBunkerReveal();
+                        if (wm != null)
+                        {
+                            wm.OnBunkerDamaged += OnBunkerDamagedReveal;
+                            _subscribedWaveForBunkerReveal = wm;
+                        }
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        private void UnsubscribeAllReveal()
+        {
+            UnsubscribeParatrooperReveal();
+            UnsubscribeHeroReveal();
+            UnsubscribeBunkerReveal();
+        }
+
+        private void UnsubscribeParatrooperReveal()
+        {
+            if (_subscribedParatrooperReceiver != null)
+            {
+                _subscribedParatrooperReceiver.OnDamagePresentation -= OnParatrooperDamagedReveal;
+                _subscribedParatrooperReceiver = null;
+            }
+        }
+
+        private void UnsubscribeHeroReveal()
+        {
+            if (_subscribedHeroForReveal != null && _subscribedHeroForReveal.DamageReceiver != null)
+            {
+                _subscribedHeroForReveal.DamageReceiver.OnDamageTaken -= OnHeroDamagedReveal;
+            }
+
+            _subscribedHeroForReveal = null;
+        }
+
+        private void UnsubscribeBunkerReveal()
+        {
+            if (_subscribedWaveForBunkerReveal != null)
+            {
+                _subscribedWaveForBunkerReveal.OnBunkerDamaged -= OnBunkerDamagedReveal;
+                _subscribedWaveForBunkerReveal = null;
+            }
+        }
+
+        private void OnParatrooperDamagedReveal(DamageInfo info, float dealt)
+        {
+            if (dealt <= 0.0001f)
+            {
+                return;
+            }
+
+            if (_revealOnlyBulletLikeParatrooperHits && !IsBulletLikeParatrooperHit(info))
+            {
+                return;
+            }
+
+            FlashReveal();
+        }
+
+        private static bool IsBulletLikeParatrooperHit(DamageInfo info)
+        {
+            if (info.IsExplosive)
+            {
+                return false;
+            }
+
+            if (info.SourceWeapon == WeaponType.Tesla || info.SourceWeapon == WeaponType.Flamethrower)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private void OnHeroDamagedReveal(int amount)
+        {
+            if (amount <= 0)
+            {
+                return;
+            }
+
+            FlashReveal();
+        }
+
+        private void OnBunkerDamagedReveal(int amount)
+        {
+            if (amount <= 0)
+            {
+                return;
+            }
+
+            FlashReveal();
+        }
+
+        private void FlashReveal()
+        {
+            if (!_revealOnDamage || _revealCanvasGroup == null)
+            {
+                return;
+            }
+
+            _revealCanvasGroup.alpha = 1f;
+            _revealUntilUnscaledTime = Time.unscaledTime + Mathf.Max(0.05f, _visibleSecondsAfterHit);
+        }
+
+        private void TickRevealVisibility()
+        {
+            if (!_revealOnDamage || _revealCanvasGroup == null)
+            {
+                return;
+            }
+
+            if (Time.unscaledTime >= _revealUntilUnscaledTime)
+            {
+                _revealCanvasGroup.alpha = 0f;
+            }
         }
     }
 }

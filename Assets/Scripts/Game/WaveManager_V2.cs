@@ -171,6 +171,9 @@ namespace iStick2War_V2
         public event Action<WaveLoopState_V2> OnStateChanged;
         public event Action<int, int, int> OnMetaChanged;
 
+        /// <summary>Raised when <see cref="ApplyBunkerDamage"/> applies a positive amount (enemy fire, etc.).</summary>
+        public event Action<int> OnBunkerDamaged;
+
         public WaveLoopState_V2 State => _state;
         public EnemySpawner_V2 EnemySpawner => _enemySpawner;
         public int CurrentWaveNumber => _waveIndex + 1;
@@ -243,6 +246,7 @@ namespace iStick2War_V2
             _bunkerHealth = Mathf.Max(0, _bunkerHealth - amount);
             Log($"Bunker took {amount} damage. hp={_bunkerHealth}/{_bunkerMaxHealthRuntime}");
             WaveRunTelemetry_V2.NotifyBunkerDamageTaken(amount);
+            OnBunkerDamaged?.Invoke(amount);
             EmitMetaChanged();
         }
 
