@@ -84,11 +84,19 @@ namespace iStick2War_V2
             if (_playButton == null)
             {
                 _playButton = FindButtonUnderTmpName(TmpPlayName);
+                if (_playButton == null)
+                {
+                    _playButton = EnsureButtonOnTmpNamedObject(TmpPlayName);
+                }
             }
 
             if (_settingsButton == null)
             {
                 _settingsButton = FindButtonUnderTmpName(TmpSettingsName);
+                if (_settingsButton == null)
+                {
+                    _settingsButton = EnsureButtonOnTmpNamedObject(TmpSettingsName);
+                }
             }
         }
 
@@ -110,6 +118,48 @@ namespace iStick2War_V2
 
                 Button b = t.GetComponentInParent<Button>();
                 return b;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// When TMP labels (e.g. <c>txt_mainmenu_play</c>) are not wrapped in a <see cref="Button"/>, raycasts hit the
+        /// text and block world-space <see cref="MainMenuNavButton_V2"/> colliders. Add a UI <see cref="Button"/> on the
+        /// same GameObject so clicks invoke <see cref="HandlePlay"/> / settings.
+        /// </summary>
+        private static Button EnsureButtonOnTmpNamedObject(string objectName)
+        {
+            if (string.IsNullOrWhiteSpace(objectName))
+            {
+                return null;
+            }
+
+            TMP_Text[] texts = UnityEngine.Object.FindObjectsByType<TMP_Text>(FindObjectsInactive.Include);
+            for (int i = 0; i < texts.Length; i++)
+            {
+                TMP_Text t = texts[i];
+                if (t == null || !t.gameObject.name.Equals(objectName, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                Button existing = t.GetComponent<Button>();
+                if (existing != null)
+                {
+                    return existing;
+                }
+
+                Graphic graphic = t as Graphic;
+                if (graphic == null)
+                {
+                    return null;
+                }
+
+                Button button = t.gameObject.AddComponent<Button>();
+                button.targetGraphic = graphic;
+                button.transition = Selectable.Transition.None;
+                return button;
             }
 
             return null;
