@@ -105,12 +105,14 @@ namespace iStick2War_V2
 
                 if (_forceStraightFlight)
                 {
-                    // Dynamic + zero gravity reliably hits kinematic aircraft (Fa_223); kinematic–kinematic
-                    // contacts are easy to miss depending on useFullKinematicContacts / execution order.
-                    _rb.bodyType = RigidbodyType2D.Dynamic;
+                    // Match pre–Hero_V2 migration behavior (e.g. 25e9a7e): kinematic straight flight avoids the
+                    // dynamic solver pushing the rocket out of spawn overlap (~1m "pop"). Kinematic vs kinematic
+                    // aircraft still needs full kinematic contacts (also enabled on AircraftHealth_V2).
+                    _rb.bodyType = RigidbodyType2D.Kinematic;
                     _rb.gravityScale = 0f;
                     _rb.linearDamping = 0f;
                     _rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+                    _rb.useFullKinematicContacts = true;
                 }
 
                 _rb.linearVelocity = _travelDirection * _travelSpeed;
