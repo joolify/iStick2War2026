@@ -39,6 +39,14 @@ namespace iStick2War_V2
         [SerializeField] private float _defaultDamage = 80f;
         [Header("Flight")]
         [SerializeField] private bool _forceStraightFlight = true;
+        [Header("Impact filtering")]
+        [Tooltip("Ignore collisions/triggers until this long after spawn (avoids instant pops from spawn overlap).")]
+        [SerializeField] private float _armingDelaySeconds = 0.08f;
+        [Tooltip(
+            "Trigger colliders only detonate the rocket if they are on these layers OR carry a damage/bunker component " +
+            "(paratrooper, aircraft, explodable, BunkerHitbox). Empty = Ground, Bunker, Enemy, EnemyBodyPart, Aircraft.")]
+        [SerializeField] private LayerMask _detonateOnTriggerLayers;
+        [SerializeField] private bool _debugImpactLogs;
         [Header("Explosion")]
         [SerializeField] private float _explosionRadius = 2.8f;
         [SerializeField] [Range(0f, 1f)] private float _minFalloffMultiplier = 0.35f;
@@ -75,6 +83,7 @@ namespace iStick2War_V2
         private Vector2 _travelDirection = Vector2.right;
         private float _travelSpeed = 14f;
         private bool _useManualMovement;
+        private float _armedAt;
 
         public void Initialize(Vector2 direction, float speed, float lifetime, float damage, float explosionDamageVsAircraft = -1f)
         {
@@ -107,6 +116,7 @@ namespace iStick2War_V2
 
             CancelInvoke(nameof(ExplodeFromTimeout));
             Invoke(nameof(ExplodeFromTimeout), _lifetime);
+            _armedAt = Time.time + Mathf.Max(0f, _armingDelaySeconds);
         }
 
         private void Awake()
@@ -115,6 +125,8 @@ namespace iStick2War_V2
             {
                 _rb = GetComponent<Rigidbody2D>();
             }
+
+            EnsureDetonateOnTriggerLayerMask();
         }
 
         private void Start()
@@ -174,6 +186,33 @@ namespace iStick2War_V2
             if (impactCollider != null && impactCollider.GetComponentInParent<Hero_V2>() != null)
             {
                 return;
+            }
+
+            if (impactCollider != null)
+            {
+                if (Time.time < _armedAt)
+                {
+                    if (_debugImpactLogs)
+                    {
+                        Debug.Log(
+                            $"[HeroRocketProjectile_V2] Ignored impact '{impactCollider.name}' (not armed yet, " +
+                            $"t={Time.time:0.###} < armedAt={_armedAt:0.###}).");
+                    }
+
+                    return;
+                }
+
+                if (impactCollider.isTrigger && !ShouldDetonateOnTrigger(impactCollider))
+                {
+                    if (_debugImpactLogs)
+                    {
+                        Debug.Log(
+                            $"[HeroRocketProjectile_V2] Ignored trigger '{impactCollider.name}' on layer " +
+                            $"'{LayerMask.LayerToName(impactCollider.gameObject.layer)}' (no detonation rule).");
+                    }
+
+                    return;
+                }
             }
 
             _hasExploded = true;
@@ -282,6 +321,64 @@ namespace iStick2War_V2
             }
 
             Destroy(gameObject);
+        }
+
+        private void EnsureDetonateOnTriggerLayerMask()
+        {
+            if (_detonateOnTriggerLayers.value != 0)
+            {
+                return;
+            }
+
+            int mask = 0;
+            string[] layerNames = { "Ground", "Bunker", "Enemy", "EnemyBodyPart", "Aircraft" };
+            for (int i = 0; i < layerNames.Length; i++)
+            {
+                int layer = LayerMask.NameToLayer(layerNames[i]);
+                if (layer >= 0)
+                {
+                    mask |= 1 << layer;
+                }
+            }
+
+            _detonateOnTriggerLayers = mask;
+        }
+
+        /// <summary>
+        /// Non-trigger colliders always detonate (after arming). Triggers must be gameplay surfaces or damage targets —
+        /// otherwise large sensor volumes cause mid-air pops.
+        /// </summary>
+        private bool ShouldDetonateOnTrigger(Collider2D other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+
+            if (other.GetComponent<ParatrooperBodyPart_V2>() != null ||
+                other.GetComponentInParent<ParatrooperDamageReceiver_V2>() != null)
+            {
+                return true;
+            }
+
+            if (other.GetComponent<AircraftHealth_V2>() != null ||
+                other.GetComponentInParent<AircraftHealth_V2>() != null)
+            {
+                return true;
+            }
+
+            if (other.GetComponentInParent<Explodable>() != null)
+            {
+                return true;
+            }
+
+            if (other.GetComponentInParent<BunkerHitbox_V2>() != null)
+            {
+                return true;
+            }
+
+            int bit = 1 << other.gameObject.layer;
+            return (_detonateOnTriggerLayers.value & bit) != 0;
         }
 
         private static RocketExplosionVfxKind ClassifyAircraftExplosionVfxKind(AircraftHealth_V2 aircraft)
