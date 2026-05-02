@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 234316330969752247}
-  m_Layer: 13
+  m_Layer: 16
   m_Name: ParatrooperDrop
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -40,7 +40,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6888310759383153032}
-  m_Layer: 13
+  m_Layer: 16
   m_Name: ParatrooperDoorMount
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -74,7 +74,8 @@ GameObject:
   - component: {fileID: 1398056625590402243}
   - component: {fileID: 4512398870011122334}
   - component: {fileID: 4512398870011122335}
-  m_Layer: 13
+  - component: {fileID: 4378454471738942667}
+  m_Layer: 16
   m_Name: Fa_223_Drache
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -91,7 +92,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 11.31, y: 4.92, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 1, y: 0.9654, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 6888310759383153032}
@@ -217,3 +218,32 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::iStick2War_V2.AircraftHealth_V2
   _maxHealth: 180
   _destroyRootWhenDead: 1
+  _airExplosionEffectPrefab: {fileID: 0}
+  _airExplosionEffectLifetime: 1.4
+--- !u!50 &4378454471738942667
+Rigidbody2D:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7381843924167722091}
+  m_BodyType: 1
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0

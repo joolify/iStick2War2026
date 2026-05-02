@@ -184,6 +184,11 @@ MonoBehaviour:
   _defaultLifetime: 5
   _defaultDamage: 80
   _forceStraightFlight: 1
+  _armingDelaySeconds: 0.08
+  _detonateOnTriggerLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  _debugImpactLogs: 0
   _explosionRadius: 2.8
   _minFalloffMultiplier: 0.35
   _explosionMask:
@@ -195,7 +200,7 @@ MonoBehaviour:
   _explosionBombPlaneEffectPrefab: {fileID: 0}
   _explosionKamikazeDroneEffectPrefab: {fileID: 0}
   _explosionBombDroneEffectPrefab: {fileID: 0}
-  _explosionHelicopterEffectPrefab: {fileID: 0}
+  _explosionHelicopterEffectPrefab: {fileID: 4499060826324477447, guid: 5d35738cb6a36444f82f0a0552a70716, type: 3}
   _explosionEffectLifetime: 1.5
   _debugExplosion: 0
   _clipExplosionDamageToCamera: 1

@@ -22,6 +22,23 @@ namespace iStick2War_V2
         private void Awake()
         {
             _currentHealth = Mathf.Max(1f, _maxHealth);
+            EnsureKinematicAircraftCollidesWithHeroProjectiles();
+        }
+
+        /// <summary>
+        /// Kinematic vs kinematic contacts are off by default; hero bazooka uses a kinematic or dynamic RB.
+        /// Enable full kinematic contacts so Fa_223-style helicopters always register hits without relying on spawn order.
+        /// </summary>
+        private void EnsureKinematicAircraftCollidesWithHeroProjectiles()
+        {
+            Rigidbody2D rb = GetComponent<Rigidbody2D>();
+            if (rb == null || !rb.simulated || rb.bodyType != RigidbodyType2D.Kinematic)
+            {
+                return;
+            }
+
+            rb.useFullKinematicContacts = true;
+            rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
         }
 
         private void OnEnable()

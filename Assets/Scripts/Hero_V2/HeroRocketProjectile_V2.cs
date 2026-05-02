@@ -105,11 +105,16 @@ namespace iStick2War_V2
 
                 if (_forceStraightFlight)
                 {
-                    _rb.bodyType = RigidbodyType2D.Kinematic;
+                    // Dynamic + zero gravity reliably hits kinematic aircraft (Fa_223); kinematic–kinematic
+                    // contacts are easy to miss depending on useFullKinematicContacts / execution order.
+                    _rb.bodyType = RigidbodyType2D.Dynamic;
+                    _rb.gravityScale = 0f;
+                    _rb.linearDamping = 0f;
                     _rb.constraints = RigidbodyConstraints2D.FreezeRotation;
                 }
 
                 _rb.linearVelocity = _travelDirection * _travelSpeed;
+                _rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
                 _rb.WakeUp();
                 _useManualMovement = !_rb.simulated || _rb.bodyType == RigidbodyType2D.Static;
             }
@@ -127,6 +132,7 @@ namespace iStick2War_V2
             }
 
             EnsureDetonateOnTriggerLayerMask();
+            EnsureExplosionOverlapMaskIncludesAirLayers();
         }
 
         private void Start()
@@ -253,7 +259,7 @@ namespace iStick2War_V2
                 Vector2 closestOnHit = hit.bounds.ClosestPoint(explosionCenter);
                 if (_clipExplosionDamageToCamera &&
                     clipCam != null &&
-                    !IsWorldPointVisibleForExplosionDamage(clipCam, closestOnHit))
+                    !IsExplosionDamageTargetOnScreen(clipCam, hit, closestOnHit))
                 {
                     continue;
                 }
@@ -342,6 +348,19 @@ namespace iStick2War_V2
             }
 
             _detonateOnTriggerLayers = mask;
+        }
+
+        /// <summary>
+        /// Ensures <see cref="Physics2D.OverlapCircleAll"/> can see aircraft hitboxes on the <c>Aircraft</c> layer
+        /// (some prefabs use <c>EnemyBodyPart</c> already; others only Aircraft).
+        /// </summary>
+        private void EnsureExplosionOverlapMaskIncludesAirLayers()
+        {
+            int aircraftLayer = LayerMask.NameToLayer("Aircraft");
+            if (aircraftLayer >= 0)
+            {
+                _explosionMask |= 1 << aircraftLayer;
+            }
         }
 
         /// <summary>
@@ -490,20 +509,57 @@ namespace iStick2War_V2
 
             if (cam.orthographic)
             {
-                float halfH = cam.orthographicSize;
-                float halfW = halfH * cam.aspect;
-                Vector3 c = cam.transform.position;
-                float inset = Mathf.Min(_explosionCameraRectInset, Mathf.Max(0f, Mathf.Min(halfW, halfH) - 0.001f));
-                float minX = c.x - halfW + inset;
-                float maxX = c.x + halfW - inset;
-                float minY = c.y - halfH + inset;
-                float maxY = c.y + halfH - inset;
+                TryGetOrthographicExplosionClipRect(cam, out float minX, out float maxX, out float minY, out float maxY);
                 return world.x >= minX && world.x <= maxX && world.y >= minY && world.y <= maxY;
             }
 
             Plane[] planes = GeometryUtility.CalculateFrustumPlanes(cam);
             var b = new Bounds(new Vector3(world.x, world.y, cam.transform.position.z), new Vector3(0.05f, 0.05f, 0.25f));
             return GeometryUtility.TestPlanesAABB(planes, b);
+        }
+
+        /// <summary>
+        /// Per-target clip: closest point alone can lie off-screen for tall air targets (helicopter above the view)
+        /// even when part of the collider is visible — allow damage if the collider bounds intersect the clip rect.
+        /// </summary>
+        private bool IsExplosionDamageTargetOnScreen(Camera cam, Collider2D hit, Vector2 closestOnHit)
+        {
+            if (cam == null || !cam.isActiveAndEnabled || hit == null)
+            {
+                return true;
+            }
+
+            if (IsWorldPointVisibleForExplosionDamage(cam, closestOnHit))
+            {
+                return true;
+            }
+
+            Bounds b = hit.bounds;
+            if (cam.orthographic)
+            {
+                TryGetOrthographicExplosionClipRect(cam, out float minX, out float maxX, out float minY, out float maxY);
+                return !(b.max.x < minX || b.min.x > maxX || b.max.y < minY || b.min.y > maxY);
+            }
+
+            Plane[] planes = GeometryUtility.CalculateFrustumPlanes(cam);
+            return GeometryUtility.TestPlanesAABB(planes, b);
+        }
+
+        private void TryGetOrthographicExplosionClipRect(
+            Camera cam,
+            out float minX,
+            out float maxX,
+            out float minY,
+            out float maxY)
+        {
+            float halfH = cam.orthographicSize;
+            float halfW = halfH * cam.aspect;
+            Vector3 c = cam.transform.position;
+            float inset = Mathf.Min(_explosionCameraRectInset, Mathf.Max(0f, Mathf.Min(halfW, halfH) - 0.001f));
+            minX = c.x - halfW + inset;
+            maxX = c.x + halfW - inset;
+            minY = c.y - halfH + inset;
+            maxY = c.y + halfH - inset;
         }
 
         private void StopRocketMotion()

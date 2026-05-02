@@ -5,8 +5,11 @@ namespace iStick2War_V2
     /// <summary>
     /// Simple 2D fly-by: moves along +X when spawned from the left approach, along -X from the right.
     /// Destroys the GameObject once it passes outside the orthographic camera frustum (plus margin).
+    /// Uses a kinematic <see cref="Rigidbody2D"/> and <see cref="Rigidbody2D.MovePosition"/> so colliders stay
+    /// in sync with physics when project Auto Sync Transforms is off (otherwise fast projectiles pass through).
     /// </summary>
     [DisallowMultipleComponent]
+    [RequireComponent(typeof(Rigidbody2D))]
     public sealed class AircraftFlyAcrossScreen_V2 : MonoBehaviour
     {
         private float _dirX;
@@ -16,6 +19,13 @@ namespace iStick2War_V2
         private float _halfHeight;
         private float _offscreenMargin;
         private float _expireTime;
+        private bool _flightActive;
+        private Rigidbody2D _rb;
+
+        private void Awake()
+        {
+            _rb = GetComponent<Rigidbody2D>();
+        }
 
         /// <param name="spawnedFromLeftAnchor">True if this aircraft came from the left spawn side.</param>
         /// <param name="invertFlightDirectionX">Flip travel direction if the sprite faces the opposite way to the default mapping.</param>
@@ -27,12 +37,33 @@ namespace iStick2War_V2
             float maxLifetimeSeconds,
             bool invertFlightDirectionX = false)
         {
+            if (_rb == null)
+            {
+                _rb = GetComponent<Rigidbody2D>();
+            }
+
+            if (_rb == null)
+            {
+                _rb = gameObject.AddComponent<Rigidbody2D>();
+            }
+
+            _rb.bodyType = RigidbodyType2D.Kinematic;
+            _rb.simulated = true;
+            _rb.useFullKinematicContacts = true;
+            _rb.gravityScale = 0f;
+            _rb.linearVelocity = Vector2.zero;
+            _rb.angularVelocity = 0f;
+            _rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            _rb.interpolation = RigidbodyInterpolation2D.Interpolate;
+            _rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+
             _speed = Mathf.Max(0.01f, speedWorldUnitsPerSecond);
             float baseDir = spawnedFromLeftAnchor ? 1f : -1f;
             _dirX = invertFlightDirectionX ? -baseDir : baseDir;
             _cam = cam != null ? cam : Camera.main;
             _offscreenMargin = Mathf.Max(0.5f, offscreenMarginWorld);
             _expireTime = Time.time + Mathf.Max(1f, maxLifetimeSeconds);
+            _flightActive = true;
 
             if (_cam != null && _cam.orthographic)
             {
@@ -41,10 +72,23 @@ namespace iStick2War_V2
             }
         }
 
+        private void FixedUpdate()
+        {
+            if (!_flightActive || _rb == null)
+            {
+                return;
+            }
+
+            Vector2 delta = new Vector2(_dirX * _speed * Time.fixedDeltaTime, 0f);
+            _rb.MovePosition(_rb.position + delta);
+        }
+
         private void Update()
         {
-            float dt = Time.deltaTime;
-            transform.position += new Vector3(_dirX * _speed * dt, 0f, 0f);
+            if (!_flightActive)
+            {
+                return;
+            }
 
             if (Time.time >= _expireTime)
             {

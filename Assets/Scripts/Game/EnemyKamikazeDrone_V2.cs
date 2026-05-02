@@ -183,6 +183,8 @@ namespace iStick2War_V2
                     targetRot,
                     Mathf.Clamp01(Mathf.Max(0.1f, _turnLerpSpeed) * Time.deltaTime));
             }
+
+            Physics2D.SyncTransforms();
         }
 
         private void Explode()

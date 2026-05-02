@@ -80,6 +80,7 @@ namespace iStick2War_V2
 
             float speed = Mathf.Max(0.1f, _horizontalFlySpeed);
             transform.position += Vector3.right * (_directionX * speed * Time.deltaTime);
+            Physics2D.SyncTransforms();
 
             if (!_bombDropped && _bombProjectilePrefab != null)
             {

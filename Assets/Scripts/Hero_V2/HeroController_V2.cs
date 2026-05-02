@@ -266,11 +266,12 @@ namespace iStick2War_V2
                     // Allow strafe/run while the shoot loop is active.
                     _movementSystem.Move(_model.moveInput, deltaTime);
                     _view.UpdateShootLocomotion(_model.moveInput != Vector2.zero);
-                    // Beam-style weapons often use a looping shoot clip without Spine "ShootStarted" events.
-                    // TryShootNow is cheap when CanShoot() is false (fire-rate gate inside Shoot).
+                    // Beam weapons and projectiles (bazooka) resolve shots here so a missing/irregular Spine
+                    // "ShootStarted" on looped clips cannot silently drop rounds.
+                    // TryShootNow is cheap when CanShoot() is false (fire-rate gate inside Shoot / ShootProjectile).
                     if (_isShootLoopActive &&
                         _input.IsShootingHeld &&
-                        UsesContinuousShootTickResolution(_model.currentWeaponType))
+                        ShootingStateTicksWeaponShots())
                     {
                         TryShootNow();
                     }
@@ -305,8 +306,8 @@ namespace iStick2War_V2
                         return;
                     }
 
-                    // Grounded Tesla / flamethrower: fire from ExecuteActions tick (see UsesContinuousShootTickResolution).
-                    if (UsesContinuousShootTickResolution(_model.currentWeaponType))
+                    // Grounded Tesla / flamethrower / projectiles: fire from ExecuteActions tick (see ShootingStateTicksWeaponShots).
+                    if (ShootingStateTicksWeaponShots())
                     {
                         return;
                     }
@@ -338,6 +339,15 @@ namespace iStick2War_V2
         private static bool UsesContinuousShootTickResolution(WeaponType weaponType)
         {
             return weaponType == WeaponType.Tesla || weaponType == WeaponType.Flamethrower;
+        }
+
+        /// <summary>
+        /// When true, <see cref="TryShootNow"/> is driven from the Shooting-state tick (not only Spine ShootStarted).
+        /// </summary>
+        private bool ShootingStateTicksWeaponShots()
+        {
+            return UsesContinuousShootTickResolution(_model.currentWeaponType) ||
+                   _weaponSystem.ActiveWeaponUsesProjectile();
         }
 
         private void TryShootNow()

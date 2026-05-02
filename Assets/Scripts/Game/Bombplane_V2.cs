@@ -107,6 +107,7 @@ namespace iStick2War_V2
 
             float speed = Mathf.Max(0.01f, _horizontalFlySpeed);
             transform.position += Vector3.right * (_flightDirectionX * speed * Time.deltaTime);
+            Physics2D.SyncTransforms();
 
             if (Time.time >= _expireAt)
             {
