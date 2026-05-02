@@ -47,6 +47,8 @@ namespace iStick2War_V2
             "(paratrooper, aircraft, explodable, BunkerHitbox). Empty = Ground, Bunker, Enemy, EnemyBodyPart, Aircraft.")]
         [SerializeField] private LayerMask _detonateOnTriggerLayers;
         [SerializeField] private bool _debugImpactLogs;
+        [Tooltip("Logs every successful detonation: how it triggered and what collider was hit (use to trace mid-air pops).")]
+        [SerializeField] private bool _logExplosionDetonation = true;
         [Header("Explosion")]
         [SerializeField] private float _explosionRadius = 2.8f;
         [SerializeField] [Range(0f, 1f)] private float _minFalloffMultiplier = 0.35f;
@@ -147,7 +149,7 @@ namespace iStick2War_V2
 
         private void OnTriggerEnter2D(Collider2D other)
         {
-            TryExplode(other);
+            TryExplode(other, nameof(OnTriggerEnter2D));
         }
 
         private void Update()
@@ -175,16 +177,16 @@ namespace iStick2War_V2
         {
             if (collision != null)
             {
-                TryExplode(collision.collider);
+                TryExplode(collision.collider, nameof(OnCollisionEnter2D));
             }
         }
 
         private void ExplodeFromTimeout()
         {
-            TryExplode(null);
+            TryExplode(null, nameof(ExplodeFromTimeout));
         }
 
-        private void TryExplode(Collider2D impactCollider)
+        private void TryExplode(Collider2D impactCollider, string detonationVia)
         {
             if (_hasExploded)
             {
@@ -224,6 +226,11 @@ namespace iStick2War_V2
             }
 
             _hasExploded = true;
+            if (_logExplosionDetonation)
+            {
+                LogDetonationCommitted(impactCollider, detonationVia);
+            }
+
             StopRocketMotion();
 
             Vector2 explosionCenter = transform.position;
@@ -329,6 +336,87 @@ namespace iStick2War_V2
             }
 
             Destroy(gameObject);
+        }
+
+        private void LogDetonationCommitted(Collider2D impactCollider, string detonationVia)
+        {
+            Vector2 p = transform.position;
+            string hitDetail;
+            if (impactCollider == null)
+            {
+                hitDetail = "impactCollider=null (typical: lifetime expired)";
+            }
+            else
+            {
+                string impactClass = ClassifyImpactForDebugLog(impactCollider);
+                hitDetail =
+                    $"class={impactClass} impact='{impactCollider.name}' path='{BuildTransformHierarchyPath(impactCollider.transform)}' " +
+                    $"layer={LayerMask.LayerToName(impactCollider.gameObject.layer)}({impactCollider.gameObject.layer}) " +
+                    $"isTrigger={impactCollider.isTrigger} " +
+                    $"rbType={(impactCollider.attachedRigidbody != null ? impactCollider.attachedRigidbody.bodyType.ToString() : "none")}";
+            }
+
+            float age = Mathf.Max(0f, Time.time - (_armedAt - Mathf.Max(0f, _armingDelaySeconds)));
+            Debug.Log(
+                $"[HeroRocketProjectile_V2] DETONATE via={detonationVia} age={age:0.###}s worldPos=({p.x:0.###},{p.y:0.###}) " +
+                $"travelDir=({_travelDirection.x:0.###},{_travelDirection.y:0.###}) speed={_travelSpeed:0.###} {hitDetail}");
+        }
+
+        /// <summary>
+        /// Short tag for detonation logs so "mid-air pop" reports are easy to read (e.g. aircraft vs stray trigger).
+        /// </summary>
+        private static string ClassifyImpactForDebugLog(Collider2D impactCollider)
+        {
+            if (impactCollider == null)
+            {
+                return "unknown";
+            }
+
+            if (impactCollider.GetComponentInParent<Hero_V2>() != null)
+            {
+                return "Hero";
+            }
+
+            if (impactCollider.GetComponent<ParatrooperBodyPart_V2>() != null ||
+                impactCollider.GetComponentInParent<ParatrooperDamageReceiver_V2>() != null)
+            {
+                return "Paratrooper";
+            }
+
+            if (impactCollider.GetComponent<AircraftHealth_V2>() != null ||
+                impactCollider.GetComponentInParent<AircraftHealth_V2>() != null)
+            {
+                return "Aircraft";
+            }
+
+            if (impactCollider.GetComponentInParent<Explodable>() != null)
+            {
+                return "Explodable";
+            }
+
+            if (impactCollider.GetComponentInParent<BunkerHitbox_V2>() != null)
+            {
+                return "BunkerHitbox";
+            }
+
+            return "Other";
+        }
+
+        private static string BuildTransformHierarchyPath(Transform t)
+        {
+            if (t == null)
+            {
+                return "";
+            }
+
+            var parts = new List<string>(8);
+            for (Transform walk = t; walk != null; walk = walk.parent)
+            {
+                parts.Add(walk.name);
+            }
+
+            parts.Reverse();
+            return string.Join("/", parts);
         }
 
         private void EnsureDetonateOnTriggerLayerMask()

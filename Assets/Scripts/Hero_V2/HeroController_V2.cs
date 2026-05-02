@@ -258,7 +258,13 @@ namespace iStick2War_V2
                     _view.UpdateJumpCombatOverlay(_isShootLoopActive && _input.IsShootingHeld);
                     if (_isShootLoopActive && _input.IsShootingHeld)
                     {
-                        TryShootNow();
+                        // Bazooka is semi-auto (ShootStarted only); other weapons keep per-tick jump fire.
+                        bool useJumpShootTick = _model.currentWeaponType != WeaponType.Bazooka ||
+                                                ShootingStateTicksWeaponShots();
+                        if (useJumpShootTick)
+                        {
+                            TryShootNow();
+                        }
                     }
                     break;
 
@@ -300,8 +306,9 @@ namespace iStick2War_V2
                         return;
                     }
 
-                    // While jumping we resolve fire directly in Tick to keep jump animation on base track.
-                    if (_stateMachine.CurrentState == HeroState.Jumping)
+                    // While jumping, non-bazooka weapons resolve fire in the Jumping-state tick (base track).
+                    // Bazooka stays event-driven so hold-fire cannot machine-gun rockets in the air.
+                    if (_stateMachine.CurrentState == HeroState.Jumping && _model.currentWeaponType != WeaponType.Bazooka)
                     {
                         return;
                     }
@@ -346,8 +353,19 @@ namespace iStick2War_V2
         /// </summary>
         private bool ShootingStateTicksWeaponShots()
         {
-            return UsesContinuousShootTickResolution(_model.currentWeaponType) ||
-                   _weaponSystem.ActiveWeaponUsesProjectile();
+            if (UsesContinuousShootTickResolution(_model.currentWeaponType))
+            {
+                return true;
+            }
+
+            // Projectile weapons default to tick-driven fire so looped Spine clips can't drop shots.
+            // Bazooka is excluded: hold-fire at fireRate reads as many mid-flight explosions before distant hits.
+            if (_weaponSystem.ActiveWeaponUsesProjectile() && _model.currentWeaponType != WeaponType.Bazooka)
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private void TryShootNow()
