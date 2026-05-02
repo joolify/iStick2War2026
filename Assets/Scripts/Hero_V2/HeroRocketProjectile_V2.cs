@@ -8,6 +8,31 @@ namespace iStick2War_V2
     [RequireComponent(typeof(Collider2D))]
     public class HeroRocketProjectile_V2 : MonoBehaviour
     {
+        /// <summary>
+        /// Which enemy family was damaged by the blast (used to pick per-type explosion VFX). Order is not important;
+        /// <see cref="SpawnExplosionEffectsForKinds"/> uses <see cref="VfxSpawnPriorityOrder"/> for spawn order.
+        /// </summary>
+        private enum RocketExplosionVfxKind
+        {
+            Paratrooper,
+            Explodable,
+            BombPlane,
+            KamikazeDrone,
+            BombDrone,
+            /// <summary>Helicopter and other <see cref="AircraftHealth_V2"/> not matched above.</summary>
+            HelicopterOrGenericAircraft
+        }
+
+        private static readonly RocketExplosionVfxKind[] VfxSpawnPriorityOrder =
+        {
+            RocketExplosionVfxKind.Paratrooper,
+            RocketExplosionVfxKind.Explodable,
+            RocketExplosionVfxKind.BombPlane,
+            RocketExplosionVfxKind.KamikazeDrone,
+            RocketExplosionVfxKind.BombDrone,
+            RocketExplosionVfxKind.HelicopterOrGenericAircraft
+        };
+
         [SerializeField] private Rigidbody2D _rb;
         [SerializeField] private float _defaultSpeed = 14f;
         [SerializeField] private float _defaultLifetime = 5f;
@@ -18,7 +43,18 @@ namespace iStick2War_V2
         [SerializeField] private float _explosionRadius = 2.8f;
         [SerializeField] [Range(0f, 1f)] private float _minFalloffMultiplier = 0.35f;
         [SerializeField] private LayerMask _explosionMask = Physics2D.DefaultRaycastLayers;
+        [Header("Explosion VFX")]
+        [Tooltip(
+            "Fallback: terrain / no valid target / blast center off-screen (damage skipped), or when a damaged type has no typed prefab assigned.")]
         [SerializeField] private GameObject _explosionEffectPrefab;
+        [SerializeField] private GameObject _explosionParatrooperEffectPrefab;
+        [SerializeField] private GameObject _explosionExplodableEffectPrefab;
+        [Tooltip("Bombing aircraft with Bombplane_V2.")]
+        [SerializeField] private GameObject _explosionBombPlaneEffectPrefab;
+        [SerializeField] private GameObject _explosionKamikazeDroneEffectPrefab;
+        [SerializeField] private GameObject _explosionBombDroneEffectPrefab;
+        [Tooltip("Helicopter and other AircraftHealth_V2 not covered by bomb plane / drone prefabs above.")]
+        [SerializeField] private GameObject _explosionHelicopterEffectPrefab;
         [SerializeField] private float _explosionEffectLifetime = 1.5f;
         [SerializeField] private bool _debugExplosion = false;
         [Header("Explosion vs camera")]
@@ -141,7 +177,6 @@ namespace iStick2War_V2
             }
 
             _hasExploded = true;
-            SpawnExplosionEffect();
             StopRocketMotion();
 
             Vector2 explosionCenter = transform.position;
@@ -157,6 +192,7 @@ namespace iStick2War_V2
                         $"(center={explosionCenter}).");
                 }
 
+                SpawnExplosionEffectsForKinds(explosionCenter, null);
                 Destroy(gameObject);
                 return;
             }
@@ -165,6 +201,7 @@ namespace iStick2War_V2
             HashSet<ParatrooperDamageReceiver_V2> damagedParatroopers = new HashSet<ParatrooperDamageReceiver_V2>();
             HashSet<Explodable> damagedExplodables = new HashSet<Explodable>();
             HashSet<AircraftHealth_V2> damagedAircraft = new HashSet<AircraftHealth_V2>();
+            HashSet<RocketExplosionVfxKind> damagedKinds = new HashSet<RocketExplosionVfxKind>();
 
             for (int i = 0; i < hits.Length; i++)
             {
@@ -198,6 +235,7 @@ namespace iStick2War_V2
                     }
 
                     damagedParatroopers.Add(receiver);
+                    damagedKinds.Add(RocketExplosionVfxKind.Paratrooper);
                     Vector2 toTarget = closestOnHit - explosionCenter;
                     Vector2 shotDir = toTarget.sqrMagnitude > 0.0001f ? toTarget.normalized : Vector2.right;
                     DamageInfo damageInfo = new DamageInfo
@@ -218,6 +256,7 @@ namespace iStick2War_V2
                 if (explodable != null && !damagedExplodables.Contains(explodable))
                 {
                     damagedExplodables.Add(explodable);
+                    damagedKinds.Add(RocketExplosionVfxKind.Explodable);
                     explodable.TakeDamage(finalDamage);
                     continue;
                 }
@@ -228,9 +267,12 @@ namespace iStick2War_V2
                 if (aircraft != null && !damagedAircraft.Contains(aircraft))
                 {
                     damagedAircraft.Add(aircraft);
+                    damagedKinds.Add(ClassifyAircraftExplosionVfxKind(aircraft));
                     aircraft.ApplyDamage(finalAircraftDamage);
                 }
             }
+
+            SpawnExplosionEffectsForKinds(explosionCenter, damagedKinds);
 
             if (_debugExplosion)
             {
@@ -240,6 +282,93 @@ namespace iStick2War_V2
             }
 
             Destroy(gameObject);
+        }
+
+        private static RocketExplosionVfxKind ClassifyAircraftExplosionVfxKind(AircraftHealth_V2 aircraft)
+        {
+            if (aircraft == null)
+            {
+                return RocketExplosionVfxKind.HelicopterOrGenericAircraft;
+            }
+
+            if (aircraft.GetComponentInParent<EnemyKamikazeDrone_V2>() != null)
+            {
+                return RocketExplosionVfxKind.KamikazeDrone;
+            }
+
+            if (aircraft.GetComponentInParent<EnemyBombDrone_V2>() != null)
+            {
+                return RocketExplosionVfxKind.BombDrone;
+            }
+
+            if (aircraft.GetComponentInParent<Bombplane_V2>() != null)
+            {
+                return RocketExplosionVfxKind.BombPlane;
+            }
+
+            return RocketExplosionVfxKind.HelicopterOrGenericAircraft;
+        }
+
+        /// <summary>
+        /// Spawns typed prefabs for each damaged <paramref name="kinds"/> (in fixed priority order). If <paramref name="kinds"/>
+        /// is null or empty, or no typed prefab is assigned for the damaged set, spawns <see cref="_explosionEffectPrefab"/> once.
+        /// </summary>
+        private void SpawnExplosionEffectsForKinds(Vector2 center, HashSet<RocketExplosionVfxKind> kinds)
+        {
+            bool spawnedTyped = false;
+            if (kinds != null && kinds.Count > 0)
+            {
+                for (int i = 0; i < VfxSpawnPriorityOrder.Length; i++)
+                {
+                    RocketExplosionVfxKind kind = VfxSpawnPriorityOrder[i];
+                    if (!kinds.Contains(kind))
+                    {
+                        continue;
+                    }
+
+                    GameObject prefab = GetExplosionPrefabForKind(kind);
+                    if (prefab == null)
+                    {
+                        continue;
+                    }
+
+                    SpawnOneExplosionInstance(prefab, center);
+                    spawnedTyped = true;
+                }
+            }
+
+            if (!spawnedTyped && _explosionEffectPrefab != null)
+            {
+                SpawnOneExplosionInstance(_explosionEffectPrefab, center);
+            }
+        }
+
+        private GameObject GetExplosionPrefabForKind(RocketExplosionVfxKind kind)
+        {
+            switch (kind)
+            {
+                case RocketExplosionVfxKind.Paratrooper:
+                    return _explosionParatrooperEffectPrefab;
+                case RocketExplosionVfxKind.Explodable:
+                    return _explosionExplodableEffectPrefab;
+                case RocketExplosionVfxKind.BombPlane:
+                    return _explosionBombPlaneEffectPrefab;
+                case RocketExplosionVfxKind.KamikazeDrone:
+                    return _explosionKamikazeDroneEffectPrefab;
+                case RocketExplosionVfxKind.BombDrone:
+                    return _explosionBombDroneEffectPrefab;
+                case RocketExplosionVfxKind.HelicopterOrGenericAircraft:
+                    return _explosionHelicopterEffectPrefab;
+                default:
+                    return null;
+            }
+        }
+
+        private void SpawnOneExplosionInstance(GameObject prefab, Vector2 center)
+        {
+            GameObject effect = Instantiate(prefab, center, Quaternion.identity);
+            float effectLifetime = Mathf.Max(0.05f, _explosionEffectLifetime);
+            Destroy(effect, effectLifetime);
         }
 
         private Camera ResolveExplosionClipCamera()
@@ -278,18 +407,6 @@ namespace iStick2War_V2
             Plane[] planes = GeometryUtility.CalculateFrustumPlanes(cam);
             var b = new Bounds(new Vector3(world.x, world.y, cam.transform.position.z), new Vector3(0.05f, 0.05f, 0.25f));
             return GeometryUtility.TestPlanesAABB(planes, b);
-        }
-
-        private void SpawnExplosionEffect()
-        {
-            if (_explosionEffectPrefab == null)
-            {
-                return;
-            }
-
-            GameObject effect = Instantiate(_explosionEffectPrefab, transform.position, Quaternion.identity);
-            float effectLifetime = Mathf.Max(0.05f, _explosionEffectLifetime);
-            Destroy(effect, effectLifetime);
         }
 
         private void StopRocketMotion()
