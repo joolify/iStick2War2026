@@ -162,7 +162,7 @@ namespace iStick2War_V2
             int absorbedByBunker = Mathf.Min(_damage, Mathf.Max(0, bunkerHpBefore));
             if (absorbedByBunker > 0 && waveManager != null)
             {
-                waveManager.ApplyBunkerDamage(absorbedByBunker);
+                waveManager.ApplyBunkerDamage(absorbedByBunker, BunkerDamageTelemetrySource.Bomb);
             }
 
             int heroDamage = _damage - absorbedByBunker;

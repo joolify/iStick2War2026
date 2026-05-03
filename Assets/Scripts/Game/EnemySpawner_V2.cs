@@ -903,12 +903,9 @@ namespace iStick2War_V2
                 return;
             }
 
-            float stagger = Mathf.Max(0f, _aircraftSameWaveApproachAxisStagger);
-            if (stagger > 0f && spawnIndexInWave > 0)
-            {
-                Vector3 furtherOutside = fromLeft ? Vector3.left : Vector3.right;
-                aircraftWorldPos += furtherOutside * (spawnIndexInWave * stagger);
-            }
+            // Bomb runs must start just past the active camera frustum. Same-wave stagger (meant for helicopters)
+            // stacks huge +X offsets for right-side passes and pushes Heinkel-style planes far off-screen.
+            SnapBombplaneSpawnToFrustumApproach(ref aircraftWorldPos, fromLeft);
 
             GameObject bomber = SimplePrefabPool_V2.Spawn(_bomberPrefab, aircraftWorldPos, aircraftRotation);
             if (bomber == null)
@@ -920,7 +917,10 @@ namespace iStick2War_V2
             ApplyAircraftSpriteSorting(bomber);
             _spawnedAircraftInstances.Add(bomber);
 
-            if (_aircraftEnableHorizontalFlight && _aircraftHorizontalFlySpeed > 0f)
+            Bombplane_V2 bombplane = bomber.GetComponent<Bombplane_V2>();
+            // Bombplane_V2 moves itself in Update; adding AircraftFlyAcrossScreen_V2 doubles speed and can despawn
+            // before the first bomb drop. Skip duplicate flight for bomber prefabs.
+            if (_aircraftEnableHorizontalFlight && _aircraftHorizontalFlySpeed > 0f && bombplane == null)
             {
                 AircraftFlyAcrossScreen_V2 flight = bomber.GetComponent<AircraftFlyAcrossScreen_V2>();
                 if (flight == null)
@@ -947,10 +947,9 @@ namespace iStick2War_V2
                 timer.Arm(_aircraftAutoDestroySeconds);
             }
 
-            Bombplane_V2 bombplane = bomber.GetComponent<Bombplane_V2>();
             if (bombplane != null)
             {
-                bombplane.BeginBombRun();
+                bombplane.BeginBombRun(fromLeft);
             }
 
             AircraftHealth_V2 aircraftHealth = bomber.GetComponent<AircraftHealth_V2>();
@@ -1890,6 +1889,34 @@ namespace iStick2War_V2
             aircraftWorldPos = new Vector3(x, y, _anchorSpawnWorldZ);
             rawWorldForLog = aircraftWorldPos;
             return true;
+        }
+
+        /// <summary>
+        /// Forces horizontal spawn to match <see cref="TryComputeOffscreenFrustumSpawn"/> so bombplanes always
+        /// approach from just outside the orthographic band (pins far away in the scene cannot strand passes off-view).
+        /// </summary>
+        private void SnapBombplaneSpawnToFrustumApproach(ref Vector3 aircraftWorldPos, bool fromLeft)
+        {
+            Camera cam = _spawnCamera != null ? _spawnCamera : Camera.main;
+            if (cam == null || !cam.orthographic)
+            {
+                return;
+            }
+
+            float halfHeight = cam.orthographicSize;
+            float halfWidth = halfHeight * cam.aspect;
+            float rawPad = Mathf.Max(0f, _orthographicFrustumInsetPadding);
+            float pad = GetClampedFrustumPadding(rawPad, halfWidth, halfHeight);
+            Vector3 camPos = cam.transform.position;
+
+            float margin = Mathf.Max(0f, _offscreenBeyondFrustumHorizontalWorld);
+            float visibleMinX = camPos.x - halfWidth;
+            float visibleMaxX = camPos.x + halfWidth;
+            float minY = camPos.y - halfHeight + pad;
+            float maxY = camPos.y + halfHeight - pad;
+            float spawnX = fromLeft ? visibleMinX - margin : visibleMaxX + margin;
+            float y = Mathf.Clamp(aircraftWorldPos.y, minY, maxY);
+            aircraftWorldPos = new Vector3(spawnX, y, _anchorSpawnWorldZ);
         }
 
         private int ResolveGroundSurfaceProbeMask()

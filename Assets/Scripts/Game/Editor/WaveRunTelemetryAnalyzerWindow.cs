@@ -52,6 +52,12 @@ namespace iStick2War_V2.Editor
         private const string PrefBatchAutoHeroSubstr = "iStick2War.WaveTelemetryAnalyzer.BatchAutoHeroSubstr";
         private const string PrefBatchMaxAgeHours = "iStick2War.WaveTelemetryAnalyzer.BatchMaxAgeHours";
 
+        /// <summary>Min total bunker damage before BOMB_DOMINATED_BUNKER (avoid trivial rows).</summary>
+        private const int BombDominatedBunkerMinTotalDamage = 20;
+
+        /// <summary>Bomb bunker subset must exceed this fraction of total bunker damage (strict &gt;).</summary>
+        private const float BombDominatedBunkerRatioThreshold = 0.9f;
+
         /// <summary>Swedish v1 heuristic legend shown at top of report and in UI before first analysis.</summary>
         private static readonly string AnalyzerIntroSv =
             "Rapport (v1-heuristik)\n" +
@@ -62,6 +68,7 @@ namespace iStick2War_V2.Editor
             "LOW_COVER_STALL\tbunkerHpWaveStart > 0: bunkerStart01 < 0.6, bunker-skada 0, pressureScore > 0.8, waveDurationSec > 6 (carry-in-tryck utan ny bunker-skada; ej post-breach)\n" +
             "COLLAPSE_CHAIN\tföregående wave_cleared/run_end: minRatio < 0.2 eller breach; denna rad: wave+1, bunkerStart01 < 0.3, pressureScore > 0.7\n" +
             "HIGH_CARRY_IN_PRESSURE\tsom PRELOAD inte gäller: bunkerStart01 ≥ 0.2, bunker-skada, stor skillnad press total vs efter första träff\n" +
+            "BOMB_DOMINATED_BUNKER\twave_cleared/run_end: damageTakenBunkerFromBombs / max(1, damageTakenBunker) > 0,9 och damageTakenBunker ≥ 20 (nästan all bunker-skada från bomber; kräver telemetri-fältet)\n" +
             "NEAR_BREACH\twave_cleared, minBunkerHpRatio < 0.15, inte bunkerBreached (tur/panik, inte sweet spot)\n" +
             "OVERLOAD_FAIL\trun_end och (heroDead eller bunkerBreached)\n" +
             "GAME_ERROR_FAIL\trun_end med endReason som börjar på game_error (watchdog/soft-lock guard)\n" +
@@ -102,6 +109,7 @@ namespace iStick2War_V2.Editor
             "«weapon» / «weaponType»: vapen vid snapshot.\n" +
             "«damageTakenHero» / «healingHero»: under aktuell InWave (nollställs nästa InWave).\n" +
             "«damageTakenBunker»: bunker-skada under InWave (via NotifyBunkerDamageTaken).\n" +
+            "«damageTakenBunkerFromBombs»: delmängd av ovan från BombProjectile_V2 (samma InWave-reset).\n" +
             "«timeInBunkerSec»: hero i bunkerzon under InWave (oskalad tid).\n" +
             "«shotsFired», «rayHits» / «rayMisses», «projectileLaunches», «reloads»: combat under InWave.\n" +
             "«shopPurchasesPrior» / «shopCurrencySpentPrior» / «shopOffersBoughtPrior[]»: på «wave_cleared» = " +
@@ -135,6 +143,7 @@ namespace iStick2War_V2.Editor
             "failWave: sista run_end:s våg om fail (ej game_won), annars —. maxWaveCleared: högsta wave på wave_cleared.\n" +
             "sessionSec: sista minus första events[].realtimeSinceStartup (grovt sessionslängd).\n" +
             "flags: heuristiska flaggor unika för körningen (;-separerade). unityLogRows: antal unityLogs-rader.\n" +
+            "bombDominatedWaveRows: antal wave_cleared/run_end-rader där heuristiken BOMB_DOMINATED_BUNKER satts.\n" +
             "feel_firstKillSec … feel_firstShopSec: från feelSession (−1/blankt om saknas). " +
             "feel_bunkerTimeFrac01 … feel_survSecAfterFirstShop: härledda som ovan.\n\n" +
             "## Tolkning (viktigt)\n" +
@@ -456,6 +465,7 @@ namespace iStick2War_V2.Editor
             WaveChainPrev chainPrev = default;
             int overloadFailCount = 0;
             int pressureDominatedCount = 0;
+            int bombDominatedBunkerRowCount = 0;
             int objectiveInactiveCount = 0;
             int rowsWithWaveEnd = 0;
             float pressureScoreSum = 0f;
@@ -546,6 +556,10 @@ namespace iStick2War_V2.Editor
                 {
                     pressureDominatedCount++;
                 }
+                if (flags.Contains("BOMB_DOMINATED_BUNKER"))
+                {
+                    bombDominatedBunkerRowCount++;
+                }
                 if (flags.Contains("OBJECTIVE_INACTIVE"))
                 {
                     objectiveInactiveCount++;
@@ -557,7 +571,7 @@ namespace iStick2War_V2.Editor
 
                 sb.AppendLine(
                     $"[{ev.kind}] wave={ev.wave} dur={ev.waveDurationSec:0.##}s " +
-                    $"kills={ev.enemiesKilled} bunkerDmg={ev.damageTakenBunker} " +
+                    $"kills={ev.enemiesKilled} bunkerDmg={ev.damageTakenBunker} bombBunkerDmg={ev.damageTakenBunkerFromBombs} " +
                     $"stress={ev.waveStressScore:0.#} press={ev.bunkerPressureTimeSec:0.##}s " +
                     $"pressPostHit={ev.bunkerPressureTimeAfterFirstDamageSec:0.##}s " +
                     $"minRatio={ev.minBunkerHpRatioThisWave:0.###} slope≈{slope:0.####}/s");
@@ -604,7 +618,8 @@ namespace iStick2War_V2.Editor
                 sb.AppendLine(dominant);
                 sb.AppendLine(
                     $"Context: rows={rowsWithWaveEnd}, OVERLOAD_FAIL={overloadFailCount}, " +
-                    $"PRESSURE_DOMINATED_DURATION={pressureDominatedCount}, OBJECTIVE_INACTIVE={objectiveInactiveCount}, " +
+                    $"PRESSURE_DOMINATED_DURATION={pressureDominatedCount}, BOMB_DOMINATED_BUNKER={bombDominatedBunkerRowCount}, " +
+                    $"OBJECTIVE_INACTIVE={objectiveInactiveCount}, " +
                     $"avgPressureScore={avgPressureScore:0.###}, avgPressureContinuity={avgPressureContinuity:0.###}, " +
                     $"avgSurvivalMarginMin01={avgSurvivalMarginMin:0.###}");
                 sb.AppendLine();
@@ -629,7 +644,7 @@ namespace iStick2War_V2.Editor
                         $"{Truncate(u.weapon ?? "", 22)} trackedPara={u.trackedLivingParatroopers} fp={u.fingerprint}");
                     sb.AppendLine(
                         $"  ctx: timeScale={u.timeScale:0.###} inWaveUnscaledSec={u.inWaveUnscaledSec:0.###} " +
-                        $"dmgH={u.damageTakenHeroThisWave} dmgBnk={u.damageTakenBunkerThisWave} shots={u.shotsFiredThisWave} " +
+                        $"dmgH={u.damageTakenHeroThisWave} dmgBnk={u.damageTakenBunkerThisWave} bombBnk={u.damageTakenBunkerFromBombsThisWave} shots={u.shotsFiredThisWave} " +
                         $"bunkPressUnscaled={u.bunkerPressureTimeUnscaledThisWave:0.##}");
                     sb.AppendLine("  scene: " + Truncate(u.activeScenePathOrName ?? "", 100));
                     sb.AppendLine("  scaling: " + Truncate(u.scalingSnapshotShort ?? "", 200));
@@ -824,6 +839,7 @@ namespace iStick2War_V2.Editor
                 }
 
                 var flagsThisRun = new HashSet<string>(StringComparer.Ordinal);
+                int bombDominatedWaveRowsThisRun = 0;
                 int spawnStarvedRowsThisRun = 0;
                 int spawnerRecoveriesThisRun = 0;
                 int spawnerFailedAttemptsThisRun = 0;
@@ -870,6 +886,11 @@ namespace iStick2War_V2.Editor
                     foreach (string f in flags)
                     {
                         BatchIncrement(flagRowCount, f);
+                    }
+
+                    if (flags.Contains("BOMB_DOMINATED_BUNKER"))
+                    {
+                        bombDominatedWaveRowsThisRun++;
                     }
 
                     if (ev.kind == "wave_cleared")
@@ -985,7 +1006,8 @@ namespace iStick2War_V2.Editor
                 string tsvLine =
                     $"{fn}\t{sessionId}\t{sceneProfileId}\t{autoHeroProfile}\t{deathText}\t{maxWaveCleared}\t{sessionDur:0.#}\t{flagsJoined}\t{unityRowsThisFile}" +
                     $"\t{spawnStarvedRowsThisRun}\t{spawnerRecoveriesThisRun}\t{spawnerFailedAttemptsThisRun}\t{lastSpawnerExitReasonThisRun}\t{lastSpawnerAbortReasonThisRun}" +
-                    $"{feelTsv}";
+                    $"{feelTsv}" +
+                    $"\t{bombDominatedWaveRowsThisRun}";
                 perFileLines.Add(tsvLine);
 
                 batchRuns++;
@@ -1208,7 +1230,7 @@ namespace iStick2War_V2.Editor
                 "spawnStarvedRows\tspawnRecoveries\tspawnFailedAttempts\tspawnExitReasonLast\tspawnAbortReasonLast\t" +
                 "feel_firstKillSec\tfeel_firstDmgSec\tfeel_firstDeathSec\tfeel_firstShopSec\t" +
                 "feel_bunkerTimeFrac01\tfeel_combatPerHeroDmgTaken\tfeel_overwhelmedInWaveSecSum\t" +
-                "feel_heroMaxHpDeltaAfterFirstShop\tfeel_survSecAfterFirstShop");
+                "feel_heroMaxHpDeltaAfterFirstShop\tfeel_survSecAfterFirstShop\tbombDominatedWaveRows");
             foreach (string line in perFileLines)
             {
                 sb.AppendLine(line);
@@ -2058,6 +2080,16 @@ namespace iStick2War_V2.Editor
                 flags.Add("PRESSURE_DOMINATED_DURATION");
             }
 
+            int bunkerDmgTotal = ev.damageTakenBunker;
+            int bunkerDmgBombs = ev.damageTakenBunkerFromBombs;
+            if ((kind == "wave_cleared" || kind == "run_end") &&
+                bunkerDmgTotal >= BombDominatedBunkerMinTotalDamage &&
+                bunkerDmgBombs > 0 &&
+                bunkerDmgBombs > bunkerDmgTotal * BombDominatedBunkerRatioThreshold)
+            {
+                flags.Add("BOMB_DOMINATED_BUNKER");
+            }
+
             return flags;
         }
 
@@ -2149,6 +2181,7 @@ namespace iStick2War_V2.Editor
             public float inWaveUnscaledSec;
             public int damageTakenHeroThisWave;
             public int damageTakenBunkerThisWave;
+            public int damageTakenBunkerFromBombsThisWave;
             public int shotsFiredThisWave;
             public float bunkerPressureTimeUnscaledThisWave;
             public string scalingSnapshotShort;
@@ -2228,6 +2261,7 @@ namespace iStick2War_V2.Editor
             public int damageTakenHero;
             public int healingHero;
             public int damageTakenBunker;
+            public int damageTakenBunkerFromBombs;
             public float timeInBunkerSec;
             public int shotsFired;
             public int rayHits;

@@ -238,6 +238,12 @@ namespace iStick2War_V2
         /// <summary>Enemy fire etc. — reduces current bunker HP and refreshes UI.</summary>
         public void ApplyBunkerDamage(int amount)
         {
+            ApplyBunkerDamage(amount, BunkerDamageTelemetrySource.Other);
+        }
+
+        /// <param name="telemetrySource">Forwarded to <see cref="WaveRunTelemetry_V2"/> (bomb vs other bunker hits).</param>
+        public void ApplyBunkerDamage(int amount, BunkerDamageTelemetrySource telemetrySource)
+        {
             if (amount <= 0)
             {
                 return;
@@ -245,7 +251,7 @@ namespace iStick2War_V2
 
             _bunkerHealth = Mathf.Max(0, _bunkerHealth - amount);
             Log($"Bunker took {amount} damage. hp={_bunkerHealth}/{_bunkerMaxHealthRuntime}");
-            WaveRunTelemetry_V2.NotifyBunkerDamageTaken(amount);
+            WaveRunTelemetry_V2.NotifyBunkerDamageTaken(amount, telemetrySource);
             OnBunkerDamaged?.Invoke(amount);
             EmitMetaChanged();
         }

@@ -7,11 +7,12 @@ namespace iStick2War_V2
     {
         [Header("Flight")]
         [SerializeField] private bool _enableHorizontalFlight = true;
-        [SerializeField] private float _horizontalFlySpeed = 5.5f;
+        [SerializeField] private float _horizontalFlySpeed = 4f;
         [SerializeField] private float _flightOffscreenMarginWorld = 4f;
         [SerializeField] private float _flightMaxLifetimeSeconds = 45f;
         [Tooltip("If true: +scaleX means plane nose points right. Disable if sprite faces left at +scaleX.")]
         [SerializeField] private bool _spriteFacesRightWhenScaleXPositive = false;
+        [Tooltip("Must match EnemySpawner_V2 invert for bomber passes when using BeginBombRun(fromLeft).")]
         [SerializeField] private bool _invertFlightDirectionX = false;
 
         [Header("Bombing")]
@@ -38,7 +39,24 @@ namespace iStick2War_V2
         private float _flightDirectionX;
         private float _expireAt;
 
+        /// <summary>
+        /// Starts a pass using sprite scale to guess travel direction (scene-placed planes only).
+        /// Prefer <see cref="BeginBombRun(bool)"/> from spawners so direction matches spawn side.
+        /// </summary>
         public void BeginBombRun()
+        {
+            BeginBombRun(spawnedFromLeft: null);
+        }
+
+        /// <param name="spawnedFromLeft">
+        /// Same as aircraft spawn: true = entered from left, should fly toward +X (before <see cref="_invertFlightDirectionX"/>).
+        /// </param>
+        public void BeginBombRun(bool spawnedFromLeft)
+        {
+            BeginBombRun(spawnedFromLeft: (bool?)spawnedFromLeft);
+        }
+
+        private void BeginBombRun(bool? spawnedFromLeft)
         {
             EnsureHitboxIfMissing();
 
@@ -49,14 +67,22 @@ namespace iStick2War_V2
             _flightCamera = Camera.main;
             _expireAt = Time.time + Mathf.Max(1f, _flightMaxLifetimeSeconds);
 
-            bool positiveScaleMeansFacingRight = _spriteFacesRightWhenScaleXPositive;
-            bool facingRight = transform.lossyScale.x >= 0f
-                ? positiveScaleMeansFacingRight
-                : !positiveScaleMeansFacingRight;
-            _flightDirectionX = facingRight ? 1f : -1f;
-            if (_invertFlightDirectionX)
+            if (spawnedFromLeft.HasValue)
             {
-                _flightDirectionX *= -1f;
+                float baseDir = spawnedFromLeft.Value ? 1f : -1f;
+                _flightDirectionX = _invertFlightDirectionX ? -baseDir : baseDir;
+            }
+            else
+            {
+                bool positiveScaleMeansFacingRight = _spriteFacesRightWhenScaleXPositive;
+                bool facingRight = transform.lossyScale.x >= 0f
+                    ? positiveScaleMeansFacingRight
+                    : !positiveScaleMeansFacingRight;
+                _flightDirectionX = facingRight ? 1f : -1f;
+                if (_invertFlightDirectionX)
+                {
+                    _flightDirectionX *= -1f;
+                }
             }
         }
 
@@ -75,20 +101,14 @@ namespace iStick2War_V2
                 return;
             }
 
+            // Drop before movement/despawn so a pass cannot exit the same frame without attempting a release.
+            if (_bombProjectilePrefab != null && _bombsDropped < Mathf.Max(1, _maxBombsPerPass) && Time.time >= _nextDropTime)
+            {
+                DropBomb();
+                _nextDropTime = Time.time + Mathf.Max(0.2f, _bombDropIntervalSeconds);
+            }
+
             TickFlight();
-
-            if (_bombProjectilePrefab == null || _bombsDropped >= Mathf.Max(1, _maxBombsPerPass))
-            {
-                return;
-            }
-
-            if (Time.time < _nextDropTime)
-            {
-                return;
-            }
-
-            DropBomb();
-            _nextDropTime = Time.time + Mathf.Max(0.2f, _bombDropIntervalSeconds);
         }
 
         private void DropBomb()
@@ -154,6 +174,20 @@ namespace iStick2War_V2
         private void DespawnSelf()
         {
             SimplePrefabPool_V2.Despawn(gameObject);
+        }
+
+        /// <summary>
+        /// World velocity used for flight (transform-based). Exposed for AA lead / intercept aim (e.g. AutoHero bazooka).
+        /// </summary>
+        public Vector2 GetHorizontalFlightVelocityWorld()
+        {
+            if (!_hasStarted || !_enableHorizontalFlight)
+            {
+                return Vector2.zero;
+            }
+
+            float speed = Mathf.Max(0.01f, _horizontalFlySpeed);
+            return new Vector2(_flightDirectionX * speed, 0f);
         }
 
         private void EnsureHitboxIfMissing()

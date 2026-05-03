@@ -48,6 +48,12 @@ namespace iStick2War_V2
         [Tooltip("Shoot gate vs aircraft: aim point is often far above the hero; scales max weapon range (1 = strict box, ~2.6+ = practical AA).")]
         [SerializeField] private float _aircraftShootRangeSlackMultiplier = 2.65f;
         [Tooltip(
+            "When using a projectile weapon vs Bombplane_V2, solve intercept aim so rockets lead the plane. " +
+            "Without this, fast lateral passes often miss and bombs still reach the bunker.")]
+        [SerializeField] private bool _leadProjectileAimVsBombplane = true;
+        [Tooltip("Cap intercept time so aim does not extrapolate wildly if speeds are mismatched.")]
+        [SerializeField] private float _bombplaneInterceptMaxTimeSeconds = 2.75f;
+        [Tooltip(
             "When true, any Paratrooper body hitbox in the search radius wins over the helicopter. " +
             "Otherwise the single nearest EnemyBodyPart collider is used (aircraft often steals the aim).")]
         [SerializeField] private bool _prioritizeInfantryOverAircraft = true;
@@ -72,6 +78,10 @@ namespace iStick2War_V2
         [SerializeField] private float _paratrooperTargetMaxBelowHero = 22f;
         [Tooltip("Paratrooper colliders entirely outside the shoot-visibility frustum are ignored (same as overlap pass).")]
         [SerializeField] private bool _paratrooperFallbackRespectsShootFrustum = true;
+        [Tooltip(
+            "For orthographic cameras, enemy visibility uses XY intersection with the camera view rect (plus this margin). " +
+            "Full 3D frustum AABB tests often reject valid 2D hitboxes and cause no-target while enemies are on screen.")]
+        [SerializeField] private float _shootVisibilityOrthographicMarginWorld = 1.25f;
 
         [Header("Bomb run survival")]
         [Tooltip("When true, retreat toward bunker interior when falling bombs are likely to splash the hero (ignores low-HP bunker rule).")]
@@ -142,7 +152,7 @@ namespace iStick2War_V2
         [Tooltip("Prevents test deadlock when bot is fully dry (0 mag + 0 reserve). Refills active weapon via Hero API.")]
         [SerializeField] private bool _autoRefillAmmoWhenDryInAutomation = true;
 
-        private readonly Collider2D[] _overlapBuffer = new Collider2D[64];
+        private readonly List<Collider2D> _enemyOverlapResults = new List<Collider2D>(128);
         private readonly List<ParatrooperBodyPart_V2> _paratrooperBodyPartBuffer = new List<ParatrooperBodyPart_V2>(16);
         private int _enemyBodyPartLayer = -1;
         private WaveLoopState_V2 _lastWaveState = WaveLoopState_V2.Preparing;
@@ -1113,9 +1123,10 @@ namespace iStick2War_V2
                 !inside;
             bool wantBunker = wantBunkerFromHp || wantBunkerFromBombs;
 
-            Plane[] shootFrustumPlanes = TryGetShootVisibilityFrustumPlanes();
+            Camera shootVisCam = _shootVisibilityCamera != null ? _shootVisibilityCamera : Camera.main;
+            Plane[] shootFrustumPlanes = TryGetShootVisibilityFrustumPlanes(shootVisCam);
             bool bombSplashForAimPriority = _aimBombingAircraftWhileBombsFall && splashActive;
-            Collider2D target = FindNearestEnemyCollider(heroPos, shootFrustumPlanes, bombSplashForAimPriority);
+            Collider2D target = FindNearestEnemyCollider(heroPos, shootVisCam, shootFrustumPlanes, bombSplashForAimPriority);
             Vector2 aimPoint = heroPos + Vector2.right * 8f;
             bool hasTarget = false;
 
@@ -1190,7 +1201,10 @@ namespace iStick2War_V2
             {
                 // Drone/aircraft fights should not be gated by strict box checks; allow generous world-distance fire.
                 float slack = Mathf.Max(1f, _aircraftShootRangeSlackMultiplier);
-                inRange = Vector2.Distance(aimPoint, heroPos) <= maxShootDist * slack;
+                // Gate on distance to the craft, not to intercept aim: lead aim can sit far ahead along flight path
+                // and would falsely fail inRange vs maxShootDist*slack (bazooka vs Bombplane_V2).
+                Vector2 aircraftRangeRef = target.bounds.center;
+                inRange = Vector2.Distance(aircraftRangeRef, heroPos) <= maxShootDist * slack;
             }
             else
             {
@@ -1206,10 +1220,12 @@ namespace iStick2War_V2
             bool canHoldFire =
                 _model.currentAmmo > 0 || _model.currentReserveAmmo > 0;
 
+            // Only meaningful when hasTarget; avoid reporting "shootable on camera" when there is no target
+            // (telemetry wave_cleared rows often snapshot after clears — was confusing vs autoHeroHasTarget).
             bool targetShootableOnCamera =
-                target == null ||
-                shootFrustumPlanes == null ||
-                GeometryUtility.TestPlanesAABB(shootFrustumPlanes, target.bounds);
+                hasTarget &&
+                (shootFrustumPlanes == null ||
+                 GeometryUtility.TestPlanesAABB(shootFrustumPlanes, target.bounds));
             if (isImmediateGroundParatrooperThreat || isImmediateAirThreat)
             {
                 // Emergency override: immediate threats (ground combat paratrooper / active air threat) should not be
@@ -1553,7 +1569,11 @@ namespace iStick2War_V2
             return TryGetShootVisibilityFrustumPlanes(cam);
         }
 
-        private Collider2D FindNearestEnemyCollider(Vector2 from, Plane[] shootFrustumPlanes, bool bombSplashThreat)
+        private Collider2D FindNearestEnemyCollider(
+            Vector2 from,
+            Camera shootVisCam,
+            Plane[] shootFrustumPlanes,
+            bool bombSplashThreat)
         {
             if (_enemyBodyPartLayer < 0)
             {
@@ -1565,13 +1585,15 @@ namespace iStick2War_V2
             filter.useLayerMask = true;
             filter.useTriggers = true;
 
-            int count = Physics2D.OverlapCircle(from, _enemySearchRadius, filter, _overlapBuffer);
+            _enemyOverlapResults.Clear();
+            Physics2D.OverlapCircle(from, _enemySearchRadius, filter, _enemyOverlapResults);
+            int count = _enemyOverlapResults.Count;
             if (count <= 0)
             {
-                Collider2D fallbackOnEmptyOverlap = FindAnyLivingParatrooperColliderFallback(from, shootFrustumPlanes);
+                Collider2D fallbackOnEmptyOverlap = FindAnyLivingParatrooperColliderFallback(from, shootVisCam, shootFrustumPlanes);
                 if (fallbackOnEmptyOverlap == null)
                 {
-                    fallbackOnEmptyOverlap = FindAnyAircraftColliderFallback(from, shootFrustumPlanes);
+                    fallbackOnEmptyOverlap = FindAnyAircraftColliderFallback(from, shootVisCam, shootFrustumPlanes, bombSplashThreat);
                 }
                 if (_debugFallbackTargetingLogs && fallbackOnEmptyOverlap != null)
                 {
@@ -1599,7 +1621,7 @@ namespace iStick2War_V2
 
             for (int i = 0; i < count; i++)
             {
-                Collider2D c = _overlapBuffer[i];
+                Collider2D c = _enemyOverlapResults[i];
                 if (c == null)
                 {
                     continue;
@@ -1616,9 +1638,9 @@ namespace iStick2War_V2
                     continue;
                 }
 
-                if (shootFrustumPlanes != null &&
-                    !IsBombingAircraftCollider(c) &&
-                    !GeometryUtility.TestPlanesAABB(shootFrustumPlanes, c.bounds))
+                bool bypassFrustumForBombplane = bombSplashThreat && IsBombingAircraftCollider(c);
+                if (!bypassFrustumForBombplane &&
+                    !IsEnemyBoundsShootVisible(shootVisCam, shootFrustumPlanes, c.bounds))
                 {
                     continue;
                 }
@@ -1695,7 +1717,7 @@ namespace iStick2War_V2
                     float bestGroundedDist = float.MaxValue;
                     for (int i = 0; i < count; i++)
                     {
-                        Collider2D c = _overlapBuffer[i];
+                        Collider2D c = _enemyOverlapResults[i];
                         if (c == null || !IsParatrooperCollider(c) || !IsViableParatrooperTarget(c))
                         {
                             continue;
@@ -1706,8 +1728,7 @@ namespace iStick2War_V2
                             continue;
                         }
 
-                        if (shootFrustumPlanes != null &&
-                            !GeometryUtility.TestPlanesAABB(shootFrustumPlanes, c.bounds))
+                        if (!IsEnemyBoundsShootVisible(shootVisCam, shootFrustumPlanes, c.bounds))
                         {
                             continue;
                         }
@@ -1776,10 +1797,10 @@ namespace iStick2War_V2
                 return bestAircraft;
             }
 
-            Collider2D fallback = FindAnyLivingParatrooperColliderFallback(from, shootFrustumPlanes);
+            Collider2D fallback = FindAnyLivingParatrooperColliderFallback(from, shootVisCam, shootFrustumPlanes);
             if (fallback == null)
             {
-                fallback = FindAnyAircraftColliderFallback(from, shootFrustumPlanes);
+                fallback = FindAnyAircraftColliderFallback(from, shootVisCam, shootFrustumPlanes, bombSplashThreat);
             }
             if (fallback != null)
             {
@@ -1800,7 +1821,11 @@ namespace iStick2War_V2
             return bestAny;
         }
 
-        private static Collider2D FindAnyAircraftColliderFallback(Vector2 from, Plane[] shootFrustumPlanes)
+        private Collider2D FindAnyAircraftColliderFallback(
+            Vector2 from,
+            Camera shootVisCam,
+            Plane[] shootFrustumPlanes,
+            bool allowOffCameraBombplaneWhileBombsFall)
         {
             Collider2D best = null;
             float bestDist = float.MaxValue;
@@ -1821,8 +1846,7 @@ namespace iStick2War_V2
                     }
 
                     if (!ignoreFrustum &&
-                        shootFrustumPlanes != null &&
-                        !GeometryUtility.TestPlanesAABB(shootFrustumPlanes, col.bounds))
+                        !IsEnemyBoundsShootVisible(shootVisCam, shootFrustumPlanes, col.bounds))
                     {
                         continue;
                     }
@@ -1890,7 +1914,9 @@ namespace iStick2War_V2
                 }
 
                 // Bomb runs often sit near/above the frustum edge; skipping the camera AABB test avoids false no-target.
-                ConsiderColliderSet(plane.GetComponentsInChildren<Collider2D>(true), ignoreFrustum: true);
+                ConsiderColliderSet(
+                    plane.GetComponentsInChildren<Collider2D>(true),
+                    ignoreFrustum: allowOffCameraBombplaneWhileBombsFall);
             }
 
             return best;
@@ -1900,7 +1926,10 @@ namespace iStick2War_V2
         /// Safety fallback for watchdog-sensitive end-of-wave cases where overlap/frustum/layer filtering misses
         /// the last living paratrooper even though one is still active in the scene.
         /// </summary>
-        private Collider2D FindAnyLivingParatrooperColliderFallback(Vector2 from, Plane[] shootFrustumPlanes)
+        private Collider2D FindAnyLivingParatrooperColliderFallback(
+            Vector2 from,
+            Camera shootVisCam,
+            Plane[] shootFrustumPlanes)
         {
             _telemetryLastFallbackStage = "none_found";
             _telemetryFallbackLivingParatrooperModels = 0;
@@ -1934,8 +1963,7 @@ namespace iStick2War_V2
                     }
 
                     if (_paratrooperFallbackRespectsShootFrustum &&
-                        shootFrustumPlanes != null &&
-                        !GeometryUtility.TestPlanesAABB(shootFrustumPlanes, col.bounds))
+                        !IsEnemyBoundsShootVisible(shootVisCam, shootFrustumPlanes, col.bounds))
                     {
                         continue;
                     }
@@ -1999,8 +2027,7 @@ namespace iStick2War_V2
                     }
 
                     if (_paratrooperFallbackRespectsShootFrustum &&
-                        shootFrustumPlanes != null &&
-                        !GeometryUtility.TestPlanesAABB(shootFrustumPlanes, col.bounds))
+                        !IsEnemyBoundsShootVisible(shootVisCam, shootFrustumPlanes, col.bounds))
                     {
                         continue;
                     }
@@ -2021,6 +2048,30 @@ namespace iStick2War_V2
                 _telemetryLastFallbackStage = "model";
             }
             return best;
+        }
+
+        private bool IsEnemyBoundsShootVisible(Camera shootVisCam, Plane[] shootFrustumPlanes, Bounds bounds)
+        {
+            if (shootVisCam != null && shootVisCam.orthographic)
+            {
+                float halfH = shootVisCam.orthographicSize;
+                float halfW = halfH * shootVisCam.aspect;
+                float m = Mathf.Max(0f, _shootVisibilityOrthographicMarginWorld);
+                Vector3 c = shootVisCam.transform.position;
+                float visMinX = c.x - halfW - m;
+                float visMaxX = c.x + halfW + m;
+                float visMinY = c.y - halfH - m;
+                float visMaxY = c.y + halfH + m;
+                return bounds.max.x >= visMinX && bounds.min.x <= visMaxX &&
+                       bounds.max.y >= visMinY && bounds.min.y <= visMaxY;
+            }
+
+            if (shootFrustumPlanes != null && shootFrustumPlanes.Length > 0)
+            {
+                return GeometryUtility.TestPlanesAABB(shootFrustumPlanes, bounds);
+            }
+
+            return true;
         }
 
         private void MaybeLogTargetSelectionDebug(Collider2D selected, float score, string reason)
@@ -2187,7 +2238,100 @@ namespace iStick2War_V2
                 }
             }
 
-            return target.bounds.center;
+            Vector2 center = target.bounds.center;
+            if (_leadProjectileAimVsBombplane &&
+                IsBombingAircraftCollider(target) &&
+                _hero != null &&
+                _model != null &&
+                _model.currentWeaponDefinition != null)
+            {
+                HeroWeaponSystem_V2 ws = _hero.WeaponSystem;
+                Bombplane_V2 plane = target.GetComponentInParent<Bombplane_V2>();
+                if (ws != null && ws.ActiveWeaponUsesProjectile() && plane != null)
+                {
+                    Vector2 vel = plane.GetHorizontalFlightVelocityWorld();
+                    float projSpeed = _model.currentWeaponDefinition.ProjectileSpeed;
+                    if (TryComputeProjectileInterceptAim2D(
+                            heroPos,
+                            center,
+                            vel,
+                            projSpeed,
+                            Mathf.Max(0.1f, _bombplaneInterceptMaxTimeSeconds),
+                            out Vector2 intercept))
+                    {
+                        return intercept;
+                    }
+                }
+            }
+
+            return center;
+        }
+
+        /// <summary>
+        /// Smallest positive time-to-impact solution for |targetPos + vel*t - shooter| = projSpeed * t (2D).
+        /// </summary>
+        private static bool TryComputeProjectileInterceptAim2D(
+            Vector2 shooter,
+            Vector2 targetCenter,
+            Vector2 targetVelocity,
+            float projectileSpeed,
+            float maxTimeSeconds,
+            out Vector2 interceptWorld)
+        {
+            interceptWorld = targetCenter;
+            float s = Mathf.Max(0.01f, projectileSpeed);
+            Vector2 r = targetCenter - shooter;
+            float a = targetVelocity.sqrMagnitude - s * s;
+            float b = 2f * Vector2.Dot(r, targetVelocity);
+            float c = r.sqrMagnitude;
+            float t = -1f;
+            const float Epsilon = 1e-3f;
+
+            if (Mathf.Abs(a) < Epsilon)
+            {
+                if (Mathf.Abs(b) < Epsilon)
+                {
+                    return false;
+                }
+
+                t = -c / b;
+            }
+            else
+            {
+                float disc = b * b - 4f * a * c;
+                if (disc < 0f)
+                {
+                    return false;
+                }
+
+                float sqrtD = Mathf.Sqrt(disc);
+                float inv2a = 1f / (2f * a);
+                float t0 = (-b - sqrtD) * inv2a;
+                float t1 = (-b + sqrtD) * inv2a;
+                t = float.MaxValue;
+                if (t0 > 0.0005f)
+                {
+                    t = Mathf.Min(t, t0);
+                }
+
+                if (t1 > 0.0005f)
+                {
+                    t = Mathf.Min(t, t1);
+                }
+
+                if (t >= float.MaxValue * 0.5f)
+                {
+                    return false;
+                }
+            }
+
+            if (t <= 0f || t > maxTimeSeconds)
+            {
+                return false;
+            }
+
+            interceptWorld = targetCenter + targetVelocity * t;
+            return true;
         }
 
         private Vector2? TryResolveParatrooperTorsoOrHeadAimPoint(Collider2D target, Vector2 heroPos)

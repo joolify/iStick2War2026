@@ -10,6 +10,16 @@ using iStick2War;
 namespace iStick2War_V2
 {
     /// <summary>
+    /// Bunker damage attribution for <see cref="WaveRunTelemetry_V2"/> (subset; extend as needed).
+    /// </summary>
+    public enum BunkerDamageTelemetrySource
+    {
+        Other = 0,
+        /// <summary>HP absorbed from <see cref="BombProjectile_V2"/> explosions.</summary>
+        Bomb = 1
+    }
+
+    /// <summary>
     /// Writes one JSON document per session: <c>{ "events": [ ... ] }</c> (pretty-printed).
     /// Tracks combat, bunker time, bunker damage, and shop spend between waves (attributed to the wave that just ended).
     /// <c>session_begin</c> is written one frame after enable so <see cref="WaveManager_V2"/> economy/bunker has initialized.
@@ -84,6 +94,7 @@ namespace iStick2War_V2
         private int _heroDamageTakenDuringWave;
         private int _heroHealedDuringWave;
         private int _bunkerDamageTakenDuringWave;
+        private int _bunkerDamageFromBombsTakenDuringWave;
         private float _timeInBunkerUnscaledDuringWave;
         private int _shotsFiredDuringWave;
         private int _rayHitsDuringWave;
@@ -192,6 +203,7 @@ namespace iStick2War_V2
             public float inWaveUnscaledSec;
             public int damageTakenHeroThisWave;
             public int damageTakenBunkerThisWave;
+            public int damageTakenBunkerFromBombsThisWave;
             public int shotsFiredThisWave;
             public float bunkerPressureTimeUnscaledThisWave;
             public string scalingSnapshotShort;
@@ -333,6 +345,8 @@ namespace iStick2War_V2
             public int damageTakenHero;
             public int healingHero;
             public int damageTakenBunker;
+            /// <summary>Subset of <see cref="damageTakenBunker"/> from bomb explosions (<see cref="BombProjectile_V2"/>).</summary>
+            public int damageTakenBunkerFromBombs;
             public float timeInBunkerSec;
             public int shotsFired;
             public int rayHits;
@@ -592,12 +606,18 @@ namespace iStick2War_V2
         /// <summary>Called from <see cref="WaveManager_V2"/> when bunker loses HP.</summary>
         public static void NotifyBunkerDamageTaken(int amount)
         {
+            NotifyBunkerDamageTaken(amount, BunkerDamageTelemetrySource.Other);
+        }
+
+        /// <summary>Called from <see cref="WaveManager_V2.ApplyBunkerDamage"/> with a coarse damage source.</summary>
+        public static void NotifyBunkerDamageTaken(int amount, BunkerDamageTelemetrySource source)
+        {
             if (amount <= 0)
             {
                 return;
             }
 
-            ActiveInstance?.RegisterBunkerDamageTaken(amount);
+            ActiveInstance?.RegisterBunkerDamageTaken(amount, source);
         }
 
         /// <summary>Called from <see cref="WaveManager_V2"/> after a successful shop spend.</summary>
@@ -655,14 +675,20 @@ namespace iStick2War_V2
             }
         }
 
-        private void RegisterBunkerDamageTaken(int amount)
+        private void RegisterBunkerDamageTaken(int amount, BunkerDamageTelemetrySource source)
         {
             if (!_telemetryEnabled || _waveManager == null || _waveManager.State != WaveLoopState_V2.InWave)
             {
                 return;
             }
 
-            _bunkerDamageTakenDuringWave += Mathf.Max(0, amount);
+            int a = Mathf.Max(0, amount);
+            _bunkerDamageTakenDuringWave += a;
+            if (source == BunkerDamageTelemetrySource.Bomb)
+            {
+                _bunkerDamageFromBombsTakenDuringWave += a;
+            }
+
             _bunkerDamageReceivedThisWave = true;
         }
 
@@ -944,6 +970,7 @@ namespace iStick2War_V2
             _heroDamageTakenDuringWave = 0;
             _heroHealedDuringWave = 0;
             _bunkerDamageTakenDuringWave = 0;
+            _bunkerDamageFromBombsTakenDuringWave = 0;
             _timeInBunkerUnscaledDuringWave = 0f;
             _shotsFiredDuringWave = 0;
             _rayHitsDuringWave = 0;
@@ -1157,6 +1184,7 @@ namespace iStick2War_V2
                 damageTakenHero = _heroDamageTakenDuringWave,
                 healingHero = _heroHealedDuringWave,
                 damageTakenBunker = _bunkerDamageTakenDuringWave,
+                damageTakenBunkerFromBombs = _bunkerDamageFromBombsTakenDuringWave,
                 timeInBunkerSec = _timeInBunkerUnscaledDuringWave,
                 shotsFired = _shotsFiredDuringWave,
                 rayHits = _rayHitsDuringWave,
@@ -1480,7 +1508,8 @@ namespace iStick2War_V2
                 "bunkerPressureTimeSec / bunkerPressureTimeAfterFirstDamageSec (wave_cleared / applicable run_end) use " +
                 "bunkerPressureHpRatioThresholdUsed on the root. " +
                 "waveScalingJson (non-empty on wave_cleared / applicable run_end) holds JsonUtility JSON for scaling; " +
-                "empty on session_begin / session_quit.";
+                "empty on session_begin / session_quit. " +
+                "damageTakenBunkerFromBombs (events[]) is a subset of damageTakenBunker from BombProjectile_V2 bunker absorption.";
             root.glossary = BuildTelemetryGlossary(bunkerFracUsed, sampleInt, sampleMax, pressureThrUsed);
         }
 
@@ -1581,6 +1610,13 @@ namespace iStick2War_V2
                         meaning =
                             "Bunker damage during current InWave (WaveManager.ApplyBunkerDamage → NotifyBunkerDamageTaken), " +
                             "reset on next InWave."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "damageTakenBunkerFromBombs",
+                        meaning =
+                            "Subset of damageTakenBunker: HP absorbed from BombProjectile_V2 explosions this InWave " +
+                            "(same reset as damageTakenBunker). Other sources (small arms, drones, grenades) stay in the remainder."
                     },
                     new TelemetryGlossaryEntry
                     {
@@ -1756,7 +1792,8 @@ namespace iStick2War_V2
                             "repeatCount when identical consecutive errors are coalesced, and a gameplay snapshot: wave, " +
                             "waveLoopState, hero/bunker economy, ammo, weapon, hero position, enemies killed this wave, " +
                             "trackedLivingParatroopers, timeScale/frame/scene/platform, inWaveUnscaledSec, per-wave combat " +
-                            "accumulators, scalingSnapshotShort, spawnerDiagnosticsLine. Same sessionId as events[]."
+                            "accumulators (including damageTakenBunkerFromBombsThisWave), scalingSnapshotShort, spawnerDiagnosticsLine. " +
+                            "Same sessionId as events[]."
                     },
                     new TelemetryGlossaryEntry
                     {
@@ -2004,6 +2041,7 @@ namespace iStick2War_V2
                 inWaveUnscaledSec = inWaveUnscaled,
                 damageTakenHeroThisWave = _heroDamageTakenDuringWave,
                 damageTakenBunkerThisWave = _bunkerDamageTakenDuringWave,
+                damageTakenBunkerFromBombsThisWave = _bunkerDamageFromBombsTakenDuringWave,
                 shotsFiredThisWave = _shotsFiredDuringWave,
                 bunkerPressureTimeUnscaledThisWave = _bunkerLowPressureTimeUnscaledDuringWave,
                 scalingSnapshotShort = scalingShort,
