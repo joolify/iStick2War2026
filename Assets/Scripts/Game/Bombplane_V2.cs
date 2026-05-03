@@ -23,6 +23,13 @@ namespace iStick2War_V2
         [SerializeField] private float _bombExplosionRadius = 2f;
         [SerializeField] private bool _debugBombLogs;
 
+        [Header("Combat / targeting")]
+        [Tooltip(
+            "Prefabs without any Collider2D cannot be aimed at by AutoHero or hit by rockets. When enabled, a BoxCollider2D " +
+            "is added from the SpriteRenderer bounds if none exists.")]
+        [SerializeField] private bool _ensureHitboxFromSpriteIfMissing = true;
+        [SerializeField] private Vector2 _fallbackHitboxSize = new Vector2(4f, 1.25f);
+
         private float _nextDropTime;
         private int _bombsDropped;
         private bool _hasStarted;
@@ -33,6 +40,8 @@ namespace iStick2War_V2
 
         public void BeginBombRun()
         {
+            EnsureHitboxIfMissing();
+
             _hasStarted = true;
             _nextDropTime = Time.time + Mathf.Max(0.2f, _bombDropIntervalSeconds);
             _bombsDropped = 0;
@@ -145,6 +154,34 @@ namespace iStick2War_V2
         private void DespawnSelf()
         {
             SimplePrefabPool_V2.Despawn(gameObject);
+        }
+
+        private void EnsureHitboxIfMissing()
+        {
+            if (!_ensureHitboxFromSpriteIfMissing)
+            {
+                return;
+            }
+
+            Collider2D[] cols = GetComponentsInChildren<Collider2D>(true);
+            if (cols != null && cols.Length > 0)
+            {
+                return;
+            }
+
+            var box = gameObject.AddComponent<BoxCollider2D>();
+            var sr = GetComponent<SpriteRenderer>();
+            if (sr != null && sr.sprite != null)
+            {
+                Bounds b = sr.sprite.bounds;
+                box.size = new Vector2(b.size.x, b.size.y);
+                box.offset = new Vector2(b.center.x, b.center.y);
+            }
+            else
+            {
+                box.size = _fallbackHitboxSize;
+                box.offset = Vector2.zero;
+            }
         }
     }
 }

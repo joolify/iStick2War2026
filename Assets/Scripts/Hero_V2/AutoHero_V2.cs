@@ -66,6 +66,12 @@ namespace iStick2War_V2
         [SerializeField] private bool _debugFallbackTargetingLogs = false;
         [Tooltip("When true, airborne paratroopers are ignored if any grounded paratrooper is targetable.")]
         [SerializeField] private bool _ignoreAirborneWhenGroundedExists = true;
+        [Tooltip(
+            "Paratrooper colliders with centers farther below the hero than this are ignored for targeting. " +
+            "Stops ragdolls / physics glitches deep under the playfield from stealing aim via fallback.")]
+        [SerializeField] private float _paratrooperTargetMaxBelowHero = 22f;
+        [Tooltip("Paratrooper colliders entirely outside the shoot-visibility frustum are ignored (same as overlap pass).")]
+        [SerializeField] private bool _paratrooperFallbackRespectsShootFrustum = true;
 
         [Header("Bomb run survival")]
         [Tooltip("When true, retreat toward bunker interior when falling bombs are likely to splash the hero (ignores low-HP bunker rule).")]
@@ -106,6 +112,15 @@ namespace iStick2War_V2
         [SerializeField] private AudioSource _lowHpWarningAudioSource;
         [SerializeField] private AudioClip _lowHpWarningClip;
         [SerializeField] private float _lowHpWarningRepeatSeconds = 1.2f;
+
+        [Header("Automation - GameError")]
+        [Tooltip(
+            "When GameError occurs: stop auto-clicking Continue / main menu (no silent replay). Play a warning sound once " +
+            "so you can inspect logs. Disable to restore old behavior (auto-dismiss GameError and continue batch).")]
+        [SerializeField] private bool _haltAutomationOnGameError = true;
+        [Tooltip("Played once when GameError halts automation. If unset, uses Low HP warning clip when that is assigned.")]
+        [SerializeField] private AudioClip _gameErrorAutomationHaltClip;
+
         [Header("Automation loop (runs)")]
         [SerializeField] private bool _enableAutomationRunLoop = true;
         [Tooltip(
@@ -142,6 +157,7 @@ namespace iStick2War_V2
         private TMP_Text _resolvedTestRunDoneTopBarText;
         private bool _automationChunkPaused;
         private bool _automationCleanupInProgress;
+        private bool _automationHaltedOnGameError;
         private float _nextAutomationActionAtUnscaled;
         private PendingAutomationAction _pendingAutomationAction = PendingAutomationAction.None;
         private float _lastAimAtEnemyUnscaledTime;
@@ -213,6 +229,7 @@ namespace iStick2War_V2
             _automationGameErrorCount = 0;
             _automationChunkPaused = false;
             _automationCleanupInProgress = false;
+            _automationHaltedOnGameError = false;
             _resolvedTestRunDoneTopBarText = null;
             HideTestRunDoneTopBarBanner();
         }
@@ -364,6 +381,14 @@ namespace iStick2War_V2
                 return;
             }
 
+            if (state == WaveLoopState_V2.GameError)
+            {
+                _view.SetAutoAimWorldOverride(null);
+                _input.SetBotFrame(Vector2.zero, false, false);
+                _lastWaveState = state;
+                return;
+            }
+
             if (state == WaveLoopState_V2.Shop)
             {
                 if (_lastWaveState != WaveLoopState_V2.Shop)
@@ -405,6 +430,11 @@ namespace iStick2War_V2
         private void TickAutomationRunLoop(WaveLoopState_V2 state)
         {
             if (!_enableAutomationRunLoop || _waveManager == null)
+            {
+                return;
+            }
+
+            if (_automationHaltedOnGameError)
             {
                 return;
             }
@@ -494,6 +524,23 @@ namespace iStick2War_V2
                     _completedRuns++;
                     _sessionInProgress = false;
                     LogAutomation($"Run {_completedRuns}/{Mathf.Max(1, _automationTotalRuns)} ended: GameError.");
+
+                    if (_haltAutomationOnGameError)
+                    {
+                        _automationHaltedOnGameError = true;
+                        if (_pendingAutomationAction == PendingAutomationAction.ClickGameErrorContinue)
+                        {
+                            _pendingAutomationAction = PendingAutomationAction.None;
+                        }
+
+                        PlayGameErrorAutomationHaltSoundOnce();
+                        NotifyAutomationHaltedOnGameErrorUi();
+                        TryRunAutomationCleanupAtCadence();
+                        LogAutomation(
+                            "GameError: automation halted (no auto-continue / replay). Inspect console and WaveManager; dismiss UI manually when ready.");
+                        return;
+                    }
+
                     if (TryPauseAtChunkBoundary())
                     {
                         return;
@@ -568,10 +615,12 @@ namespace iStick2War_V2
                         TryClickReturnToMainMenuButtonFallback("gameError-return-fallback");
                     break;
                 case PendingAutomationAction.ClickMainMenuPlay:
-                    LogAutomation("Trying click: MainMenu Play (btn_main_menu_play -> Play fallback)");
+                    LogAutomation(
+                        "Trying click: MainMenu Play (btn_main_menu_play -> Nav Play -> MainMenu_V2.HandlePlay)");
                     clicked =
                         TryClickMainMenuButtonByObjectName("btn_main_menu_play", "mainMenu-play-primary") ||
-                        TryClickPlayButtonFallback("mainMenu-play-fallback");
+                        TryClickPlayButtonFallback("mainMenu-play-fallback") ||
+                        TryClickMainMenuV2PlayDirectly("mainMenu-play-handlePlay");
                     if (clicked)
                     {
                         _sessionInProgress = true;
@@ -658,6 +707,66 @@ namespace iStick2War_V2
 
             LogAutomation($"No active Play button found [{reasonTag}]");
             return false;
+        }
+
+        /// <summary>
+        /// Main menu Play is often a UI <see cref="UnityEngine.UI.Button"/> on <c>txt_mainmenu_play</c> (see <see cref="MainMenu_V2"/>),
+        /// not a <see cref="MainMenuNavButton_V2"/> named <c>btn_main_menu_play</c>.
+        /// </summary>
+        private bool TryClickMainMenuV2PlayDirectly(string reasonTag)
+        {
+            MainMenu_V2[] menus = FindObjectsByType<MainMenu_V2>(FindObjectsInactive.Include);
+            for (int i = 0; i < menus.Length; i++)
+            {
+                MainMenu_V2 menu = menus[i];
+                if (menu == null || !menu.enabled || !menu.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                if (!menu.TryHandlePlayFromAutomation())
+                {
+                    LogAutomation($"MainMenu_V2.TryHandlePlayFromAutomation no-op on '{menu.gameObject.name}' [{reasonTag}]");
+                    continue;
+                }
+
+                LogAutomation($"MainMenu_V2.TryHandlePlayFromAutomation on '{menu.gameObject.name}' [{reasonTag}]");
+                return true;
+            }
+
+            LogAutomation($"No active enabled MainMenu_V2 for HandlePlay [{reasonTag}]");
+            return false;
+        }
+
+        private void PlayGameErrorAutomationHaltSoundOnce()
+        {
+            AudioClip clip = _gameErrorAutomationHaltClip != null ? _gameErrorAutomationHaltClip : _lowHpWarningClip;
+            if (clip == null)
+            {
+                return;
+            }
+
+            if (_lowHpWarningAudioSource != null)
+            {
+                _lowHpWarningAudioSource.PlayOneShot(clip);
+                return;
+            }
+
+            Vector3 p = _model != null ? _model.transform.position : Vector3.zero;
+            AudioSource.PlayClipAtPoint(clip, p, 1f);
+        }
+
+        private void NotifyAutomationHaltedOnGameErrorUi()
+        {
+            TMP_Text tmp = ResolveTestRunDoneTopBarText();
+            if (tmp == null)
+            {
+                return;
+            }
+
+            tmp.text =
+                "GameError: AutoHero stoppad (varningsljud). Ingen auto-fortsätt — granska loggen, fortsätt manuellt.";
+            tmp.gameObject.SetActive(true);
         }
 
         private void HideTestRunDoneTopBarBanner()
@@ -992,7 +1101,8 @@ namespace iStick2War_V2
 
             bool inside = _waveManager != null && _waveManager.IsHeroInsideBunker(_hero);
             float hpRatio = _model.maxHealth > 0 ? (float)_model.currentHealth / _model.maxHealth : 1f;
-            bool bombThreat = _retreatToBunkerOnBombSplashThreat && IsBombSplashThreatActive(heroPos);
+            bool splashActive = IsBombSplashThreatActive(heroPos);
+            bool bombThreat = _retreatToBunkerOnBombSplashThreat && splashActive;
             bool wantBunkerFromHp =
                 bunkerAnchor.HasValue &&
                 hpRatio < _lowHealthEnterBunkerFraction &&
@@ -1004,7 +1114,8 @@ namespace iStick2War_V2
             bool wantBunker = wantBunkerFromHp || wantBunkerFromBombs;
 
             Plane[] shootFrustumPlanes = TryGetShootVisibilityFrustumPlanes();
-            Collider2D target = FindNearestEnemyCollider(heroPos, shootFrustumPlanes, bombThreat);
+            bool bombSplashForAimPriority = _aimBombingAircraftWhileBombsFall && splashActive;
+            Collider2D target = FindNearestEnemyCollider(heroPos, shootFrustumPlanes, bombSplashForAimPriority);
             Vector2 aimPoint = heroPos + Vector2.right * 8f;
             bool hasTarget = false;
 
@@ -1457,7 +1568,7 @@ namespace iStick2War_V2
             int count = Physics2D.OverlapCircle(from, _enemySearchRadius, filter, _overlapBuffer);
             if (count <= 0)
             {
-                Collider2D fallbackOnEmptyOverlap = FindAnyLivingParatrooperColliderFallback(from);
+                Collider2D fallbackOnEmptyOverlap = FindAnyLivingParatrooperColliderFallback(from, shootFrustumPlanes);
                 if (fallbackOnEmptyOverlap == null)
                 {
                     fallbackOnEmptyOverlap = FindAnyAircraftColliderFallback(from, shootFrustumPlanes);
@@ -1500,7 +1611,13 @@ namespace iStick2War_V2
                     continue;
                 }
 
+                if (isParatrooper && !IsParatrooperColliderPlausibleForAutoTarget(c, from))
+                {
+                    continue;
+                }
+
                 if (shootFrustumPlanes != null &&
+                    !IsBombingAircraftCollider(c) &&
                     !GeometryUtility.TestPlanesAABB(shootFrustumPlanes, c.bounds))
                 {
                     continue;
@@ -1584,6 +1701,11 @@ namespace iStick2War_V2
                             continue;
                         }
 
+                        if (!IsParatrooperColliderPlausibleForAutoTarget(c, from))
+                        {
+                            continue;
+                        }
+
                         if (shootFrustumPlanes != null &&
                             !GeometryUtility.TestPlanesAABB(shootFrustumPlanes, c.bounds))
                         {
@@ -1654,7 +1776,7 @@ namespace iStick2War_V2
                 return bestAircraft;
             }
 
-            Collider2D fallback = FindAnyLivingParatrooperColliderFallback(from);
+            Collider2D fallback = FindAnyLivingParatrooperColliderFallback(from, shootFrustumPlanes);
             if (fallback == null)
             {
                 fallback = FindAnyAircraftColliderFallback(from, shootFrustumPlanes);
@@ -1683,7 +1805,7 @@ namespace iStick2War_V2
             Collider2D best = null;
             float bestDist = float.MaxValue;
 
-            void ConsiderColliderSet(Collider2D[] cols)
+            void ConsiderColliderSet(Collider2D[] cols, bool ignoreFrustum)
             {
                 if (cols == null)
                 {
@@ -1698,7 +1820,8 @@ namespace iStick2War_V2
                         continue;
                     }
 
-                    if (shootFrustumPlanes != null &&
+                    if (!ignoreFrustum &&
+                        shootFrustumPlanes != null &&
                         !GeometryUtility.TestPlanesAABB(shootFrustumPlanes, col.bounds))
                     {
                         continue;
@@ -1724,7 +1847,7 @@ namespace iStick2War_V2
                     continue;
                 }
 
-                ConsiderColliderSet(a.GetComponentsInChildren<Collider2D>(true));
+                ConsiderColliderSet(a.GetComponentsInChildren<Collider2D>(true), ignoreFrustum: false);
             }
 
             EnemyKamikazeDrone_V2[] kamikazeDrones = Object.FindObjectsByType<EnemyKamikazeDrone_V2>(
@@ -1738,7 +1861,7 @@ namespace iStick2War_V2
                     continue;
                 }
 
-                ConsiderColliderSet(drone.GetComponentsInChildren<Collider2D>(true));
+                ConsiderColliderSet(drone.GetComponentsInChildren<Collider2D>(true), ignoreFrustum: false);
             }
 
             EnemyBombDrone_V2[] bombDrones = Object.FindObjectsByType<EnemyBombDrone_V2>(
@@ -1752,7 +1875,22 @@ namespace iStick2War_V2
                     continue;
                 }
 
-                ConsiderColliderSet(drone.GetComponentsInChildren<Collider2D>(true));
+                ConsiderColliderSet(drone.GetComponentsInChildren<Collider2D>(true), ignoreFrustum: false);
+            }
+
+            Bombplane_V2[] bombPlanes = Object.FindObjectsByType<Bombplane_V2>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            for (int i = 0; bombPlanes != null && i < bombPlanes.Length; i++)
+            {
+                Bombplane_V2 plane = bombPlanes[i];
+                if (plane == null || !plane.isActiveAndEnabled)
+                {
+                    continue;
+                }
+
+                // Bomb runs often sit near/above the frustum edge; skipping the camera AABB test avoids false no-target.
+                ConsiderColliderSet(plane.GetComponentsInChildren<Collider2D>(true), ignoreFrustum: true);
             }
 
             return best;
@@ -1762,7 +1900,7 @@ namespace iStick2War_V2
         /// Safety fallback for watchdog-sensitive end-of-wave cases where overlap/frustum/layer filtering misses
         /// the last living paratrooper even though one is still active in the scene.
         /// </summary>
-        private Collider2D FindAnyLivingParatrooperColliderFallback(Vector2 from)
+        private Collider2D FindAnyLivingParatrooperColliderFallback(Vector2 from, Plane[] shootFrustumPlanes)
         {
             _telemetryLastFallbackStage = "none_found";
             _telemetryFallbackLivingParatrooperModels = 0;
@@ -1789,6 +1927,19 @@ namespace iStick2War_V2
                     {
                         continue;
                     }
+
+                    if (!IsParatrooperColliderPlausibleForAutoTarget(col, from))
+                    {
+                        continue;
+                    }
+
+                    if (_paratrooperFallbackRespectsShootFrustum &&
+                        shootFrustumPlanes != null &&
+                        !GeometryUtility.TestPlanesAABB(shootFrustumPlanes, col.bounds))
+                    {
+                        continue;
+                    }
+
                     if (col.gameObject.layer == enemyBodyPartLayer)
                     {
                         _telemetryFallbackEnabledEnemyBodyPartColliders++;
@@ -1841,6 +1992,19 @@ namespace iStick2War_V2
                     {
                         continue;
                     }
+
+                    if (!IsParatrooperColliderPlausibleForAutoTarget(col, from))
+                    {
+                        continue;
+                    }
+
+                    if (_paratrooperFallbackRespectsShootFrustum &&
+                        shootFrustumPlanes != null &&
+                        !GeometryUtility.TestPlanesAABB(shootFrustumPlanes, col.bounds))
+                    {
+                        continue;
+                    }
+
                     _telemetryFallbackEnabledEnemyBodyPartColliders++;
 
                     float d = (((Vector2)col.bounds.center) - from).sqrMagnitude;
@@ -1921,6 +2085,22 @@ namespace iStick2War_V2
             return part.IsLivingCharacterForTargeting();
         }
 
+        private bool IsParatrooperColliderPlausibleForAutoTarget(Collider2D c, Vector2 from)
+        {
+            if (c == null)
+            {
+                return false;
+            }
+
+            float maxBelow = _paratrooperTargetMaxBelowHero;
+            if (maxBelow <= 0f)
+            {
+                return true;
+            }
+
+            return c.bounds.center.y >= from.y - maxBelow;
+        }
+
         private static bool IsAircraftCollider(Collider2D c)
         {
             if (c == null)
@@ -1933,17 +2113,14 @@ namespace iStick2War_V2
                    c.GetComponent<EnemyKamikazeDrone_V2>() != null ||
                    c.GetComponentInParent<EnemyKamikazeDrone_V2>() != null ||
                    c.GetComponent<EnemyBombDrone_V2>() != null ||
-                   c.GetComponentInParent<EnemyBombDrone_V2>() != null;
+                   c.GetComponentInParent<EnemyBombDrone_V2>() != null ||
+                   c.GetComponent<Bombplane_V2>() != null ||
+                   c.GetComponentInParent<Bombplane_V2>() != null;
         }
 
         private static bool IsBombingAircraftCollider(Collider2D c)
         {
-            if (!IsAircraftCollider(c))
-            {
-                return false;
-            }
-
-            return c.GetComponentInParent<Bombplane_V2>() != null;
+            return c != null && c.GetComponentInParent<Bombplane_V2>() != null;
         }
 
         private bool IsBombSplashThreatActive(Vector2 heroPos)
@@ -2000,8 +2177,8 @@ namespace iStick2War_V2
                 return heroPos + Vector2.right * 8f;
             }
 
-            // Perfect profile should lock paratrooper aim to torso/head hitboxes to avoid foot targeting.
-            if (_testProfile == AutoHeroTestProfileKind_V2.Perfect && IsParatrooperCollider(target))
+            // Lock paratrooper aim to torso/head so selection flicker on foot/leg hitboxes does not yank aim to the ground.
+            if (IsParatrooperCollider(target))
             {
                 Vector2? preferredPoint = TryResolveParatrooperTorsoOrHeadAimPoint(target, heroPos);
                 if (preferredPoint.HasValue)
@@ -2035,7 +2212,7 @@ namespace iStick2War_V2
             for (int i = 0; i < _paratrooperBodyPartBuffer.Count; i++)
             {
                 ParatrooperBodyPart_V2 part = _paratrooperBodyPartBuffer[i];
-                if (part == null || !part.isActiveAndEnabled)
+                if (part == null || !part.isActiveAndEnabled || !part.IsLivingCharacterForTargeting())
                 {
                     continue;
                 }

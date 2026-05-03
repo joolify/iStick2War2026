@@ -165,6 +165,21 @@ namespace iStick2War_V2
             return null;
         }
 
+        /// <summary>
+        /// For automation (<see cref="AutoHero_V2"/>): runs the same path as Play if the menu has not already started the run.
+        /// </summary>
+        /// <returns>False if Play was already committed for this menu session (no-op).</returns>
+        public bool TryHandlePlayFromAutomation()
+        {
+            if (_gameStarted)
+            {
+                return false;
+            }
+
+            HandlePlay();
+            return true;
+        }
+
         /// <summary>Called from UI Button or <see cref="MainMenuNavButton_V2"/> (world Collider2D).</summary>
         public void HandlePlay()
         {
