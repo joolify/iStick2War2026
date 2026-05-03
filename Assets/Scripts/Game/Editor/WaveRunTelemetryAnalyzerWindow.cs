@@ -64,6 +64,8 @@ namespace iStick2War_V2.Editor
             "För varje rad wave_cleared / run_end skrivs en rad med nyckeltal + valfria flaggor:\n\n" +
             "Flagga\tUngefär\n" +
             "OBJECTIVE_INACTIVE\tenemiesKilled > 0 och damageTakenBunker == 0 och bunker vid InWave-start ≥ root tryck-tröskel (ratio); undviker falsk signal när vågen redan börjar under tryck-tröskeln utan ny bunker-skada\n" +
+            "AUTOHERO_AIRCRAFT_LAST_INWAVE\twave_cleared/run_end: autoHeroInWaveAnyHadTarget och autoHeroInWaveLastTargetKindWhenHadTarget var aircraft (bot hade flygmål under InWave; ofta tillsammans med OBJECTIVE_INACTIVE när kills inte ger bunker-skada i telemetrin)\n" +
+            "AUTOHERO_PARATROOPER_LAST_INWAVE\twave_cleared/run_end: autoHeroInWaveAnyHadTarget och senaste måltyp var paratrooper (autoHeroInWaveLastTargetParatrooperStateWhenHadTarget kan vara t.ex. Shoot/Land)\n" +
             "PRELOAD_FAIL\twaveDurationSec > 3 och (bunkerStart01 < 0.2 med bunker-skada > 0, eller bunkerHpWaveStart ≤ 0)\n" +
             "LOW_COVER_STALL\tbunkerHpWaveStart > 0: bunkerStart01 < 0.6, bunker-skada 0, pressureScore > 0.8, waveDurationSec > 6 (carry-in-tryck utan ny bunker-skada; ej post-breach)\n" +
             "COLLAPSE_CHAIN\tföregående wave_cleared/run_end: minRatio < 0.2 eller breach; denna rad: wave+1, bunkerStart01 < 0.3, pressureScore > 0.7\n" +
@@ -116,7 +118,9 @@ namespace iStick2War_V2.Editor
             "köp i shop-intermissionen före den vågen som just cleared.\n" +
             "«heroHpWaveStart» / «bunkerHpWaveStart» / «currencyWaveStart»: vid InWave-start för den vågen " +
             "(session_begin fyller samma för första radens konsistens).\n" +
-            "«autoHeroTestProfile» / «sceneProfileId»: bot/scenprofil om satta.\n" +
+            "«autoHeroTestProfile» / «sceneProfileId»: bot/scenprofil om satta. " +
+            "«autoHeroInWaveAnyHadTarget» / «autoHeroInWaveLastTargetKindWhenHadTarget» / " +
+            "«autoHeroInWaveLastTargetParatrooperStateWhenHadTarget»: InWave-aggregat (se JSON-glossary).\n" +
             "«bunkerBreached»: bunkerHp==0 vid snapshot. «bunkerCriticalLow»: låg men icke-noll bunker enligt rot-tröskel.\n" +
             "«waveStressScore», «bunkerPressureTimeSec», «bunkerPressureTimeAfterFirstDamageSec», " +
             "«minBunkerHpRatioThisWave», «bunkerHpSamples[]»: se rotfältens eko och JSON-glossary.\n" +
@@ -1976,6 +1980,28 @@ namespace iStick2War_V2.Editor
                 flags.Add("OBJECTIVE_INACTIVE");
             }
 
+            if ((kind == "wave_cleared" || kind == "run_end") &&
+                ev.autoHeroInWaveAnyHadTarget &&
+                !string.IsNullOrEmpty(ev.autoHeroInWaveLastTargetKindWhenHadTarget) &&
+                string.Equals(
+                    ev.autoHeroInWaveLastTargetKindWhenHadTarget.Trim(),
+                    "aircraft",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                flags.Add("AUTOHERO_AIRCRAFT_LAST_INWAVE");
+            }
+
+            if ((kind == "wave_cleared" || kind == "run_end") &&
+                ev.autoHeroInWaveAnyHadTarget &&
+                !string.IsNullOrEmpty(ev.autoHeroInWaveLastTargetKindWhenHadTarget) &&
+                string.Equals(
+                    ev.autoHeroInWaveLastTargetKindWhenHadTarget.Trim(),
+                    "paratrooper",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                flags.Add("AUTOHERO_PARATROOPER_LAST_INWAVE");
+            }
+
             if (chainPrev.Has &&
                 chainPrev.Wave == ev.wave - 1 &&
                 (ev.kind == "wave_cleared" || ev.kind == "run_end"))
@@ -2276,6 +2302,9 @@ namespace iStick2War_V2.Editor
             public int currencyWaveStart;
             public string weaponType;
             public string autoHeroTestProfile;
+            public bool autoHeroInWaveAnyHadTarget;
+            public string autoHeroInWaveLastTargetKindWhenHadTarget;
+            public string autoHeroInWaveLastTargetParatrooperStateWhenHadTarget;
             public string sceneProfileId;
             public bool bunkerBreached;
             public bool bunkerCriticalLow;

@@ -115,9 +115,9 @@ namespace iStick2War_V2
         [SerializeField] private float _logWaveCombatWhenNoTargetIntervalSeconds = 2f;
 
         [Header("Debug - Low HP warning sound")]
-        [Tooltip("Debug aid: plays a warning sound while AutoHero HP is at or below threshold.")]
-        [SerializeField] private bool _enableLowHpWarningSoundForDebug;
-        [SerializeField] private int _lowHpWarningThresholdHp = 5000;
+        [Tooltip("Debug aid: while enabled and a clip is assigned, repeats a warning sound while hero HP is greater than 0 and strictly below the threshold (e.g. 1000 → 999 HP and lower).")]
+        [SerializeField] private bool _enableLowHpWarningSoundForDebug = true;
+        [SerializeField] private int _lowHpWarningThresholdHp = 1000;
         [Tooltip("Optional dedicated source. If null, sound plays at hero position via PlayClipAtPoint.")]
         [SerializeField] private AudioSource _lowHpWarningAudioSource;
         [SerializeField] private AudioClip _lowHpWarningClip;
@@ -189,6 +189,10 @@ namespace iStick2War_V2
         private int _telemetryFallbackLivingParatrooperModels;
         private int _telemetryFallbackEnabledEnemyBodyPartColliders;
 
+        private bool _inWaveTelemetryAnyHadTarget;
+        private string _inWaveTelemetryLastTargetKindWhenHadTarget = "";
+        private string _inWaveTelemetryLastParatrooperStateWhenHadTarget = "";
+
         private enum PendingAutomationAction
         {
             None,
@@ -218,10 +222,22 @@ namespace iStick2War_V2
         public bool TelemetryRawShootHeld => _telemetryRawShootHeld;
         public bool TelemetryImmediateGroundParatrooperThreat => _telemetryImmediateGroundParatrooperThreat;
         public string TelemetryTargetKind => _telemetryTargetKind ?? "none";
-        public string TelemetryTargetParatrooperState => _telemetryTargetParatrooperState.ToString();
+        public string TelemetryTargetParatrooperState =>
+            string.Equals(_telemetryTargetKind, "paratrooper", System.StringComparison.Ordinal)
+                ? _telemetryTargetParatrooperState.ToString()
+                : string.Empty;
         public string TelemetryLastFallbackStage => _telemetryLastFallbackStage ?? "not_used";
         public int TelemetryFallbackLivingParatrooperModels => _telemetryFallbackLivingParatrooperModels;
         public int TelemetryFallbackEnabledEnemyBodyPartColliders => _telemetryFallbackEnabledEnemyBodyPartColliders;
+
+        /// <summary>
+        /// True if the bot had a combat target on at least one InWave frame this wave (resets when a new InWave starts).
+        /// Use for telemetry wave_cleared rows; <see cref="TelemetryHasTarget"/> is often false at the instant the row is written.
+        /// </summary>
+        public bool TelemetryInWaveAnyHadTarget => _inWaveTelemetryAnyHadTarget;
+
+        public string TelemetryInWaveLastTargetKindWhenHadTarget => _inWaveTelemetryLastTargetKindWhenHadTarget ?? "";
+        public string TelemetryInWaveLastParatrooperStateWhenHadTarget => _inWaveTelemetryLastParatrooperStateWhenHadTarget ?? "";
 
         private void Awake()
         {
@@ -433,8 +449,20 @@ namespace iStick2War_V2
                 return;
             }
 
+            if (state == WaveLoopState_V2.InWave && _lastWaveState != WaveLoopState_V2.InWave)
+            {
+                ResetInWaveTelemetryAggregates();
+            }
+
             _lastWaveState = state;
             TickCombatOnly(deltaTime);
+        }
+
+        private void ResetInWaveTelemetryAggregates()
+        {
+            _inWaveTelemetryAnyHadTarget = false;
+            _inWaveTelemetryLastTargetKindWhenHadTarget = "";
+            _inWaveTelemetryLastParatrooperStateWhenHadTarget = "";
         }
 
         private void TickAutomationRunLoop(WaveLoopState_V2 state)
@@ -1127,6 +1155,12 @@ namespace iStick2War_V2
             Plane[] shootFrustumPlanes = TryGetShootVisibilityFrustumPlanes(shootVisCam);
             bool bombSplashForAimPriority = _aimBombingAircraftWhileBombsFall && splashActive;
             Collider2D target = FindNearestEnemyCollider(heroPos, shootVisCam, shootFrustumPlanes, bombSplashForAimPriority);
+            target = PreferBombplaneTargetWhileBombsFall(
+                heroPos,
+                shootVisCam,
+                shootFrustumPlanes,
+                splashActive,
+                target);
             Vector2 aimPoint = heroPos + Vector2.right * 8f;
             bool hasTarget = false;
 
@@ -1280,6 +1314,16 @@ namespace iStick2War_V2
                 _telemetryTargetParatrooperState = StickmanBodyState.Die;
             }
 
+            if (hasTarget)
+            {
+                _inWaveTelemetryAnyHadTarget = true;
+                _inWaveTelemetryLastTargetKindWhenHadTarget = _telemetryTargetKind ?? "";
+                _inWaveTelemetryLastParatrooperStateWhenHadTarget =
+                    string.Equals(_telemetryTargetKind, "paratrooper", System.StringComparison.Ordinal)
+                        ? _telemetryTargetParatrooperState.ToString()
+                        : "";
+            }
+
             // Watchdog uses max(aim, shoot): firing with a fallback aim point must still count as "aim" activity.
             if (hasTarget || rawShootHeld)
             {
@@ -1301,7 +1345,7 @@ namespace iStick2War_V2
             }
 
             int threshold = Mathf.Max(1, _lowHpWarningThresholdHp);
-            bool lowHpActive = _model.currentHealth > 0 && _model.currentHealth <= threshold;
+            bool lowHpActive = _model.currentHealth > 0 && _model.currentHealth < threshold;
             if (!lowHpActive)
             {
                 _lowHpWarningActiveLastTick = false;
@@ -1639,7 +1683,10 @@ namespace iStick2War_V2
                 }
 
                 bool bypassFrustumForBombplane = bombSplashThreat && IsBombingAircraftCollider(c);
+                bool bypassFrustumForParatrooperCombat =
+                    isParatrooper && ShouldBypassShootFrustumForParatrooperCombatThreat(c);
                 if (!bypassFrustumForBombplane &&
+                    !bypassFrustumForParatrooperCombat &&
                     !IsEnemyBoundsShootVisible(shootVisCam, shootFrustumPlanes, c.bounds))
                 {
                     continue;
@@ -1728,7 +1775,8 @@ namespace iStick2War_V2
                             continue;
                         }
 
-                        if (!IsEnemyBoundsShootVisible(shootVisCam, shootFrustumPlanes, c.bounds))
+                        if (!ShouldBypassShootFrustumForParatrooperCombatThreat(c) &&
+                            !IsEnemyBoundsShootVisible(shootVisCam, shootFrustumPlanes, c.bounds))
                         {
                             continue;
                         }
@@ -1797,11 +1845,12 @@ namespace iStick2War_V2
                 return bestAircraft;
             }
 
-            Collider2D fallback = FindAnyLivingParatrooperColliderFallback(from, shootVisCam, shootFrustumPlanes);
-            if (fallback == null)
-            {
-                fallback = FindAnyAircraftColliderFallback(from, shootVisCam, shootFrustumPlanes, bombSplashThreat);
-            }
+            Collider2D paraFallback = FindAnyLivingParatrooperColliderFallback(from, shootVisCam, shootFrustumPlanes);
+            Collider2D aircraftFallback =
+                paraFallback == null
+                    ? FindAnyAircraftColliderFallback(from, shootVisCam, shootFrustumPlanes, bombSplashThreat)
+                    : null;
+            Collider2D fallback = paraFallback ?? aircraftFallback;
             if (fallback != null)
             {
                 if (_debugFallbackTargetingLogs)
@@ -1812,13 +1861,122 @@ namespace iStick2War_V2
                         $"livingModels={_telemetryFallbackLivingParatrooperModels} enabledHitboxes={_telemetryFallbackEnabledEnemyBodyPartColliders} " +
                         $"-> selected='{fallback.name}' center=({c.x:0.##},{c.y:0.##}).");
                 }
-                MaybeLogTargetSelectionDebug(fallback, float.NegativeInfinity, "fallback-living-paratrooper");
+
+                string fallbackReason =
+                    paraFallback != null ? "fallback-paratrooper" : "fallback-aircraft";
+                MaybeLogTargetSelectionDebug(fallback, float.NegativeInfinity, fallbackReason);
                 return fallback;
             }
 
             _telemetryLastFallbackStage = "none_found";
             MaybeLogTargetSelectionDebug(null, float.NegativeInfinity, "no-target");
             return bestAny;
+        }
+
+        /// <summary>
+        /// While bombs are a splash threat, do not let infantry-only overlap wins (or missing bombplane in the EnemyBodyPart
+        /// overlap set) keep aim off an active <see cref="Bombplane_V2"/>. Without this, the bot can oscillate between
+        /// paratroopers and a bomber the primary scorer never promoted.
+        /// </summary>
+        private Collider2D PreferBombplaneTargetWhileBombsFall(
+            Vector2 heroPos,
+            Camera shootVisCam,
+            Plane[] shootFrustumPlanes,
+            bool splashActive,
+            Collider2D primaryTarget)
+        {
+            if (!_aimBombingAircraftWhileBombsFall || !splashActive)
+            {
+                return primaryTarget;
+            }
+
+            Collider2D bomber = FindClosestBombplaneHitboxForHero(
+                heroPos,
+                shootVisCam,
+                shootFrustumPlanes,
+                ignoreShootFrustum: true);
+            if (bomber == null)
+            {
+                return primaryTarget;
+            }
+
+            if (primaryTarget == null)
+            {
+                MaybeLogTargetSelectionDebug(bomber, -(((Vector2)bomber.bounds.center) - heroPos).sqrMagnitude, "splash-bombplane-prefer");
+                return bomber;
+            }
+
+            if (primaryTarget == bomber)
+            {
+                return primaryTarget;
+            }
+
+            if (IsBombingAircraftCollider(primaryTarget))
+            {
+                float dp = (((Vector2)primaryTarget.bounds.center) - heroPos).sqrMagnitude;
+                float db = (((Vector2)bomber.bounds.center) - heroPos).sqrMagnitude;
+                Collider2D keep = db < dp * 0.9025f ? bomber : primaryTarget;
+                if (keep == bomber && keep != primaryTarget)
+                {
+                    MaybeLogTargetSelectionDebug(bomber, -db, "splash-bombplane-closer");
+                }
+
+                return keep;
+            }
+
+            MaybeLogTargetSelectionDebug(bomber, -(((Vector2)bomber.bounds.center) - heroPos).sqrMagnitude, "splash-bombplane-over-infantry");
+            return bomber;
+        }
+
+        private Collider2D FindClosestBombplaneHitboxForHero(
+            Vector2 from,
+            Camera shootVisCam,
+            Plane[] shootFrustumPlanes,
+            bool ignoreShootFrustum)
+        {
+            Collider2D best = null;
+            float bestDist = float.MaxValue;
+            Bombplane_V2[] bombPlanes = Object.FindObjectsByType<Bombplane_V2>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            for (int i = 0; bombPlanes != null && i < bombPlanes.Length; i++)
+            {
+                Bombplane_V2 plane = bombPlanes[i];
+                if (plane == null || !plane.isActiveAndEnabled)
+                {
+                    continue;
+                }
+
+                Collider2D[] cols = plane.GetComponentsInChildren<Collider2D>(true);
+                if (cols == null)
+                {
+                    continue;
+                }
+
+                for (int c = 0; c < cols.Length; c++)
+                {
+                    Collider2D col = cols[c];
+                    if (col == null || !col.enabled || !col.gameObject.activeInHierarchy)
+                    {
+                        continue;
+                    }
+
+                    if (!ignoreShootFrustum &&
+                        !IsEnemyBoundsShootVisible(shootVisCam, shootFrustumPlanes, col.bounds))
+                    {
+                        continue;
+                    }
+
+                    float d = (((Vector2)col.bounds.center) - from).sqrMagnitude;
+                    if (d < bestDist)
+                    {
+                        bestDist = d;
+                        best = col;
+                    }
+                }
+            }
+
+            return best;
         }
 
         private Collider2D FindAnyAircraftColliderFallback(
@@ -1963,6 +2121,7 @@ namespace iStick2War_V2
                     }
 
                     if (_paratrooperFallbackRespectsShootFrustum &&
+                        !ShouldBypassShootFrustumForParatrooperCombatThreat(col) &&
                         !IsEnemyBoundsShootVisible(shootVisCam, shootFrustumPlanes, col.bounds))
                     {
                         continue;
@@ -2027,6 +2186,7 @@ namespace iStick2War_V2
                     }
 
                     if (_paratrooperFallbackRespectsShootFrustum &&
+                        !ShouldBypassShootFrustumForParatrooperCombatThreat(col) &&
                         !IsEnemyBoundsShootVisible(shootVisCam, shootFrustumPlanes, col.bounds))
                     {
                         continue;
@@ -2101,11 +2261,16 @@ namespace iStick2War_V2
                 return;
             }
 
-            StickmanBodyState s = GetParatrooperStateOrDie(selected);
             bool isPara = IsParatrooperCollider(selected);
+            string stateLabel =
+                isPara
+                    ? GetParatrooperStateOrDie(selected).ToString()
+                    : IsAircraftCollider(selected)
+                        ? "aircraft"
+                        : "other";
             Vector2 c = selected.bounds.center;
             Debug.Log(
-                $"[AutoHero_V2 TargetDbg] selected='{selected.name}' para={isPara} state={s} " +
+                $"[AutoHero_V2 TargetDbg] selected='{selected.name}' para={isPara} state={stateLabel} " +
                 $"center=({c.x:0.##},{c.y:0.##}) score={score:0.##} reason={reason}");
         }
 
@@ -2398,6 +2563,25 @@ namespace iStick2War_V2
         {
             StickmanBodyState s = GetParatrooperStateOrDie(c);
             return IsGroundCombatState(s);
+        }
+
+        /// <summary>
+        /// Paratroopers can sit just outside the shoot-visibility frustum while their weapon ray still hits the hero
+        /// (e.g. orthographic edge). Skipping acquisition here makes the bot stand idle until death; mirror the bombplane
+        /// frustum bypass for clear combat states.
+        /// </summary>
+        private static bool ShouldBypassShootFrustumForParatrooperCombatThreat(Collider2D c)
+        {
+            if (c == null || !IsParatrooperCollider(c))
+            {
+                return false;
+            }
+
+            StickmanBodyState s = GetParatrooperStateOrDie(c);
+            return s == StickmanBodyState.Shoot ||
+                   s == StickmanBodyState.CrouchShoot ||
+                   s == StickmanBodyState.Grenade ||
+                   s == StickmanBodyState.CrouchGrenade;
         }
 
         private static int GetParatrooperPriorityTier(StickmanBodyState s)

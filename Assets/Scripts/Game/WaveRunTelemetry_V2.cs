@@ -179,6 +179,9 @@ namespace iStick2War_V2
             public string autoHeroFallbackStage;
             public int autoHeroFallbackLivingParatrooperModels;
             public int autoHeroFallbackEnabledEnemyBodyPartColliders;
+            public bool autoHeroInWaveAnyHadTarget;
+            public string autoHeroInWaveLastTargetKindWhenHadTarget;
+            public string autoHeroInWaveLastTargetParatrooperStateWhenHadTarget;
             public string sceneProfileId;
             public float heroPosX;
             public float heroPosY;
@@ -375,6 +378,10 @@ namespace iStick2War_V2
             public string autoHeroFallbackStage;
             public int autoHeroFallbackLivingParatrooperModels;
             public int autoHeroFallbackEnabledEnemyBodyPartColliders;
+            /// <summary>True if bot had a combat target on at least one InWave frame for this wave (see glossary).</summary>
+            public bool autoHeroInWaveAnyHadTarget;
+            public string autoHeroInWaveLastTargetKindWhenHadTarget;
+            public string autoHeroInWaveLastTargetParatrooperStateWhenHadTarget;
 
             /// <summary><see cref="GameplaySceneRules_V2.ProfileId"/> when a scene profile applier is active; empty otherwise.</summary>
             public string sceneProfileId;
@@ -1090,6 +1097,17 @@ namespace iStick2War_V2
                 autoHero != null && autoHero.isActiveAndEnabled ? autoHero.TelemetryFallbackLivingParatrooperModels : 0;
             int autoHeroFallbackEnabledEnemyBodyPartColliders =
                 autoHero != null && autoHero.isActiveAndEnabled ? autoHero.TelemetryFallbackEnabledEnemyBodyPartColliders : 0;
+            bool autoHeroInWaveAnyHadTarget = false;
+            string autoHeroInWaveLastTargetKindWhenHadTarget = "";
+            string autoHeroInWaveLastParatrooperStateWhenHadTarget = "";
+            if (kind != "session_begin" && autoHero != null && autoHero.isActiveAndEnabled)
+            {
+                autoHeroInWaveAnyHadTarget = autoHero.TelemetryInWaveAnyHadTarget;
+                autoHeroInWaveLastTargetKindWhenHadTarget = autoHero.TelemetryInWaveLastTargetKindWhenHadTarget ?? "";
+                autoHeroInWaveLastParatrooperStateWhenHadTarget =
+                    autoHero.TelemetryInWaveLastParatrooperStateWhenHadTarget ?? "";
+            }
+
             string sceneProfileIdValue = GameplaySceneRules_V2.IsActive ? GameplaySceneRules_V2.ProfileId : "";
             int bunkerHpSnap = _waveManager != null ? _waveManager.BunkerHealth : -1;
             int bunkerMaxSnap = _waveManager != null ? _waveManager.BunkerMaxHealth : -1;
@@ -1212,6 +1230,9 @@ namespace iStick2War_V2
                 autoHeroFallbackStage = autoHeroFallbackStage,
                 autoHeroFallbackLivingParatrooperModels = autoHeroFallbackLivingParatrooperModels,
                 autoHeroFallbackEnabledEnemyBodyPartColliders = autoHeroFallbackEnabledEnemyBodyPartColliders,
+                autoHeroInWaveAnyHadTarget = autoHeroInWaveAnyHadTarget,
+                autoHeroInWaveLastTargetKindWhenHadTarget = autoHeroInWaveLastTargetKindWhenHadTarget,
+                autoHeroInWaveLastTargetParatrooperStateWhenHadTarget = autoHeroInWaveLastParatrooperStateWhenHadTarget,
                 sceneProfileId = sceneProfileIdValue,
                 bunkerBreached = bunkerBreached,
                 bunkerCriticalLow = bunkerCriticalLow,
@@ -1509,7 +1530,9 @@ namespace iStick2War_V2
                 "bunkerPressureHpRatioThresholdUsed on the root. " +
                 "waveScalingJson (non-empty on wave_cleared / applicable run_end) holds JsonUtility JSON for scaling; " +
                 "empty on session_begin / session_quit. " +
-                "damageTakenBunkerFromBombs (events[]) is a subset of damageTakenBunker from BombProjectile_V2 bunker absorption.";
+                "damageTakenBunkerFromBombs (events[]) is a subset of damageTakenBunker from BombProjectile_V2 bunker absorption. " +
+                "autoHeroHasTarget / autoHeroTargetKind are snapshots at write time; autoHeroInWaveAnyHadTarget and " +
+                "autoHeroInWaveLast* summarize AutoHero engagement during the InWave attributed to that row (see glossary).";
             root.glossary = BuildTelemetryGlossary(bunkerFracUsed, sampleInt, sampleMax, pressureThrUsed);
         }
 
@@ -1674,6 +1697,32 @@ namespace iStick2War_V2
                     },
                     new TelemetryGlossaryEntry
                     {
+                        property =
+                            "autoHeroHasTarget / autoHeroInRange / autoHeroTargetKind / autoHeroTargetParatrooperState " +
+                            "(and related autoHero* bools on the row)",
+                        meaning =
+                            "Instant snapshot from AutoHero_V2 when the row is written. On wave_cleared the wave often just " +
+                            "finished (or Shop logic has started), so hasTarget/targetKind can be false/none even when the bot " +
+                            "had targets during the wave; compare autoHeroInWaveAnyHadTarget and autoHeroInWaveLast*."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property = "autoHeroInWaveAnyHadTarget",
+                        meaning =
+                            "True if AutoHero had a combat target on at least one InWave frame during the wave summarized by " +
+                            "this row (resets when a new InWave starts). false on session_begin. session_quit/run_end: reflects " +
+                            "the last completed or in-progress InWave depending on game state when the row was written."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
+                        property =
+                            "autoHeroInWaveLastTargetKindWhenHadTarget / autoHeroInWaveLastTargetParatrooperStateWhenHadTarget",
+                        meaning =
+                            "Last target kind string and paratrooper body state (paratrooper targets only; empty when kind≠paratrooper) " +
+                            "observed while hasTarget was true during that InWave; empty strings if autoHeroInWaveAnyHadTarget is false."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
                         property = "sceneProfileId",
                         meaning =
                             "GameplaySceneRules_V2.ProfileId when GameplaySceneProfileApplier_V2 is active (built-in or asset); " +
@@ -1793,6 +1842,7 @@ namespace iStick2War_V2
                             "waveLoopState, hero/bunker economy, ammo, weapon, hero position, enemies killed this wave, " +
                             "trackedLivingParatroopers, timeScale/frame/scene/platform, inWaveUnscaledSec, per-wave combat " +
                             "accumulators (including damageTakenBunkerFromBombsThisWave), scalingSnapshotShort, spawnerDiagnosticsLine. " +
+                            "Includes the same AutoHero snapshot fields and in-wave aggregate fields (autoHeroInWave*) as events[]. " +
                             "Same sessionId as events[]."
                     },
                     new TelemetryGlossaryEntry
@@ -1933,6 +1983,16 @@ namespace iStick2War_V2
                 autoHero != null && autoHero.isActiveAndEnabled ? autoHero.TelemetryFallbackLivingParatrooperModels : 0;
             int autoHeroFallbackEnabledEnemyBodyPartColliders =
                 autoHero != null && autoHero.isActiveAndEnabled ? autoHero.TelemetryFallbackEnabledEnemyBodyPartColliders : 0;
+            bool autoHeroInWaveAnyHadTarget =
+                autoHero != null && autoHero.isActiveAndEnabled && autoHero.TelemetryInWaveAnyHadTarget;
+            string autoHeroInWaveLastTargetKindWhenHadTarget =
+                autoHero != null && autoHero.isActiveAndEnabled
+                    ? autoHero.TelemetryInWaveLastTargetKindWhenHadTarget ?? ""
+                    : "";
+            string autoHeroInWaveLastParatrooperStateWhenHadTarget =
+                autoHero != null && autoHero.isActiveAndEnabled
+                    ? autoHero.TelemetryInWaveLastParatrooperStateWhenHadTarget ?? ""
+                    : "";
             string sceneProfileIdValue = GameplaySceneRules_V2.IsActive ? GameplaySceneRules_V2.ProfileId : "";
             float px = 0f;
             float py = 0f;
@@ -2017,6 +2077,9 @@ namespace iStick2War_V2
                 autoHeroFallbackStage = autoHeroFallbackStage,
                 autoHeroFallbackLivingParatrooperModels = autoHeroFallbackLivingParatrooperModels,
                 autoHeroFallbackEnabledEnemyBodyPartColliders = autoHeroFallbackEnabledEnemyBodyPartColliders,
+                autoHeroInWaveAnyHadTarget = autoHeroInWaveAnyHadTarget,
+                autoHeroInWaveLastTargetKindWhenHadTarget = autoHeroInWaveLastTargetKindWhenHadTarget,
+                autoHeroInWaveLastTargetParatrooperStateWhenHadTarget = autoHeroInWaveLastParatrooperStateWhenHadTarget,
                 sceneProfileId = sceneProfileIdValue,
                 heroPosX = px,
                 heroPosY = py,

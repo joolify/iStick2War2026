@@ -11,8 +11,10 @@ GameObject:
   - component: {fileID: 4965945026059035458}
   - component: {fileID: 4891448948448305050}
   - component: {fileID: 1448144096713418943}
+  - component: {fileID: 8712093847561029384}
   - component: {fileID: 5941781651929762290}
   - component: {fileID: 6483572909806473389}
+  - component: {fileID: 6581692479773963688}
   m_Layer: 16
   m_Name: Heinkel_He_111
   m_TagString: Untagged
@@ -122,6 +124,22 @@ MonoBehaviour:
   _debugBombLogs: 1
   _ensureHitboxFromSpriteIfMissing: 1
   _fallbackHitboxSize: {x: 4, y: 1.25}
+--- !u!114 &8712093847561029384
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8930508886528286439}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b8c4e2f190a24d6a9c3e5d7b1a0f8e6d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.AircraftHealth_V2
+  _maxHealth: 75
+  _destroyRootWhenDead: 1
+  _airExplosionEffectPrefab: {fileID: 0}
+  _airExplosionEffectLifetime: 1.4
 --- !u!50 &5941781651929762290
 Rigidbody2D:
   serializedVersion: 5
@@ -308,6 +326,22 @@ PolygonCollider2D:
       - {x: -2.085, y: -0.74}
       - {x: -2.085, y: -0.72999996}
   m_UseDelaunayMesh: 1
+--- !u!114 &6581692479773963688
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8930508886528286439}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b8c4e2f190a24d6a9c3e5d7b1a0f8e6d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.AircraftHealth_V2
+  _maxHealth: 120
+  _destroyRootWhenDead: 1
+  _airExplosionEffectPrefab: {fileID: 0}
+  _airExplosionEffectLifetime: 1.4
 --- !u!1 &8943450202271958201
 GameObject:
   m_ObjectHideFlags: 0

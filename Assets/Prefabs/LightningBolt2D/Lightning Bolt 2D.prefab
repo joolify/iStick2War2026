@@ -18,7 +18,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &3634569298820987367
 Transform:
   m_ObjectHideFlags: 0
@@ -62,7 +62,7 @@ MonoBehaviour:
   bend: 0.2
   bendSpeed: 0.5
   FPSLimit: 60
-  isPlaying: 1
+  isPlaying: 0
   sortingLayer: 0
   orderInLayer: 0
   instanceID: 133224

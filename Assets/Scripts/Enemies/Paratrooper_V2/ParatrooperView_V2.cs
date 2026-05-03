@@ -154,7 +154,7 @@ public class ParatrooperView_V2 : MonoBehaviour
     [SerializeField] private float _severedPartLifetime = 5f;
     [SerializeField] private float _severedPartForce = 6.5f;
     [SerializeField] private float _severedPartTorque = 160f;
-    [SerializeField] private bool _debugSeverLogs = true;
+    [SerializeField] private bool _debugSeverLogs = false;
     [Header("Blood hit VFX (optional)")]
     [Tooltip("Assign a small particle or sprite burst prefab. Leave empty to disable.")]
     [SerializeField] private GameObject _bloodHitPrefab;
@@ -170,6 +170,9 @@ public class ParatrooperView_V2 : MonoBehaviour
     private string _legUpperShootChoice;
     private string _legLowerShootChoice;
     private string _armUpperShootChoice;
+
+    private float _hidePlaceholderDebugLogWindowStartRealtime = -1f;
+    private int _hidePlaceholderDebugLogsInWindow;
 
     public void Initialize(
         ParatrooperStateMachine_V2 stateMachine,
@@ -2419,6 +2422,30 @@ public class ParatrooperView_V2 : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Caps noisy per-slot HidePlaceholder logs when sever debug is enabled (inner loop can hit many slots per frame).
+    /// </summary>
+    private bool TryEmitHidePlaceholderDebugLog()
+    {
+        float now = Time.realtimeSinceStartup;
+        const float windowSec = 2f;
+        const int maxPerWindow = 8;
+        if (_hidePlaceholderDebugLogWindowStartRealtime < 0f ||
+            now - _hidePlaceholderDebugLogWindowStartRealtime >= windowSec)
+        {
+            _hidePlaceholderDebugLogWindowStartRealtime = now;
+            _hidePlaceholderDebugLogsInWindow = 0;
+        }
+
+        if (_hidePlaceholderDebugLogsInWindow >= maxPerWindow)
+        {
+            return false;
+        }
+
+        _hidePlaceholderDebugLogsInWindow++;
+        return true;
+    }
+
     private void HidePlaceholderAttachment(string attachmentName)
     {
         if (string.IsNullOrWhiteSpace(attachmentName) || _skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
@@ -2473,10 +2500,13 @@ public class ParatrooperView_V2 : MonoBehaviour
                 if (current.IndexOf("leg-lower", StringComparison.OrdinalIgnoreCase) >= 0 ||
                     current.IndexOf("foot", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    string slotNameForLog = slot.Data != null ? slot.Data.Name : string.Empty;
-                    Debug.Log(
-                        $"[ParatrooperView_V2] HidePlaceholderAttachment('{attachmentName}') slot='{slotNameForLog}' currentAtt='{current}' " +
-                        $"matchesExact={matchesExact} matchesSubstring={matchesSubstring}");
+                    if (TryEmitHidePlaceholderDebugLog())
+                    {
+                        string slotNameForLog = slot.Data != null ? slot.Data.Name : string.Empty;
+                        Debug.Log(
+                            $"[ParatrooperView_V2] HidePlaceholderAttachment('{attachmentName}') slot='{slotNameForLog}' currentAtt='{current}' " +
+                            $"matchesExact={matchesExact} matchesSubstring={matchesSubstring}");
+                    }
                 }
             }
 
@@ -2486,7 +2516,7 @@ public class ParatrooperView_V2 : MonoBehaviour
                 slot.A = 0f; // also force alpha down so it cannot be keyed back in the same frame
 
                 // Keep logs focused on the problematic region: confirm that the slot got hidden.
-                if (debugLegFootRelevant && current != null)
+                if (debugLegFootRelevant && current != null && TryEmitHidePlaceholderDebugLog())
                 {
                     string slotNameForLog = slot.Data != null ? slot.Data.Name : string.Empty;
                     Debug.Log(

@@ -952,8 +952,15 @@ namespace iStick2War_V2
                 bombplane.BeginBombRun(fromLeft);
             }
 
-            AircraftHealth_V2 aircraftHealth = bomber.GetComponent<AircraftHealth_V2>();
-            if (aircraftHealth != null && _trackedAircraftDeaths.Add(aircraftHealth))
+            AircraftHealth_V2 aircraftHealth =
+                bomber.GetComponent<AircraftHealth_V2>() ??
+                bomber.GetComponentInChildren<AircraftHealth_V2>(true);
+            if (aircraftHealth == null)
+            {
+                aircraftHealth = bomber.AddComponent<AircraftHealth_V2>();
+            }
+
+            if (_trackedAircraftDeaths.Add(aircraftHealth))
             {
                 aircraftHealth.OnDestroyed += HandleTrackedAircraftDestroyed;
             }

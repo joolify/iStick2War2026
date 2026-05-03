@@ -279,7 +279,7 @@ MonoBehaviour:
   jumpTeslaAnim: {fileID: 0}
   runTeslaAnim: {fileID: 0}
   shootingTeslaAnim: {fileID: 0}
-  teslaLightningBolt: {fileID: 0}
+  teslaLightningBolt: {fileID: 8297807800781792528, guid: 85d0a94c48b1c4d42874f500047618a8, type: 3}
   _syncTeslaLightningSortingWithTrail: 1
   _trailPrefab: {fileID: 1070164800395407800, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
   _trailWidth: 0.06
@@ -501,6 +501,8 @@ MonoBehaviour:
   _bazookaPreferWithinHorizontalForBombingAircraft: 95
   _bazookaAntiAirMaxWorldDistance: 140
   _aircraftShootRangeSlackMultiplier: 2.65
+  _leadProjectileAimVsBombplane: 1
+  _bombplaneInterceptMaxTimeSeconds: 2.75
   _prioritizeInfantryOverAircraft: 1
   _prioritizeGroundedParatroopers: 1
   _groundedParatrooperPriorityBonus: 220
@@ -510,6 +512,9 @@ MonoBehaviour:
   _debugTargetSelectionLogIntervalSeconds: 0.5
   _debugFallbackTargetingLogs: 0
   _ignoreAirborneWhenGroundedExists: 1
+  _paratrooperTargetMaxBelowHero: 22
+  _paratrooperFallbackRespectsShootFrustum: 1
+  _shootVisibilityOrthographicMarginWorld: 1.25
   _retreatToBunkerOnBombSplashThreat: 1
   _bombSplashThreatHorizExtra: 0.85
   _bombSplashThreatMaxBelowHero: 1.1
@@ -525,7 +530,7 @@ MonoBehaviour:
   _enableLowHpWarningSoundForDebug: 0
   _lowHpWarningThresholdHp: 5000
   _lowHpWarningAudioSource: {fileID: 0}
-  _lowHpWarningClip: {fileID: 0}
+  _lowHpWarningClip: {fileID: 8300000, guid: 2e01918476de31f448bb5532d38cdaaa, type: 3}
   _lowHpWarningRepeatSeconds: 1.2
   _haltAutomationOnGameError: 1
   _gameErrorAutomationHaltClip: {fileID: 8300000, guid: 2e01918476de31f448bb5532d38cdaaa, type: 3}
