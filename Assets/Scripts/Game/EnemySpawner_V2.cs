@@ -10,6 +10,8 @@ namespace iStick2War_V2
     {
         [Header("Prefab")]
         [SerializeField] private Paratrooper _paratrooperPrefab;
+        [Tooltip("Optional. Spawned after paratrooper flights when WaveConfig.MechRobotBossCount > 0.")]
+        [SerializeField] private MechRobotBoss _mechRobotBossPrefab;
 
         [Header("Spawn Anchors (left/right)")]
         [SerializeField] private Transform[] _leftSpawnPoints;
@@ -161,6 +163,7 @@ namespace iStick2War_V2
         [SerializeField] private bool _debugAnchorSpawnDiagnostics = true;
 
         private readonly HashSet<ParatrooperDeathHandler_V2> _trackedDeaths = new HashSet<ParatrooperDeathHandler_V2>();
+        private readonly HashSet<MechRobotBossDeathHandler_V2> _trackedMechBossDeaths = new HashSet<MechRobotBossDeathHandler_V2>();
         private readonly HashSet<AircraftHealth_V2> _trackedAircraftDeaths = new HashSet<AircraftHealth_V2>();
         private readonly List<GameObject> _spawnedAircraftInstances = new List<GameObject>();
         private Coroutine _spawnRoutine;
@@ -188,6 +191,9 @@ namespace iStick2War_V2
         private string _lastSpawnAbortReason = "";
         private string _spawnRoutineExitReason = "not_started";
         private int _activeAirThreatSpawnRoutines;
+        private int _mechBossTargetCount;
+        private int _mechBossSpawnedCount;
+        private bool _mechBossScheduleComplete;
 
         public float LastParatrooperSpawnUnscaledTime => _lastParatrooperSpawnUnscaledTime;
         public float LastSpawnAttemptUnscaledTime => _lastSpawnAttemptUnscaledTime;
@@ -326,6 +332,15 @@ namespace iStick2War_V2
             _lastSpawnAbortReason = "";
             _spawnRoutineExitReason = "running";
             _activeAirThreatSpawnRoutines = 0;
+            _mechBossTargetCount = config.MechRobotBossCount;
+            _mechBossSpawnedCount = 0;
+            _mechBossScheduleComplete = _mechBossTargetCount <= 0 || _mechRobotBossPrefab == null;
+            if (_mechBossTargetCount > 0 && _mechRobotBossPrefab == null)
+            {
+                Debug.LogWarning(
+                    "[EnemySpawner_V2] Wave requests MechRobotBossCount > 0 but Mech Robot Boss prefab is not assigned.");
+            }
+
             _spawnRoutine = StartCoroutine(SpawnRoutine(config));
             if (config.BomberPassCount > 0 && _bomberPrefab != null)
             {
@@ -396,6 +411,14 @@ namespace iStick2War_V2
                 }
             }
             _trackedDeaths.Clear();
+            foreach (MechRobotBossDeathHandler_V2 mechDeath in _trackedMechBossDeaths)
+            {
+                if (mechDeath != null)
+                {
+                    mechDeath.OnDeathStarted -= HandleTrackedMechBossDeath;
+                }
+            }
+            _trackedMechBossDeaths.Clear();
             foreach (AircraftHealth_V2 aircraftHealth in _trackedAircraftDeaths)
             {
                 if (aircraftHealth != null)
@@ -414,6 +437,9 @@ namespace iStick2War_V2
             _lastSpawnAbortReason = "";
             _spawnRoutineExitReason = "stopped";
             _activeAirThreatSpawnRoutines = 0;
+            _mechBossTargetCount = 0;
+            _mechBossSpawnedCount = 0;
+            _mechBossScheduleComplete = true;
             // Keep a sane timestamp after StopWave: EnterGameErrorState calls StopWave while the watchdog may still
             // evaluate this frame; 0 would look like "no spawn since boot" and false-trigger no-spawn detection.
             _lastParatrooperSpawnUnscaledTime = Time.unscaledTime;
@@ -475,6 +501,8 @@ namespace iStick2War_V2
                     yield return new WaitForSeconds(interval);
                 }
             }
+
+            yield return RunMechRobotBossSpawnRoutine(config, waveSession);
 
             _spawnRoutine = null;
             _spawnRoutineFinished = true;
@@ -1285,6 +1313,107 @@ namespace iStick2War_V2
             return true;
         }
 
+        private IEnumerator RunMechRobotBossSpawnRoutine(WaveConfig_V2 config, int waveSession)
+        {
+            int n = config != null ? config.MechRobotBossCount : 0;
+            if (n <= 0 || _mechRobotBossPrefab == null)
+            {
+                _mechBossScheduleComplete = true;
+                yield break;
+            }
+
+            try
+            {
+                for (int i = 0; i < n; i++)
+                {
+                    if (!_isWaveActive || waveSession != _waveSessionId)
+                    {
+                        break;
+                    }
+
+                    if (SpawnMechRobotBoss())
+                    {
+                        if (i < n - 1)
+                        {
+                            yield return new WaitForSeconds(0.4f);
+                        }
+                    }
+                }
+
+                if (_mechBossSpawnedCount < n)
+                {
+                    Debug.LogWarning(
+                        "[EnemySpawner_V2] Mech Robot Boss spawn shortfall: spawned=" + _mechBossSpawnedCount +
+                        ", requested=" + n + ". Wave clear will use the spawned count.");
+                    _mechBossTargetCount = _mechBossSpawnedCount;
+                }
+            }
+            finally
+            {
+                _mechBossScheduleComplete = true;
+            }
+        }
+
+        private bool SpawnMechRobotBoss()
+        {
+            if (!_isWaveActive || _mechRobotBossPrefab == null)
+            {
+                return false;
+            }
+
+            Vector3 worldPosition = new Vector3(
+                UnityEngine.Random.Range(Mathf.Min(_spawnXRange.x, _spawnXRange.y), Mathf.Max(_spawnXRange.x, _spawnXRange.y)),
+                UnityEngine.Random.Range(Mathf.Min(_spawnYRange.x, _spawnYRange.y), Mathf.Max(_spawnYRange.x, _spawnYRange.y)),
+                _anchorSpawnWorldZ);
+            worldPosition = ClampToCameraView(worldPosition);
+            worldPosition.x = Mathf.Abs(worldPosition.x) < 2.5f ? worldPosition.x + 6f * (UnityEngine.Random.value < 0.5f ? -1f : 1f) : worldPosition.x;
+
+            MechRobotBoss spawned = SimplePrefabPool_V2.Spawn(_mechRobotBossPrefab, worldPosition, Quaternion.identity);
+            if (spawned == null)
+            {
+                return false;
+            }
+
+            if (!spawned.gameObject.activeSelf)
+            {
+                spawned.gameObject.SetActive(true);
+            }
+
+            spawned.PrepareForSpawn();
+
+            Rigidbody2D rb = spawned.GetComponent<Rigidbody2D>();
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector2.zero;
+                rb.angularVelocity = 0f;
+            }
+
+            if (_activeWaveConfig != null)
+            {
+                spawned.ApplyWaveDifficultyMultipliers(_runtimeEnemyHealthMultiplier, _runtimeEnemyDamageMultiplier);
+            }
+
+            _mechBossSpawnedCount++;
+
+            MechRobotBossDeathHandler_V2 deathHandler = spawned.GetComponent<MechRobotBossDeathHandler_V2>();
+            if (deathHandler == null)
+            {
+                deathHandler = spawned.GetComponentInChildren<MechRobotBossDeathHandler_V2>(true);
+            }
+
+            if (deathHandler != null && _trackedMechBossDeaths.Add(deathHandler))
+            {
+                deathHandler.OnDeathStarted += HandleTrackedMechBossDeath;
+            }
+
+            if (_debugSpawnLogs)
+            {
+                Debug.Log($"[EnemySpawner_V2] Spawned MechRobotBoss at {worldPosition}");
+            }
+
+            return true;
+        }
+
         private void ApplyMasterDebugFlagsToParatrooper(Paratrooper spawned)
         {
             if (spawned == null || !_masterDebugGrenadeOnly)
@@ -1739,6 +1868,17 @@ namespace iStick2War_V2
             _onEnemyKilled?.Invoke();
         }
 
+        private void HandleTrackedMechBossDeath(MechRobotBossDeathHandler_V2 deathHandler)
+        {
+            if (deathHandler != null)
+            {
+                deathHandler.OnDeathStarted -= HandleTrackedMechBossDeath;
+                _trackedMechBossDeaths.Remove(deathHandler);
+            }
+
+            _onEnemyKilled?.Invoke();
+        }
+
         private void HandleTrackedAircraftDestroyed(AircraftHealth_V2 aircraftHealth)
         {
             if (aircraftHealth != null)
@@ -1766,12 +1906,53 @@ namespace iStick2War_V2
             // Old logic used (_spawnRoutineFinished || _spawnedCount >= target), which was true when
             // target==0 (0 >= 0) and when the routine finished before delayed drops spawned anyone.
             bool allSpawned = _spawnRoutineFinished && _spawnedCount >= _targetSpawnCount;
+            PruneInactiveTrackedMechBossDeaths();
+            bool mechBossCleared =
+                _mechBossTargetCount <= 0 ||
+                (_mechBossScheduleComplete &&
+                 _mechBossSpawnedCount >= _mechBossTargetCount &&
+                 _trackedMechBossDeaths.Count == 0);
             return allSpawned
+                && mechBossCleared
                 && _pendingDelayedDropCoroutines == 0
                 && _activeAirThreatSpawnRoutines == 0
                 && _trackedDeaths.Count == 0
                 && _trackedAircraftDeaths.Count == 0
                 && _spawnedAircraftInstances.Count == 0;
+        }
+
+        private void PruneInactiveTrackedMechBossDeaths()
+        {
+            if (_trackedMechBossDeaths.Count == 0)
+            {
+                return;
+            }
+
+            List<MechRobotBossDeathHandler_V2> stale = null;
+            foreach (MechRobotBossDeathHandler_V2 h in _trackedMechBossDeaths)
+            {
+                if (h == null || !h.gameObject.activeInHierarchy)
+                {
+                    stale ??= new List<MechRobotBossDeathHandler_V2>();
+                    stale.Add(h);
+                }
+            }
+
+            if (stale == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < stale.Count; i++)
+            {
+                MechRobotBossDeathHandler_V2 h = stale[i];
+                if (h != null)
+                {
+                    h.OnDeathStarted -= HandleTrackedMechBossDeath;
+                }
+
+                _trackedMechBossDeaths.Remove(h);
+            }
         }
 
         private void PruneInactiveTrackedDeaths()

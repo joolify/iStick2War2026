@@ -203,7 +203,10 @@ namespace Spine.Unity.Editor {
 			SceneView.onSceneGUIDelegate += DragAndDropInstantiation.SceneViewDragAndDrop;
 #endif
 
-#if UNITY_2021_2_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
+			DragAndDrop.RemoveDropHandlerV2(HierarchyHandler.HandleDragAndDropV2);
+			DragAndDrop.AddDropHandlerV2(HierarchyHandler.HandleDragAndDropV2);
+#elif UNITY_2021_2_OR_NEWER
 			DragAndDrop.RemoveDropHandler(HierarchyHandler.HandleDragAndDrop);
 			DragAndDrop.AddDropHandler(HierarchyHandler.HandleDragAndDrop);
 #else
@@ -459,7 +462,32 @@ namespace Spine.Unity.Editor {
 				}
 			}
 
-#if UNITY_2021_2_OR_NEWER
+#if UNITY_6000_0_OR_NEWER
+			internal static DragAndDropVisualMode HandleDragAndDropV2 (EntityId dropTargetEntityId, HierarchyDropFlags dropMode, Transform parentForDraggedObjects, bool perform) {
+				SkeletonDataAsset skeletonDataAsset = DragAndDrop.objectReferences.Length == 0 ? null :
+					DragAndDrop.objectReferences[0] as SkeletonDataAsset;
+				if (skeletonDataAsset == null)
+					return DragAndDropVisualMode.None;
+				if (!perform)
+					return DragAndDropVisualMode.Copy;
+
+				GameObject dropTargetObject = EditorUtility.EntityIdToObject(dropTargetEntityId) as GameObject;
+				Transform dropTarget = dropTargetObject != null ? dropTargetObject.transform : null;
+				Transform parent = dropTarget;
+				int siblingIndex = 0;
+				if (parent != null) {
+					if (dropMode == HierarchyDropFlags.DropBetween) {
+						parent = dropTarget.parent;
+						siblingIndex = dropTarget ? dropTarget.GetSiblingIndex() + 1 : 0;
+					} else if (dropMode == HierarchyDropFlags.DropAbove) {
+						parent = dropTarget.parent;
+						siblingIndex = dropTarget ? dropTarget.GetSiblingIndex() : 0;
+					}
+				}
+				DragAndDropInstantiation.ShowInstantiateContextMenu(skeletonDataAsset, Vector3.zero, parent, siblingIndex);
+				return DragAndDropVisualMode.Copy;
+			}
+#elif UNITY_2021_2_OR_NEWER
 			internal static DragAndDropVisualMode HandleDragAndDrop (int dropTargetInstanceID, HierarchyDropFlags dropMode, Transform parentForDraggedObjects, bool perform) {
 				SkeletonDataAsset skeletonDataAsset = DragAndDrop.objectReferences.Length == 0 ? null :
 					DragAndDrop.objectReferences[0] as SkeletonDataAsset;

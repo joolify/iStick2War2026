@@ -42,6 +42,12 @@ namespace iStick2War_V2
             "EnemySpawner_V2 spawns them only when a bomb drone prefab is assigned.")]
         [SerializeField] private int _bombDroneCount;
 
+        [Header("Boss (ground)")]
+        [Tooltip(
+            "Mech Robot Boss units spawned after helicopter paratrooper schedule completes. " +
+            "Requires a MechRobotBoss prefab on EnemySpawner_V2.")]
+        [SerializeField] private int _mechRobotBossCount;
+
         [Header("Economy Reward")]
         [SerializeField] private int _waveRewardCurrency = 80;
 
@@ -53,6 +59,7 @@ namespace iStick2War_V2
         public int BomberPassCount => Mathf.Max(0, _bomberPassCount);
         public int KamikazeDroneCount => Mathf.Max(0, _kamikazeDroneCount);
         public int BombDroneCount => Mathf.Max(0, _bombDroneCount);
+        public int MechRobotBossCount => Mathf.Max(0, _mechRobotBossCount);
         public int WaveRewardCurrency => Mathf.Max(0, _waveRewardCurrency);
     }
 }

@@ -253,6 +253,7 @@ namespace iStick2War_V2
 
             Collider2D[] hits = Physics2D.OverlapCircleAll(explosionCenter, Mathf.Max(0.1f, _explosionRadius), _explosionMask);
             HashSet<ParatrooperDamageReceiver_V2> damagedParatroopers = new HashSet<ParatrooperDamageReceiver_V2>();
+            HashSet<MechRobotBossDamageReceiver_V2> damagedMechBosses = new HashSet<MechRobotBossDamageReceiver_V2>();
             HashSet<Explodable> damagedExplodables = new HashSet<Explodable>();
             HashSet<AircraftHealth_V2> damagedAircraft = new HashSet<AircraftHealth_V2>();
             HashSet<RocketExplosionVfxKind> damagedKinds = new HashSet<RocketExplosionVfxKind>();
@@ -303,6 +304,34 @@ namespace iStick2War_V2
                         SourceWeapon = WeaponType.Bazooka
                     };
                     receiver.TakeDamage(damageInfo);
+                    continue;
+                }
+
+                MechRobotBossBodyPart_V2 mechPart = hit.GetComponent<MechRobotBossBodyPart_V2>();
+                if (mechPart != null)
+                {
+                    MechRobotBossDamageReceiver_V2 mechReceiver =
+                        mechPart.GetComponentInParent<MechRobotBossDamageReceiver_V2>();
+                    if (mechReceiver == null || damagedMechBosses.Contains(mechReceiver))
+                    {
+                        continue;
+                    }
+
+                    damagedMechBosses.Add(mechReceiver);
+                    damagedKinds.Add(RocketExplosionVfxKind.Paratrooper);
+                    Vector2 toTarget = closestOnHit - explosionCenter;
+                    Vector2 shotDir = toTarget.sqrMagnitude > 0.0001f ? toTarget.normalized : Vector2.right;
+                    DamageInfo damageInfo = new DamageInfo
+                    {
+                        BaseDamage = finalDamage,
+                        BodyPart = BodyPartType.Torso,
+                        HitPoint = closestOnHit,
+                        ShotDirection = shotDir,
+                        IsExplosive = true,
+                        ExplosionForce = Mathf.Lerp(3.5f, 9f, damageMultiplier),
+                        SourceWeapon = WeaponType.Bazooka
+                    };
+                    mechReceiver.TakeDamage(damageInfo);
                     continue;
                 }
 
@@ -378,7 +407,9 @@ namespace iStick2War_V2
             }
 
             if (impactCollider.GetComponent<ParatrooperBodyPart_V2>() != null ||
-                impactCollider.GetComponentInParent<ParatrooperDamageReceiver_V2>() != null)
+                impactCollider.GetComponentInParent<ParatrooperDamageReceiver_V2>() != null ||
+                impactCollider.GetComponent<MechRobotBossBodyPart_V2>() != null ||
+                impactCollider.GetComponentInParent<MechRobotBossDamageReceiver_V2>() != null)
             {
                 return "Paratrooper";
             }
@@ -465,7 +496,9 @@ namespace iStick2War_V2
             }
 
             if (other.GetComponent<ParatrooperBodyPart_V2>() != null ||
-                other.GetComponentInParent<ParatrooperDamageReceiver_V2>() != null)
+                other.GetComponentInParent<ParatrooperDamageReceiver_V2>() != null ||
+                other.GetComponent<MechRobotBossBodyPart_V2>() != null ||
+                other.GetComponentInParent<MechRobotBossDamageReceiver_V2>() != null)
             {
                 return true;
             }

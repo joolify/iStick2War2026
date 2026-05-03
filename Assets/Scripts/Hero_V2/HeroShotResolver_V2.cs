@@ -130,6 +130,12 @@ namespace iStick2War_V2
                 return false;
             }
 
+            MechRobotBossBodyPart_V2 mechPart = hit.collider.GetComponent<MechRobotBossBodyPart_V2>();
+            if (mechPart != null && !mechPart.IsLivingCharacterForTargeting())
+            {
+                return false;
+            }
+
             return true;
         }
 
@@ -163,6 +169,29 @@ namespace iStick2War_V2
                 catch (System.Exception ex)
                 {
                     Debug.LogError($"[HeroShotResolver_V2] ApplyDamage failed on collider '{hit.collider.name}': {ex.Message}");
+                }
+
+                return;
+            }
+
+            MechRobotBossBodyPart_V2 mechPart = hit.collider.GetComponent<MechRobotBossBodyPart_V2>();
+            if (mechPart != null)
+            {
+                var damageInfo = new DamageInfo
+                {
+                    BaseDamage = context.BaseDamage,
+                    HitPoint = hit.point,
+                    ShotDirection = shotDirection,
+                    SourceWeapon = context.WeaponType,
+                };
+
+                try
+                {
+                    mechPart.OnHit(damageInfo);
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogError($"[HeroShotResolver_V2] ApplyDamage failed on mech collider '{hit.collider.name}': {ex.Message}");
                 }
 
                 return;

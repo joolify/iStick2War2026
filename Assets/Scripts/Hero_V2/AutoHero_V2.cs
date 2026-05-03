@@ -1187,9 +1187,7 @@ namespace iStick2War_V2
             }
 
             bool isImmediateGroundParatrooperThreat =
-                target != null &&
-                IsParatrooperCollider(target) &&
-                IsGroundCombatParatrooper(target);
+                target != null && IsGroundCombatInfantryTarget(target);
 
             RefreshAimNoiseForProfile(hasTarget);
             if (hasTarget && _testProfile != AutoHeroTestProfileKind_V2.Perfect)
@@ -1242,7 +1240,7 @@ namespace iStick2War_V2
             }
             else
             {
-                float verticalSlack = IsParatrooperCollider(target) ? 1.35f : 0.85f;
+                float verticalSlack = IsInfantryEnemyCollider(target) ? 1.35f : 0.85f;
                 inRange =
                     hasTarget &&
                     Mathf.Abs(aimPoint.x - heroPos.x) <= maxShootDist &&
@@ -1302,6 +1300,11 @@ namespace iStick2War_V2
             {
                 _telemetryTargetKind = "paratrooper";
                 _telemetryTargetParatrooperState = GetParatrooperStateOrDie(target);
+            }
+            else if (IsMechBossCollider(target))
+            {
+                _telemetryTargetKind = "mech_boss";
+                _telemetryTargetParatrooperState = StickmanBodyState.Die;
             }
             else if (IsAircraftCollider(target))
             {
@@ -1516,9 +1519,7 @@ namespace iStick2War_V2
 
             // Grounded/combat-ready paratroopers can throw/shoot right after landing.
             // Prefer high sustained DPS weapons over range heuristics in this case.
-            if (targetCollider != null &&
-                IsParatrooperCollider(targetCollider) &&
-                IsGroundCombatParatrooper(targetCollider))
+            if (targetCollider != null && IsGroundCombatInfantryTarget(targetCollider))
             {
                 if (thompsonAmmo)
                 {
@@ -1672,21 +1673,24 @@ namespace iStick2War_V2
                 }
 
                 bool isParatrooper = IsParatrooperCollider(c);
-                if (isParatrooper && !IsViableParatrooperTarget(c))
+                bool isMechBoss = IsMechBossCollider(c);
+                bool isInfantry = isParatrooper || isMechBoss;
+                if (isInfantry && !IsViableInfantryEnemyTarget(c))
                 {
                     continue;
                 }
 
-                if (isParatrooper && !IsParatrooperColliderPlausibleForAutoTarget(c, from))
+                if (isInfantry && !IsParatrooperColliderPlausibleForAutoTarget(c, from))
                 {
                     continue;
                 }
 
                 bool bypassFrustumForBombplane = bombSplashThreat && IsBombingAircraftCollider(c);
-                bool bypassFrustumForParatrooperCombat =
-                    isParatrooper && ShouldBypassShootFrustumForParatrooperCombatThreat(c);
+                bool bypassFrustumForInfantryCombat =
+                    (isParatrooper && ShouldBypassShootFrustumForParatrooperCombatThreat(c)) ||
+                    ShouldBypassShootFrustumForMechBossCombatThreat(c);
                 if (!bypassFrustumForBombplane &&
-                    !bypassFrustumForParatrooperCombat &&
+                    !bypassFrustumForInfantryCombat &&
                     !IsEnemyBoundsShootVisible(shootVisCam, shootFrustumPlanes, c.bounds))
                 {
                     continue;
@@ -1710,28 +1714,42 @@ namespace iStick2War_V2
                     }
                 }
 
-                if (isParatrooper)
+                if (isInfantry)
                 {
-                    StickmanBodyState paratrooperState = GetParatrooperStateOrDie(c);
-                    int infantryTier = GetParatrooperPriorityTier(paratrooperState);
+                    int infantryTier = GetUnifiedInfantryPriorityTier(c);
                     float infantryScore = -d;
-                    if (_prioritizeGroundedParatroopers && IsGroundCombatState(paratrooperState))
+                    if (isParatrooper)
                     {
-                        infantryScore += Mathf.Max(0f, _groundedParatrooperPriorityBonus);
+                        StickmanBodyState paratrooperState = GetParatrooperStateOrDie(c);
+                        if (_prioritizeGroundedParatroopers && IsGroundCombatState(paratrooperState))
+                        {
+                            infantryScore += Mathf.Max(0f, _groundedParatrooperPriorityBonus);
+                        }
+
+                        if (IsGroundCombatState(paratrooperState))
+                        {
+                            hasGroundedInfantryCandidate = true;
+                        }
+
+                        if (paratrooperState == StickmanBodyState.Shoot || paratrooperState == StickmanBodyState.Grenade)
+                        {
+                            infantryScore += Mathf.Max(0f, _combatParatrooperPriorityBonus);
+                        }
+                        else if (paratrooperState == StickmanBodyState.Deploy ||
+                                 paratrooperState == StickmanBodyState.Glide ||
+                                 paratrooperState == StickmanBodyState.GlideElectrocuted)
+                        {
+                            infantryScore -= Mathf.Max(0f, _airborneParatrooperPriorityPenalty);
+                        }
                     }
-                    if (IsGroundCombatState(paratrooperState))
+                    else if (isMechBoss)
                     {
                         hasGroundedInfantryCandidate = true;
-                    }
-                    if (paratrooperState == StickmanBodyState.Shoot || paratrooperState == StickmanBodyState.Grenade)
-                    {
-                        infantryScore += Mathf.Max(0f, _combatParatrooperPriorityBonus);
-                    }
-                    else if (paratrooperState == StickmanBodyState.Deploy ||
-                             paratrooperState == StickmanBodyState.Glide ||
-                             paratrooperState == StickmanBodyState.GlideElectrocuted)
-                    {
-                        infantryScore -= Mathf.Max(0f, _airborneParatrooperPriorityPenalty);
+                        MechRobotBossBodyState mechState = GetMechBossStateOrDie(c);
+                        if (mechState == MechRobotBossBodyState.Shoot || mechState == MechRobotBossBodyState.Aim)
+                        {
+                            infantryScore += Mathf.Max(0f, _combatParatrooperPriorityBonus);
+                        }
                     }
 
                     if (infantryTier > bestInfantryTier ||
@@ -1756,8 +1774,17 @@ namespace iStick2War_V2
 
             if (_ignoreAirborneWhenGroundedExists && hasGroundedInfantryCandidate && bestInfantry != null)
             {
-                StickmanBodyState bestState = GetParatrooperStateOrDie(bestInfantry);
-                if (!IsGroundCombatState(bestState))
+                bool bestIsGroundedInfantry = false;
+                if (IsParatrooperCollider(bestInfantry))
+                {
+                    bestIsGroundedInfantry = IsGroundCombatState(GetParatrooperStateOrDie(bestInfantry));
+                }
+                else if (IsMechBossCollider(bestInfantry))
+                {
+                    bestIsGroundedInfantry = GetMechBossStateOrDie(bestInfantry) != MechRobotBossBodyState.Die;
+                }
+
+                if (!bestIsGroundedInfantry)
                 {
                     // Re-scan candidates and pick the nearest grounded target deterministically.
                     Collider2D bestGroundedInfantry = null;
@@ -1765,7 +1792,7 @@ namespace iStick2War_V2
                     for (int i = 0; i < count; i++)
                     {
                         Collider2D c = _enemyOverlapResults[i];
-                        if (c == null || !IsParatrooperCollider(c) || !IsViableParatrooperTarget(c))
+                        if (c == null || !IsInfantryEnemyCollider(c) || !IsViableInfantryEnemyTarget(c))
                         {
                             continue;
                         }
@@ -1775,14 +1802,25 @@ namespace iStick2War_V2
                             continue;
                         }
 
-                        if (!ShouldBypassShootFrustumForParatrooperCombatThreat(c) &&
-                            !IsEnemyBoundsShootVisible(shootVisCam, shootFrustumPlanes, c.bounds))
+                        bool bypassGrounded =
+                            (IsParatrooperCollider(c) && ShouldBypassShootFrustumForParatrooperCombatThreat(c)) ||
+                            ShouldBypassShootFrustumForMechBossCombatThreat(c);
+                        if (!bypassGrounded && !IsEnemyBoundsShootVisible(shootVisCam, shootFrustumPlanes, c.bounds))
                         {
                             continue;
                         }
 
-                        StickmanBodyState s = GetParatrooperStateOrDie(c);
-                        if (!IsGroundCombatState(s))
+                        bool grounded = false;
+                        if (IsParatrooperCollider(c))
+                        {
+                            grounded = IsGroundCombatState(GetParatrooperStateOrDie(c));
+                        }
+                        else if (IsMechBossCollider(c))
+                        {
+                            grounded = GetMechBossStateOrDie(c) != MechRobotBossBodyState.Die;
+                        }
+
+                        if (!grounded)
                         {
                             continue;
                         }
@@ -2141,41 +2179,21 @@ namespace iStick2War_V2
                 }
             }
 
-            if (best != null)
-            {
-                _telemetryLastFallbackStage = "bodypart";
-                return best;
-            }
-
-            // Second-pass fallback by model/state in case bodypart cache or component wiring is temporarily stale.
-            ParatrooperModel_V2[] models = Object.FindObjectsByType<ParatrooperModel_V2>(
+            MechRobotBossBodyPart_V2[] mechParts = Object.FindObjectsByType<MechRobotBossBodyPart_V2>(
                 FindObjectsInactive.Exclude,
                 FindObjectsSortMode.None);
-            if (models == null || models.Length == 0)
+            if (mechParts != null)
             {
-                return null;
-            }
-
-            for (int i = 0; i < models.Length; i++)
-            {
-                ParatrooperModel_V2 model = models[i];
-                if (model == null || model.IsDead())
+                for (int i = 0; i < mechParts.Length; i++)
                 {
-                    continue;
-                }
-                _telemetryFallbackLivingParatrooperModels++;
-
-                Collider2D[] cols = model.GetComponentsInChildren<Collider2D>(true);
-                for (int c = 0; c < cols.Length; c++)
-                {
-                    Collider2D col = cols[c];
-                    if (col == null || !col.enabled)
+                    MechRobotBossBodyPart_V2 part = mechParts[i];
+                    if (part == null || !part.isActiveAndEnabled || !part.IsLivingCharacterForTargeting())
                     {
                         continue;
                     }
 
-                    // Prefer true hitboxes used by targeting/raycasting.
-                    if (col.gameObject.layer != enemyBodyPartLayer)
+                    Collider2D col = part.GetComponent<Collider2D>();
+                    if (col == null || !col.enabled)
                     {
                         continue;
                     }
@@ -2186,19 +2204,134 @@ namespace iStick2War_V2
                     }
 
                     if (_paratrooperFallbackRespectsShootFrustum &&
-                        !ShouldBypassShootFrustumForParatrooperCombatThreat(col) &&
+                        !ShouldBypassShootFrustumForMechBossCombatThreat(col) &&
                         !IsEnemyBoundsShootVisible(shootVisCam, shootFrustumPlanes, col.bounds))
                     {
                         continue;
                     }
 
-                    _telemetryFallbackEnabledEnemyBodyPartColliders++;
+                    if (col.gameObject.layer == enemyBodyPartLayer)
+                    {
+                        _telemetryFallbackEnabledEnemyBodyPartColliders++;
+                    }
 
                     float d = (((Vector2)col.bounds.center) - from).sqrMagnitude;
                     if (d < bestDist)
                     {
                         bestDist = d;
                         best = col;
+                    }
+                }
+            }
+
+            if (best != null)
+            {
+                _telemetryLastFallbackStage = "bodypart";
+                return best;
+            }
+
+            // Second-pass fallback by model/state in case bodypart cache or component wiring is temporarily stale.
+            ParatrooperModel_V2[] models = Object.FindObjectsByType<ParatrooperModel_V2>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            if (models != null)
+            {
+                for (int i = 0; i < models.Length; i++)
+                {
+                    ParatrooperModel_V2 model = models[i];
+                    if (model == null || model.IsDead())
+                    {
+                        continue;
+                    }
+
+                    _telemetryFallbackLivingParatrooperModels++;
+
+                    Collider2D[] cols = model.GetComponentsInChildren<Collider2D>(true);
+                    for (int c = 0; c < cols.Length; c++)
+                    {
+                        Collider2D col = cols[c];
+                        if (col == null || !col.enabled)
+                        {
+                            continue;
+                        }
+
+                        // Prefer true hitboxes used by targeting/raycasting.
+                        if (col.gameObject.layer != enemyBodyPartLayer)
+                        {
+                            continue;
+                        }
+
+                        if (!IsParatrooperColliderPlausibleForAutoTarget(col, from))
+                        {
+                            continue;
+                        }
+
+                        if (_paratrooperFallbackRespectsShootFrustum &&
+                            !ShouldBypassShootFrustumForParatrooperCombatThreat(col) &&
+                            !IsEnemyBoundsShootVisible(shootVisCam, shootFrustumPlanes, col.bounds))
+                        {
+                            continue;
+                        }
+
+                        _telemetryFallbackEnabledEnemyBodyPartColliders++;
+
+                        float d = (((Vector2)col.bounds.center) - from).sqrMagnitude;
+                        if (d < bestDist)
+                        {
+                            bestDist = d;
+                            best = col;
+                        }
+                    }
+                }
+            }
+
+            MechRobotBossModel_V2[] mechModels = Object.FindObjectsByType<MechRobotBossModel_V2>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            if (mechModels != null)
+            {
+                for (int i = 0; i < mechModels.Length; i++)
+                {
+                    MechRobotBossModel_V2 model = mechModels[i];
+                    if (model == null || model.IsDead())
+                    {
+                        continue;
+                    }
+
+                    Collider2D[] cols = model.GetComponentsInChildren<Collider2D>(true);
+                    for (int c = 0; c < cols.Length; c++)
+                    {
+                        Collider2D col = cols[c];
+                        if (col == null || !col.enabled)
+                        {
+                            continue;
+                        }
+
+                        if (col.gameObject.layer != enemyBodyPartLayer)
+                        {
+                            continue;
+                        }
+
+                        if (!IsParatrooperColliderPlausibleForAutoTarget(col, from))
+                        {
+                            continue;
+                        }
+
+                        if (_paratrooperFallbackRespectsShootFrustum &&
+                            !ShouldBypassShootFrustumForMechBossCombatThreat(col) &&
+                            !IsEnemyBoundsShootVisible(shootVisCam, shootFrustumPlanes, col.bounds))
+                        {
+                            continue;
+                        }
+
+                        _telemetryFallbackEnabledEnemyBodyPartColliders++;
+
+                        float d = (((Vector2)col.bounds.center) - from).sqrMagnitude;
+                        if (d < bestDist)
+                        {
+                            bestDist = d;
+                            best = col;
+                        }
                     }
                 }
             }
@@ -2262,15 +2395,18 @@ namespace iStick2War_V2
             }
 
             bool isPara = IsParatrooperCollider(selected);
+            bool isMech = IsMechBossCollider(selected);
             string stateLabel =
                 isPara
                     ? GetParatrooperStateOrDie(selected).ToString()
-                    : IsAircraftCollider(selected)
-                        ? "aircraft"
-                        : "other";
+                    : isMech
+                        ? GetMechBossStateOrDie(selected).ToString()
+                        : IsAircraftCollider(selected)
+                            ? "aircraft"
+                            : "other";
             Vector2 c = selected.bounds.center;
             Debug.Log(
-                $"[AutoHero_V2 TargetDbg] selected='{selected.name}' para={isPara} state={stateLabel} " +
+                $"[AutoHero_V2 TargetDbg] selected='{selected.name}' para={isPara} mech={isMech} state={stateLabel} " +
                 $"center=({c.x:0.##},{c.y:0.##}) score={score:0.##} reason={reason}");
         }
 
@@ -2283,6 +2419,22 @@ namespace iStick2War_V2
 
             return c.GetComponent<ParatrooperBodyPart_V2>() != null ||
                    c.GetComponentInParent<ParatrooperBodyPart_V2>() != null;
+        }
+
+        private static bool IsMechBossCollider(Collider2D c)
+        {
+            if (c == null)
+            {
+                return false;
+            }
+
+            return c.GetComponent<MechRobotBossBodyPart_V2>() != null ||
+                   c.GetComponentInParent<MechRobotBossBodyPart_V2>() != null;
+        }
+
+        private static bool IsInfantryEnemyCollider(Collider2D c)
+        {
+            return IsParatrooperCollider(c) || IsMechBossCollider(c);
         }
 
         /// <summary>
@@ -2299,6 +2451,105 @@ namespace iStick2War_V2
             }
 
             return part.IsLivingCharacterForTargeting();
+        }
+
+        private static bool IsViableMechBossTarget(Collider2D c)
+        {
+            MechRobotBossBodyPart_V2 part =
+                c.GetComponent<MechRobotBossBodyPart_V2>() ?? c.GetComponentInParent<MechRobotBossBodyPart_V2>();
+            if (part == null)
+            {
+                return false;
+            }
+
+            return part.IsLivingCharacterForTargeting();
+        }
+
+        private static bool IsViableInfantryEnemyTarget(Collider2D c)
+        {
+            if (IsParatrooperCollider(c))
+            {
+                return IsViableParatrooperTarget(c);
+            }
+
+            if (IsMechBossCollider(c))
+            {
+                return IsViableMechBossTarget(c);
+            }
+
+            return false;
+        }
+
+        private static MechRobotBossBodyState GetMechBossStateOrDie(Collider2D c)
+        {
+            MechRobotBossBodyPart_V2 part =
+                c.GetComponent<MechRobotBossBodyPart_V2>() ?? c.GetComponentInParent<MechRobotBossBodyPart_V2>();
+            if (part == null)
+            {
+                return MechRobotBossBodyState.Die;
+            }
+
+            MechRobotBossModel_V2 model = part.GetComponentInParent<MechRobotBossModel_V2>();
+            return model != null ? model.currentState : MechRobotBossBodyState.Die;
+        }
+
+        private static int GetUnifiedInfantryPriorityTier(Collider2D c)
+        {
+            if (IsMechBossCollider(c))
+            {
+                MechRobotBossBodyState s = GetMechBossStateOrDie(c);
+                if (s == MechRobotBossBodyState.Shoot || s == MechRobotBossBodyState.Aim)
+                {
+                    return 3;
+                }
+
+                if (s == MechRobotBossBodyState.Die)
+                {
+                    return 0;
+                }
+
+                return 2;
+            }
+
+            if (IsParatrooperCollider(c))
+            {
+                return GetParatrooperPriorityTier(GetParatrooperStateOrDie(c));
+            }
+
+            return 0;
+        }
+
+        private static bool ShouldBypassShootFrustumForMechBossCombatThreat(Collider2D c)
+        {
+            if (c == null || !IsMechBossCollider(c))
+            {
+                return false;
+            }
+
+            MechRobotBossBodyState s = GetMechBossStateOrDie(c);
+            return s == MechRobotBossBodyState.Shoot || s == MechRobotBossBodyState.Aim;
+        }
+
+        /// <summary>Ground paratrooper combat or living mech boss (for emergency shoot / weapon selection).</summary>
+        private static bool IsGroundCombatInfantryTarget(Collider2D c)
+        {
+            if (c == null)
+            {
+                return false;
+            }
+
+            if (IsParatrooperCollider(c))
+            {
+                return IsGroundCombatParatrooper(c);
+            }
+
+            if (IsMechBossCollider(c))
+            {
+                MechRobotBossBodyState s = GetMechBossStateOrDie(c);
+                return s != MechRobotBossBodyState.Die;
+            }
+
+            return false;
         }
 
         private bool IsParatrooperColliderPlausibleForAutoTarget(Collider2D c, Vector2 from)
@@ -2393,8 +2644,8 @@ namespace iStick2War_V2
                 return heroPos + Vector2.right * 8f;
             }
 
-            // Lock paratrooper aim to torso/head so selection flicker on foot/leg hitboxes does not yank aim to the ground.
-            if (IsParatrooperCollider(target))
+            // Lock infantry aim to torso/head so selection flicker on foot/leg hitboxes does not yank aim to the ground.
+            if (IsInfantryEnemyCollider(target))
             {
                 Vector2? preferredPoint = TryResolveParatrooperTorsoOrHeadAimPoint(target, heroPos);
                 if (preferredPoint.HasValue)
@@ -2501,6 +2752,19 @@ namespace iStick2War_V2
 
         private Vector2? TryResolveParatrooperTorsoOrHeadAimPoint(Collider2D target, Vector2 heroPos)
         {
+            MechRobotBossBodyPart_V2 mechPart =
+                target.GetComponent<MechRobotBossBodyPart_V2>() ?? target.GetComponentInParent<MechRobotBossBodyPart_V2>();
+            if (mechPart != null)
+            {
+                Collider2D mechCol = mechPart.GetComponent<Collider2D>();
+                if (mechCol != null)
+                {
+                    return mechCol.bounds.center;
+                }
+
+                return (Vector2)mechPart.transform.position;
+            }
+
             ParatrooperBodyPart_V2 selectedPart =
                 target.GetComponent<ParatrooperBodyPart_V2>() ?? target.GetComponentInParent<ParatrooperBodyPart_V2>();
             if (selectedPart == null)
