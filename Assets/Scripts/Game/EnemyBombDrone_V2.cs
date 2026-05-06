@@ -5,63 +5,45 @@ namespace iStick2War_V2
     [DisallowMultipleComponent]
     public sealed class EnemyBombDrone_V2 : MonoBehaviour
     {
-        [Header("Flight")]
-        [SerializeField] private float _horizontalFlySpeed = 6.2f;
-        [SerializeField] private float _flightOffscreenMarginWorld = 4f;
-        [SerializeField] private float _maxLifetimeSeconds = 30f;
-        [SerializeField] private bool _spriteFacesRightWhenScaleXPositive = true;
-        [SerializeField] private bool _invertFlightDirectionX = false;
-
-        [Header("Bombing")]
-        [SerializeField] private BombProjectile_V2 _bombProjectilePrefab;
-        [SerializeField] private Transform _bombDropMount;
-        [SerializeField] private int _bombDamage = 24;
-        [SerializeField] private float _bombExplosionRadius = 1.75f;
-        [SerializeField] private float _dropToleranceX = 0.7f;
-
-        private Rigidbody2D _rb;
-        private Camera _cam;
-        private BunkerHitbox_V2 _bunkerHitbox;
-        private float _directionX;
-        private float _expireAt;
-        private bool _bombDropped;
-        private bool _started;
-        private bool _frozenForCombatMatrixHarness;
+        private BombDroneModel_V2 _model;
+        private BombDroneStateMachine_V2 _stateMachine;
+        private BombDroneController_V2 _controller;
+        private BombDroneView_V2 _view;
+        private BombDroneSpineEventForwarder_V2 _spineEventForwarder;
+        private AircraftHealth_V2 _health;
+        private bool _initialized;
 
         public void BeginRun()
         {
-            _rb = GetComponent<Rigidbody2D>();
-            _cam = Camera.main;
-            _bunkerHitbox = FindAnyObjectByType<BunkerHitbox_V2>(FindObjectsInactive.Include);
-            _expireAt = Time.time + Mathf.Max(2f, _maxLifetimeSeconds);
-            _bombDropped = false;
-            _started = true;
-
-            _directionX = ResolveInitialDirectionX();
-            if (_invertFlightDirectionX)
+            if (!_initialized)
             {
-                _directionX *= -1f;
+                InitializeForSpawn();
             }
+
+            _controller?.StartFlight();
         }
 
-        private float ResolveInitialDirectionX()
+        public void InitializeForSpawn()
         {
-            // Prefer a deterministic route through the playfield: fly toward bunker X first.
-            if (_bunkerHitbox != null)
+            EnsureReferences();
+            _stateMachine.Initialize(_model);
+            _controller.Initialize(_model, _stateMachine);
+            _view.Initialize(_stateMachine);
+            _view.ResetVisualStateForSpawn();
+
+            Spine.Unity.SkeletonAnimation skeletonAnimation = _view.SkeletonAnimation;
+            if (skeletonAnimation != null && _spineEventForwarder != null)
             {
-                float dx = _bunkerHitbox.transform.position.x - transform.position.x;
-                if (Mathf.Abs(dx) > 0.05f)
-                {
-                    return Mathf.Sign(dx);
-                }
+                _spineEventForwarder.Init(_controller, skeletonAnimation);
             }
 
-            // Fallback to sprite-facing calibration when bunker reference is unavailable.
-            bool positiveScaleMeansFacingRight = _spriteFacesRightWhenScaleXPositive;
-            bool facingRight = transform.lossyScale.x >= 0f
-                ? positiveScaleMeansFacingRight
-                : !positiveScaleMeansFacingRight;
-            return facingRight ? 1f : -1f;
+            if (_health != null)
+            {
+                _health.OnDestroyed -= HandleDestroyed;
+                _health.OnDestroyed += HandleDestroyed;
+            }
+
+            _initialized = true;
         }
 
         /// <summary>
@@ -69,101 +51,59 @@ namespace iStick2War_V2
         /// </summary>
         public void FreezeForCombatMatrixHarness()
         {
-            _frozenForCombatMatrixHarness = true;
+            _controller?.FreezeForCombatMatrixHarness();
         }
 
-        private void Start()
+        private void OnDestroy()
         {
-            if (!_started)
+            if (_health != null)
             {
-                BeginRun();
-            }
-        }
-
-        private void Update()
-        {
-            if (!_started)
-            {
-                return;
-            }
-
-            if (_frozenForCombatMatrixHarness)
-            {
-                return;
-            }
-
-            float speed = Mathf.Max(0.1f, _horizontalFlySpeed);
-            transform.position += Vector3.right * (_directionX * speed * Time.deltaTime);
-            Physics2D.SyncTransforms();
-
-            if (!_bombDropped && _bombProjectilePrefab != null)
-            {
-                TryDropBombOverBunker();
-            }
-
-            if (Time.time >= _expireAt)
-            {
-                DespawnSelf();
-                return;
-            }
-
-            if (_cam == null || !_cam.orthographic)
-            {
-                return;
-            }
-
-            float halfHeight = _cam.orthographicSize;
-            float halfWidth = halfHeight * _cam.aspect;
-            float camX = _cam.transform.position.x;
-            float margin = Mathf.Max(0.5f, _flightOffscreenMarginWorld);
-            float leftBound = camX - halfWidth - margin;
-            float rightBound = camX + halfWidth + margin;
-            float x = transform.position.x;
-            if ((_directionX > 0f && x > rightBound) || (_directionX < 0f && x < leftBound))
-            {
-                DespawnSelf();
+                _health.OnDestroyed -= HandleDestroyed;
             }
         }
 
-        private void TryDropBombOverBunker()
+        private void HandleDestroyed(AircraftHealth_V2 aircraft)
         {
-            if (_bunkerHitbox == null)
-            {
-                _bunkerHitbox = FindAnyObjectByType<BunkerHitbox_V2>(FindObjectsInactive.Include);
-                if (_bunkerHitbox == null)
-                {
-                    return;
-                }
-            }
-
-            float tolerance = Mathf.Max(0.1f, _dropToleranceX);
-            float dx = Mathf.Abs(transform.position.x - _bunkerHitbox.transform.position.x);
-            if (dx > tolerance)
-            {
-                return;
-            }
-
-            Vector3 dropPos = _bombDropMount != null ? _bombDropMount.position : transform.position;
-            BombProjectile_V2 bomb = SimplePrefabPool_V2.Spawn(_bombProjectilePrefab, dropPos, Quaternion.identity);
-            if (bomb != null)
-            {
-                Vector2 inherited = _rb != null ? _rb.linearVelocity : Vector2.zero;
-                bomb.Initialize(inherited, Mathf.Max(1, _bombDamage), Mathf.Max(0.2f, _bombExplosionRadius));
-                _bombDropped = true;
-            }
+            _controller?.OnDestroyed();
         }
 
-        private void OnDisable()
+        private void EnsureReferences()
         {
-            _started = false;
-            _bombDropped = false;
-            _expireAt = 0f;
-        }
+            _model = GetComponent<BombDroneModel_V2>();
+            if (_model == null)
+            {
+                _model = gameObject.AddComponent<BombDroneModel_V2>();
+            }
 
-        private void DespawnSelf()
-        {
-            OnDisable();
-            SimplePrefabPool_V2.Despawn(gameObject);
+            _stateMachine = GetComponent<BombDroneStateMachine_V2>();
+            if (_stateMachine == null)
+            {
+                _stateMachine = gameObject.AddComponent<BombDroneStateMachine_V2>();
+            }
+
+            _controller = GetComponent<BombDroneController_V2>();
+            if (_controller == null)
+            {
+                _controller = gameObject.AddComponent<BombDroneController_V2>();
+            }
+
+            _view = GetComponent<BombDroneView_V2>();
+            if (_view == null)
+            {
+                _view = gameObject.AddComponent<BombDroneView_V2>();
+            }
+
+            _spineEventForwarder = GetComponent<BombDroneSpineEventForwarder_V2>();
+            if (_spineEventForwarder == null)
+            {
+                _spineEventForwarder = gameObject.AddComponent<BombDroneSpineEventForwarder_V2>();
+            }
+
+            _health = GetComponent<AircraftHealth_V2>();
+            if (_health == null)
+            {
+                _health = GetComponentInChildren<AircraftHealth_V2>(true);
+            }
         }
     }
 }

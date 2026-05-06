@@ -82,12 +82,18 @@ namespace iStick2War_V2
         [SerializeField] private float _aircraftAutoDestroySeconds = 8f;
         [Tooltip("Child transform name on aircraft used as paratrooper drop origin (recommended: place at helicopter door center).")]
         [SerializeField] private string _paratrooperMountChildName = "ParatrooperDoorMount";
+        [Tooltip("Optional Spine bone used as paratrooper drop origin (checked before mount child fallback).")]
+        [SerializeField] private string _paratrooperSpawnBoneName = "paratrooperSpawnPoint";
+        [Tooltip("Optional extra offset when using Spine bone as drop origin. Keep zero for exact bone position.")]
+        [SerializeField] private Vector3 _paratrooperOffsetFromSpineBone = Vector3.zero;
         [SerializeField] private Vector3 _paratrooperOffsetFromMount = Vector3.zero;
         [Tooltip("If the resolved mount point is inside aircraft bounds, auto-place drop point below aircraft.")]
         [SerializeField] private bool _forceDropBelowAircraftWhenMountInsideBounds = true;
         [SerializeField] private float _forceDropBelowAircraftExtraMargin = 0.2f;
         [Tooltip("When spawning from the right anchor, flip root localScale.x to face inward.")]
         [SerializeField] private bool _flipAircraftScaleXWhenFromRightSpawn = true;
+        [Tooltip("Raises helicopter spawn altitude (world Y). 0.01 = 1 cm.")]
+        [SerializeField] private float _helicopterSpawnYOffsetWorld = 0.01f;
         [SerializeField] private bool _overrideAircraftSpriteSorting = true;
         [Tooltip("Empty = keep prefab sorting layer; only change Sorting Order.")]
         [SerializeField] private string _aircraftSortingLayerName = "";
@@ -197,6 +203,7 @@ namespace iStick2War_V2
         private float _runtimeSpawnIntervalSeconds = 1f;
         private static bool _loggedFrustumPaddingClamp;
         private bool _loggedMissingParatrooperMountOnce;
+        private bool _loggedMissingParatrooperSpawnBoneOnce;
         private int _paratrooperDebugSpawnSeq;
         private bool _lastResolvedMountUsedFallbackRoot;
         private int _pendingDelayedDropCoroutines;
@@ -801,6 +808,7 @@ namespace iStick2War_V2
             if (resolvedFrustumOrAnchor)
             {
                 usedAnchorSpawn = true;
+                aircraftWorldPos.y += _helicopterSpawnYOffsetWorld;
 
                 float stagger = Mathf.Max(0f, _aircraftSameWaveApproachAxisStagger);
                 Vector3 staggerOffset = Vector3.zero;
@@ -1713,8 +1721,21 @@ namespace iStick2War_V2
                 return Vector3.zero;
             }
 
-            Transform mount = ResolveParatrooperMountTransform(aircraft);
-            Vector3 p = mount.position + _paratrooperOffsetFromMount;
+            string mountSourceLabel;
+            Vector3 p;
+            if (TryResolveParatrooperSpineBoneWorldPosition(aircraft, out Vector3 spineBoneWorld))
+            {
+                _lastResolvedMountUsedFallbackRoot = false;
+                mountSourceLabel = $"SpineBone:{_paratrooperSpawnBoneName}";
+                p = spineBoneWorld + _paratrooperOffsetFromSpineBone;
+            }
+            else
+            {
+                Transform mount = ResolveParatrooperMountTransform(aircraft);
+                mountSourceLabel = mount != null ? mount.name : "(none)";
+                p = mount != null ? mount.position + _paratrooperOffsetFromMount : aircraft.transform.position + _paratrooperOffsetFromMount;
+            }
+
             if (_lastResolvedMountUsedFallbackRoot && _paratrooperOffsetFromMount == Vector3.zero)
             {
                 // If no dedicated door mount exists, place the drop point slightly below aircraft bounds
@@ -1738,11 +1759,55 @@ namespace iStick2War_V2
                     "[EnemySpawner_V2] Paratrooper mount sample\n" +
                     FormatWaveDiagLine() +
                     $"  aircraft='{aircraft.name}' aircraftPos={aircraft.transform.position}\n" +
-                    $"  mountName='{mount.name}' mountPos={mount.position}\n" +
+                    $"  mountName='{mountSourceLabel}'\n" +
                     $"  offset={_paratrooperOffsetFromMount} finalDropPos={p}");
             }
 
             return p;
+        }
+
+        private bool TryResolveParatrooperSpineBoneWorldPosition(GameObject aircraftInstance, out Vector3 worldPosition)
+        {
+            worldPosition = Vector3.zero;
+            if (aircraftInstance == null || string.IsNullOrWhiteSpace(_paratrooperSpawnBoneName))
+            {
+                return false;
+            }
+
+            Spine.Unity.SkeletonAnimation[] skeletonAnimations =
+                aircraftInstance.GetComponentsInChildren<Spine.Unity.SkeletonAnimation>(true);
+            if (skeletonAnimations == null || skeletonAnimations.Length == 0)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < skeletonAnimations.Length; i++)
+            {
+                Spine.Unity.SkeletonAnimation skeletonAnimation = skeletonAnimations[i];
+                if (skeletonAnimation == null || skeletonAnimation.Skeleton == null)
+                {
+                    continue;
+                }
+
+                var bone = skeletonAnimation.Skeleton.FindBone(_paratrooperSpawnBoneName);
+                if (bone == null)
+                {
+                    continue;
+                }
+
+                worldPosition = skeletonAnimation.transform.TransformPoint(new Vector3(bone.WorldX, bone.WorldY, 0f));
+                return true;
+            }
+
+            if (_debugAnchorSpawnDiagnostics && !_loggedMissingParatrooperSpawnBoneOnce)
+            {
+                _loggedMissingParatrooperSpawnBoneOnce = true;
+                Debug.LogWarning(
+                    "[EnemySpawner_V2] Paratrooper Spine spawn bone was not found on aircraft. " +
+                    $"Expected bone '{_paratrooperSpawnBoneName}'. Falling back to mount child/root.");
+            }
+
+            return false;
         }
 
         private IEnumerator LogParatrooperSpawnTrace(
