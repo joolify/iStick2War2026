@@ -1,0 +1,31 @@
+﻿{
+    "suite": "CombatMatrixIntegrationTest_V2",
+    "timestampUtc": "2026-05-04T09:27:21.7928214Z",
+    "allPassed": true,
+    "rows": [
+        {
+            "weapon": "Colt45",
+            "enemy": "Paratrooper",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": true,
+            "timeToDamage": 0.05685370787978172,
+            "timeToKill": 0.05685370787978172,
+            "result": "PASS"
+        },
+        {
+            "weapon": "Thompson",
+            "enemy": "Paratrooper",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": true,
+            "timeToDamage": 0.11362092196941376,
+            "timeToKill": 0.11362092196941376,
+            "result": "PASS"
+        }
+    ]
+}

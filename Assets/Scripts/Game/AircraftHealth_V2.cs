@@ -19,6 +19,15 @@ namespace iStick2War_V2
 
         public event Action<AircraftHealth_V2> OnDestroyed;
 
+        /// <summary>Current HP (telemetry / weapon-vs-enemy test range).</summary>
+        public float CurrentHealth => _currentHealth;
+
+        /// <summary>Configured max HP at spawn.</summary>
+        public float MaxHealthConfigured => _maxHealth;
+
+        /// <summary>True after fatal damage or while despawning.</summary>
+        public bool IsDefeated => _isDead || _currentHealth <= 0f;
+
         private void Awake()
         {
             _currentHealth = Mathf.Max(1f, _maxHealth);

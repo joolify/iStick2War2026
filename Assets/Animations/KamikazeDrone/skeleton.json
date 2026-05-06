@@ -1,0 +1,57 @@
+{
+"skeleton": {
+	"hash": "CDe3g8Lf1R8",
+	"spine": "4.2.43",
+	"x": -623.5,
+	"y": -662.52,
+	"width": 2104.55,
+	"height": 1296.02,
+	"images": "C:/repos/web4myself/web4myself/Final/ChatGPT-Graphics/KamikazeDrone/",
+	"audio": "./audio"
+},
+"bones": [
+	{ "name": "root" }
+],
+"slots": [
+	{ "name": "kamikazeDroneBody", "bone": "root", "attachment": "kamikazeDroneBody" },
+	{ "name": "kamikazeDroneRobotLeft", "bone": "root", "attachment": "kamikazeDroneRobotLeft-2" },
+	{ "name": "kamikazeDroneRotorRight", "bone": "root", "attachment": "kamikazeDroneRotorRight-2" }
+],
+"skins": [
+	{ "name": "KamizakeDrone" },
+	{
+		"name": "KamizakeDroneSevered",
+		"attachments": {
+			"kamikazeDroneBody": {
+				"kamikazeDroneBody": { "name": "kamikazeDroneSeveredBody", "x": 3.5, "y": 6.5, "width": 1254, "height": 1254 }
+			},
+			"kamikazeDroneRobotLeft": {
+				"kamikazeDroneRobotLeft": { "name": "kamikazeDroneSeveredRotorLeft", "x": 3.11, "y": -3.61, "width": 1254, "height": 1254 },
+				"kamikazeDroneRobotLeft-2": { "name": "kamikazeDroneSeveredRotorRight", "x": 66.66, "y": 0.44, "width": 1254, "height": 1254 }
+			},
+			"kamikazeDroneRotorRight": {
+				"kamikazeDroneRotorRight": { "name": "kamikazeDroneSeveredRotorLeft", "x": 790.98, "y": -32, "width": 1254, "height": 1254 },
+				"kamikazeDroneRotorRight-2": { "name": "kamikazeDroneSeveredRotorRight", "x": 854.05, "y": -35.52, "width": 1254, "height": 1254 }
+			}
+		}
+	}
+],
+"animations": {
+	"fly": {
+		"slots": {
+			"kamikazeDroneRobotLeft": {
+				"attachment": [
+					{ "time": 0.0667, "name": "kamikazeDroneRobotLeft" },
+					{ "time": 0.1333, "name": "kamikazeDroneRobotLeft-2" }
+				]
+			},
+			"kamikazeDroneRotorRight": {
+				"attachment": [
+					{ "name": "kamikazeDroneRotorRight" },
+					{ "time": 0.0667, "name": "kamikazeDroneRotorRight-2" }
+				]
+			}
+		}
+	}
+}
+}

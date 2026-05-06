@@ -458,7 +458,7 @@ namespace iStick2War_V2
             }
 
             int mask = 0;
-            string[] layerNames = { "Ground", "Bunker", "Enemy", "EnemyBodyPart", "Aircraft" };
+            string[] layerNames = { "Ground", "Bunker", "Enemy", "EnemyBodyPart", "Aircraft", "MechRobot" };
             for (int i = 0; i < layerNames.Length; i++)
             {
                 int layer = LayerMask.NameToLayer(layerNames[i]);
@@ -481,6 +481,12 @@ namespace iStick2War_V2
             if (aircraftLayer >= 0)
             {
                 _explosionMask |= 1 << aircraftLayer;
+            }
+
+            int mechLayer = LayerMask.NameToLayer("MechRobot");
+            if (mechLayer >= 0)
+            {
+                _explosionMask |= 1 << mechLayer;
             }
         }
 

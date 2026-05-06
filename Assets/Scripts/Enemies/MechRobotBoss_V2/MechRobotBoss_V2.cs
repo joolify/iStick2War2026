@@ -38,7 +38,13 @@ namespace iStick2War_V2
             _weaponSystem?.ResetForSpawn();
             _view?.ResetVisualStateForSpawn();
 
+            // RB/colliders often live on the Spine view child (root is composition only).
             Rigidbody2D rb = GetComponent<Rigidbody2D>();
+            if (rb == null)
+            {
+                rb = GetComponentInChildren<Rigidbody2D>(true);
+            }
+
             if (rb != null)
             {
                 rb.simulated = true;
@@ -52,6 +58,11 @@ namespace iStick2War_V2
             }
 
             Collider2D rootCol = GetComponent<Collider2D>();
+            if (rootCol == null)
+            {
+                rootCol = GetComponentInChildren<Collider2D>(true);
+            }
+
             if (rootCol != null)
             {
                 rootCol.enabled = true;

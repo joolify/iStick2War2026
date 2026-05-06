@@ -1,0 +1,139 @@
+﻿{
+    "suite": "CombatMatrixIntegrationTest_V2",
+    "timestampUtc": "2026-05-04T10:18:57.4382601Z",
+    "allPassed": false,
+    "rows": [
+        {
+            "weapon": "Colt45",
+            "enemy": "Paratrooper",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": true,
+            "timeToDamage": 0.11293470859527588,
+            "timeToKill": 0.11293470859527588,
+            "result": "PASS"
+        },
+        {
+            "weapon": "Thompson",
+            "enemy": "Paratrooper",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": true,
+            "timeToDamage": 0.14109089970588685,
+            "timeToKill": 0.14109089970588685,
+            "result": "PASS"
+        },
+        {
+            "weapon": "Tesla",
+            "enemy": "Paratrooper",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": true,
+            "timeToDamage": 0.09106310456991196,
+            "timeToKill": 0.09106310456991196,
+            "result": "PASS"
+        },
+        {
+            "weapon": "Flamethrower",
+            "enemy": "Paratrooper",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": true,
+            "timeToDamage": 1.3238475322723389,
+            "timeToKill": 1.3238475322723389,
+            "result": "PASS"
+        },
+        {
+            "weapon": "Bazooka",
+            "enemy": "Paratrooper",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": true,
+            "timeToDamage": 1.9946962594985963,
+            "timeToKill": 1.9946962594985963,
+            "result": "PASS"
+        },
+        {
+            "weapon": "Thompson",
+            "enemy": "Helicopter",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": false,
+            "timeToDamage": 0.14035148918628694,
+            "timeToKill": -1.0,
+            "result": "PASS_DAMAGE_ONLY"
+        },
+        {
+            "weapon": "Colt45",
+            "enemy": "Helicopter",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": false,
+            "timeToDamage": 0.31051692366600039,
+            "timeToKill": -1.0,
+            "result": "PASS_DAMAGE_ONLY"
+        },
+        {
+            "weapon": "Flamethrower",
+            "enemy": "Helicopter",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": false,
+            "timeToDamage": 0.024072298780083658,
+            "timeToKill": -1.0,
+            "result": "PASS_DAMAGE_ONLY"
+        },
+        {
+            "weapon": "Tesla",
+            "enemy": "Helicopter",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": false,
+            "timeToDamage": 0.043009497225284579,
+            "timeToKill": -1.0,
+            "result": "PASS_DAMAGE_ONLY"
+        },
+        {
+            "weapon": "Bazooka",
+            "enemy": "Helicopter",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": true,
+            "timeToDamage": 0.7508549094200134,
+            "timeToKill": 0.7508549094200134,
+            "result": "PASS"
+        },
+        {
+            "weapon": "Bazooka",
+            "enemy": "Bomber",
+            "expectation": "MustDamage",
+            "fired": false,
+            "hit": false,
+            "damaged": false,
+            "killed": false,
+            "timeToDamage": -1.0,
+            "timeToKill": -1.0,
+            "result": "FAIL_NO_PREFAB"
+        }
+    ]
+}

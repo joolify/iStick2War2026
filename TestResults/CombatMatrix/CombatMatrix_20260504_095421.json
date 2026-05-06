@@ -1,0 +1,79 @@
+﻿{
+    "suite": "CombatMatrixIntegrationTest_V2",
+    "timestampUtc": "2026-05-04T09:54:21.4236124Z",
+    "allPassed": false,
+    "rows": [
+        {
+            "weapon": "Colt45",
+            "enemy": "Paratrooper",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": true,
+            "timeToDamage": 0.12809360027313233,
+            "timeToKill": 0.12809360027313233,
+            "result": "PASS"
+        },
+        {
+            "weapon": "Thompson",
+            "enemy": "Paratrooper",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": true,
+            "timeToDamage": 0.14444659650325776,
+            "timeToKill": 0.14444659650325776,
+            "result": "PASS"
+        },
+        {
+            "weapon": "Tesla",
+            "enemy": "Paratrooper",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": true,
+            "timeToDamage": 0.10718009620904923,
+            "timeToKill": 0.10718009620904923,
+            "result": "PASS"
+        },
+        {
+            "weapon": "Flamethrower",
+            "enemy": "Paratrooper",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": true,
+            "timeToDamage": 1.3830277919769288,
+            "timeToKill": 1.3830277919769288,
+            "result": "PASS"
+        },
+        {
+            "weapon": "Bazooka",
+            "enemy": "Paratrooper",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": true,
+            "timeToDamage": 1.981650948524475,
+            "timeToKill": 1.981650948524475,
+            "result": "PASS"
+        },
+        {
+            "weapon": "Colt45",
+            "enemy": "Helicopter",
+            "expectation": "MustDamage",
+            "fired": false,
+            "hit": false,
+            "damaged": false,
+            "killed": false,
+            "timeToDamage": -1.0,
+            "timeToKill": -1.0,
+            "result": "FAIL_NO_PREFAB"
+        }
+    ]
+}

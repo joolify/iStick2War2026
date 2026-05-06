@@ -675,6 +675,17 @@ public class Paratrooper : MonoBehaviour
         _weaponSystem?.SetDebugDisableMp40Shooting(enabled);
     }
 
+    /// <summary>
+    /// Combat matrix / tool scenes: turn off world-bounds, off-screen, and max-lifetime safety despawns so a
+    /// test-spawned paratrooper in a small layout is not deleted on the first frames.
+    /// </summary>
+    public void DisableAutomationHarnessSafetyDespawns()
+    {
+        _autoDespawnWhenOutsideMainCamera = false;
+        _enableWorldBoundsSafetyDespawn = false;
+        _enableLifetimeSafetyDespawn = false;
+    }
+
     private void WireSystems()
     {
         // Inject dependencies manually (clean + fast in Unity)

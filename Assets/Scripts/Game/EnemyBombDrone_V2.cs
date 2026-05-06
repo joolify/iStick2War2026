@@ -26,6 +26,7 @@ namespace iStick2War_V2
         private float _expireAt;
         private bool _bombDropped;
         private bool _started;
+        private bool _frozenForCombatMatrixHarness;
 
         public void BeginRun()
         {
@@ -63,6 +64,14 @@ namespace iStick2War_V2
             return facingRight ? 1f : -1f;
         }
 
+        /// <summary>
+        /// Stops horizontal movement, bomb drops, and off-screen / lifetime despawn (combat matrix harness).
+        /// </summary>
+        public void FreezeForCombatMatrixHarness()
+        {
+            _frozenForCombatMatrixHarness = true;
+        }
+
         private void Start()
         {
             if (!_started)
@@ -74,6 +83,11 @@ namespace iStick2War_V2
         private void Update()
         {
             if (!_started)
+            {
+                return;
+            }
+
+            if (_frozenForCombatMatrixHarness)
             {
                 return;
             }

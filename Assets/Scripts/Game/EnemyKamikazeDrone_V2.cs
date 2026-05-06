@@ -33,6 +33,7 @@ namespace iStick2War_V2
         private float _expireAt;
         private bool _started;
         private bool _detonated;
+        private bool _frozenForCombatMatrixHarness;
         private AttackPhase _phase;
         private float _cruiseWorldY;
         private Vector2 _diveEntryPoint;
@@ -62,6 +63,14 @@ namespace iStick2War_V2
             _started = true;
         }
 
+        /// <summary>
+        /// Disables approach, dive, expiry despawn, and bunker collision attack (combat matrix harness).
+        /// </summary>
+        public void FreezeForCombatMatrixHarness()
+        {
+            _frozenForCombatMatrixHarness = true;
+        }
+
         private void Start()
         {
             if (!_started)
@@ -73,6 +82,11 @@ namespace iStick2War_V2
         private void Update()
         {
             if (!_started || _detonated)
+            {
+                return;
+            }
+
+            if (_frozenForCombatMatrixHarness)
             {
                 return;
             }

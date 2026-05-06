@@ -1,0 +1,4 @@
+﻿weapon	enemy	expectation	fired	hit	damaged	killed	timeToDamage	timeToKill	result
+Colt45	Paratrooper	MustDamage	true	true	true	true	0.238	0.238	PASS
+Thompson	Paratrooper	MustDamage	true	true	true	true	0.117	0.117	PASS
+Tesla	Paratrooper	MustDamage	false	false	false	false	-1	-1	FAIL_EQUIP

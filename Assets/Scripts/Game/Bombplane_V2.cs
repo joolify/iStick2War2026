@@ -38,6 +38,7 @@ namespace iStick2War_V2
         private Camera _flightCamera;
         private float _flightDirectionX;
         private float _expireAt;
+        private bool _frozenForCombatMatrixHarness;
 
         /// <summary>
         /// Starts a pass using sprite scale to guess travel direction (scene-placed planes only).
@@ -86,6 +87,14 @@ namespace iStick2War_V2
             }
         }
 
+        /// <summary>
+        /// Holds position and skips bombing / flight / despawn logic (combat matrix harness).
+        /// </summary>
+        public void FreezeForCombatMatrixHarness()
+        {
+            _frozenForCombatMatrixHarness = true;
+        }
+
         private void Start()
         {
             if (!_hasStarted)
@@ -97,6 +106,11 @@ namespace iStick2War_V2
         private void Update()
         {
             if (!_hasStarted)
+            {
+                return;
+            }
+
+            if (_frozenForCombatMatrixHarness)
             {
                 return;
             }

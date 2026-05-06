@@ -44,8 +44,8 @@ namespace iStick2War_V2
 
         [Header("Boss (ground)")]
         [Tooltip(
-            "Mech Robot Boss units spawned after helicopter paratrooper schedule completes. " +
-            "Requires a MechRobotBoss prefab on EnemySpawner_V2.")]
+            "Mech Robot Boss units spawned after the helicopter paratrooper schedule completes (runs even when Enemy Count is 0). " +
+            "Assign the MechRobotBoss prefab (e.g. Mech Robot V2) on EnemySpawner_V2 — otherwise the count is ignored.")]
         [SerializeField] private int _mechRobotBossCount;
 
         [Header("Economy Reward")]

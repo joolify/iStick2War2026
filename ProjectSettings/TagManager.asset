@@ -26,7 +26,7 @@ TagManager:
   - Aircraft
   - MainMenu
   - Bunker
-  - 
+  - MechRobot
   - 
   - 
   - 
@@ -90,6 +90,9 @@ TagManager:
     locked: 0
   - name: MainMenu
     uniqueID: 1515298761
+    locked: 0
+  - name: MechRobot
+    uniqueID: 1096925253
     locked: 0
   m_RenderingLayers:
   - Default

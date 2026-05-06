@@ -452,7 +452,7 @@ namespace iStick2War_V2
             _skeletonAnimation.AnimationState.SetAnimation(1, aimAnim, true);
         }
 
-        private void SetCrosshair(Vector2 localTouchPos)
+        private void SetCrosshair(Vector2 worldAimPos)
         {
             if (IsDead())
             {
@@ -462,7 +462,14 @@ namespace iStick2War_V2
             if (_skeletonAnimation == null)
                 Debug.LogError("SkeletonAnimation not found!");
 
-            var skeletonSpacePoint = _skeletonAnimation.transform.InverseTransformPoint(localTouchPos);
+            // World aim must share the skeleton's Z so InverseTransformPoint matches the same plane as
+            // aim/crosshair bone math (Vector2 was effectively z=0 and skews local XY when the rig is
+            // offset in Z or the transform has rotation).
+            Vector3 worldAim3 = new Vector3(
+                worldAimPos.x,
+                worldAimPos.y,
+                _skeletonAnimation.transform.position.z);
+            var skeletonSpacePoint = _skeletonAnimation.transform.InverseTransformPoint(worldAim3);
             skeletonSpacePoint.x *= _skeletonAnimation.Skeleton.ScaleX;
             skeletonSpacePoint.y *= _skeletonAnimation.Skeleton.ScaleY;
             _crossHairBone.SetLocalPosition(skeletonSpacePoint);

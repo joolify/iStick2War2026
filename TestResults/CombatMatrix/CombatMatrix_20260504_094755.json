@@ -1,0 +1,67 @@
+﻿{
+    "suite": "CombatMatrixIntegrationTest_V2",
+    "timestampUtc": "2026-05-04T09:47:55.9933895Z",
+    "allPassed": true,
+    "rows": [
+        {
+            "weapon": "Colt45",
+            "enemy": "Paratrooper",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": true,
+            "timeToDamage": 0.1063493937253952,
+            "timeToKill": 0.1063493937253952,
+            "result": "PASS"
+        },
+        {
+            "weapon": "Thompson",
+            "enemy": "Paratrooper",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": true,
+            "timeToDamage": 0.13235050439834596,
+            "timeToKill": 0.13235050439834596,
+            "result": "PASS"
+        },
+        {
+            "weapon": "Tesla",
+            "enemy": "Paratrooper",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": true,
+            "timeToDamage": 0.027330096811056138,
+            "timeToKill": 0.027330096811056138,
+            "result": "PASS"
+        },
+        {
+            "weapon": "Flamethrower",
+            "enemy": "Paratrooper",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": true,
+            "timeToDamage": 1.332360029220581,
+            "timeToKill": 1.332360029220581,
+            "result": "PASS"
+        },
+        {
+            "weapon": "Bazooka",
+            "enemy": "Paratrooper",
+            "expectation": "MustDamage",
+            "fired": true,
+            "hit": true,
+            "damaged": true,
+            "killed": true,
+            "timeToDamage": 1.9881017208099366,
+            "timeToKill": 1.9881017208099366,
+            "result": "PASS"
+        }
+    ]
+}

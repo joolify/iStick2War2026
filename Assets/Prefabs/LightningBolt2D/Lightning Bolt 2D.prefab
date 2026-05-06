@@ -46,8 +46,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c38ffe61d4e86c14e9a30775f5f576f9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  startPoint: {x: -8.778977, y: -0.7460688}
-  endPoint: {x: -0.7504166, y: -4.237712}
+  startPoint: {x: -1.3991627, y: -3.0710456}
+  endPoint: {x: 0.79250383, y: 2.1859999}
   arcLifetimeMin: 0.1
   arcLifetimeMax: 1
   arcCount: 5
@@ -63,8 +63,8 @@ MonoBehaviour:
   bendSpeed: 0.5
   FPSLimit: 60
   isPlaying: 0
-  sortingLayer: 0
-  orderInLayer: 0
+  sortingLayer: 1096925253
+  orderInLayer: 350
   instanceID: 133224
   lastPosition: {x: -4.764697, y: -2.4918904, z: 0}
   isCanvas: 0

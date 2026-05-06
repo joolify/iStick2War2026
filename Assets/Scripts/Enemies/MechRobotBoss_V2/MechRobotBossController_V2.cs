@@ -40,6 +40,10 @@ namespace iStick2War_V2
             if (_rigidbody2D == null)
             {
                 _rigidbody2D = GetComponent<Rigidbody2D>();
+                if (_rigidbody2D == null)
+                {
+                    _rigidbody2D = GetComponentInChildren<Rigidbody2D>(true);
+                }
             }
 
             if (_stateMachine != null)
@@ -143,7 +147,7 @@ namespace iStick2War_V2
             }
 
             Vector2 heroPos = hero.transform.position;
-            Vector2 pos = transform.position;
+            Vector2 pos = _rigidbody2D != null ? _rigidbody2D.position : (Vector2)transform.position;
             float dx = heroPos.x - pos.x;
             FaceToward(dx);
 

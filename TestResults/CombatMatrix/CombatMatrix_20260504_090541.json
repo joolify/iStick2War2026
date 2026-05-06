@@ -1,0 +1,19 @@
+﻿{
+    "suite": "CombatMatrixIntegrationTest_V2",
+    "timestampUtc": "2026-05-04T09:05:41.0501685Z",
+    "allPassed": false,
+    "rows": [
+        {
+            "weapon": "Colt45",
+            "enemy": "Paratrooper",
+            "expectation": "MustDamage",
+            "fired": false,
+            "hit": false,
+            "damaged": false,
+            "killed": true,
+            "timeToDamage": -1.0,
+            "timeToKill": 0.0,
+            "result": "FAIL_NOT_FIRED"
+        }
+    ]
+}

@@ -147,6 +147,10 @@ namespace iStick2War_V2
         [SerializeField] private int _automationMemoryCleanupEveryRuns = 3;
         [Tooltip("Calls GC.Collect + Resources.UnloadUnusedAssets at configured cadence between runs.")]
         [SerializeField] private bool _automationEnableMemoryCleanup = true;
+        [Tooltip(
+            "When true (default), AutoHero still queues Main Menu Play after completedRuns reaches Automation Total Runs " +
+            "(only affects same-scene flow; a full scene reload resets completedRuns). Disable to stop at the menu when the batch count is reached.")]
+        [SerializeField] private bool _automationQueueMainMenuPlayAfterMaxRuns = true;
         [SerializeField] private float _automationActionDelaySeconds = 0.5f;
         [SerializeField] private bool _automationLogs = true;
         [Tooltip("Prevents test deadlock when bot is fully dry (0 mag + 0 reserve). Refills active weapon via Hero API.")]
@@ -368,6 +372,7 @@ namespace iStick2War_V2
                     return;
                 }
 
+                TickAutomationMainMenuWithoutWaveManager();
                 TickCombatOnly(deltaTime);
                 return;
             }
@@ -599,11 +604,82 @@ namespace iStick2War_V2
                 return;
             }
 
-            bool menuLikelyOpen = state == WaveLoopState_V2.Preparing && Time.timeScale <= 0.001f;
-            if (menuLikelyOpen && !_sessionInProgress && _completedRuns < Mathf.Max(1, _automationTotalRuns))
+            if (ShouldQueueAutomationMainMenuPlay(state))
             {
                 QueueAutomationAction(PendingAutomationAction.ClickMainMenuPlay);
             }
+        }
+
+        /// <summary>
+        /// First frames can run before <see cref="WaveManager_V2"/> is discoverable; still allow Play automation when the boot menu is up.
+        /// </summary>
+        private void TickAutomationMainMenuWithoutWaveManager()
+        {
+            if (!_enableAutomationRunLoop || _waveManager != null)
+            {
+                return;
+            }
+
+            if (_automationHaltedOnGameError || _automationChunkPaused || _automationCleanupInProgress)
+            {
+                return;
+            }
+
+            TryExecutePendingAutomationAction();
+            if (_pendingAutomationAction != PendingAutomationAction.None)
+            {
+                return;
+            }
+
+            if (!_sessionInProgress && ShouldQueueAutomationMainMenuPlayIgnoringWaveState())
+            {
+                QueueAutomationAction(PendingAutomationAction.ClickMainMenuPlay);
+            }
+        }
+
+        private bool ShouldQueueAutomationMainMenuPlay(WaveLoopState_V2 state)
+        {
+            if (state != WaveLoopState_V2.Preparing || _sessionInProgress)
+            {
+                return false;
+            }
+
+            return ShouldQueueAutomationMainMenuPlayIgnoringWaveState();
+        }
+
+        private bool ShouldQueueAutomationMainMenuPlayIgnoringWaveState()
+        {
+            int total = Mathf.Max(1, _automationTotalRuns);
+            bool runsAllowAnotherStart =
+                _completedRuns < total || _automationQueueMainMenuPlayAfterMaxRuns;
+            if (!runsAllowAnotherStart)
+            {
+                return false;
+            }
+
+            // Primary: paused boot / post-return menu (MainMenu_V2 sets timeScale to 0).
+            if (Time.timeScale <= 0.001f)
+            {
+                return true;
+            }
+
+            // When pause-until-play is disabled on MainMenu_V2, timeScale may stay at 1 — still detect an idle menu.
+            return IsAnyMainMenuWaitingForPlay();
+        }
+
+        private static bool IsAnyMainMenuWaitingForPlay()
+        {
+            MainMenu_V2[] menus = FindObjectsByType<MainMenu_V2>(FindObjectsInactive.Include);
+            for (int i = 0; i < menus.Length; i++)
+            {
+                MainMenu_V2 m = menus[i];
+                if (m != null && m.IsWaitingForPlay)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void QueueAutomationAction(PendingAutomationAction action)

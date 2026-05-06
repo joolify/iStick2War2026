@@ -30,8 +30,8 @@ namespace iStick2War_V2
  * - Shooting path should have a single entry point (avoid Shoot/TryShoot divergence).
  *
  * UNITY/SCENE REQUIREMENTS
- * - Raycast LayerMask must include EnemyBodyPart.
- * - Target hitboxes need Collider2D + ParatrooperBodyPart_V2.
+ * - Raycast LayerMask must include EnemyBodyPart (infantry) and Aircraft (AircraftHealth_V2 hitboxes).
+ * - Infantry: Collider2D + ParatrooperBodyPart_V2. Aircraft: Collider2D + AircraftHealth_V2 on same hierarchy.
  *
  * STATUS (WIP MIGRATION)
  * - TODO(hero-v2): implement Shoot() raycast flow and unify with TryShoot().
@@ -235,7 +235,7 @@ namespace iStick2War_V2
                 Origin = origin,
                 Direction = adjustedDirection,
                 Range = range,
-                WhatToHit = LayerMask.GetMask("EnemyBodyPart"),
+                WhatToHit = LayerMask.GetMask("EnemyBodyPart", "Aircraft"),
                 BaseDamage = baseDamage,
                 AircraftDamage = aircraftDamage,
                 DebugDrawShotRay = debugRay,
@@ -331,6 +331,32 @@ namespace iStick2War_V2
                 return false;
             }
 
+            if (!_inventory.ContainsWeaponType(weaponType))
+            {
+                return false;
+            }
+
+            // Inventory.SetActiveByType returns false when that weapon is already active (no-op).
+            // Callers like combat tests expect "switch to current" to succeed.
+            HeroWeaponRuntimeState_V2 active = _inventory.ActiveWeapon;
+            if (active != null && active.Definition != null && active.Definition.WeaponType == weaponType)
+            {
+                // Rare but possible: inventory slot matches while HeroModel_V2 still reflects another weapon
+                // (e.g. skipped programmatic refresh). CreateShotContext reads inventory → wrong DamageInfo weapon.
+                if (_model.currentWeaponType != weaponType)
+                {
+                    _isReloading = false;
+                    if (_model.currentWeaponType != WeaponType.Minigun)
+                    {
+                        _minigunHeat01 = 0f;
+                    }
+
+                    ApplyActiveWeaponToModel();
+                }
+
+                return true;
+            }
+
             return TrySwitchActiveWeapon(() => _inventory.SetActiveByType(weaponType));
         }
 
@@ -419,6 +445,19 @@ namespace iStick2War_V2
             return state.Definition != null &&
                    state.CurrentAmmo >= state.Definition.MaxAmmo &&
                    state.CurrentReserveAmmo >= state.Definition.MaxReserveAmmo;
+        }
+
+        /// <summary>Fills mag + reserve for an unlocked weapon type (used by automation / weapon test range).</summary>
+        public bool TryRefillMagazineForWeaponType(WeaponType weaponType)
+        {
+            if (!_inventory.TryGetWeaponStateByType(weaponType, out HeroWeaponRuntimeState_V2 state) ||
+                state == null ||
+                state.Definition == null)
+            {
+                return false;
+            }
+
+            return TryRefillMagazineForWeapon(state.Definition);
         }
 
         public bool TryRefillMagazineForWeapon(HeroWeaponDefinition_V2 definition)

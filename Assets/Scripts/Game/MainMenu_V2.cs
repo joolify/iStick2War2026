@@ -44,6 +44,13 @@ namespace iStick2War_V2
         private bool _gameStarted;
         private bool _loggedMissingSettingsPanel;
 
+        /// <summary>
+        /// True when the menu is active and <see cref="HandlePlay"/> has not run this session
+        /// (automation / tests: use with <see cref="WaveManager_V2"/> Preparing, not only <see cref="Time.timeScale"/>).
+        /// </summary>
+        public bool IsWaitingForPlay =>
+            isActiveAndEnabled && gameObject.activeInHierarchy && !_gameStarted;
+
         private void Awake()
         {
             if (_pauseTimeWhileMenuOpen)

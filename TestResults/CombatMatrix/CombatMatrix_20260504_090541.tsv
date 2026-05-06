@@ -1,0 +1,2 @@
+﻿weapon	enemy	expectation	fired	hit	damaged	killed	timeToDamage	timeToKill	result
+Colt45	Paratrooper	MustDamage	false	false	false	true	-1	0	FAIL_NOT_FIRED

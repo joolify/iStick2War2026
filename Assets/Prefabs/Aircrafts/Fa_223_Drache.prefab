@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 234316330969752247}
-  m_Layer: 16
+  m_Layer: 13
   m_Name: ParatrooperDrop
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -40,7 +40,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6888310759383153032}
-  m_Layer: 16
+  m_Layer: 13
   m_Name: ParatrooperDoorMount
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -75,7 +75,7 @@ GameObject:
   - component: {fileID: 4512398870011122334}
   - component: {fileID: 4512398870011122335}
   - component: {fileID: 4378454471738942667}
-  m_Layer: 16
+  m_Layer: 13
   m_Name: Fa_223_Drache
   m_TagString: Untagged
   m_Icon: {fileID: 0}

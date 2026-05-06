@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 6418741025490735590}
   - component: {fileID: 4085967671416815553}
   - component: {fileID: 812677680396707293}
+  - component: {fileID: 3847561029384756102}
   - component: {fileID: -2959385652175765908}
   - component: {fileID: 4725299056668502034}
   m_Layer: 16
@@ -117,6 +118,22 @@ MonoBehaviour:
   _bombDamage: 24
   _bombExplosionRadius: 1.75
   _dropToleranceX: 0.7
+--- !u!114 &3847561029384756102
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2886576470817135857}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b8c4e2f190a24d6a9c3e5d7b1a0f8e6d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.AircraftHealth_V2
+  _maxHealth: 120
+  _destroyRootWhenDead: 1
+  _airExplosionEffectPrefab: {fileID: 103486838786112517, guid: 2935c48982d1ad24a930f228ee4ce589, type: 3}
+  _airExplosionEffectLifetime: 1.4
 --- !u!50 &-2959385652175765908
 Rigidbody2D:
   serializedVersion: 5

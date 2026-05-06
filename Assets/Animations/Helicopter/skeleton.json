@@ -1,0 +1,81 @@
+{
+"skeleton": {
+	"hash": "up9CGfG87ZA",
+	"spine": "4.2.43",
+	"x": -354.12,
+	"y": -75.43,
+	"width": 745.98,
+	"height": 247.79,
+	"images": "../../../web4myself/web4myself/Final/ChatGPT-Graphics/Helicopter/",
+	"audio": "./audio"
+},
+"bones": [
+	{ "name": "root" }
+],
+"slots": [
+	{ "name": "helicopterBody", "bone": "root", "attachment": "helicopterBody" },
+	{ "name": "helicopterRotorLeft", "bone": "root", "attachment": "helicopterRotorLeft" },
+	{ "name": "helicopterRotorRight", "bone": "root", "attachment": "helicopterRotorRight" }
+],
+"skins": [
+	{
+		"name": "default",
+		"attachments": {
+			"helicopterRotorLeft": {
+				"helicopterRotorLeft": { "x": 84.36, "y": 47.07, "width": 615, "height": 245 }
+			},
+			"helicopterRotorRight": {
+				"helicopterRotorRight": { "x": -46.62, "y": 47.59, "width": 615, "height": 245 }
+			}
+		}
+	},
+	{
+		"name": "Helicopter",
+		"attachments": {
+			"helicopterBody": {
+				"helicopterBody": { "x": 84.94, "y": 46.92, "width": 615, "height": 245 }
+			}
+		}
+	},
+	{
+		"name": "HelicopterSevered",
+		"attachments": {
+			"helicopterBody": {
+				"helicopterBody": {
+					"name": "helicopterSeveredBody",
+					"x": 77.66,
+					"y": 49.6,
+					"scaleX": 0.31,
+					"scaleY": 0.31,
+					"width": 1986,
+					"height": 792
+				}
+			}
+		}
+	}
+],
+"animations": {
+	"fly": {
+		"slots": {
+			"helicopterRotorLeft": {
+				"attachment": [
+					{ "time": 0.0333 }
+				]
+			},
+			"helicopterRotorRight": {
+				"attachment": [
+					{},
+					{ "time": 0.0333, "name": "helicopterRotorRight" }
+				]
+			}
+		},
+		"bones": {
+			"root": {
+				"shear": [
+					{ "time": 0.0667 }
+				]
+			}
+		}
+	}
+}
+}

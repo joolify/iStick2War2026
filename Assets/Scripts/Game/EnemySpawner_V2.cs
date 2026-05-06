@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace iStick2War_V2
 {
@@ -12,6 +13,19 @@ namespace iStick2War_V2
         [SerializeField] private Paratrooper _paratrooperPrefab;
         [Tooltip("Optional. Spawned after paratrooper flights when WaveConfig.MechRobotBossCount > 0.")]
         [SerializeField] private MechRobotBoss _mechRobotBossPrefab;
+
+        [Header("Mech Robot Boss spawn")]
+        [Tooltip(
+            "When true, spawns past the orthographic camera left/right edge on X and snaps Y to ground (raycast). " +
+            "MechRobotBossController then walks/runs into combat range and stops to shoot. When false, uses Spawn X/Y range + Clamp To Camera View.")]
+        [SerializeField] private bool _spawnMechBossFromOffscreenGround = true;
+        [Tooltip("Extra horizontal distance beyond the frustum edge (added to Offscreen Beyond Frustum Horizontal World).")]
+        [SerializeField] private float _mechBossExtraOffscreenHorizontalWorld = 2f;
+        [Tooltip("Added to ground hit Y when using off-screen ground spawn. Larger values spawn the mech higher so gravity drops stay inside the game view longer.")]
+        [SerializeField] private float _mechBossGroundYOffsetWorld = 4.5f;
+        [Tooltip("Fallback Y when no ground hit: lerp between bottom and top of visible frustum (0 = bottom).")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _mechBossSpawnVerticalNormalized01 = 0.62f;
 
         [Header("Spawn Anchors (left/right)")]
         [SerializeField] private Transform[] _leftSpawnPoints;
@@ -52,8 +66,9 @@ namespace iStick2War_V2
         [SerializeField] private float _groundProbeMaxDistanceWorld = 220f;
 
         [Header("Aircraft (optional)")]
-        [Tooltip("e.g. Fa_223_Drache — instantiated at the chosen left/right spawn anchor when anchors are used.")]
-        [SerializeField] private GameObject _aircraftPrefab;
+        [Tooltip("e.g. Helicopter V2 — instantiated at the chosen left/right spawn anchor when anchors are used.")]
+        [FormerlySerializedAs("_aircraftPrefab")]
+        [SerializeField] private GameObject _helicopterPrefab;
         [Tooltip("Optional bomber pass prefab (Bombplane_V2 + AircraftHealth_V2). Spawned by WaveConfig.BomberPassCount.")]
         [SerializeField] private GameObject _bomberPrefab;
         [SerializeField] private float _bomberPassIntervalSeconds = 4.5f;
@@ -806,11 +821,12 @@ namespace iStick2War_V2
                         staggerOffset);
                 }
 
-                if (_aircraftPrefab != null)
+                if (_helicopterPrefab != null)
                 {
-                    aircraft = Instantiate(_aircraftPrefab, aircraftWorldPos, aircraftRotation);
+                    aircraft = Instantiate(_helicopterPrefab, aircraftWorldPos, aircraftRotation);
                     ApplyAircraftFacing(aircraft, fromLeft);
                     ApplyAircraftSpriteSorting(aircraft);
+                    SetupHelicopterSpineRuntime(aircraft);
                     _spawnedAircraftInstances.Add(aircraft);
 
                     if (_aircraftEnableHorizontalFlight && _aircraftHorizontalFlySpeed > 0f)
@@ -833,6 +849,8 @@ namespace iStick2War_V2
                     {
                         Destroy(aircraft, _aircraftAutoDestroySeconds);
                     }
+
+                    BeginHelicopterStateFlow(aircraft);
 
                     if (_spawnParatrooperWhenAircraftIsVisible)
                     {
@@ -901,6 +919,36 @@ namespace iStick2War_V2
                 }
                 return;
             }
+        }
+
+        private static void SetupHelicopterSpineRuntime(GameObject aircraft)
+        {
+            if (aircraft == null)
+            {
+                return;
+            }
+
+            if (aircraft.GetComponent<Helicopter_V2>() == null)
+            {
+                aircraft.AddComponent<Helicopter_V2>();
+            }
+        }
+
+        private static void BeginHelicopterStateFlow(GameObject aircraft)
+        {
+            if (aircraft == null)
+            {
+                return;
+            }
+
+            Helicopter_V2 helicopter = aircraft.GetComponent<Helicopter_V2>();
+            if (helicopter == null)
+            {
+                return;
+            }
+
+            helicopter.InitializeForSpawn();
+            helicopter.BeginFlight();
         }
 
         private void SpawnOneBomberPass(int spawnIndexInWave)
@@ -1361,12 +1409,22 @@ namespace iStick2War_V2
                 return false;
             }
 
-            Vector3 worldPosition = new Vector3(
-                UnityEngine.Random.Range(Mathf.Min(_spawnXRange.x, _spawnXRange.y), Mathf.Max(_spawnXRange.x, _spawnXRange.y)),
-                UnityEngine.Random.Range(Mathf.Min(_spawnYRange.x, _spawnYRange.y), Mathf.Max(_spawnYRange.x, _spawnYRange.y)),
-                _anchorSpawnWorldZ);
-            worldPosition = ClampToCameraView(worldPosition);
-            worldPosition.x = Mathf.Abs(worldPosition.x) < 2.5f ? worldPosition.x + 6f * (UnityEngine.Random.value < 0.5f ? -1f : 1f) : worldPosition.x;
+            Vector3 worldPosition;
+            if (_spawnMechBossFromOffscreenGround && TryComputeMechBossOffscreenGroundSpawn(out worldPosition))
+            {
+                // Intentionally off-screen on X; do not clamp into view.
+            }
+            else
+            {
+                worldPosition = new Vector3(
+                    UnityEngine.Random.Range(Mathf.Min(_spawnXRange.x, _spawnXRange.y), Mathf.Max(_spawnXRange.x, _spawnXRange.y)),
+                    UnityEngine.Random.Range(Mathf.Min(_spawnYRange.x, _spawnYRange.y), Mathf.Max(_spawnYRange.x, _spawnYRange.y)),
+                    _anchorSpawnWorldZ);
+                worldPosition = ClampToCameraView(worldPosition);
+                worldPosition.x = Mathf.Abs(worldPosition.x) < 2.5f
+                    ? worldPosition.x + 6f * (UnityEngine.Random.value < 0.5f ? -1f : 1f)
+                    : worldPosition.x;
+            }
 
             MechRobotBoss spawned = SimplePrefabPool_V2.Spawn(_mechRobotBossPrefab, worldPosition, Quaternion.identity);
             if (spawned == null)
@@ -1382,6 +1440,11 @@ namespace iStick2War_V2
             spawned.PrepareForSpawn();
 
             Rigidbody2D rb = spawned.GetComponent<Rigidbody2D>();
+            if (rb == null)
+            {
+                rb = spawned.GetComponentInChildren<Rigidbody2D>(true);
+            }
+
             if (rb != null)
             {
                 rb.linearVelocity = Vector2.zero;
@@ -2076,6 +2139,64 @@ namespace iStick2War_V2
             float x = fromLeft ? visibleMinX - margin : visibleMaxX + margin;
             aircraftWorldPos = new Vector3(x, y, _anchorSpawnWorldZ);
             rawWorldForLog = aircraftWorldPos;
+            return true;
+        }
+
+        /// <summary>
+        /// Ground boss: place X just outside the orthographic frustum; Y from Ground raycast at that X (walk-in to hero).
+        /// </summary>
+        private bool TryComputeMechBossOffscreenGroundSpawn(out Vector3 worldPosition)
+        {
+            worldPosition = Vector3.zero;
+            Camera cam = _spawnCamera != null ? _spawnCamera : Camera.main;
+            if (cam == null || !cam.orthographic)
+            {
+                return false;
+            }
+
+            bool fromLeft = UnityEngine.Random.value < 0.5f;
+            float halfHeight = cam.orthographicSize;
+            float halfWidth = halfHeight * cam.aspect;
+            float rawPad = Mathf.Max(0f, _orthographicFrustumInsetPadding);
+            float pad = GetClampedFrustumPadding(rawPad, halfWidth, halfHeight);
+            Vector3 camPos = cam.transform.position;
+            float margin =
+                Mathf.Max(0f, _offscreenBeyondFrustumHorizontalWorld + Mathf.Max(0f, _mechBossExtraOffscreenHorizontalWorld));
+            float visibleMinX = camPos.x - halfWidth;
+            float visibleMaxX = camPos.x + halfWidth;
+            float x = fromLeft ? visibleMinX - margin : visibleMaxX + margin;
+
+            float minY = camPos.y - halfHeight + pad;
+            float maxY = camPos.y + halfHeight - pad;
+            int mask = ResolveGroundSurfaceProbeMask();
+            if (mask != 0)
+            {
+                float topY = camPos.y + halfHeight - pad + Mathf.Max(0f, _groundProbeStartPaddingAboveFrustumTop);
+                float probeDist = Mathf.Max(1f, _groundProbeMaxDistanceWorld);
+                Vector2 originOffscreen = new Vector2(x, topY);
+                RaycastHit2D hit = Physics2D.Raycast(originOffscreen, Vector2.down, probeDist, mask);
+                // Off-screen X often has no colliders (level floor only under playfield). Reuse ground height from camera lane.
+                if (hit.collider == null && TryProbeGroundSurfaceY(cam, camPos, mask, out float groundYAtCam))
+                {
+                    worldPosition = new Vector3(
+                        x,
+                        groundYAtCam + Mathf.Max(0f, _mechBossGroundYOffsetWorld),
+                        _anchorSpawnWorldZ);
+                    return true;
+                }
+
+                if (hit.collider != null)
+                {
+                    worldPosition = new Vector3(
+                        x,
+                        hit.point.y + Mathf.Max(0f, _mechBossGroundYOffsetWorld),
+                        _anchorSpawnWorldZ);
+                    return true;
+                }
+            }
+
+            float yFallback = Mathf.Lerp(minY, maxY, Mathf.Clamp01(_mechBossSpawnVerticalNormalized01));
+            worldPosition = new Vector3(x, yFallback, _anchorSpawnWorldZ);
             return true;
         }
 

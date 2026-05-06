@@ -72,6 +72,20 @@ namespace iStick2War_V2
             }
         }
 
+        /// <summary>
+        /// Stops horizontal flight and disables lifetime / off-screen despawn from this component
+        /// (used by combat matrix / automation harness).
+        /// </summary>
+        public void FreezeForCombatMatrixHarness()
+        {
+            _flightActive = false;
+            if (_rb != null)
+            {
+                _rb.linearVelocity = Vector2.zero;
+                _rb.angularVelocity = 0f;
+            }
+        }
+
         private void FixedUpdate()
         {
             if (!_flightActive || _rb == null)
