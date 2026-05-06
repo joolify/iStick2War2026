@@ -1,11 +1,11 @@
 {
 "skeleton": {
-	"hash": "CDe3g8Lf1R8",
+	"hash": "lYbYZ8tNiZw",
 	"spine": "4.2.43",
-	"x": -623.5,
-	"y": -662.52,
-	"width": 2104.55,
-	"height": 1296.02,
+	"x": -1390.48,
+	"y": -621.86,
+	"width": 2023.35,
+	"height": 1255.9,
 	"images": "C:/repos/web4myself/web4myself/Final/ChatGPT-Graphics/KamikazeDrone/",
 	"audio": "./audio"
 },
@@ -18,7 +18,22 @@
 	{ "name": "kamikazeDroneRotorRight", "bone": "root", "attachment": "kamikazeDroneRotorRight-2" }
 ],
 "skins": [
-	{ "name": "KamizakeDrone" },
+	{
+		"name": "KamizakeDrone",
+		"attachments": {
+			"kamikazeDroneBody": {
+				"kamikazeDroneBody": { "x": 2.57, "y": 5.14, "width": 1254, "height": 1254 }
+			},
+			"kamikazeDroneRobotLeft": {
+				"kamikazeDroneRobotLeft": { "x": -764.08, "y": 7.7, "width": 1254, "height": 1254 },
+				"kamikazeDroneRobotLeft-2": { "name": "kamikazeDroneRotorRight", "x": -763.48, "y": 7.03, "width": 1254, "height": 1254 }
+			},
+			"kamikazeDroneRotorRight": {
+				"kamikazeDroneRotorRight": { "name": "kamikazeDroneRobotLeft", "x": 4.58, "y": 6.11, "width": 1254, "height": 1254 },
+				"kamikazeDroneRotorRight-2": { "name": "kamikazeDroneRotorRight", "x": 5.87, "y": 6.5, "width": 1254, "height": 1254 }
+			}
+		}
+	},
 	{
 		"name": "KamizakeDroneSevered",
 		"attachments": {

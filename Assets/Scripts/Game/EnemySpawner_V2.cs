@@ -72,8 +72,9 @@ namespace iStick2War_V2
         [Tooltip("Optional bomber pass prefab (Bombplane_V2 + AircraftHealth_V2). Spawned by WaveConfig.BomberPassCount.")]
         [SerializeField] private GameObject _bomberPrefab;
         [SerializeField] private float _bomberPassIntervalSeconds = 4.5f;
-        [Tooltip("Optional kamikaze drone prefab (EnemyKamikazeDrone_V2 + AircraftHealth_V2).")]
-        [SerializeField] private GameObject _kamikazeDronePrefab;
+        [Tooltip("Optional KamikazeDrone prefab (EnemyKamikazeDrone_V2 + AircraftHealth_V2).")]
+        [FormerlySerializedAs("_kamikazeDronePrefab")]
+        [SerializeField] private GameObject _kamikazeDronePrefabAsset;
         [SerializeField] private float _kamikazeDroneSpawnIntervalSeconds = 3.2f;
         [Tooltip("Optional bomb drone prefab (EnemyBombDrone_V2 + AircraftHealth_V2).")]
         [SerializeField] private GameObject _bombDronePrefab;
@@ -369,7 +370,7 @@ namespace iStick2War_V2
                     " bomber pass(es) but no bomber prefab is assigned.");
             }
 
-            if (config.KamikazeDroneCount > 0 && _kamikazeDronePrefab != null)
+            if (config.KamikazeDroneCount > 0 && _kamikazeDronePrefabAsset != null)
             {
                 StartTrackedAirThreatRoutine(
                     SpawnKamikazeDroneRoutine(config.KamikazeDroneCount, _runtimeSpawnIntervalSeconds));
@@ -1045,19 +1046,52 @@ namespace iStick2War_V2
         private void SpawnOneKamikazeDrone(int spawnIndexInWave)
         {
             SpawnOneAirThreat(
-                _kamikazeDronePrefab,
+                _kamikazeDronePrefabAsset,
                 spawnIndexInWave,
                 applyGenericHorizontalFlight: false,
                 applyAutoDespawnTimer: false,
                 applyApproachStagger: false,
                 onSpawned: go =>
                 {
+                    SetupKamikazeDroneSpineRuntime(go);
+                    BeginKamikazeDroneStateFlow(go);
+
                     EnemyKamikazeDrone_V2 drone = go.GetComponent<EnemyKamikazeDrone_V2>();
                     if (drone != null)
                     {
                         drone.BeginRun();
                     }
                 });
+        }
+
+        private static void SetupKamikazeDroneSpineRuntime(GameObject droneRoot)
+        {
+            if (droneRoot == null)
+            {
+                return;
+            }
+
+            if (droneRoot.GetComponent<KamikazeDrone_V2>() == null)
+            {
+                droneRoot.AddComponent<KamikazeDrone_V2>();
+            }
+        }
+
+        private static void BeginKamikazeDroneStateFlow(GameObject droneRoot)
+        {
+            if (droneRoot == null)
+            {
+                return;
+            }
+
+            KamikazeDrone_V2 drone = droneRoot.GetComponent<KamikazeDrone_V2>();
+            if (drone == null)
+            {
+                return;
+            }
+
+            drone.InitializeForSpawn();
+            drone.BeginFlight();
         }
 
         private void SpawnOneBombDrone(int spawnIndexInWave)
