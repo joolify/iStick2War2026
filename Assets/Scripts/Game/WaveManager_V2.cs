@@ -49,6 +49,7 @@ namespace iStick2War_V2
         [Tooltip("Optional UI Image (Type: Filled) for bunker HP ratio.")]
         [SerializeField] private Image _topBarBunkerHealthFill;
         [SerializeField] private TMP_Text _topBarWaveText;
+        [SerializeField] private TMP_Text _topBarWaveCountText;
         [Header("Game Over UI")]
         [Tooltip("Optional; if unset, resolved once when entering Game Over. Shown only when the hero is dead.")]
         [SerializeField] private GameOverUI_V2 _gameOverUi;
@@ -1712,6 +1713,11 @@ namespace iStick2War_V2
             {
                 _topBarWaveText = FindTextInSceneByName("txt_topbar_waveText");
             }
+
+            if (_topBarWaveCountText == null)
+            {
+                _topBarWaveCountText = FindTextInSceneByName("txt_topbar_waveCount");
+            }
         }
 
         private void RefreshTopBar()
@@ -1721,6 +1727,11 @@ namespace iStick2War_V2
             if (_topBarBunkerHealthText != null)
             {
                 _topBarBunkerHealthText.text = $"Bunker: {_bunkerHealth}/{_bunkerMaxHealthRuntime}";
+            }
+
+            if (_topBarWaveCountText != null)
+            {
+                _topBarWaveCountText.text = CurrentWaveNumber.ToString(CultureInfo.InvariantCulture);
             }
 
             if (_topBarBunkerHealthFill != null)

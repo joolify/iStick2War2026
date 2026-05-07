@@ -84,7 +84,7 @@ namespace iStick2War_V2
         [SerializeField] private string _paratrooperMountChildName = "ParatrooperDoorMount";
         [Tooltip("Optional Spine bone used as paratrooper drop origin (checked before mount child fallback).")]
         [SerializeField] private string _paratrooperSpawnBoneName = "paratrooperSpawnPoint";
-        [Tooltip("Optional extra offset when using Spine bone as drop origin. Keep zero for exact bone position.")]
+        [Tooltip("Optional fine-tuning offset from Spine bone (inspector override). Keep zero for exact bone position.")]
         [SerializeField] private Vector3 _paratrooperOffsetFromSpineBone = Vector3.zero;
         [SerializeField] private Vector3 _paratrooperOffsetFromMount = Vector3.zero;
         [Tooltip("If the resolved mount point is inside aircraft bounds, auto-place drop point below aircraft.")]
@@ -142,9 +142,25 @@ namespace iStick2War_V2
         [Tooltip(
             "Inset (safe margin) inside camera rect before drop is allowed. " +
             "Higher values delay drop until aircraft is clearly inside view.")]
-        [SerializeField] private float _aircraftVisibleCheckPaddingWorld = 0.25f;
+        [SerializeField] private float _aircraftVisibleCheckPaddingWorld = 0f;
         [Tooltip("Extra safety margin added to visible-check inset for actual paratrooper drop position.")]
-        [SerializeField] private float _paratrooperDropSafetyMarginWorld = 0.2f;
+        [SerializeField] private float _paratrooperDropSafetyMarginWorld = 0f;
+        [Tooltip(
+            "How far from the entering screen edge (in world units) the aircraft must travel before paratrooper drop triggers. " +
+            "Lower values drop earlier after helicopter appears.")]
+        [SerializeField] private float _paratrooperDropTriggerOffsetFromEdgeWorld = 0.75f;
+        [Tooltip("If enabled, use scene trigger points (SpawnPointLeft/SpawnPointRight) for deterministic paratrooper drop timing.")]
+        [SerializeField] private bool _useNamedDropTriggerPoints = true;
+        [Tooltip("Scene object name used as left-side paratrooper drop trigger (aircraft moving left -> right).")]
+        [SerializeField] private string _paratrooperDropTriggerLeftName = "ParatrooperDropTriggerLeft";
+        [Tooltip("Scene object name used as right-side paratrooper drop trigger (aircraft moving right -> left).")]
+        [SerializeField] private string _paratrooperDropTriggerRightName = "ParatrooperDropTriggerRight";
+        [Tooltip("Delay (seconds) after aircraft crosses ParatrooperDropTriggerLeft/ParatrooperDropTriggerRight before paratrooper drop.")]
+        [SerializeField] private float _paratrooperDropDelayAfterTriggerSeconds = 0f;
+        [Tooltip("Starts paratrooper drop this many world units before trigger point (helicopter root-based trigger).")]
+        [SerializeField] private float _paratrooperDropTriggerLeadDistanceWorld = 2.0f;
+        [Tooltip("Wait one frame before first drop so Spine bone world position is fully updated.")]
+        [SerializeField] private bool _waitOneFrameBeforeFirstParatrooperDrop = true;
         [Tooltip(
             "Extra world offset per spawn index further outside the playfield (left spawns: −X, right spawns: +X) " +
             "so multiple helicopters in one wave do not share the same approach X.")]
@@ -183,6 +199,8 @@ namespace iStick2War_V2
             "Logs anchor world positions, camera frustum snap, and fallback path. " +
             "If spawn positions look wrong: check Snap Spawns To Camera View Edges and Orthographic Frustum Inset Padding.")]
         [SerializeField] private bool _debugAnchorSpawnDiagnostics = true;
+        [Tooltip("Logs detailed Spine skeleton/bone scanning when resolving paratrooper spawn bone.")]
+        [SerializeField] private bool _debugLogBoneScanDiagnostics = true;
 
         private readonly HashSet<ParatrooperDeathHandler_V2> _trackedDeaths = new HashSet<ParatrooperDeathHandler_V2>();
         private readonly HashSet<MechRobotBossDeathHandler_V2> _trackedMechBossDeaths = new HashSet<MechRobotBossDeathHandler_V2>();
@@ -203,7 +221,6 @@ namespace iStick2War_V2
         private float _runtimeSpawnIntervalSeconds = 1f;
         private static bool _loggedFrustumPaddingClamp;
         private bool _loggedMissingParatrooperMountOnce;
-        private bool _loggedMissingParatrooperSpawnBoneOnce;
         private int _paratrooperDebugSpawnSeq;
         private bool _lastResolvedMountUsedFallbackRoot;
         private int _pendingDelayedDropCoroutines;
@@ -217,6 +234,11 @@ namespace iStick2War_V2
         private int _mechBossTargetCount;
         private int _mechBossSpawnedCount;
         private bool _mechBossScheduleComplete;
+        private int _paratrooperDropsVisibleByAircraftCount;
+        private int _paratrooperDropsVisibleByMountCount;
+        private int _paratrooperDropsTimeoutCount;
+        private Transform _cachedDropTriggerLeft;
+        private Transform _cachedDropTriggerRight;
 
         public float LastParatrooperSpawnUnscaledTime => _lastParatrooperSpawnUnscaledTime;
         public float LastSpawnAttemptUnscaledTime => _lastSpawnAttemptUnscaledTime;
@@ -225,6 +247,9 @@ namespace iStick2War_V2
         public int PendingParatrooperDropsThisWave => _pendingDelayedDropCoroutines;
         public int FailedParatrooperSpawnAttemptsThisWave => _failedParatrooperSpawnAttemptsThisWave;
         public int SpawnStarvationRecoveryCountThisWave => _spawnStarvationRecoveryCount;
+        public int ParatrooperDropsVisibleByAircraftThisWave => _paratrooperDropsVisibleByAircraftCount;
+        public int ParatrooperDropsVisibleByMountThisWave => _paratrooperDropsVisibleByMountCount;
+        public int ParatrooperDropsByTimeoutThisWave => _paratrooperDropsTimeoutCount;
         public string LastSpawnAbortReason => _lastSpawnAbortReason ?? "";
         public string SpawnRoutineExitReason => _spawnRoutineExitReason ?? "";
         public bool IsWaveActive => _isWaveActive;
@@ -265,7 +290,7 @@ namespace iStick2War_V2
                 "isWaveActive={0} waveDiag={1} targetSpawn={2} spawned={3} spawnRoutineFinished={4} pendingDrops={5} " +
                 "trackedLiving={6} trackedAircraft={7} activeAirThreatRoutines={8} activeAirThreats={9} " +
                 "lastParatrooperSpawnAgeSec={10:0.###} lastSpawnAttemptAgeSec={11:0.###} spawnStarved={12} spawnExit='{13}' failedSpawnAttempts={14} " +
-                "spawnRecoveries={15} lastAbort='{16}' waveSession={17}",
+                "spawnRecoveries={15} dropVisibleAircraft={16} dropVisibleMount={17} dropTimeout={18} lastAbort='{19}' waveSession={20}",
                 _isWaveActive,
                 FormatWaveNumberLabel(),
                 _targetSpawnCount,
@@ -282,6 +307,9 @@ namespace iStick2War_V2
                 SpawnRoutineExitReason,
                 _failedParatrooperSpawnAttemptsThisWave,
                 _spawnStarvationRecoveryCount,
+                _paratrooperDropsVisibleByAircraftCount,
+                _paratrooperDropsVisibleByMountCount,
+                _paratrooperDropsTimeoutCount,
                 LastSpawnAbortReason,
                 _waveSessionId);
         }
@@ -358,6 +386,9 @@ namespace iStick2War_V2
             _mechBossTargetCount = config.MechRobotBossCount;
             _mechBossSpawnedCount = 0;
             _mechBossScheduleComplete = _mechBossTargetCount <= 0 || _mechRobotBossPrefab == null;
+            _paratrooperDropsVisibleByAircraftCount = 0;
+            _paratrooperDropsVisibleByMountCount = 0;
+            _paratrooperDropsTimeoutCount = 0;
             if (_mechBossTargetCount > 0 && _mechRobotBossPrefab == null)
             {
                 Debug.LogWarning(
@@ -463,6 +494,9 @@ namespace iStick2War_V2
             _mechBossTargetCount = 0;
             _mechBossSpawnedCount = 0;
             _mechBossScheduleComplete = true;
+            _paratrooperDropsVisibleByAircraftCount = 0;
+            _paratrooperDropsVisibleByMountCount = 0;
+            _paratrooperDropsTimeoutCount = 0;
             // Keep a sane timestamp after StopWave: EnterGameErrorState calls StopWave while the watchdog may still
             // evaluate this frame; 0 would look like "no spawn since boot" and false-trigger no-spawn detection.
             _lastParatrooperSpawnUnscaledTime = Time.unscaledTime;
@@ -536,6 +570,16 @@ namespace iStick2War_V2
             if (_spawnedCount < _targetSpawnCount && _pendingDelayedDropCoroutines == 0)
             {
                 _spawnRoutineExitReason = "completed-with-missing-spawns";
+            }
+
+            if (_debugSpawnLogs || _debugAnchorSpawnDiagnostics)
+            {
+                Debug.Log(
+                    "[EnemySpawner_V2] Paratrooper drop reason counters " +
+                    $"(wave={FormatWaveNumberLabel()}, session={_waveSessionId}): " +
+                    $"visible-aircraft={_paratrooperDropsVisibleByAircraftCount}, " +
+                    $"visible-mount={_paratrooperDropsVisibleByMountCount}, " +
+                    $"timeout={_paratrooperDropsTimeoutCount}.");
             }
         }
 
@@ -865,12 +909,12 @@ namespace iStick2War_V2
                     {
                         int dropCount = Mathf.Max(1, paratroopersThisFlight);
                         float dropInterval = GetRuntimeDropIntervalPerFlightSeconds();
-                        StartCoroutine(SpawnParatrooperBurstWhenAircraftVisible(
+                        ConfigureHelicopterCarrierDropSequence(
                             aircraft,
                             usedAnchorSpawn,
                             fromLeft,
                             dropCount,
-                            dropInterval));
+                            dropInterval);
                         return;
                     }
 
@@ -958,6 +1002,99 @@ namespace iStick2War_V2
 
             helicopter.InitializeForSpawn();
             helicopter.BeginFlight();
+        }
+
+        private void ConfigureHelicopterCarrierDropSequence(
+            GameObject aircraft,
+            bool usedAnchorSpawn,
+            bool fromLeft,
+            int dropCount,
+            float dropInterval)
+        {
+            if (aircraft == null)
+            {
+                return;
+            }
+
+            HelicopterCarrier_V2 carrier = aircraft.GetComponent<HelicopterCarrier_V2>();
+            if (carrier == null)
+            {
+                carrier = aircraft.AddComponent<HelicopterCarrier_V2>();
+            }
+
+            int remainingPlannedDrops = Mathf.Max(1, dropCount);
+            bool pendingReleased = false;
+            _pendingDelayedDropCoroutines++;
+
+            void TryReleasePendingIfFinished()
+            {
+                if (pendingReleased || remainingPlannedDrops > 0)
+                {
+                    return;
+                }
+
+                pendingReleased = true;
+                _pendingDelayedDropCoroutines = Mathf.Max(0, _pendingDelayedDropCoroutines - 1);
+            }
+
+            carrier.Initialize(
+                fromLeft,
+                Mathf.Max(1, dropCount),
+                Mathf.Max(0f, dropInterval),
+                Mathf.Max(0f, _paratrooperDropDelayAfterTriggerSeconds),
+                Mathf.Max(0.1f, _maxSecondsToWaitForVisibleAircraftDrop),
+                _useNamedDropTriggerPoints,
+                _paratrooperDropTriggerLeftName,
+                _paratrooperDropTriggerRightName,
+                Mathf.Max(0f, _paratrooperDropTriggerLeadDistanceWorld),
+                _waitOneFrameBeforeFirstParatrooperDrop,
+                _spawnCamera,
+                _aircraftVisibleCheckPaddingWorld,
+                sampledDropPos =>
+                {
+                    bool shouldContinue = PerformCarrierDropAttempt(aircraft, usedAnchorSpawn, fromLeft, sampledDropPos);
+                    remainingPlannedDrops = Mathf.Max(0, remainingPlannedDrops - 1);
+                    TryReleasePendingIfFinished();
+                    return shouldContinue;
+                },
+                () => GetParatrooperSpawnPositionFromAircraft(aircraft),
+                (remaining, reason) =>
+                {
+                    CancelRemainingCarrierDrops(remaining, reason);
+                    remainingPlannedDrops = Mathf.Max(0, remainingPlannedDrops - Mathf.Max(0, remaining));
+                    TryReleasePendingIfFinished();
+                },
+                _debugAnchorSpawnDiagnostics
+                    ? (Action<string>)(msg => Debug.Log($"{msg} {FormatWaveDiagSuffix()}"))
+                    : null);
+            carrier.BeginDropSequence();
+        }
+
+        private bool PerformCarrierDropAttempt(GameObject aircraft, bool usedAnchorSpawn, bool fromLeft, Vector3 sampledDropPos)
+        {
+            if (!_isWaveActive || aircraft == null)
+            {
+                RegisterCancelledPlannedParatrooperDrop("carrier-aircraft-unavailable");
+                return false;
+            }
+
+            Vector3 finalDropPos = sampledDropPos;
+            finalDropPos.z = _anchorSpawnWorldZ;
+            if (!SpawnParatrooper(finalDropPos, usedAnchorSpawn, fromLeft, aircraft))
+            {
+                RegisterCancelledPlannedParatrooperDrop("carrier-drop-spawn-failed");
+            }
+
+            return _isWaveActive && aircraft != null;
+        }
+
+        private void CancelRemainingCarrierDrops(int remaining, string reason)
+        {
+            int toCancel = Mathf.Max(0, remaining);
+            for (int i = 0; i < toCancel; i++)
+            {
+                RegisterCancelledPlannedParatrooperDrop(reason);
+            }
         }
 
         private void SpawnOneBomberPass(int spawnIndexInWave)
@@ -1556,20 +1693,50 @@ namespace iStick2War_V2
                 int waveSession = _waveSessionId;
                 float timeoutAt = Time.time + Mathf.Max(0.1f, _maxSecondsToWaitForVisibleAircraftDrop);
                 Vector3 fallbackPosition = GetParatrooperSpawnPositionFromAircraft(aircraft);
+                float entryTriggerReachedAt = -1f;
+                float dropDelayAfterTrigger = Mathf.Max(0f, _paratrooperDropDelayAfterTriggerSeconds);
 
                 while (_isWaveActive && waveSession == _waveSessionId && aircraft != null && Time.time < timeoutAt)
                 {
                     fallbackPosition = GetParatrooperSpawnPositionFromAircraft(aircraft);
-                    float requiredInset = Mathf.Max(0f, _aircraftVisibleCheckPaddingWorld) + Mathf.Max(0f, _paratrooperDropSafetyMarginWorld);
-                    bool mountInsideForDrop = IsWorldPositionInsideOrthographicCameraView(fallbackPosition, requiredInset);
-                    if (mountInsideForDrop)
+                    bool usingNamedDropTrigger = _useNamedDropTriggerPoints &&
+                        TryGetNamedParatrooperDropTriggerX(fromLeft, out _);
+                    float aircraftVisibleInset = usingNamedDropTrigger ? 0f : Mathf.Max(0f, _aircraftVisibleCheckPaddingWorld);
+                    float mountVisibleInset = usingNamedDropTrigger
+                        ? 0f
+                        : aircraftVisibleInset + Mathf.Max(0f, _paratrooperDropSafetyMarginWorld);
+                    bool aircraftInsideForDrop = IsWorldXInsideOrthographicCameraView(aircraft.transform.position.x, aircraftVisibleInset);
+                    bool aircraftReachedEntryTrigger = HasAircraftReachedParatrooperDropEntryTrigger(aircraft, fromLeft);
+                    bool mountInsideForDrop = IsWorldXInsideOrthographicCameraView(fallbackPosition.x, mountVisibleInset);
+                    if (usingNamedDropTrigger && aircraftReachedEntryTrigger && entryTriggerReachedAt < 0f)
                     {
+                        entryTriggerReachedAt = Time.time;
+                    }
+
+                    bool triggerDelayElapsed = !usingNamedDropTrigger ||
+                        (entryTriggerReachedAt >= 0f && Time.time >= entryTriggerReachedAt + dropDelayAfterTrigger);
+                    bool canDropByAircraft = aircraftInsideForDrop && aircraftReachedEntryTrigger && triggerDelayElapsed;
+                    bool canDropByMount = mountInsideForDrop &&
+                        (!usingNamedDropTrigger || (aircraftReachedEntryTrigger && triggerDelayElapsed));
+                    // Prefer helicopter-body gate so the drop happens when the aircraft visibly enters play.
+                    // Keep mount gate as fallback for unusual prefab offsets where mount becomes valid first.
+                    if (canDropByAircraft || canDropByMount)
+                    {
+                        if (canDropByAircraft)
+                        {
+                            _paratrooperDropsVisibleByAircraftCount++;
+                        }
+                        else
+                        {
+                            _paratrooperDropsVisibleByMountCount++;
+                        }
+
                         LogParatrooperDropDecision(
-                            "visible",
+                            canDropByAircraft ? "visible-aircraft" : "visible-mount",
                             aircraft.transform.position,
                             fallbackPosition,
                             fromLeft);
-                        Vector3 safeDropPosition = ClampDropPositionInsideOrthographicCameraView(fallbackPosition, requiredInset);
+                        Vector3 safeDropPosition = ClampDropPositionInsideOrthographicCameraView(fallbackPosition, mountVisibleInset);
                         if (!SpawnParatrooper(safeDropPosition, usedAnchorSpawn, fromLeft, aircraft))
                         {
                             RegisterCancelledPlannedParatrooperDrop("visible-drop-spawn-failed");
@@ -1605,7 +1772,10 @@ namespace iStick2War_V2
                     aircraft != null ? aircraft.transform.position : fallbackPosition,
                     fallbackPosition,
                     fromLeft);
-                float timeoutInset = Mathf.Max(0f, _aircraftVisibleCheckPaddingWorld);
+                _paratrooperDropsTimeoutCount++;
+                bool usingNamedDropTriggerOnTimeout = _useNamedDropTriggerPoints &&
+                    TryGetNamedParatrooperDropTriggerX(fromLeft, out _);
+                float timeoutInset = usingNamedDropTriggerOnTimeout ? 0f : Mathf.Max(0f, _aircraftVisibleCheckPaddingWorld);
                 Vector3 timeoutDropPosition = ClampDropPositionInsideOrthographicCameraView(fallbackPosition, timeoutInset);
                 if (!SpawnParatrooper(timeoutDropPosition, usedAnchorSpawn, fromLeft, aircraft))
                 {
@@ -1721,22 +1891,40 @@ namespace iStick2War_V2
                 return Vector3.zero;
             }
 
+            // Inspector override note:
+            // This value is intentionally applied after resolving the spine bone.
+            // Large/incorrect values can make drops look late/wrong even if the bone lookup is correct.
+            Vector3 localOffset = _paratrooperOffsetFromSpineBone;
+            Vector3 offsetWorldTransformed = aircraft.transform.TransformVector(localOffset);
             string mountSourceLabel;
             Vector3 p;
-            if (TryResolveParatrooperSpineBoneWorldPosition(aircraft, out Vector3 spineBoneWorld))
+            if (TryResolveParatrooperSpineBoneWorldPosition(aircraft, out Vector3 spineBoneWorld, out Transform boneSpaceTransform))
             {
                 _lastResolvedMountUsedFallbackRoot = false;
                 mountSourceLabel = $"SpineBone:{_paratrooperSpawnBoneName}";
-                p = spineBoneWorld + _paratrooperOffsetFromSpineBone;
+                Vector3 offsetWorld = boneSpaceTransform != null
+                    ? boneSpaceTransform.TransformVector(localOffset)
+                    : offsetWorldTransformed;
+                p = spineBoneWorld + offsetWorld;
             }
             else
             {
-                Transform mount = ResolveParatrooperMountTransform(aircraft);
-                mountSourceLabel = mount != null ? mount.name : "(none)";
-                p = mount != null ? mount.position + _paratrooperOffsetFromMount : aircraft.transform.position + _paratrooperOffsetFromMount;
+                Transform mountTransform = ResolveParatrooperMountTransform(aircraft);
+                if (mountTransform != null && mountTransform != aircraft.transform)
+                {
+                    mountSourceLabel = $"MountChild:{mountTransform.name}";
+                    Vector3 mountOffsetWorld = mountTransform.TransformVector(_paratrooperOffsetFromMount);
+                    p = mountTransform.position + mountOffsetWorld;
+                }
+                else
+                {
+                    _lastResolvedMountUsedFallbackRoot = true;
+                    mountSourceLabel = "AircraftRootFallback";
+                    p = aircraft.transform.position + offsetWorldTransformed;
+                }
             }
 
-            if (_lastResolvedMountUsedFallbackRoot && _paratrooperOffsetFromMount == Vector3.zero)
+            if (_lastResolvedMountUsedFallbackRoot && _paratrooperOffsetFromSpineBone == Vector3.zero)
             {
                 // If no dedicated door mount exists, place the drop point slightly below aircraft bounds
                 // so the paratrooper does not immediately overlap and collide with the aircraft body.
@@ -1760,15 +1948,19 @@ namespace iStick2War_V2
                     FormatWaveDiagLine() +
                     $"  aircraft='{aircraft.name}' aircraftPos={aircraft.transform.position}\n" +
                     $"  mountName='{mountSourceLabel}'\n" +
-                    $"  offset={_paratrooperOffsetFromMount} finalDropPos={p}");
+                    $"  localOffset={localOffset} worldOffsetTransformed={offsetWorldTransformed} finalDropPos={p}");
             }
 
             return p;
         }
 
-        private bool TryResolveParatrooperSpineBoneWorldPosition(GameObject aircraftInstance, out Vector3 worldPosition)
+        private bool TryResolveParatrooperSpineBoneWorldPosition(
+            GameObject aircraftInstance,
+            out Vector3 worldPosition,
+            out Transform boneSpaceTransform)
         {
             worldPosition = Vector3.zero;
+            boneSpaceTransform = null;
             if (aircraftInstance == null || string.IsNullOrWhiteSpace(_paratrooperSpawnBoneName))
             {
                 return false;
@@ -1776,38 +1968,173 @@ namespace iStick2War_V2
 
             Spine.Unity.SkeletonAnimation[] skeletonAnimations =
                 aircraftInstance.GetComponentsInChildren<Spine.Unity.SkeletonAnimation>(true);
+            if (_debugLogBoneScanDiagnostics)
+            {
+                Debug.Log(
+                    $"[EnemySpawner_V2] Spine scan for aircraft='{aircraftInstance.name}', " +
+                    $"expectedBone='{_paratrooperSpawnBoneName}', skeletonAnimationCount={(skeletonAnimations != null ? skeletonAnimations.Length : 0)}.");
+            }
             if (skeletonAnimations == null || skeletonAnimations.Length == 0)
             {
+                if (_debugAnchorSpawnDiagnostics)
+                {
+                    Debug.LogWarning(
+                        "[EnemySpawner_V2] Paratrooper Spine spawn bone lookup failed: no SkeletonAnimation components found. " +
+                        $"aircraft='{aircraftInstance.name}', expectedBone='{_paratrooperSpawnBoneName}'.");
+                }
+
                 return false;
             }
 
+            bool hadSkeletonObject = false;
+            List<string> scannedSkeletonObjectNames = _debugAnchorSpawnDiagnostics ? new List<string>(skeletonAnimations.Length) : null;
             for (int i = 0; i < skeletonAnimations.Length; i++)
             {
                 Spine.Unity.SkeletonAnimation skeletonAnimation = skeletonAnimations[i];
-                if (skeletonAnimation == null || skeletonAnimation.Skeleton == null)
+                if (skeletonAnimation == null)
+                {
+                    if (_debugLogBoneScanDiagnostics)
+                    {
+                        Debug.Log($"[EnemySpawner_V2] Spine scan skipped null SkeletonAnimation at index={i}.");
+                    }
+                    continue;
+                }
+
+                if (skeletonAnimation.Skeleton == null)
+                {
+                    skeletonAnimation.Initialize(false);
+                }
+
+                if (skeletonAnimation.Skeleton == null)
                 {
                     continue;
                 }
 
-                var bone = skeletonAnimation.Skeleton.FindBone(_paratrooperSpawnBoneName);
+                hadSkeletonObject = true;
+                if (_debugAnchorSpawnDiagnostics)
+                {
+                    scannedSkeletonObjectNames.Add(skeletonAnimation.gameObject.name);
+                }
+                if (_debugLogBoneScanDiagnostics)
+                {
+                    Debug.Log(
+                        $"[EnemySpawner_V2] Spine scan component='{skeletonAnimation.gameObject.name}', " +
+                        $"skeletonNullAfterInit={(skeletonAnimation.Skeleton == null)}.");
+                }
+
+                // Ensure animation state is stepped for this frame before sampling spawn point.
+                skeletonAnimation.Update(0f);
+
+                Spine.Bone bone = TryFindParatrooperSpawnBone(skeletonAnimation.Skeleton, _paratrooperSpawnBoneName);
                 if (bone == null)
                 {
+                    if (_debugLogBoneScanDiagnostics)
+                    {
+                        string availableBones = CollectSkeletonBoneNames(skeletonAnimation.Skeleton);
+                        Debug.Log(
+                            "[EnemySpawner_V2] Spine scan bone not found on component. " +
+                            $"aircraft='{aircraftInstance.name}', component='{skeletonAnimation.gameObject.name}', " +
+                            $"expectedBone='{_paratrooperSpawnBoneName}', availableBones=[{availableBones}].");
+                    }
                     continue;
                 }
 
                 worldPosition = skeletonAnimation.transform.TransformPoint(new Vector3(bone.WorldX, bone.WorldY, 0f));
+                boneSpaceTransform = skeletonAnimation.transform;
                 return true;
             }
 
-            if (_debugAnchorSpawnDiagnostics && !_loggedMissingParatrooperSpawnBoneOnce)
+            if (_debugAnchorSpawnDiagnostics)
             {
-                _loggedMissingParatrooperSpawnBoneOnce = true;
+                string scannedNames = scannedSkeletonObjectNames != null && scannedSkeletonObjectNames.Count > 0
+                    ? string.Join(", ", scannedSkeletonObjectNames)
+                    : "none";
                 Debug.LogWarning(
-                    "[EnemySpawner_V2] Paratrooper Spine spawn bone was not found on aircraft. " +
-                    $"Expected bone '{_paratrooperSpawnBoneName}'. Falling back to mount child/root.");
+                    "[EnemySpawner_V2] Paratrooper Spine spawn bone lookup failed. " +
+                    $"aircraft='{aircraftInstance.name}', expectedBone='{_paratrooperSpawnBoneName}', " +
+                    $"skeletonAnimationCount={skeletonAnimations.Length}, validSkeletonObjects={hadSkeletonObject}, " +
+                    $"scannedObjects=[{scannedNames}]. Falling back to aircraft root.");
             }
 
             return false;
+        }
+
+        private static string CollectSkeletonBoneNames(Spine.Skeleton skeleton)
+        {
+            if (skeleton == null || skeleton.Bones == null || skeleton.Bones.Count == 0)
+            {
+                return "none";
+            }
+
+            List<string> names = new List<string>(skeleton.Bones.Count);
+            for (int i = 0; i < skeleton.Bones.Count; i++)
+            {
+                Spine.Bone b = skeleton.Bones.Items[i];
+                if (b != null && b.Data != null && !string.IsNullOrWhiteSpace(b.Data.Name))
+                {
+                    names.Add(b.Data.Name);
+                }
+            }
+
+            return names.Count == 0 ? "none" : string.Join(", ", names);
+        }
+
+        private static Spine.Bone TryFindParatrooperSpawnBone(Spine.Skeleton skeleton, string requestedBoneName)
+        {
+            if (skeleton == null || string.IsNullOrWhiteSpace(requestedBoneName))
+            {
+                return null;
+            }
+
+            string exactName = requestedBoneName.Trim();
+            Spine.Bone exactMatch = skeleton.FindBone(exactName);
+            if (exactMatch != null)
+            {
+                return exactMatch;
+            }
+
+            string normalizedRequested = NormalizeBoneName(exactName);
+            Spine.ExposedList<Spine.Bone> bones = skeleton.Bones;
+            if (bones == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < bones.Count; i++)
+            {
+                Spine.Bone candidate = bones.Items[i];
+                if (candidate == null || string.IsNullOrWhiteSpace(candidate.Data?.Name))
+                {
+                    continue;
+                }
+
+                if (string.Equals(candidate.Data.Name, exactName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return candidate;
+                }
+
+                if (NormalizeBoneName(candidate.Data.Name) == normalizedRequested)
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
+        private static string NormalizeBoneName(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            return value
+                .Trim()
+                .Replace("_", string.Empty)
+                .Replace("-", string.Empty)
+                .Replace(" ", string.Empty)
+                .ToLowerInvariant();
         }
 
         private IEnumerator LogParatrooperSpawnTrace(
@@ -1923,6 +2250,161 @@ namespace iStick2War_V2
                 && worldPosition.y >= minY && worldPosition.y <= maxY;
         }
 
+        private bool IsWorldXInsideOrthographicCameraView(float worldX, float padding)
+        {
+            Camera cam = _spawnCamera != null ? _spawnCamera : Camera.main;
+            if (cam == null || !cam.orthographic)
+            {
+                return true;
+            }
+
+            float halfHeight = cam.orthographicSize;
+            float halfWidth = halfHeight * cam.aspect;
+            Vector3 camPos = cam.transform.position;
+            float inset = GetClampedVisibilityInset(padding, halfWidth, halfHeight);
+            float minX = camPos.x - halfWidth + inset;
+            float maxX = camPos.x + halfWidth - inset;
+            return worldX >= minX && worldX <= maxX;
+        }
+
+        private bool HasAircraftReachedParatrooperDropEntryTrigger(GameObject aircraft, bool fromLeft)
+        {
+            if (aircraft == null)
+            {
+                return true;
+            }
+
+            if (_useNamedDropTriggerPoints && TryGetNamedParatrooperDropTriggerX(fromLeft, out float triggerX))
+            {
+                float aircraftX = aircraft.transform.position.x;
+                return fromLeft ? aircraftX >= triggerX : aircraftX <= triggerX;
+            }
+
+            Camera cam = _spawnCamera != null ? _spawnCamera : Camera.main;
+            if (cam == null || !cam.orthographic)
+            {
+                return true;
+            }
+
+            float halfHeight = cam.orthographicSize;
+            float halfWidth = halfHeight * cam.aspect;
+            Vector3 camPos = cam.transform.position;
+            float inset = GetClampedVisibilityInset(_aircraftVisibleCheckPaddingWorld, halfWidth, halfHeight);
+            float triggerOffset = Mathf.Max(0f, _paratrooperDropTriggerOffsetFromEdgeWorld);
+
+            if (fromLeft)
+            {
+                float leftEntryX = (camPos.x - halfWidth) + inset + triggerOffset;
+                return aircraft.transform.position.x >= leftEntryX;
+            }
+
+            float rightEntryX = (camPos.x + halfWidth) - inset - triggerOffset;
+            return aircraft.transform.position.x <= rightEntryX;
+        }
+
+        private bool TryGetNamedParatrooperDropTriggerX(bool fromLeft, out float triggerX)
+        {
+            triggerX = 0f;
+            Transform trigger = fromLeft ? _cachedDropTriggerLeft : _cachedDropTriggerRight;
+            string desiredName = fromLeft ? _paratrooperDropTriggerLeftName : _paratrooperDropTriggerRightName;
+
+            if (!IsUsableNamedParatrooperDropTrigger(trigger))
+            {
+                trigger = null;
+                if (fromLeft)
+                {
+                    _cachedDropTriggerLeft = null;
+                }
+                else
+                {
+                    _cachedDropTriggerRight = null;
+                }
+            }
+
+            if (trigger == null && !string.IsNullOrWhiteSpace(desiredName))
+            {
+                trigger = FindBestNamedParatrooperDropTrigger(desiredName, fromLeft);
+                if (fromLeft)
+                {
+                    _cachedDropTriggerLeft = trigger;
+                }
+                else
+                {
+                    _cachedDropTriggerRight = trigger;
+                }
+            }
+
+            if (trigger == null)
+            {
+                return false;
+            }
+
+            triggerX = trigger.position.x;
+            return true;
+        }
+
+        private static bool IsUsableNamedParatrooperDropTrigger(Transform trigger)
+        {
+            if (trigger == null)
+            {
+                return false;
+            }
+
+            UnityEngine.SceneManagement.Scene scene = trigger.gameObject.scene;
+            return scene.IsValid() && scene.isLoaded;
+        }
+
+        private Transform FindBestNamedParatrooperDropTrigger(string desiredName, bool fromLeft)
+        {
+            if (string.IsNullOrWhiteSpace(desiredName))
+            {
+                return null;
+            }
+
+            Transform[] all = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Exclude);
+            UnityEngine.SceneManagement.Scene activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            Transform best = null;
+
+            for (int i = 0; i < all.Length; i++)
+            {
+                Transform tr = all[i];
+                if (tr == null || !tr.gameObject.name.Equals(desiredName, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (!IsUsableNamedParatrooperDropTrigger(tr))
+                {
+                    continue;
+                }
+
+                if (best == null)
+                {
+                    best = tr;
+                    continue;
+                }
+
+                bool trInActiveScene = tr.gameObject.scene == activeScene;
+                bool bestInActiveScene = best.gameObject.scene == activeScene;
+                if (trInActiveScene && !bestInActiveScene)
+                {
+                    best = tr;
+                    continue;
+                }
+
+                if (trInActiveScene == bestInActiveScene)
+                {
+                    if ((fromLeft && tr.position.x < best.position.x) ||
+                        (!fromLeft && tr.position.x > best.position.x))
+                    {
+                        best = tr;
+                    }
+                }
+            }
+
+            return best;
+        }
+
         private Vector3 ClampDropPositionInsideOrthographicCameraView(Vector3 worldPosition, float padding)
         {
             Camera cam = _spawnCamera != null ? _spawnCamera : Camera.main;
@@ -1942,6 +2424,24 @@ namespace iStick2War_V2
             float maxY = camPos.y + halfHeight - inset;
 
             worldPosition.x = Mathf.Clamp(worldPosition.x, minX, maxX);
+            worldPosition.y = Mathf.Clamp(worldPosition.y, minY, maxY);
+            return worldPosition;
+        }
+
+        private Vector3 ClampDropPositionYInsideOrthographicCameraView(Vector3 worldPosition, float padding)
+        {
+            Camera cam = _spawnCamera != null ? _spawnCamera : Camera.main;
+            if (cam == null || !cam.orthographic)
+            {
+                return worldPosition;
+            }
+
+            float halfHeight = cam.orthographicSize;
+            float halfWidth = halfHeight * cam.aspect;
+            Vector3 camPos = cam.transform.position;
+            float inset = GetClampedVisibilityInset(padding, halfWidth, halfHeight);
+            float minY = camPos.y - halfHeight + inset;
+            float maxY = camPos.y + halfHeight - inset;
             worldPosition.y = Mathf.Clamp(worldPosition.y, minY, maxY);
             return worldPosition;
         }
@@ -2385,7 +2885,7 @@ namespace iStick2War_V2
             if (IsNullOrEmptyAnchorArray(_leftSpawnPoints))
             {
                 Transform t = FindSceneTransformByName(_spawnPointLeftName);
-                if (t != null)
+                if (t != null && !IsConfiguredAsParatrooperDropTrigger(t))
                 {
                     _leftSpawnPoints = new[] { t };
                     if (_debugSpawnLogs)
@@ -2398,7 +2898,7 @@ namespace iStick2War_V2
             if (IsNullOrEmptyAnchorArray(_rightSpawnPoints))
             {
                 Transform t = FindSceneTransformByName(_spawnPointRightName);
-                if (t != null)
+                if (t != null && !IsConfiguredAsParatrooperDropTrigger(t))
                 {
                     _rightSpawnPoints = new[] { t };
                     if (_debugSpawnLogs)
@@ -2407,6 +2907,21 @@ namespace iStick2War_V2
                     }
                 }
             }
+        }
+
+        private bool IsConfiguredAsParatrooperDropTrigger(Transform transformCandidate)
+        {
+            if (!_useNamedDropTriggerPoints || transformCandidate == null)
+            {
+                return false;
+            }
+
+            string candidateName = transformCandidate.gameObject.name;
+            bool matchesLeft = !string.IsNullOrWhiteSpace(_paratrooperDropTriggerLeftName)
+                && candidateName.Equals(_paratrooperDropTriggerLeftName, StringComparison.OrdinalIgnoreCase);
+            bool matchesRight = !string.IsNullOrWhiteSpace(_paratrooperDropTriggerRightName)
+                && candidateName.Equals(_paratrooperDropTriggerRightName, StringComparison.OrdinalIgnoreCase);
+            return matchesLeft || matchesRight;
         }
 
         private static bool IsNullOrEmptyAnchorArray(Transform[] arr)
