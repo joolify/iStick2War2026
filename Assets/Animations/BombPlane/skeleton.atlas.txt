@@ -1,0 +1,28 @@
+skeleton.png
+size:5484,2112
+filter:Linear,Linear
+pma:true
+scale:1.2
+ChatGPT Image May 5, 2026, 05_21_16 PM
+bounds:2585,9,2602,870
+ChatGPT Image May 5, 2026, 05_21_43 PM
+bounds:2,2,2581,877
+bombPlaneBody
+bounds:5189,242,911,290
+rotate:90
+bombPlaneRotorLeft
+bounds:5189,225,15,151
+offsets:26,35,911,290
+rotate:90
+bombPlaneRotorRight
+bounds:5342,89,15,151
+offsets:26,35,911,290
+bombPlaneSevered
+bounds:2,881,1833,1228
+offsets:10,1,1843,1229
+bombPlaneSeveredBody
+bounds:1837,881,1833,1228
+offsets:10,1,1843,1229
+bombPlaneShattered
+bounds:3672,1155,1776,954
+offsets:33,152,1843,1229

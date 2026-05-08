@@ -525,8 +525,9 @@ namespace iStick2War_V2
                 return true;
             }
 
-            int bit = 1 << other.gameObject.layer;
-            return (_detonateOnTriggerLayers.value & bit) != 0;
+            // Intentionally no layer-based fallback for triggers.
+            // Broad trigger layers (Enemy/Aircraft/etc.) caused mid-air pops on non-damage sensor colliders.
+            return false;
         }
 
         private static RocketExplosionVfxKind ClassifyAircraftExplosionVfxKind(AircraftHealth_V2 aircraft)

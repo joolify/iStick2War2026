@@ -30,7 +30,7 @@ namespace iStick2War_V2
                     Debug.Log($"[ShopStartWaveButton_V2] '{name}' OnMouseDown -> WaveManager.StartNextWaveFromShop");
                 }
 
-                _waveManager.StartNextWaveFromShop();
+                _waveManager.StartNextWaveFromShop();   
                 return;
             }
 

@@ -1,0 +1,52 @@
+{
+"skeleton": {
+	"hash": "nmwkxcphtV8",
+	"spine": "4.2.43",
+	"x": -344,
+	"y": -101.5,
+	"width": 767,
+	"height": 244,
+	"images": "../../../web4myself/web4myself/Final/ChatGPT-Graphics/BombPlane/",
+	"audio": "./audio"
+},
+"bones": [
+	{ "name": "root" }
+],
+"slots": [
+	{ "name": "bombPlaneBody", "bone": "root", "attachment": "bombPlaneBody" },
+	{ "name": "bombPlaneRotorFront", "bone": "root", "attachment": "bombPlaneRotorLeft" }
+],
+"skins": [
+	{
+		"name": "default",
+		"attachments": {
+			"bombPlaneBody": {
+				"bombPlaneBody": { "x": 35.5, "y": 19.5, "width": 759, "height": 242 }
+			}
+		}
+	},
+	{
+		"name": "BombPlane",
+		"attachments": {
+			"bombPlaneRotorFront": {
+				"bombPlaneRotorLeft": { "x": 43.5, "y": 21.5, "width": 759, "height": 242 },
+				"bombPlaneRotorRight": { "x": 43.5, "y": 60.5, "width": 759, "height": 242 }
+			}
+		}
+	},
+	{ "name": "BombPlaneSevered" }
+],
+"animations": {
+	"fly": {
+		"slots": {
+			"bombPlaneRotorFront": {
+				"attachment": [
+					{ "name": "bombPlaneRotorRight" },
+					{ "time": 0.0333, "name": "bombPlaneRotorLeft" },
+					{ "time": 0.0667, "name": "bombPlaneRotorRight" }
+				]
+			}
+		}
+	}
+}
+}

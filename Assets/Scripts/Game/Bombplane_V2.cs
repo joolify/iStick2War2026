@@ -31,14 +31,12 @@ namespace iStick2War_V2
         [SerializeField] private bool _ensureHitboxFromSpriteIfMissing = true;
         [SerializeField] private Vector2 _fallbackHitboxSize = new Vector2(4f, 1.25f);
 
-        private float _nextDropTime;
-        private int _bombsDropped;
-        private bool _hasStarted;
-        private Rigidbody2D _rigidbody2D;
-        private Camera _flightCamera;
-        private float _flightDirectionX;
-        private float _expireAt;
-        private bool _frozenForCombatMatrixHarness;
+        private BombPlaneModel_V2 _model;
+        private BombPlaneStateMachine_V2 _stateMachine;
+        private BombPlaneController_V2 _controller;
+        private BombPlaneView_V2 _view;
+        private BombPlaneSpineEventForwarder_V2 _spineEventForwarder;
+        private bool _initialized;
 
         /// <summary>
         /// Starts a pass using sprite scale to guess travel direction (scene-placed planes only).
@@ -46,7 +44,7 @@ namespace iStick2War_V2
         /// </summary>
         public void BeginBombRun()
         {
-            BeginBombRun(spawnedFromLeft: null);
+            BeginBombRun(spawnedFromLeft: (bool?)null);
         }
 
         /// <param name="spawnedFromLeft">
@@ -54,37 +52,23 @@ namespace iStick2War_V2
         /// </param>
         public void BeginBombRun(bool spawnedFromLeft)
         {
-            BeginBombRun(spawnedFromLeft: (bool?)spawnedFromLeft);
+            BeginBombRun(spawnedFromLeft: (bool?) spawnedFromLeft);
         }
 
         private void BeginBombRun(bool? spawnedFromLeft)
         {
-            EnsureHitboxIfMissing();
-
-            _hasStarted = true;
-            _nextDropTime = Time.time + Mathf.Max(0.2f, _bombDropIntervalSeconds);
-            _bombsDropped = 0;
-            _rigidbody2D = GetComponent<Rigidbody2D>();
-            _flightCamera = Camera.main;
-            _expireAt = Time.time + Mathf.Max(1f, _flightMaxLifetimeSeconds);
-
-            if (spawnedFromLeft.HasValue)
+            if (!_initialized)
             {
-                float baseDir = spawnedFromLeft.Value ? 1f : -1f;
-                _flightDirectionX = _invertFlightDirectionX ? -baseDir : baseDir;
+                InitializeForSpawn();
             }
-            else
+
+            if (_controller == null)
             {
-                bool positiveScaleMeansFacingRight = _spriteFacesRightWhenScaleXPositive;
-                bool facingRight = transform.lossyScale.x >= 0f
-                    ? positiveScaleMeansFacingRight
-                    : !positiveScaleMeansFacingRight;
-                _flightDirectionX = facingRight ? 1f : -1f;
-                if (_invertFlightDirectionX)
-                {
-                    _flightDirectionX *= -1f;
-                }
+                return;
             }
+
+            _controller.SetConfig(BuildConfig());
+            _controller.StartBombRun(spawnedFromLeft);
         }
 
         /// <summary>
@@ -92,102 +76,71 @@ namespace iStick2War_V2
         /// </summary>
         public void FreezeForCombatMatrixHarness()
         {
-            _frozenForCombatMatrixHarness = true;
+            _controller?.FreezeForCombatMatrixHarness();
         }
 
         private void Start()
         {
-            if (!_hasStarted)
+            if (!_initialized)
+            {
+                InitializeForSpawn();
+            }
+
+            if (!_model.started)
             {
                 BeginBombRun();
             }
         }
 
-        private void Update()
+        private void InitializeForSpawn()
         {
-            if (!_hasStarted)
+            EnsureReferences();
+            _stateMachine.Initialize(_model);
+            _controller.Initialize(_model, _stateMachine);
+            _controller.SetConfig(BuildConfig());
+            _view.Initialize(_stateMachine);
+            _view.ResetVisualStateForSpawn();
+
+            Spine.Unity.SkeletonAnimation skeletonAnimation = _view.SkeletonAnimation;
+            if (skeletonAnimation != null && _spineEventForwarder != null)
             {
-                return;
+                _spineEventForwarder.Init(_controller, skeletonAnimation);
             }
 
-            if (_frozenForCombatMatrixHarness)
-            {
-                return;
-            }
-
-            // Drop before movement/despawn so a pass cannot exit the same frame without attempting a release.
-            if (_bombProjectilePrefab != null && _bombsDropped < Mathf.Max(1, _maxBombsPerPass) && Time.time >= _nextDropTime)
-            {
-                DropBomb();
-                _nextDropTime = Time.time + Mathf.Max(0.2f, _bombDropIntervalSeconds);
-            }
-
-            TickFlight();
+            _initialized = true;
         }
 
-        private void DropBomb()
+        private void EnsureReferences()
         {
-            Vector3 dropPos = _bombDropMount != null ? _bombDropMount.position : transform.position;
-            BombProjectile_V2 bomb = SimplePrefabPool_V2.Spawn(_bombProjectilePrefab, dropPos, Quaternion.identity);
-            if (bomb != null)
+            _model = GetComponent<BombPlaneModel_V2>();
+            if (_model == null)
             {
-                Vector2 inherited = _rigidbody2D != null ? _rigidbody2D.linearVelocity : Vector2.zero;
-                bomb.Initialize(inherited, _bombDamage, _bombExplosionRadius);
-                _bombsDropped++;
-                if (_debugBombLogs)
-                {
-                    Debug.Log($"[Bombplane_V2] Dropped bomb {_bombsDropped}/{_maxBombsPerPass} at {dropPos}");
-                }
-            }
-        }
-
-        private void TickFlight()
-        {
-            if (!_enableHorizontalFlight)
-            {
-                return;
+                _model = gameObject.AddComponent<BombPlaneModel_V2>();
             }
 
-            float speed = Mathf.Max(0.01f, _horizontalFlySpeed);
-            transform.position += Vector3.right * (_flightDirectionX * speed * Time.deltaTime);
-            Physics2D.SyncTransforms();
-
-            if (Time.time >= _expireAt)
+            _stateMachine = GetComponent<BombPlaneStateMachine_V2>();
+            if (_stateMachine == null)
             {
-                DespawnSelf();
-                return;
+                _stateMachine = gameObject.AddComponent<BombPlaneStateMachine_V2>();
             }
 
-            if (_flightCamera == null || !_flightCamera.orthographic)
+            _controller = GetComponent<BombPlaneController_V2>();
+            if (_controller == null)
             {
-                return;
+                _controller = gameObject.AddComponent<BombPlaneController_V2>();
             }
 
-            float halfHeight = _flightCamera.orthographicSize;
-            float halfWidth = halfHeight * _flightCamera.aspect;
-            float margin = Mathf.Max(0.5f, _flightOffscreenMarginWorld);
-            float camX = _flightCamera.transform.position.x;
-            float leftBound = camX - halfWidth - margin;
-            float rightBound = camX + halfWidth + margin;
-            float x = transform.position.x;
-
-            if ((_flightDirectionX > 0f && x > rightBound) || (_flightDirectionX < 0f && x < leftBound))
+            _view = GetComponent<BombPlaneView_V2>();
+            if (_view == null)
             {
-                DespawnSelf();
+                _view = gameObject.AddComponent<BombPlaneView_V2>();
             }
-        }
 
-        private void OnDisable()
-        {
-            _hasStarted = false;
-            _bombsDropped = 0;
-            _nextDropTime = 0f;
-            _expireAt = 0f;
-        }
-
-        private void DespawnSelf()
-        {
-            SimplePrefabPool_V2.Despawn(gameObject);
+            _spineEventForwarder = GetComponent<BombPlaneSpineEventForwarder_V2>();
+            if (_spineEventForwarder == null)
+            {
+                _spineEventForwarder = gameObject.AddComponent<BombPlaneSpineEventForwarder_V2>();
+            }
         }
 
         /// <summary>
@@ -195,41 +148,29 @@ namespace iStick2War_V2
         /// </summary>
         public Vector2 GetHorizontalFlightVelocityWorld()
         {
-            if (!_hasStarted || !_enableHorizontalFlight)
-            {
-                return Vector2.zero;
-            }
-
-            float speed = Mathf.Max(0.01f, _horizontalFlySpeed);
-            return new Vector2(_flightDirectionX * speed, 0f);
+            return _controller != null ? _controller.GetHorizontalFlightVelocityWorld() : Vector2.zero;
         }
 
-        private void EnsureHitboxIfMissing()
+        private BombPlaneController_V2.Config BuildConfig()
         {
-            if (!_ensureHitboxFromSpriteIfMissing)
+            return new BombPlaneController_V2.Config
             {
-                return;
-            }
-
-            Collider2D[] cols = GetComponentsInChildren<Collider2D>(true);
-            if (cols != null && cols.Length > 0)
-            {
-                return;
-            }
-
-            var box = gameObject.AddComponent<BoxCollider2D>();
-            var sr = GetComponent<SpriteRenderer>();
-            if (sr != null && sr.sprite != null)
-            {
-                Bounds b = sr.sprite.bounds;
-                box.size = new Vector2(b.size.x, b.size.y);
-                box.offset = new Vector2(b.center.x, b.center.y);
-            }
-            else
-            {
-                box.size = _fallbackHitboxSize;
-                box.offset = Vector2.zero;
-            }
+                enableHorizontalFlight = _enableHorizontalFlight,
+                horizontalFlySpeed = _horizontalFlySpeed,
+                flightOffscreenMarginWorld = _flightOffscreenMarginWorld,
+                flightMaxLifetimeSeconds = _flightMaxLifetimeSeconds,
+                spriteFacesRightWhenScaleXPositive = _spriteFacesRightWhenScaleXPositive,
+                invertFlightDirectionX = _invertFlightDirectionX,
+                bombProjectilePrefab = _bombProjectilePrefab,
+                bombDropMount = _bombDropMount,
+                bombDropIntervalSeconds = _bombDropIntervalSeconds,
+                maxBombsPerPass = _maxBombsPerPass,
+                bombDamage = _bombDamage,
+                bombExplosionRadius = _bombExplosionRadius,
+                debugBombLogs = _debugBombLogs,
+                ensureHitboxFromSpriteIfMissing = _ensureHitboxFromSpriteIfMissing,
+                fallbackHitboxSize = _fallbackHitboxSize
+            };
         }
     }
 }
