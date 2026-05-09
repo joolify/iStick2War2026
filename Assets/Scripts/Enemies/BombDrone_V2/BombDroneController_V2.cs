@@ -3,6 +3,36 @@ using UnityEngine;
 
 namespace iStick2War_V2
 {
+    /*
+ * BombDroneController_V2 (Critical Component / Brain)
+ *
+ * Gameplay driver for the kamikaze-style bomb drone: fly horizontally, align over the bunker,
+ * drop a single pooled bomb, then continue until lifetime or off-screen despawn.
+ *
+ * Responsibilities:
+ * - StartFlight: seed Model (timers, direction toward bunker when available)
+ * - Update: horizontal motion; optional timed return Fly after DropBomb visual state
+ * - TryDropBombOverBunker: X-alignment vs BunkerHitbox_V2 within tolerance; spawn BombProjectile_V2 once
+ * - Camera-bounded despawn and max lifetime despawn via SimplePrefabPool_V2
+ * - Freeze / death hooks for harness and AircraftHealth_V2
+ *
+ * ---------------------------------------------------------
+ * CORE PRINCIPLES
+ *
+ * - Serialized tuning lives on this MonoBehaviour (unlike BombPlane’s separate Config struct)
+ * - Reads/writes BombDroneModel_V2; nudges BombDroneStateMachine_V2 for View sync
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT DO:
+ *
+ * - Act as composition root (EnemyBombDrone_V2 wires references and BeginRun)
+ * - Select Spine clips directly (BombDroneView_V2 subscribes to state changes)
+ *
+ * ---------------------------------------------------------
+ * Spine events:
+ *
+ * OnAnimationEvent exists for forwarder wiring; mapping is intentionally empty until designers add events.
+ */
     public sealed class BombDroneController_V2 : MonoBehaviour
     {
         [Header("Flight")]

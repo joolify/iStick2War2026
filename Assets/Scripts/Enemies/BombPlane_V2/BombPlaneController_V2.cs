@@ -2,6 +2,36 @@ using UnityEngine;
 
 namespace iStick2War_V2
 {
+    /*
+ * BombPlaneController_V2 (Critical Component / Brain)
+ *
+ * This acts as the gameplay driver for the bomb plane prefab.
+ *
+ * Responsibilities:
+ * - Apply serialized Config each pass (SetConfig / StartBombRun)
+ * - Horizontal flight along X when enabled (camera-bounded despawn)
+ * - Timed bomb drops via SimplePrefabPool_V2 + BombProjectile_V2.Initialize
+ * - Resolve drop world position: Spine bone (optional) → mount → root
+ * - Optional hitbox creation when the prefab has no Collider2D
+ * - Pool despawn when lifetime or off-screen rules fire
+ *
+ * ---------------------------------------------------------
+ * CORE PRINCIPLES
+ *
+ * - Reads/writes BombPlaneModel_V2; drives BombPlaneStateMachine_V2 for View sync
+ * - Does not own inspector tuning; Bombplane_V2 builds Config from serialized fields
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT DO:
+ *
+ * - Act as the composition root (use Bombplane_V2 for wiring)
+ * - Play Spine clips directly (delegated to BombPlaneView_V2 via state events)
+ *
+ * ---------------------------------------------------------
+ * Config struct:
+ *
+ * Immutable-ish snapshot of tuning for one pass (flight, bombs, debug flags).
+ */
     public sealed class BombPlaneController_V2 : MonoBehaviour
     {
         [System.Serializable]
@@ -15,6 +45,8 @@ namespace iStick2War_V2
             public bool invertFlightDirectionX;
             public BombProjectile_V2 bombProjectilePrefab;
             public Transform bombDropMount;
+            public string bombSpawnBoneName;
+            public BombPlaneView_V2 bombSpawnView;
             public float bombDropIntervalSeconds;
             public int maxBombsPerPass;
             public int bombDamage;
@@ -119,7 +151,7 @@ namespace iStick2War_V2
 
         private void DropBomb()
         {
-            Vector3 dropPos = _config.bombDropMount != null ? _config.bombDropMount.position : transform.position;
+            Vector3 dropPos = ResolveBombDropWorldPosition();
             BombProjectile_V2 bomb = SimplePrefabPool_V2.Spawn(_config.bombProjectilePrefab, dropPos, Quaternion.identity);
             if (bomb == null)
             {
@@ -133,6 +165,23 @@ namespace iStick2War_V2
             {
                 Debug.Log($"[BombPlaneController_V2] Dropped bomb {_model.bombsDropped}/{_config.maxBombsPerPass} at {dropPos}");
             }
+        }
+
+        private Vector3 ResolveBombDropWorldPosition()
+        {
+            if (!string.IsNullOrWhiteSpace(_config.bombSpawnBoneName) &&
+                _config.bombSpawnView != null &&
+                _config.bombSpawnView.TryGetBoneWorldPosition(_config.bombSpawnBoneName, out Vector3 fromBone))
+            {
+                return fromBone;
+            }
+
+            if (_config.bombDropMount != null)
+            {
+                return _config.bombDropMount.position;
+            }
+
+            return transform.position;
         }
 
         private void TickFlight()

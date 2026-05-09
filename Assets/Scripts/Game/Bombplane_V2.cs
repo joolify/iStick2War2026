@@ -2,6 +2,38 @@ using UnityEngine;
 
 namespace iStick2War_V2
 {
+    /*
+ * Bombplane_V2 Architecture Principle
+ *
+ * Bombplane_V2 acts as the COMPOSITION ROOT (entry point) of the bomb-plane stack.
+ *
+ * ❌ It MUST NOT contain bomb-drop simulation, flight integration, or Spine playback:
+ * - Horizontal flight stepping
+ * - Bomb spawn timing / pooling
+ * - Animation track selection
+ * - State transition rules
+ *
+ * ✅ It is ONLY responsible for:
+ * - Collecting serialized tuning (flight, bombing, hitbox fallback)
+ * - Ensuring Model / StateMachine / Controller / View / Spine forwarder exist
+ * - Wiring dependencies (Initialize, SetConfig, BeginBombRun)
+ * - Exposing a small public API for spawners (BeginBombRun fromLeft, freeze harness)
+ *
+ * ---------------------------------------------------------
+ * ARCHITECTURE MODEL
+ *
+ * Bombplane_V2 = Composition Root (bootstrap + inspector-facing config)
+ * Controller   = Brain (Update: drops, flight, despawn, hitbox ensure)
+ * StateMachine = Rules (state + events for the View)
+ * Model        = DNA (runtime pass data: started, timers, bomb count, direction)
+ * View         = Body (Spine clips, bone world sampling for drop origin)
+ *
+ * ---------------------------------------------------------
+ * DESIGN GOAL
+ *
+ * Bombplane_V2 stays thin: one place for serialized fields and lifecycle glue,
+ * mirroring Hero_V2’s separation between root and systems.
+ */
     [DisallowMultipleComponent]
     public sealed class Bombplane_V2 : MonoBehaviour
     {
@@ -18,6 +50,8 @@ namespace iStick2War_V2
         [Header("Bombing")]
         [SerializeField] private BombProjectile_V2 _bombProjectilePrefab;
         [SerializeField] private Transform _bombDropMount;
+        [Tooltip("Spine bone on the plane skeleton (e.g. bombSpawnPoint). Empty = spawn from bomb drop mount / root.")]
+        [SerializeField] private string _bombSpawnBoneName = "";
         [SerializeField] private float _bombDropIntervalSeconds = 1.25f;
         [SerializeField] private int _maxBombsPerPass = 4;
         [SerializeField] private int _bombDamage = 30;
@@ -133,6 +167,11 @@ namespace iStick2War_V2
             _view = GetComponent<BombPlaneView_V2>();
             if (_view == null)
             {
+                _view = GetComponentInChildren<BombPlaneView_V2>(true);
+            }
+
+            if (_view == null)
+            {
                 _view = gameObject.AddComponent<BombPlaneView_V2>();
             }
 
@@ -163,6 +202,8 @@ namespace iStick2War_V2
                 invertFlightDirectionX = _invertFlightDirectionX,
                 bombProjectilePrefab = _bombProjectilePrefab,
                 bombDropMount = _bombDropMount,
+                bombSpawnBoneName = _bombSpawnBoneName,
+                bombSpawnView = _view,
                 bombDropIntervalSeconds = _bombDropIntervalSeconds,
                 maxBombsPerPass = _maxBombsPerPass,
                 bombDamage = _bombDamage,

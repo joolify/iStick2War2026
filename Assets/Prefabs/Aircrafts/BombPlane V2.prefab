@@ -99,8 +99,9 @@ MonoBehaviour:
   _flightMaxLifetimeSeconds: 45
   _spriteFacesRightWhenScaleXPositive: 0
   _invertFlightDirectionX: 0
-  _bombProjectilePrefab: {fileID: 0}
-  _bombDropMount: {fileID: 0}
+  _bombProjectilePrefab: {fileID: -6090124734264886313, guid: 3423af3f32db2d043bc526446c57f17f, type: 3}
+  _bombDropMount: {fileID: 4671080032646525670}
+  _bombSpawnBoneName: bombSpawnPoint
   _bombDropIntervalSeconds: 1.25
   _maxBombsPerPass: 4
   _bombDamage: 30

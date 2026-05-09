@@ -2,6 +2,38 @@ using UnityEngine;
 
 namespace iStick2War_V2
 {
+    /*
+ * EnemyBombDrone_V2 Architecture Principle
+ *
+ * EnemyBombDrone_V2 acts as the COMPOSITION ROOT (entry point) of the bomb-drone stack.
+ *
+ * ❌ It MUST NOT implement flight, bunker targeting, bomb drops, or Spine playback:
+ * - Horizontal movement integration
+ * - BunkerHitbox_V2 alignment / drop gating
+ * - Projectile spawn / pooling
+ * - Animation track selection
+ *
+ * ✅ It is ONLY responsible for:
+ * - Ensuring Model / StateMachine / Controller / View / Spine forwarder (and health) exist
+ * - Wiring lifecycle: InitializeForSpawn, BeginRun → Controller.StartFlight
+ * - Subscribing AircraftHealth_V2.OnDestroyed → Controller.OnDestroyed
+ * - FreezeForCombatMatrixHarness passthrough
+ *
+ * ---------------------------------------------------------
+ * ARCHITECTURE MODEL
+ *
+ * EnemyBombDrone_V2 = Composition Root (bootstrap + external API for spawners)
+ * Controller        = Brain (Update: fly, bunker drop, lifetime / camera despawn)
+ * StateMachine      = Rules (state + events for the View)
+ * Model             = DNA (started, direction, single bomb flag, timers, harness freeze)
+ * View              = Body (Spine fly / dropBomb clips from state changes)
+ *
+ * ---------------------------------------------------------
+ * DESIGN GOAL
+ *
+ * Keep this MonoBehaviour thin and stable: one place to wire subsystems,
+ * mirroring Bombplane_V2 / Hero_V2 composition-root discipline.
+ */
     [DisallowMultipleComponent]
     public sealed class EnemyBombDrone_V2 : MonoBehaviour
     {

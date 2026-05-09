@@ -1,6 +1,6 @@
 {
 "skeleton": {
-	"hash": "nmwkxcphtV8",
+	"hash": "CyOcgHIV1/Q",
 	"spine": "4.2.43",
 	"x": -344,
 	"y": -101.5,
@@ -10,7 +10,8 @@
 	"audio": "./audio"
 },
 "bones": [
-	{ "name": "root" }
+	{ "name": "root" },
+	{ "name": "bombSpawnPoint", "parent": "root", "x": 110.36, "y": -19.85 }
 ],
 "slots": [
 	{ "name": "bombPlaneBody", "bone": "root", "attachment": "bombPlaneBody" },

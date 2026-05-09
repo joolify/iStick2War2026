@@ -2,6 +2,36 @@ using UnityEngine;
 
 namespace iStick2War_V2
 {
+    /*
+ * EnemyKamikazeDrone_V2 Architecture Principle
+ *
+ * EnemyKamikazeDrone_V2 is the GAMEPLAY DRIVER for the kamikaze prefab: bunker approach, staged dive,
+ * overlap-based impact, explosion damage split (bunker absorption then hero radius), VFX, and pool despawn.
+ *
+ * It runs alongside KamikazeDrone_V2 (composition root for Spine/state/view). Spawner wires both:
+ * SetupKamikazeDroneSpineRuntime + BeginKamikazeDroneStateFlow vs BeginRun on this component.
+ *
+ * ---------------------------------------------------------
+ * RESPONSIBILITIES:
+ *
+ * - BeginRun / Start: cache WaveManager, Hero, BunkerHitbox; ignore hero collisions; start lifetime
+ * - Update: three AttackPhase stages (horizontal cruise → move to dive entry above bunker → vertical plunge)
+ * - Trigger/collision paths to Explode when overlapping bunker geometry
+ * - Explode: ApplyBunkerDamage, optional hero damage in radius, spawn explosion prefab, DespawnSelf
+ * - FreezeForCombatMatrixHarness: halt motion and attack logic for tests/harness
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT (keep separation clean):
+ *
+ * - Own Spine clip selection (KamikazeDroneView_V2 + state machine)
+ * - Replace KamikazeDrone_V2 bootstrap; this class does not call InitializeForSpawn
+ *
+ * ---------------------------------------------------------
+ * DESIGN GOAL
+ *
+ * One focused MonoBehaviour for kamikaze simulation so the thin KamikazeDrone_V2 stack can stay stable
+ * and animator-friendly while gameplay complexity lives here.
+ */
     [DisallowMultipleComponent]
     public sealed class EnemyKamikazeDrone_V2 : MonoBehaviour
     {
