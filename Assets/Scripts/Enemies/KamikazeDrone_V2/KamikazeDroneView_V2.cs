@@ -18,7 +18,7 @@ namespace iStick2War_V2
  * ---------------------------------------------------------
  * ❌ MUST NOT DO:
  *
- * - Duplicate logic from EnemyKamikazeDrone_V2 (rotation there is optional via its own fields)
+ * - Duplicate logic from KamikazeDroneDriver_V2 (rotation there is optional via its own fields)
  *
  * ---------------------------------------------------------
  * ✅ RESPONSIBILITIES:

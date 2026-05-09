@@ -98,7 +98,7 @@ namespace iStick2War_V2
         [Tooltip("Optional bomber pass prefab (Bombplane_V2 + AircraftHealth_V2). Spawned by WaveConfig.BomberPassCount.")]
         [SerializeField] private GameObject _bomberPrefab;
         [SerializeField] private float _bomberPassIntervalSeconds = 4.5f;
-        [Tooltip("Optional KamikazeDrone prefab (EnemyKamikazeDrone_V2 + AircraftHealth_V2).")]
+        [Tooltip("Optional KamikazeDrone prefab (KamikazeDroneDriver_V2 + AircraftHealth_V2).")]
         [FormerlySerializedAs("_kamikazeDronePrefab")]
         [SerializeField] private GameObject _kamikazeDronePrefabAsset;
         [SerializeField] private float _kamikazeDroneSpawnIntervalSeconds = 3.2f;
@@ -1221,7 +1221,7 @@ namespace iStick2War_V2
                     SetupKamikazeDroneSpineRuntime(go);
                     BeginKamikazeDroneStateFlow(go);
 
-                    EnemyKamikazeDrone_V2 drone = go.GetComponent<EnemyKamikazeDrone_V2>();
+                    KamikazeDroneDriver_V2 drone = go.GetComponent<KamikazeDroneDriver_V2>();
                     if (drone != null)
                     {
                         drone.BeginRun();

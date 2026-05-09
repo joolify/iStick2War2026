@@ -18,7 +18,7 @@ namespace iStick2War_V2
  * ---------------------------------------------------------
  * CORE PRINCIPLE:
  *
- * Intentionally minimal: all heavy kamikaze behaviour lives on EnemyKamikazeDrone_V2.
+ * Intentionally minimal: all heavy kamikaze behaviour lives on KamikazeDroneDriver_V2.
  * This controller exists for parity with other V2 aircraft stacks and future Spine-driven cues.
  *
  * ---------------------------------------------------------

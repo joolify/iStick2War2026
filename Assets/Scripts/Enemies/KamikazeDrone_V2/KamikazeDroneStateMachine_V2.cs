@@ -14,7 +14,7 @@ namespace iStick2War_V2
  * CORE PRINCIPLE:
  *
  * Defines WHAT animation-facing state is active, not HOW the drone navigates the bunker
- * (EnemyKamikazeDrone_V2 owns movement and detonation).
+ * (KamikazeDroneDriver_V2 owns movement and detonation).
  *
  * ---------------------------------------------------------
  * RESPONSIBILITIES:

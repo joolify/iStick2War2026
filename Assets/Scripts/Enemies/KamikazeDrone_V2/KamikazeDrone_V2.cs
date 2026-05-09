@@ -10,7 +10,7 @@ namespace iStick2War_V2
  * kamikaze prefab: Model, StateMachine, Controller, View, Spine forwarder, plus health wiring.
  *
  * ❌ It MUST NOT implement bunker approach, dive phases, explosions, or damage:
- * - Those live on EnemyKamikazeDrone_V2 (parallel gameplay driver on the same prefab)
+ * - Those live on KamikazeDroneDriver_V2 (parallel gameplay driver on the same prefab)
  *
  * ✅ It is ONLY responsible for:
  * - Ensuring subsystems exist and InitializeForSpawn wires them
@@ -26,7 +26,7 @@ namespace iStick2War_V2
  * KamikazeDroneStateMachine  = Rules + View notifications
  * KamikazeDroneModel_V2      = DNA (currently mirrors currentState)
  * KamikazeDroneView_V2       = Body (single looping Spine clip)
- * EnemyKamikazeDrone_V2      = Separate driver: cruise, dive, overlap explode, bunker/hero damage
+ * KamikazeDroneDriver_V2      = Separate driver: cruise, dive, overlap explode, bunker/hero damage
  *
  * ---------------------------------------------------------
  * DESIGN GOAL

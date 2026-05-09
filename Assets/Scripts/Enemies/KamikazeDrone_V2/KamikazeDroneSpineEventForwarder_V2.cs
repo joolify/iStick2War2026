@@ -27,7 +27,7 @@ namespace iStick2War_V2
  * ---------------------------------------------------------
  * ❌ MUST NOT:
  *
- * - Implement bunker approach or explosions (EnemyKamikazeDrone_V2)
+ * - Implement bunker approach or explosions (KamikazeDroneDriver_V2)
  *
  * ---------------------------------------------------------
  * ARCHITECTURAL ROLE:

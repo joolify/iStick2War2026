@@ -106,7 +106,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6cf251b303092c04e8d73334af498503, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.EnemyKamikazeDrone_V2
+  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.KamikazeDroneDriver_V2
   _flySpeed: 8
   _turnLerpSpeed: 5
   _rotateToFlightDirection: 0

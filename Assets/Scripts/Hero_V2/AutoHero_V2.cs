@@ -2146,12 +2146,12 @@ namespace iStick2War_V2
                 ConsiderColliderSet(a.GetComponentsInChildren<Collider2D>(true), ignoreFrustum: false);
             }
 
-            EnemyKamikazeDrone_V2[] kamikazeDrones = Object.FindObjectsByType<EnemyKamikazeDrone_V2>(
+            KamikazeDroneDriver_V2[] kamikazeDrones = Object.FindObjectsByType<KamikazeDroneDriver_V2>(
                 FindObjectsInactive.Exclude,
                 FindObjectsSortMode.None);
             for (int i = 0; kamikazeDrones != null && i < kamikazeDrones.Length; i++)
             {
-                EnemyKamikazeDrone_V2 drone = kamikazeDrones[i];
+                KamikazeDroneDriver_V2 drone = kamikazeDrones[i];
                 if (drone == null || !drone.isActiveAndEnabled)
                 {
                     continue;
@@ -2653,8 +2653,8 @@ namespace iStick2War_V2
 
             return c.GetComponent<AircraftHealth_V2>() != null ||
                    c.GetComponentInParent<AircraftHealth_V2>() != null ||
-                   c.GetComponent<EnemyKamikazeDrone_V2>() != null ||
-                   c.GetComponentInParent<EnemyKamikazeDrone_V2>() != null ||
+                   c.GetComponent<KamikazeDroneDriver_V2>() != null ||
+                   c.GetComponentInParent<KamikazeDroneDriver_V2>() != null ||
                    c.GetComponent<EnemyBombDrone_V2>() != null ||
                    c.GetComponentInParent<EnemyBombDrone_V2>() != null ||
                    c.GetComponent<Bombplane_V2>() != null ||

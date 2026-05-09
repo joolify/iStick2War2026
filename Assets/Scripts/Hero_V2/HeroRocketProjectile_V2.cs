@@ -566,7 +566,7 @@ namespace iStick2War_V2
                 return RocketExplosionVfxKind.HelicopterOrGenericAircraft;
             }
 
-            if (aircraft.GetComponentInParent<EnemyKamikazeDrone_V2>() != null)
+            if (aircraft.GetComponentInParent<KamikazeDroneDriver_V2>() != null)
             {
                 return RocketExplosionVfxKind.KamikazeDrone;
             }

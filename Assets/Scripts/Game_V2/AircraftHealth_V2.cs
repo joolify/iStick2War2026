@@ -18,7 +18,7 @@ namespace iStick2War_V2
  * ---------------------------------------------------------
  * ❌ MUST NOT
  *
- * - Own flight paths or AI (controllers / EnemyKamikazeDrone_V2 style drivers).
+ * - Own flight paths or AI (controllers / KamikazeDroneDriver_V2 style drivers).
  * - Apply damage to bunkers or heroes directly (weapon systems route through WaveManager / DamageInfo paths).
  *
  * ---------------------------------------------------------
@@ -38,13 +38,13 @@ namespace iStick2War_V2
 
         public event Action<AircraftHealth_V2> OnDestroyed;
 
-        // Current HP (telemetry / weapon-vs-enemy test range).
+        /// <summary>Current HP (telemetry / weapon-vs-enemy test range).</summary>
         public float CurrentHealth => _currentHealth;
 
-        // Configured max HP at spawn.
+        /// <summary>Configured max HP at spawn.</summary>
         public float MaxHealthConfigured => _maxHealth;
 
-        // True after fatal damage or while despawning.
+        /// <summary>True after fatal damage or while despawning.</summary>
         public bool IsDefeated => _isDead || _currentHealth <= 0f;
 
         private void Awake()
@@ -53,8 +53,10 @@ namespace iStick2War_V2
             EnsureKinematicAircraftCollidesWithHeroProjectiles();
         }
 
-        // Kinematic vs kinematic contacts are off by default; hero bazooka uses a kinematic or dynamic RB.
-        // Enable full kinematic contacts so Fa_223-style helicopters always register hits without relying on spawn order.
+        /// <summary>
+        /// Kinematic vs kinematic contacts are off by default; hero bazooka uses a kinematic or dynamic RB.
+        /// Enable full kinematic contacts so Fa_223-style helicopters always register hits without relying on spawn order.
+        /// </summary>
         private void EnsureKinematicAircraftCollidesWithHeroProjectiles()
         {
             Rigidbody2D rb = GetComponent<Rigidbody2D>();
@@ -73,7 +75,7 @@ namespace iStick2War_V2
             _currentHealth = Mathf.Max(1f, _maxHealth);
         }
 
-        // Apply damage from hero weapons (per-weapon values come from ).
+        /// <summary>Apply damage from hero weapons (per-weapon values come from <see cref="HeroWeaponDefinition_V2"/>).</summary>
         public void ApplyDamage(float damage)
         {
             if (damage <= 0f || _currentHealth <= 0f || _isDead)

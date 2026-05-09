@@ -17,7 +17,7 @@ namespace iStick2War_V2
  * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
- * Zero-logic tag component; EnemySpawner_V2 and EnemyKamikazeDrone_V2 locate it via FindAnyObjectByType for aim cues.
+ * Zero-logic tag component; EnemySpawner_V2 and KamikazeDroneDriver_V2 locate it via FindAnyObjectByType for aim cues.
  */
     [DisallowMultipleComponent]
     public sealed class BunkerHitbox_V2 : MonoBehaviour

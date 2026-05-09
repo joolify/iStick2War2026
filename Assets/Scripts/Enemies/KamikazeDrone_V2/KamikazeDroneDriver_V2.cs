@@ -3,13 +3,11 @@ using UnityEngine;
 namespace iStick2War_V2
 {
     /*
- * EnemyKamikazeDrone_V2 Architecture Principle
+ * KamikazeDroneDriver_V2 (Gameplay driver on kamikaze root)
  *
- * EnemyKamikazeDrone_V2 is the GAMEPLAY DRIVER for the kamikaze prefab: bunker approach, staged dive,
- * overlap-based impact, explosion damage split (bunker absorption then hero radius), VFX, and pool despawn.
- *
- * It runs alongside KamikazeDrone_V2 (composition root for Spine/state/view). Spawner wires both:
- * SetupKamikazeDroneSpineRuntime + BeginKamikazeDroneStateFlow vs BeginRun on this component.
+ * PURPOSE:
+ * Bunker approach, staged dive, overlap-based impact, explosion damage split (bunker then hero radius),
+ * VFX, and pool despawn. Lives next to KamikazeDrone_V2 (Spine/state bootstrap) on the same prefab root.
  *
  * ---------------------------------------------------------
  * RESPONSIBILITIES:
@@ -21,19 +19,13 @@ namespace iStick2War_V2
  * - FreezeForCombatMatrixHarness: halt motion and attack logic for tests/harness
  *
  * ---------------------------------------------------------
- * ❌ MUST NOT (keep separation clean):
+ * ❌ MUST NOT
  *
  * - Own Spine clip selection (KamikazeDroneView_V2 + state machine)
- * - Replace KamikazeDrone_V2 bootstrap; this class does not call InitializeForSpawn
- *
- * ---------------------------------------------------------
- * DESIGN GOAL
- *
- * One focused MonoBehaviour for kamikaze simulation so the thin KamikazeDrone_V2 stack can stay stable
- * and animator-friendly while gameplay complexity lives here.
+ * - Replace KamikazeDrone_V2 bootstrap; KamikazeDrone_V2 wires Spine lifecycle separately
  */
     [DisallowMultipleComponent]
-    public sealed class EnemyKamikazeDrone_V2 : MonoBehaviour
+    public sealed class KamikazeDroneDriver_V2 : MonoBehaviour
     {
         [Header("Flight")]
         [SerializeField] private float _horizontalCruiseSpeed = 7f;
@@ -93,7 +85,6 @@ namespace iStick2War_V2
             _started = true;
         }
 
-        // Disables approach, dive, expiry despawn, and bunker collision attack (combat matrix harness).
         public void FreezeForCombatMatrixHarness()
         {
             _frozenForCombatMatrixHarness = true;
@@ -171,7 +162,6 @@ namespace iStick2War_V2
             float speed;
             if (_phase == AttackPhase.HorizontalApproach)
             {
-                // Stage 1: approach bunker horizontally at a stable cruise altitude.
                 float dirX = Mathf.Sign(bunkerPos.x - from.x);
                 if (Mathf.Abs(dirX) < 0.001f)
                 {
@@ -187,7 +177,6 @@ namespace iStick2War_V2
             }
             else if (_phase == AttackPhase.DiveToEntryPoint)
             {
-                // Stage 2: move to a stable, fixed point above bunker before plunging.
                 Vector2 diveDir = _diveEntryPoint - from;
                 float diveDist = diveDir.magnitude;
                 if (diveDist <= 0.05f)
@@ -199,12 +188,12 @@ namespace iStick2War_V2
                 {
                     stepDir = diveDir / diveDist;
                 }
+
                 speed = Mathf.Max(0.1f, _diveAttackSpeed);
                 transform.position = from + stepDir * (speed * Time.deltaTime);
             }
             else
             {
-                // Stage 3: vertical attack pass toward bunker collider.
                 stepDir = Vector2.down;
                 speed = Mathf.Max(0.1f, _diveAttackSpeed);
                 transform.position = from + stepDir * (speed * Time.deltaTime);

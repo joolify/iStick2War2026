@@ -543,7 +543,7 @@ namespace iStick2War_V2
                 bombDrones[i]?.FreezeForCombatMatrixHarness();
             }
 
-            EnemyKamikazeDrone_V2[] kamis = root.GetComponentsInChildren<EnemyKamikazeDrone_V2>(true);
+            KamikazeDroneDriver_V2[] kamis = root.GetComponentsInChildren<KamikazeDroneDriver_V2>(true);
             for (int i = 0; i < kamis.Length; i++)
             {
                 kamis[i]?.FreezeForCombatMatrixHarness();

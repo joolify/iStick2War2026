@@ -17,13 +17,13 @@ namespace iStick2War_V2
  * ---------------------------------------------------------
  * ❌ MUST NOT CONTAIN:
  *
- * - Update loops, physics, bunker queries, or explosion logic (see EnemyKamikazeDrone_V2)
+ * - Update loops, physics, bunker queries, or explosion logic (see KamikazeDroneDriver_V2)
  * - Spine access
  *
  * ---------------------------------------------------------
  * DESIGN PRINCIPLE:
  *
- * Keep the model trivial until gameplay state needs to move off EnemyKamikazeDrone_V2 only.
+ * Keep the model trivial until gameplay state needs to move off KamikazeDroneDriver_V2 only.
  */
     public sealed class KamikazeDroneModel_V2 : MonoBehaviour
     {

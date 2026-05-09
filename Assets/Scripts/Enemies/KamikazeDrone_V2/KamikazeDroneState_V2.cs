@@ -5,7 +5,7 @@ namespace iStick2War_V2
  *
  * PURPOSE:
  * High-level lifecycle for the Spine-facing stack. Actual attack phases (cruise / dive / plunge)
- * are internal to EnemyKamikazeDrone_V2, not represented here.
+ * are internal to KamikazeDroneDriver_V2, not represented here.
  *
  * ---------------------------------------------------------
  * STATES:
