@@ -13,12 +13,14 @@ namespace iStick2War_V2
  *
  * Hero_V2 acts as the COMPOSITION ROOT (entry point) of the character system.
  *
- * ❌ It MUST NOT contain any gameplay or runtime logic:
- * - Movement logic
- * - Input handling
- * - Animation logic
- * - State logic
- * - Damage logic
+ * ❌ It MUST NOT implement feature gameplay (keep that in Controller / systems):
+ * - Movement integration, weapon rules, damage validation, state transition rules
+ * - Input polling (delegated to HeroInput_V2.Tick)
+ * - Animation / VFX playback
+ *
+ * Allowed here: composition, dependency wiring, and light infrastructure hooks
+ * (e.g. Rigidbody2D bunker excludeLayers) plus the single Update orchestration line that
+ * forwards dt to Input + Controller.
  *
  * ✅ It is ONLY responsible for:
  * - Creating and collecting references

@@ -5,6 +5,35 @@ using UnityEngine;
 
 namespace iStick2War_V2
 {
+    /*
+ * HeroRocketProjectile_V2 (Bazooka rocket behaviour + AoE)
+ *
+ * PURPOSE:
+ * MonoBehaviour for the hero’s rocket projectile: straight flight (kinematic Rigidbody2D or
+ * manual fallback), arming delay, trigger/collision-based detonation rules, circular explosion
+ * damage with falloff, and typed explosion VFX per damaged enemy family.
+ *
+ * ---------------------------------------------------------
+ * RESPONSIBILITIES:
+ *
+ * - Initialize from spawner: direction, speed, lifetime, damage (+ optional aircraft damage scalar)
+ * - Filter what counts as a valid detonation (layers + gameplay components; see ShouldDetonateOnTrigger)
+ * - OverlapCircle damage pass: infantry, explodables, bunker, aircraft, etc., respecting masks
+ * - Optional camera clipping so off-screen targets do not take damage from on-screen blasts
+ * - Spawn per-family VFX (paratrooper, bomb plane, kamikaze, …) with priority ordering; pool/despawn self
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT DO:
+ *
+ * - Own long-term hero loadout or input (HeroWeaponSystem_V2 / HeroController_V2)
+ * - Drive wave flow / shop / UI (it may damage BunkerHitbox_V2 and enemies inside one blast only)
+ *
+ * ---------------------------------------------------------
+ * DESIGN PRINCIPLE:
+ *
+ * Self-contained projectile “micro-system”: one prefab instance handles lifetime, impact, explosion,
+ * and cleanup via SimplePrefabPool_V2 so gameplay code only supplies parameters once at spawn.
+ */
     [RequireComponent(typeof(Collider2D))]
     public class HeroRocketProjectile_V2 : MonoBehaviour
     {

@@ -2,27 +2,32 @@ using iStick2War;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// ParatrooperModel (Data Layer)
-/// </summary>
-/// <remarks>
-/// The ParatrooperModel represents the pure data layer of the Paratrooper entity.
-/// It stores all gameplay-relevant state but contains no behavior or logic.
-/// Immutable-friendly data container for Paratrooper state.
-///
-/// Responsibilities:
-/// - Holds entity state (health, armor, current state)
-/// - Provides data used by Controller, StateMachine, and other systems
-/// - Defines damage multipliers per body part
-///
-/// Constraints:
-/// - MUST NOT contain any game logic
-/// - MUST NOT implement Update() or any ticking behavior
-/// - MUST NOT reference Unity-specific classes (MonoBehaviour, Transform, etc.)
-/// - MUST remain a plain C# object (POCO)
-/// </remarks>
 namespace iStick2War_V2
 {
+    /*
+ * ParatrooperModel_V2 (Authoritative state + safe mutators)
+ *
+ * PURPOSE:
+ * Holds health, armor multiplier, current StickmanBodyState, burn / Tesla / land-death flags,
+ * and per-body-part damage multipliers. Applies CS16 vs test damage profiles in Awake/OnValidate.
+ *
+ * ---------------------------------------------------------
+ * RESPONSIBILITIES:
+ *
+ * - Store numeric state the Controller, DamageReceiver, and View read
+ * - Expose mutators such as ApplyDamage, ApplyWaveHealthMultiplier, burn helpers, ResetForSpawn
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT:
+ *
+ * - Host AI, raycasts, or animation playback (those live on Controller / View / root Paratrooper)
+ * - Use Update/FixedUpdate for gameplay ticks (Awake/OnValidate for profile setup only)
+ *
+ * ---------------------------------------------------------
+ * NOTE:
+ *
+ * This is a MonoBehaviour data component (not a POCO) so designers can tune profiles in the Inspector.
+ */
 public class ParatrooperModel_V2 : MonoBehaviour
 {
     public enum DamageProfileMode
@@ -199,5 +204,5 @@ public class ParatrooperModel_V2 : MonoBehaviour
 
         return 1f;
     }
-}
+    }
 }

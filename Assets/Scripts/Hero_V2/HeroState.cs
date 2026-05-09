@@ -14,7 +14,8 @@ namespace iStick2War_V2
  * STATES:
  *
  * - Idle      : Hero is stationary and not performing actions
- * - Moving    : Hero is currently moving
+ * - Moving    : Hero is currently moving horizontally
+ * - Jumping   : Hero is in a jump arc (airborne locomotion phase)
  * - Shooting  : Hero is actively firing a weapon
  * - Reloading : Hero is reloading a weapon
  * - Dead      : Hero is in a death state and no longer active

@@ -4,40 +4,40 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// ParatrooperDamageReceiver (Damage Processing Layer)
-/// </summary>
-/// <remarks>
-/// The ParatrooperDamageReceiver is responsible for handling all incoming damage
-/// to the Paratrooper entity. It acts as the single entry point for damage processing,
-/// ensuring consistent and centralized damage logic.
-///
-/// Damage Flow:
-/// BodyPart → DamageReceiver → Model → StateMachine
-///
-/// Responsibilities:
-/// - Processes all incoming damage requests
-/// - Applies body part-specific damage multipliers (e.g., headshots)
-/// - Applies armor and global damage modifiers
-/// - Updates the Model (health, state-related data)
-/// - Triggers state changes (e.g., HitReaction, Dead) via StateMachine
-///
-/// Constraints:
-/// - MUST be the only system allowed to modify health
-/// - MUST NOT contain AI decision logic (handled by Controller)
-/// - MUST NOT handle animations or visual effects (handled by View)
-/// - MUST remain deterministic and consistent for all damage sources
-
-/// Separation of concerns (AAA-level thinking)
-/// System           Responsibility
-/// BodyPart         detects hit
-/// DamageReceiver   calculates damage
-/// Model            stores result
-/// StateMachine     reacts (Dead / HitReaction)
-/// View             shows it
-/// </remarks>
 namespace iStick2War_V2
 {
+    /*
+ * ParatrooperDamageReceiver_V2 (Damage processing / gatekeeper)
+ *
+ * PURPOSE:
+ * Single entry for combat hits on the paratrooper: body parts forward DamageInfo here; this type
+ * applies multipliers, armor, special cases (Tesla EMP, explosive gib, flamethrower burn, severing),
+ * updates ParatrooperModel_V2 health, and coordinates state / death paths with the state machine
+ * and other systems.
+ *
+ * ---------------------------------------------------------
+ * FLOW
+ *
+ * ParatrooperBodyPart_V2 → TakeDamage → Model HP → StateMachine / flags → View feedback
+ *
+ * ---------------------------------------------------------
+ * RESPONSIBILITIES
+ *
+ * - Validate and compute final damage; call ParatrooperModel_V2.ApplyDamage
+ * - Route lethal and non-lethal outcomes (electrocute resume, burn timers, gib thresholds)
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT
+ *
+ * - Own AI movement or weapon aim (ParatrooperController_V2 / ParatrooperWeaponSystem_V2)
+ * - Play Spine clips (ParatrooperView_V2)
+ *
+ * ---------------------------------------------------------
+ * NOTE
+ *
+ * Spawn / wave tuning may scale max HP on the model outside this receiver; all hit-based damage
+ * should still originate from TakeDamage on this component.
+ */
 public class ParatrooperDamageReceiver_V2 : MonoBehaviour
 {
     [Header("EMP / combat stun")]

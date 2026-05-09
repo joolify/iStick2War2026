@@ -33,9 +33,11 @@ namespace iStick2War_V2
  * - Raycast LayerMask must include EnemyBodyPart (infantry) and Aircraft (AircraftHealth_V2 hitboxes).
  * - Infantry: Collider2D + ParatrooperBodyPart_V2. Aircraft: Collider2D + AircraftHealth_V2 on same hierarchy.
  *
- * STATUS (WIP MIGRATION)
- * - TODO(hero-v2): implement Shoot() raycast flow and unify with TryShoot().
- * - TODO(hero-v2): expose shot result event/data for line renderer and muzzle VFX.
+ * STATUS (partial migration)
+ * - Hit-scan path: Shoot(HeroShotContext_V2, out HeroShotResult_V2) uses HeroShotResolver_V2.
+ * - TryShoot() / internal Shoot() still exist as a lighter path without raycast; callers should
+ *   prefer the context-based Shoot for combat. TODO: fold legacy callers so one entry wins.
+ * - TODO(hero-v2): richer shot result events/data for line renderer and muzzle VFX if needed.
  */
     public class HeroWeaponSystem_V2 
     {

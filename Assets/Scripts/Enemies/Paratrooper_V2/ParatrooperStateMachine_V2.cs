@@ -1,54 +1,41 @@
 using iStick2War;
 using System;
 using UnityEngine;
-using static UnityEngine.CullingGroup;
 
-/// <summary>
-/// ParatrooperStateMachine
-/// </summary>
-/// <remarks>
-/// Controls the current state of the Paratrooper entity and manages transitions between states.
-/// Acts as the central authority for state flow and ensures consistency between systems.
-///
-/// Responsibilities:
-/// - Stores and updates the current state
-/// - Handles state transitions in a controlled manner
-/// - Notifies or drives dependent systems (Controller and View) on state changes
-///
-/// Constraints:
-/// - SHOULD NOT contain AI decision logic (handled by Controller)
-/// - SHOULD NOT contain rendering or animation logic directly (handled by View)
-/// - SHOULD remain lightweight and focused on state flow only
-///
-/// States:
-/// - Idle
-/// - Drop
-/// - Combat
-/// - HitReaction
-/// - Dead
-///
-///stateMachine.OnStateChanged += (from, to) =>
-///{
-///if (to == EnemyState.Dead)
-///deathHandler.Die();
-///};
-
-/// </remarks>
 namespace iStick2War_V2
 {
+    /*
+ * ParatrooperStateMachine_V2 (StickmanBodyState rules + notifications)
+ *
+ * PURPOSE:
+ * Owns the current iStick2War.StickmanBodyState, mirrors it onto ParatrooperModel_V2, and raises
+ * OnStateChanged so Controller / View can react without polling.
+ *
+ * ---------------------------------------------------------
+ * STATE SET:
+ *
+ * The enum is shared StickmanBodyState (Deploy, Glide, GlideDie, Shoot, Grenade, Die, …).
+ * Keep this file’s documentation in sync with Assets/Scripts/Components/StickmanBodyState.cs — do not
+ * invent parallel state names here.
+ *
+ * ---------------------------------------------------------
+ * RESPONSIBILITIES:
+ *
+ * - Initialize / ResetForSpawn, ChangeState with CanTransition / Enter / Exit hooks
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT:
+ *
+ * - Implement AI targeting, weapon raycasts, or Spine track selection
+ */
 public class ParatrooperStateMachine_V2 : MonoBehaviour
 {
-    /// <summary>
-    /// Current active state.
-    /// </summary>
+    /* Current active state (mirrored to model when changed). */
     StickmanBodyState _currentState;
 
     private ParatrooperModel_V2 _model;
 
-    /// <summary>
-    /// Fired whenever the state changes.
-    /// (fromState, toState)
-    /// </summary>
+    /* Fired as (fromState, toState) after each successful ChangeState. */
     public event Action<StickmanBodyState, StickmanBodyState> OnStateChanged;
     public StickmanBodyState CurrentState => _currentState;
 

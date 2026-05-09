@@ -2,9 +2,18 @@ using UnityEngine;
 
 namespace iStick2War_V2
 {
-    [RequireComponent(typeof(Collider2D))]
-    public sealed class PotatomasherProjectile_V2 : MonoBehaviour
-    {
+    /*
+ * PotatomasherProjectile_V2 (Paratrooper grenade projectile)
+ *
+ * PURPOSE:
+ * Physics-driven grenade arc with timed fuse; on detonation applies area damage and spawns optional VFX.
+ * Spawned by ParatrooperWeaponSystem_V2 when the AI / Spine window commits a throw.
+ *
+ * ❌ MUST NOT: decide throw timing (Controller + weapon system + Spine events own that).
+ */
+[RequireComponent(typeof(Collider2D))]
+public sealed class PotatomasherProjectile_V2 : MonoBehaviour
+{
         [SerializeField] private Rigidbody2D _rigidbody2D;
         [SerializeField] private float _gravityScale = 1.75f;
         [SerializeField] private GameObject _explosionEffectPrefab;

@@ -4,100 +4,52 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
-using UnityEngine.InputSystem.LowLevel;
-using UnityEngine.InputSystem.XR;
-/*
- * <summary>
-     * PARATROOPER ARCHITECTURE (COMPOSITION ROOT)
-     *
-     * Paratrooper (ROOT / BRAIN)
-     * ├── ParatrooperModel
-     * ├── ParatrooperController (AI + State Machine)
-     * ├── ParatrooperDamageReceiver
-     * ├── ParatrooperStateMachine
-     * ├── ParatrooperView (Spine + VFX)
-     * ├── BodyParts (multiple)
-     * │     └── ParatrooperBodyPart
-     * └── ParatrooperDeathHandler
-</summary>
-<remarks>
-     *
-     * NOTES:
-     * - This class should NOT contain gameplay logic.
-     * - It only coordinates sub-components.
-     * - Prefer dependency references via inspector or GetComponent in Awake().
-     * - Binds everything together
-     * - Owns lifecycle
-     * - References all sub systems
 
---------------------------------
-
-# SHOOT FLOW
-
-Player Weapon
-   ↓
-Raycast Hit
-   ↓
-ParatrooperBodyPart
-   ↓
-ParatrooperDamageReceiver
-   ↓
-ParatrooperModel (HP reduces)
-   ↓
-ParatrooperStateMachine (maybe change state)
-   ↓
-ParatrooperView (hit animation)
-   ↓
-ParatrooperDeathHandler (if HP <= 0)
-
---------------------------------
-
-# Spine Event Flow
-
-Spine Animation Event
-        ↓
-ParatrooperView (ONLY forwards event)
-        ↓
-ParatrooperController (interprets event)
-        ↓
-WeaponSystem / AI / StateMachine
-
---------------------------------
-
-PARATROOPER (ROOT)
-│
-├── ParatrooperController  ← receives animation events
-├── ParatrooperModel
-├── ParatrooperStateMachine
-├── ParatrooperDamageReceiver
-│
-├── ParatrooperView (Spine bridge ONLY)
-│       └── SpineEventForwarder
-│
-├── WeaponSystem
-├── BodyParts
-│
-└── ParatrooperDeathHandler
-
---------------------------------
-
-# AI FLOW
-
-ParatrooperController (Update tick)
-   ↓
-StateMachine decides state
-   ↓
-Model updates data
-   ↓
-View reacts visually
-
-</remarks>
-     */
 namespace iStick2War_V2
 {
-/// <summary>
-/// Runs LateUpdate after default Spine components so feet/bone-based ground probes match the current pose.
-/// </summary>
+    /*
+ * Paratrooper (composition root — MonoBehaviour type is still named Paratrooper)
+ *
+ * PURPOSE:
+ * Bootstrap and coordinate ParatrooperModel_V2, ParatrooperController_V2, ParatrooperStateMachine_V2,
+ * ParatrooperDamageReceiver_V2, ParatrooperView_V2, ParatrooperWeaponSystem_V2, body parts, death
+ * handler, and ParatrooperSpineEventForwarder_V2. Also hosts large air/ground integration: glide tuning,
+ * ground probes, Rigidbody2D layer exclusions while airborne, safety despawn, Tesla timing hooks, etc.
+ *
+ * ---------------------------------------------------------
+ * DAMAGE / HIT FLOW (hit-scan)
+ *
+ * Player weapon raycast
+ *   → ParatrooperBodyPart_V2
+ *   → ParatrooperDamageReceiver_V2 (multipliers, special deaths)
+ *   → ParatrooperModel_V2 (HP)
+ *   → ParatrooperStateMachine_V2 (e.g. Die / airborne reactions)
+ *   → ParatrooperView_V2 (hit feedback, gibbing, VFX)
+ *   → ParatrooperDeathHandler_V2 when the unit should despawn
+ *
+ * ---------------------------------------------------------
+ * SPINE EVENT FLOW
+ *
+ * Spine AnimationState.Event
+ *   → ParatrooperSpineEventForwarder_V2 (maps named events)
+ *   → ParatrooperController_V2 (timing / AI gates)
+ *   → ParatrooperWeaponSystem_V2 / StateMachine as appropriate
+ *
+ * View listens to state for clips; it does not replace the forwarder for gameplay-timed events.
+ *
+ * ---------------------------------------------------------
+ * DESIGN NOTE
+ *
+ * Much gameplay-adjacent simulation still lives on this root for historical reasons; subsystems own
+ * their domains (AI decisions Controller, presentation View, damage math DamageReceiver). When adding
+ * features, prefer extending those types before growing this file further.
+ *
+ * ---------------------------------------------------------
+ * UNITY EXECUTION
+ *
+ * DefaultExecutionOrder(500): LateUpdate runs after default Spine components so feet / bone-based
+ * ground probes match the current pose.
+ */
 [DefaultExecutionOrder(500)]
 public class Paratrooper : MonoBehaviour
 {
@@ -305,14 +257,6 @@ public class Paratrooper : MonoBehaviour
         }
     }
 
-
-    /*
-     * Paratrooper.cs
-     *  ↓
-     * Initialize systems
-     *    ↓
-     * Controller starts AI
-     */
     private void Awake()
     {
         InitializeDependencies();

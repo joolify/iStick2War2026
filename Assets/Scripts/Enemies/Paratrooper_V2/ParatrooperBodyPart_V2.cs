@@ -4,33 +4,27 @@ using Spine;
 using Spine.Unity;
 using UnityEngine;
 
-/// <summary>
-/// ParatrooperBodyPart (Hitbox Layer)
-/// </summary>
-/// <remarks>
-/// Represents a single hitbox (body part) of the Paratrooper entity.
-/// This component is intentionally minimal and acts only as a relay between
-/// hit detection and the damage system.
-///
-/// Hit Flow:
-/// Raycast → BodyPart → DamageReceiver
-///
-/// Responsibilities:
-/// - Identifies which body part was hit
-/// - Forwards hit data to the ParatrooperDamageReceiver
-///
-/// Constraints:
-/// - MUST NOT contain any damage calculation logic
-/// - MUST NOT modify Model data directly
-/// - MUST NOT contain gameplay logic
-/// - MUST remain lightweight and efficient (can exist in large numbers)
-///
-/// Notes:
-/// - Typically attached to child GameObjects with colliders
-/// - Works with raycasts or collision-based hit detection
-/// </remarks>
 namespace iStick2War_V2
 {
+    /*
+ * ParatrooperBodyPart_V2 (Hitbox + hit presentation hooks)
+ *
+ * PURPOSE:
+ * One body-part collider on the paratrooper: identifies BodyPartType, forwards hits to
+ * ParatrooperDamageReceiver_V2, and may run lightweight Spine hit-reaction / impulse presentation
+ * tuned in the Inspector (still not authoritative for HP or AI).
+ *
+ * ---------------------------------------------------------
+ * FLOW
+ *
+ * Raycast / collision → ParatrooperBodyPart_V2 → ParatrooperDamageReceiver_V2.TakeDamage
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT
+ *
+ * - Apply final damage math or armor (DamageReceiver)
+ * - Change ParatrooperModel_V2 health directly
+ */
 public class ParatrooperBodyPart_V2 : MonoBehaviour
 {
 

@@ -4,6 +4,31 @@ using UnityEngine;
 
 namespace iStick2War_V2
 {
+    /*
+ * HeroWeaponDefinition_V2 (Authoring / tuning asset)
+ *
+ * PURPOSE:
+ * ScriptableObject “recipe” for one hero weapon: identity, hit-scan / projectile tuning, damage
+ * vs infantry vs aircraft, and Spine AnimationReferenceAssets for HeroView_V2.
+ *
+ * ---------------------------------------------------------
+ * RESPONSIBILITIES:
+ *
+ * - Serialize designer-tunable numbers (fire rate, range, ammo, reload, optional projectile prefab)
+ * - Expose read-only properties with safe clamps (Mathf.Max, Clamp) for runtime consumers
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT DO:
+ *
+ * - Hold runtime-only state (magazine count lives on HeroWeaponRuntimeState_V2)
+ * - Execute shooting, reload timers, or pooling
+ *
+ * ---------------------------------------------------------
+ * DESIGN PRINCIPLE:
+ *
+ * Data-only asset loaded by HeroWeaponSystem_V2 / inventory; safe to duplicate per weapon type
+ * and tweak in the Unity Inspector without touching gameplay code.
+ */
     [CreateAssetMenu(
         fileName = "HeroWeaponDefinition_V2",
         menuName = "iStick2War/Hero V2/Weapon Definition")]

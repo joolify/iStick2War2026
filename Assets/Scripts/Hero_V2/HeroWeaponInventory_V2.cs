@@ -3,6 +3,16 @@ using iStick2War;
 
 namespace iStick2War_V2
 {
+    /*
+ * HeroWeaponRuntimeState_V2 (Per-weapon runtime ammo bag)
+ *
+ * PURPOSE:
+ * Holds mutable magazine + reserve counts for one entry in HeroWeaponInventory_V2, bound to a
+ * single HeroWeaponDefinition_V2 (immutable tuning from the ScriptableObject).
+ *
+ * ❌ MUST NOT:
+ * - Perform raycasts, play audio, or touch HeroModel_V2 directly (HeroWeaponSystem_V2 syncs model from here).
+ */
     internal sealed class HeroWeaponRuntimeState_V2
     {
         public HeroWeaponRuntimeState_V2(HeroWeaponDefinition_V2 definition)
@@ -17,6 +27,39 @@ namespace iStick2War_V2
         public int CurrentReserveAmmo { get; set; }
     }
 
+    /*
+ * HeroWeaponInventory_V2 (Loadout + active weapon index)
+ *
+ * PURPOSE:
+ * In-memory weapon wheel for Hero_V2: ordered list of definitions + per-weapon ammo state,
+ * active slot index, and helpers to add/switch/filter weapons.
+ *
+ * ---------------------------------------------------------
+ * RESPONSIBILITIES:
+ *
+ * - AddIfMissing, SetActiveByType / BySlot, SwitchNext/Previous
+ * - Queries (HasWeapon, ContainsWeaponType, TryGetWeaponState*)
+ * - TryGetFirstWeaponIndexWithAmmo for fallback selection
+ * - RemoveAllExcept for shop / wave rules that shrink the allowed set
+ *
+ * ---------------------------------------------------------
+ * CORE PRINCIPLE:
+ *
+ * Inventory answers “which weapons exist, which is active, how much ammo each magazine holds”.
+ * Combat execution and model syncing stay in HeroWeaponSystem_V2 / HeroController_V2.
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT DO:
+ *
+ * - Read Unity input or drive animations
+ * - Apply damage or run hit-scan
+ *
+ * ---------------------------------------------------------
+ * DESIGN NOTE:
+ *
+ * SetActiveByType returns false when already on that weapon so callers (e.g. AutoHero) do not
+ * reset reload cadence every frame while holding the same selection.
+ */
     internal sealed class HeroWeaponInventory_V2
     {
         private readonly List<HeroWeaponRuntimeState_V2> _weapons = new List<HeroWeaponRuntimeState_V2>();

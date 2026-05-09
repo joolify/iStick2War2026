@@ -3,32 +3,33 @@ using iStick2War;
 using System.Collections;
 using UnityEngine;
 
-
-/// <summary>
-/// ParatrooperDeathHandler (Death Handling Layer)
-/// </summary>
-/// <remarks>
-/// Handles the full death lifecycle of the Paratrooper entity.
-/// Responsible for cleanup, visual death representation, and notifying external systems.
-///
-/// Responsibilities:
-/// - Executes death sequence when triggered
-/// - Plays death animation (Spine) or activates ragdoll
-/// - Handles cleanup of components and subscriptions
-/// - Returns entity to object pool (if pooling is used)
-/// - Notifies game systems (e.g., score, GameManager)
-///
-/// Constraints:
-/// - MUST NOT calculate damage (handled by DamageReceiver)
-/// - MUST NOT make gameplay decisions (handled by Controller)
-/// - SHOULD be triggered by StateMachine entering Dead state
-///
-/// Notes:
-/// - Designed to be the final step in the entity lifecycle
-/// - Can be extended with loot drops, sound, or slow-motion effects
-/// </remarks>
 namespace iStick2War_V2
 {
+    /*
+ * ParatrooperDeathHandler_V2 (Death lifecycle + despawn)
+ *
+ * PURPOSE:
+ * Runs the death routine: optional ragdoll/gibs vs Spine death via ParatrooperView_V2, timed delays
+ * for ground vs airborne impact, then returns the instance to SimplePrefabPool_V2. Exposes events
+ * such as OnDeathStarted for external listeners.
+ *
+ * ---------------------------------------------------------
+ * RESPONSIBILITIES
+ *
+ * - Die() / ForceDespawnImmediately entry points
+ * - Coroutine-driven sequencing when GlideDie must wait for ground contact before ragdoll
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT
+ *
+ * - Compute incoming damage (ParatrooperDamageReceiver_V2)
+ * - Drive routine AI (ParatrooperController_V2)
+ *
+ * ---------------------------------------------------------
+ * NOTE
+ *
+ * Invoked from damage / health exhaustion paths; not exclusively bound to one state-machine transition.
+ */
 public class ParatrooperDeathHandler_V2 : MonoBehaviour
 {
     [Header("Ragdoll")]

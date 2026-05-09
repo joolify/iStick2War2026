@@ -3,23 +3,32 @@ using iStick2War;
 using System;
 using UnityEngine;
 
-/// <summary>
-/// ParatrooperController acts as the AI brain for the Paratrooper entity.
-/// It is responsible for high-level decision making and orchestrating core gameplay systems.
-/// </summary>
-/// <remarks>
-/// Responsibilities:
-/// - Updates AI logic on a fixed or frame-based tick
-/// - Evaluates and triggers state transitions via the StateMachine
-/// - Communicates intent and data updates to the Model
-///
-/// Restrictions:
-/// - MUST NOT contain physics logic
-/// - MUST NOT directly control animations
-/// - Acts purely as a decision-making layer
-/// </remarks>
 namespace iStick2War_V2
 {
+    /*
+ * ParatrooperController_V2 (AI brain / orchestration)
+ *
+ * PURPOSE:
+ * High-level paratrooper behaviour: tick AI, evaluate when to change StickmanBodyState via the
+ * state machine, coordinate grenade vs shoot windows, failsafe timers, and listen for state changes.
+ *
+ * ---------------------------------------------------------
+ * RESPONSIBILITIES:
+ *
+ * - Frame / fixed cadence logic (Update) that drives combat intent
+ * - Request state transitions; forward Spine-driven timing from ParatrooperSpineEventForwarder_V2
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT:
+ *
+ * - Own full physics simulation (root Paratrooper / Rigidbody2D integration)
+ * - Play Spine clips directly (ParatrooperView_V2 owns presentation)
+ *
+ * ---------------------------------------------------------
+ * DESIGN PRINCIPLE:
+ *
+ * Decision layer: “what should happen next”, not “how meshes move” or “how damage is computed”.
+ */
 public class ParatrooperController_V2 : MonoBehaviour
 {
     ParatrooperModel_V2 _model;

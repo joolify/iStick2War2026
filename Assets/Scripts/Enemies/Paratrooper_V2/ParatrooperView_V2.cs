@@ -7,41 +7,32 @@ using System.Collections.Generic;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-/// <summary>
-/// ParatrooperView (Visual & Presentation Layer)
-/// </summary>
-/// <remarks>
-/// The ParatrooperView is responsible for all visual and audiovisual representation
-/// of the Paratrooper entity. It reacts to state changes and gameplay events,
-/// but does not influence gameplay logic.
-///
-/// Responsibilities:
-/// - Plays Spine animations based on current state
-/// - Triggers visual effects (e.g., hit particles)
-/// - Triggers sound effects (optionally via an AudioSystem)
-/// - Visually represents hit reactions per body part
-///
-/// Constraints:
-/// - MUST NOT contain gameplay logic
-/// - MUST NOT modify Model data
-/// - MUST NOT make gameplay decisions
-/// - MUST only react to events from Controller, StateMachine, or DamageReceiver
-///
-/// Notes:
-/// - This layer should be fully replaceable without affecting gameplay systems
-/// - Designed to support Spine animations and VFX in a modular way
-/// 
-/// This design works perfectly with:
-
-/// stateMachine.OnStateChanged += view.PlayAnimation;
-
-/// and:
-
-/// damageReceiver.OnHit += view.PlayHitReaction;
-/// 
-/// </remarks>
 namespace iStick2War_V2
 {
+    /*
+ * ParatrooperView_V2 (Visual & presentation layer)
+ *
+ * PURPOSE:
+ * Spine + VFX + audio hooks for the paratrooper: plays tracks from StickmanBodyState, hit reactions,
+ * gibs, death visuals, and subscribes to damage / state events. Does not own HP, AI, or weapon hit tests.
+ *
+ * ---------------------------------------------------------
+ * TYPICAL WIRING
+ *
+ * - ParatrooperStateMachine_V2.OnStateChanged → clip selection
+ * - ParatrooperDamageReceiver_V2 / root events → hit blood, severed parts, death presentation
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT
+ *
+ * - Apply final damage or change ParatrooperModel_V2 health
+ * - Replace ParatrooperSpineEventForwarder_V2 for gameplay-timed Spine events (forwarder → Controller)
+ *
+ * ---------------------------------------------------------
+ * UNITY EXECUTION
+ *
+ * DefaultExecutionOrder(1000): runs after default Spine so late visual passes see the current pose.
+ */
 [DefaultExecutionOrder(1000)]
 public class ParatrooperView_V2 : MonoBehaviour
 {

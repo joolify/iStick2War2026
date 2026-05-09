@@ -10,8 +10,12 @@ namespace iStick2War_V2
  * HeroModel_V2 (Pure Data Layer)
  *
  * RESPONSIBILITY:
- * HeroModel_V2 represents the pure game state of the Hero.
- * It contains ONLY data and no behaviour.
+ * HeroModel_V2 is the authoritative game state for the Hero (health, ammo, weapon selection,
+ * high-level HeroState, cached input snapshot for the controller).
+ *
+ * It exposes validated mutators (TakeDamage, Heal, ammo consume/refill, weapon configuration, etc.)
+ * but remains a MonoBehaviour with no Update loops — behaviour here is state mutation only, not
+ * per-frame gameplay orchestration (that stays in Controller / systems).
  *
  * ---------------------------------------------------------
  * STORED DATA:
@@ -25,17 +29,15 @@ namespace iStick2War_V2
  * ---------------------------------------------------------
  * ❌ MUST NOT CONTAIN:
  *
- * - No Unity logic (no Update, FixedUpdate, etc.)
- * - No gameplay logic
- * - No physics
- * - No animation handling
+ * - Per-frame Unity callbacks (Update, FixedUpdate, LateUpdate)
+ * - Input polling, animation playback, or hit-scan resolution
+ * - Direct coupling to Unity physics simulation (forces, moves)
  *
  * ---------------------------------------------------------
  * DESIGN PRINCIPLE:
  *
- * This is a pure data container ("game DNA").
- * It is modified by systems (Controller, DamageReceiver, etc.)
- * and read by other systems (StateMachine, View, etc.).
+ * Single source of truth for hero numbers and flags ("game DNA"),
+ * written by systems (Controller, DamageReceiver, WeaponSystem, tests) and read widely.
  */
     public class HeroModel_V2 : MonoBehaviour
     {

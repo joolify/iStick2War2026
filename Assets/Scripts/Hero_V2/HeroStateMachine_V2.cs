@@ -12,14 +12,13 @@ namespace iStick2War_V2
  * for managing and validating the current gameplay state of the Hero.
  *
  * ---------------------------------------------------------
- * STATES:
+ * STATES (see HeroState enum — names must stay in sync):
  *
  * - Idle
- * - Run
- * - Jump
- * - Fall
- * - Shoot
- * - Reload
+ * - Moving
+ * - Jumping
+ * - Shooting
+ * - Reloading
  * - Dead
  *
  * ---------------------------------------------------------
