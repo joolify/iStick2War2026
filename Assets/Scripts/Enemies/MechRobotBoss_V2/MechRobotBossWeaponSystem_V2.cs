@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace iStick2War_V2
 {
-    /// <summary>Optional shoot clip selection for <see cref="MechRobotBossView_V2"/> when body state is Shoot.</summary>
+    // Optional shoot clip selection for MechRobotBossView_V2 when body state is Shoot.
     public enum MechRobotBossShootPresentation
     {
         Default = 0,
@@ -15,10 +15,31 @@ namespace iStick2War_V2
         Missile = 3,
     }
 
-    /// <summary>
-    /// Mech boss weapons: machine-gun bursts, telegraphed cannon hitscan, and homing missiles (phase 2).
-    /// Only one attack mode is active at a time; driven by <see cref="TickAttackPattern"/> while in range.
-    /// </summary>
+    /*
+ * MechRobotBossWeaponSystem_V2 (Combat execution)
+ *
+ * PURPOSE:
+ * Runs mech boss weapons while the controller keeps the boss in range: machine-gun bursts, telegraphed cannon
+ * hit-scan, and homing missile volleys. Exposes TickAttackPattern / presentation hooks for the view; only one
+ * pattern segment is active at a time.
+ *
+ * ---------------------------------------------------------
+ * INPUT SOURCES
+ *
+ * - MechRobotBossModel_V2 (HP, flags), hero / bunker context from controller-driven calls
+ * - MechRobotBossShootPresentation from controller when choosing shoot presentation
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT
+ *
+ * - Own high-level movement or when to enter Aim (MechRobotBossController_V2)
+ * - Select Spine tracks (MechRobotBossView_V2)
+ *
+ * ---------------------------------------------------------
+ * DESIGN PRINCIPLE
+ *
+ * Weapon execution isolated from locomotion; mirrors the split between ParatrooperWeaponSystem_V2 and controller AI.
+ */
     public sealed class MechRobotBossWeaponSystem_V2 : MonoBehaviour
     {
         private enum PatternSegment

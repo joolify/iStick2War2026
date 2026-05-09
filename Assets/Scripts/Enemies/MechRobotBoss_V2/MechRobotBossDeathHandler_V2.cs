@@ -3,6 +3,24 @@ using UnityEngine;
 
 namespace iStick2War_V2
 {
+    /*
+ * MechRobotBossDeathHandler_V2 (Death / despawn)
+ *
+ * PURPOSE:
+ * When Die is invoked, raises OnDeathStarted, waits a configurable delay, then returns the boss instance to
+ * SimplePrefabPool_V2. Supports ForceDespawnImmediately for watchdog / error paths.
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT
+ *
+ * - Apply incoming damage (MechRobotBossDamageReceiver_V2)
+ * - Change locomotion or animation (controller / view)
+ *
+ * ---------------------------------------------------------
+ * DESIGN PRINCIPLE
+ *
+ * Small coroutine-based teardown; composition root may also react to state machine Die for extra wiring.
+ */
     public sealed class MechRobotBossDeathHandler_V2 : MonoBehaviour
     {
         [SerializeField] private float _despawnDelaySeconds = 2.5f;

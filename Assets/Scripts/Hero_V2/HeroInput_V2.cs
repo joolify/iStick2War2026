@@ -13,7 +13,7 @@ namespace iStick2War_V2
  * ---------------------------------------------------------
  * FLOW:
  *
- * HeroInput_V2 → HeroController_V2 → HeroMovementSystem
+ * HeroInput_V2 → HeroController_V2 → HeroMovementSystem_V2
  *
  * ---------------------------------------------------------
  * RESPONSIBILITIES:
@@ -39,7 +39,7 @@ namespace iStick2War_V2
  * Nothing more.
  */
     internal class HeroInput_V2 : MonoBehaviour
-{
+    {
         // -------------------------
         // RAW INPUT STATE
         // -------------------------
@@ -55,7 +55,7 @@ namespace iStick2War_V2
         public bool IsSwitchPreviousWeaponPressed { get; private set; }
         public int DirectWeaponSlot { get; private set; } = -1;
 
-        //FIXME ChatGPT:a detta:
+        // Shoot input buffer after ammo hits zero so firing still feels responsive for a short window.
         public float shootBufferTime; // Hur länge vi ska buffra shoot-input efter att ammo tagit, gör att shooting känns “responsive”
         public bool ShootBuffered; // Om shoot-input är buffrad
 

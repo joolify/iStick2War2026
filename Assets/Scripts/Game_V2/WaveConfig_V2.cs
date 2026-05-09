@@ -1,0 +1,79 @@
+using UnityEngine;
+
+namespace iStick2War_V2
+{
+    /*
+ * WaveConfig_V2 (Per-wave ScriptableObject tuning)
+ *
+ * PURPOSE:
+ * Data-only asset consumed by WaveManager_V2 and EnemySpawner_V2: paratrooper/helicopter counts, spawn pacing,
+ * difficulty multipliers, optional bomber / mech boss knobs, and wave reward currency. No runtime behaviour here.
+ *
+ * ---------------------------------------------------------
+ * DESIGN INTENT (early air campaign, waves ~1–10)
+ *
+ * - Waves 1–3: helicopter + paratroopers only, low density.
+ * - Waves 4–7: ramp counts/tempo; first bomber passes when BomberPassCount is above zero.
+ * - Waves 8–10: heavier air; more bomber passes when BomberPassCount is raised (spawned by EnemySpawner_V2).
+ * - EnemyCount remains “drops per wave” (one helicopter approach per count with the current spawner).
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT
+ *
+ * - Execute spawn logic or read scene transforms (EnemySpawner_V2 owns instantiation).
+ * - Mutate global economy directly (WaveManager_V2 applies rewards from config values).
+ *
+ * ---------------------------------------------------------
+ * DESIGN PRINCIPLE
+ *
+ * Authoritative tuning snapshot per wave index; designers duplicate assets per wave row in the WaveManager list.
+ */
+    [CreateAssetMenu(
+        fileName = "WaveConfig_V2",
+        menuName = "iStick2War/Waves/Wave Config V2")]
+    public sealed class WaveConfig_V2 : ScriptableObject
+    {
+        [Header("Spawn")]
+        [SerializeField] private int _enemyCount = 6;
+        [SerializeField] private float _waveDurationSeconds = 25f;
+        [SerializeField] private float _spawnIntervalSeconds = 1.6f;
+
+        [Header("Difficulty Multipliers")]
+        [SerializeField] private float _enemyHealthMultiplier = 1f;
+        [SerializeField] private float _enemyDamageMultiplier = 1f;
+
+        [Header("Air threats (bomber is optional)")]
+        [Tooltip(
+            "How many bomber flyovers to schedule this wave. Independent of EnemyCount (helicopter paratrooper drops). " +
+            "EnemySpawner_V2 spawns bombers only when a bomber prefab is assigned there.")]
+        [SerializeField] private int _bomberPassCount;
+        [Tooltip(
+            "How many enemy kamikaze drones to schedule this wave. " +
+            "EnemySpawner_V2 spawns them only when a kamikaze drone prefab is assigned.")]
+        [SerializeField] private int _kamikazeDroneCount;
+        [Tooltip(
+            "How many enemy bomb drones to schedule this wave. " +
+            "EnemySpawner_V2 spawns them only when a bomb drone prefab is assigned.")]
+        [SerializeField] private int _bombDroneCount;
+
+        [Header("Boss (ground)")]
+        [Tooltip(
+            "Mech Robot Boss units spawned after the helicopter paratrooper schedule completes (runs even when Enemy Count is 0). " +
+            "Assign the MechRobotBoss prefab (e.g. Mech Robot V2) on EnemySpawner_V2 — otherwise the count is ignored.")]
+        [SerializeField] private int _mechRobotBossCount;
+
+        [Header("Economy Reward")]
+        [SerializeField] private int _waveRewardCurrency = 80;
+
+        public int EnemyCount => Mathf.Max(0, _enemyCount);
+        public float WaveDurationSeconds => Mathf.Max(1f, _waveDurationSeconds);
+        public float SpawnIntervalSeconds => Mathf.Max(0.1f, _spawnIntervalSeconds);
+        public float EnemyHealthMultiplier => Mathf.Max(0.1f, _enemyHealthMultiplier);
+        public float EnemyDamageMultiplier => Mathf.Max(0.1f, _enemyDamageMultiplier);
+        public int BomberPassCount => Mathf.Max(0, _bomberPassCount);
+        public int KamikazeDroneCount => Mathf.Max(0, _kamikazeDroneCount);
+        public int BombDroneCount => Mathf.Max(0, _bombDroneCount);
+        public int MechRobotBossCount => Mathf.Max(0, _mechRobotBossCount);
+        public int WaveRewardCurrency => Mathf.Max(0, _waveRewardCurrency);
+    }
+}

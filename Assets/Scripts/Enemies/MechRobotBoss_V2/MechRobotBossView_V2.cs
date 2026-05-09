@@ -4,6 +4,30 @@ using UnityEngine;
 
 namespace iStick2War_V2
 {
+    /*
+ * MechRobotBossView_V2 (Presentation / Spine body)
+ *
+ * PURPOSE:
+ * Subscribes to MechRobotBossStateMachine_V2 and plays the matching Spine clips (idle, walk, run, aim, shoot,
+ * optional per-weapon shoot variants, die). Exposes ResetVisualStateForSpawn for pool respawn.
+ *
+ * ---------------------------------------------------------
+ * INPUT SOURCES
+ *
+ * - MechRobotBossStateMachine_V2.OnStateChanged
+ * - Optional MechRobotBossWeaponSystem_V2 for shoot-presentation hints when in Shoot
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT
+ *
+ * - Decide when to enter Aim or Shoot (MechRobotBossController_V2 + state machine)
+ * - Apply damage or spawn projectiles (weapon system / projectiles)
+ *
+ * ---------------------------------------------------------
+ * DESIGN PRINCIPLE
+ *
+ * View-only: animation playback and clip names; keeps animator presentation decoupled from combat math.
+ */
     public sealed class MechRobotBossView_V2 : MonoBehaviour
     {
         [SerializeField] private SkeletonAnimation _skeletonAnimation;

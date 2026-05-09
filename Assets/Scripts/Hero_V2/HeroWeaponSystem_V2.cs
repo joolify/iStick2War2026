@@ -7,7 +7,7 @@ namespace iStick2War_V2
     /*
  * HeroWeaponSystem_V2 (Combat Rules, Not Presentation)
  *
- * PURPOSE
+ * PURPOSE:
  * - Owns weapon behavior rules: fire gating, ammo, reload, and hit evaluation.
  * - Executes weapon actions when requested by the controller.
  *

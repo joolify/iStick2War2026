@@ -1,0 +1,142 @@
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+namespace iStick2War_V2
+{
+    /*
+ * MainMenuNavButton_V2 (World-space menu hit target)
+ *
+ * PURPOSE:
+ * Collider2D + OnMouseDown handler for main menu actions (Play, Settings, ReturnToMainMenu) when UI Buttons cannot
+ * raycast SpriteRenderer-based art. Delegates to MainMenu_V2 when assigned.
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT
+ *
+ * - Pause Time.timeScale itself (MainMenu_V2 owns freeze policy).
+ *
+ * ---------------------------------------------------------
+ * DESIGN PRINCIPLE
+ *
+ * Mirrors ShopNavArrow_V2 / ShopBuyButton_V2: thin input surface for world-space canvas stacks.
+ */
+    [AddComponentMenu("iStick2War/Main Menu Nav Button V2")]
+    [RequireComponent(typeof(Collider2D))]
+    public sealed class MainMenuNavButton_V2 : MonoBehaviour
+    {
+        public enum MenuAction
+        {
+            Play,
+            Settings,
+            // Reload active scene (single-scene: full run reset). Time stays frozen until MainMenu Play resumes.
+            ReturnToMainMenu
+        }
+
+        [SerializeField] private MainMenu_V2 _mainMenu;
+        [SerializeField] private MenuAction _action = MenuAction.Play;
+        [SerializeField] private bool _debugLogs;
+
+        internal bool IsReturnToMainMenuAction() => _action == MenuAction.ReturnToMainMenu;
+        internal bool IsPlayAction() => _action == MenuAction.Play;
+
+        // Automation helper for tests/agents.
+        public void TriggerAutomationClick()
+        {
+            OnMouseDown();
+        }
+
+        private void OnMouseDown()
+        {
+            WaveManager_V2 waveManager = Object.FindAnyObjectByType<WaveManager_V2>();
+            if (waveManager != null)
+            {
+                WaveLoopState_V2 state = waveManager.State;
+                bool gameplayOwnsInput =
+                    state == WaveLoopState_V2.Preparing ||
+                    state == WaveLoopState_V2.InWave ||
+                    state == WaveLoopState_V2.Shop;
+                if (gameplayOwnsInput)
+                {
+                    if (_debugLogs)
+                    {
+                        Debug.Log(
+                            $"[MainMenuNavButton_V2] Ignored click on '{name}' while gameplay state is {state}.");
+                    }
+
+                    return;
+                }
+            }
+
+            if (_action == MenuAction.ReturnToMainMenu)
+            {
+                if (_debugLogs)
+                {
+                    Debug.Log($"[MainMenuNavButton_V2] '{name}' OnMouseDown -> {_action} (reload active scene, pause first)");
+                }
+
+                ReloadActiveSceneToMainMenu();
+                return;
+            }
+
+            if (_mainMenu == null)
+            {
+                if (_debugLogs)
+                {
+                    Debug.LogWarning($"[MainMenuNavButton_V2] '{name}': assign MainMenu_V2.");
+                }
+
+                return;
+            }
+
+            if (_debugLogs)
+            {
+                Debug.Log($"[MainMenuNavButton_V2] '{name}' OnMouseDown -> {_action}");
+            }
+
+            if (_action == MenuAction.Play)
+            {
+                _mainMenu.HandlePlay();
+            }
+            else
+            {
+                _mainMenu.HandleSettingsToggle();
+            }
+        }
+
+        // Build only has one scene (game + main menu in SampleScene). Reload resets the run, but Unity keeps
+        // across SceneManager.LoadScene — if it stays 1 after game over,
+        // leaves Preparing immediately and waves start without showing the menu.
+        // Freeze time before load so boot matches a fresh editor play: menu first, then Play resumes time.
+        private static void ReloadActiveSceneToMainMenu()
+        {
+            Time.timeScale = 0f;
+            SceneManager.sceneLoaded -= FinishReturnToMainMenuAfterSceneLoad;
+            SceneManager.sceneLoaded += FinishReturnToMainMenuAfterSceneLoad;
+            Scene active = SceneManager.GetActiveScene();
+            if (active.IsValid())
+            {
+                SceneManager.LoadScene(active.buildIndex, LoadSceneMode.Single);
+            }
+            else
+            {
+                SceneManager.LoadScene(0, LoadSceneMode.Single);
+            }
+        }
+
+        // may be on an inactive GameObject (so Awake never runs on load). Restore menu visibility
+        // and pause after the new scene instance exists.
+        private static void FinishReturnToMainMenuAfterSceneLoad(Scene scene, LoadSceneMode mode)
+        {
+            SceneManager.sceneLoaded -= FinishReturnToMainMenuAfterSceneLoad;
+            MainMenu_V2[] menus = FindObjectsByType<MainMenu_V2>(FindObjectsInactive.Include);
+            for (int i = 0; i < menus.Length; i++)
+            {
+                if (menus[i] != null)
+                {
+                    menus[i].ApplyReturnToMainMenuAfterSceneReload();
+                    break;
+                }
+            }
+        }
+    }
+}

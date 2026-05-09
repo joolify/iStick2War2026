@@ -25,8 +25,8 @@ namespace iStick2War_V2
  * - Read input from HeroInput_V2
  * - Query the state machine before executing actions
  * - Forward validated actions to:
- *     - MovementSystem
- *     - WeaponSystem
+ *     - HeroMovementSystem_V2
+ *     - HeroWeaponSystem_V2
  * - Update the Model (not the View directly)
  *
  * ---------------------------------------------------------

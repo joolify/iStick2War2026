@@ -4,6 +4,29 @@ using UnityEngine;
 
 namespace iStick2War_V2
 {
+    /*
+ * MechRobotBossDamageReceiver_V2 (Damage application)
+ *
+ * PURPOSE:
+ * Applies DamageInfo to MechRobotBossModel_V2 with armor and body-part multipliers, then requests Die on the
+ * state machine when HP reaches zero (once). Lives on the boss hierarchy so child body parts can forward hits.
+ *
+ * ---------------------------------------------------------
+ * INPUT SOURCES
+ *
+ * - MechRobotBossBodyPart_V2.OnHit → TakeDamage(DamageInfo)
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT
+ *
+ * - Play death VFX or despawn the instance (MechRobotBossDeathHandler_V2 / composition root)
+ * - Decide movement or attacks (MechRobotBossController_V2)
+ *
+ * ---------------------------------------------------------
+ * DESIGN PRINCIPLE
+ *
+ * Single entry for numeric damage application to the model; keeps collider hierarchy thin.
+ */
     public sealed class MechRobotBossDamageReceiver_V2 : MonoBehaviour
     {
         [SerializeField] private float _armorMultiplier = 0.85f;

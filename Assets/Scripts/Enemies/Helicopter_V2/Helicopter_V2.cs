@@ -3,6 +3,30 @@ using UnityEngine;
 
 namespace iStick2War_V2
 {
+    /*
+ * Helicopter_V2 (Helicopter entity composition root)
+ *
+ * PURPOSE:
+ * Ensures and wires HelicopterModel_V2, HelicopterStateMachine_V2, HelicopterController_V2,
+ * HelicopterView_V2, HelicopterSpineEventForwarder_V2, and AircraftHealth_V2 on this GameObject.
+ * Exposes InitializeForSpawn() and BeginFlight() as the spawn-time lifecycle for one helicopter flight.
+ *
+ * ---------------------------------------------------------
+ * TYPICAL CALL FLOW
+ *
+ * EnemySpawner_V2 (or scene setup) → InitializeForSpawn() → BeginFlight() → controller / state machine / view.
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT
+ *
+ * - Own paratrooper drop cadence (HelicopterCarrier_V2 sequences drops for a carrier flight).
+ * - Implement infantry or weapon combat rules (Paratrooper_* / hero systems).
+ *
+ * ---------------------------------------------------------
+ * DESIGN PRINCIPLE
+ *
+ * Thin composition root: resolve or add sibling components, forward lifecycle, subscribe AircraftHealth_V2.OnDestroyed.
+ */
     [DisallowMultipleComponent]
     public sealed class Helicopter_V2 : MonoBehaviour
     {

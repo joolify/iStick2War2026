@@ -4,7 +4,24 @@ using UnityEngine;
 
 namespace iStick2War_V2
 {
-    /// <summary>EnemyBodyPart relay for hero hitscan (same layering contract as <see cref="ParatrooperBodyPart_V2"/>).</summary>
+    /*
+ * MechRobotBossBodyPart_V2 (Hitbox relay)
+ *
+ * PURPOSE:
+ * Marks colliders with BodyPartType for hero hit-scan, sets EnemyBodyPart layer when available, and forwards
+ * OnHit to MechRobotBossDamageReceiver_V2 with the same layering contract as ParatrooperBodyPart_V2.
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT
+ *
+ * - Apply armor math itself (MechRobotBossDamageReceiver_V2 owns multipliers)
+ * - Drive boss AI or animation
+ *
+ * ---------------------------------------------------------
+ * DESIGN PRINCIPLE
+ *
+ * Thin relay on child colliders so hero weapons can raycast a consistent enemy body contract.
+ */
     public sealed class MechRobotBossBodyPart_V2 : MonoBehaviour
     {
         public BodyPartType bodyPart = BodyPartType.Torso;

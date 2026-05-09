@@ -1,0 +1,38 @@
+---
+description: iStick2War — use Cursor skills for Unity 2D, URP, Spine, and V2 C# conventions; follow V2 architecture before edits.
+alwaysApply: true
+---
+
+# iStick2War — agent guidance
+
+In this repository, follow project conventions and **load the relevant Cursor skills** (via `@` mention or equivalent) so recommendations stay consistent.
+
+## Cursor skills to use
+
+| Skill | When |
+|--------|------|
+| `istick-v2-csharp-documentation` | C# for `*_V2`, especially `Assets/Scripts/Game_V2` — file-level `/* */`, `//` line comments, **no** `///` XML docs |
+| `unity-2d-game-development` | Sprites, camera, sorting, Tilemap, 2D physics, 2D animation |
+| `unity-2d-performance-quality` | Profiler, GC, batching, build and frame budgets |
+| `unity-urp-2d-rendering` | URP 2D Renderer, Light2D, shadows, lit sprites |
+| `spine-2d-unity-development` | spine-unity, SkeletonAnimation / SkeletonGraphic, tracks, events |
+
+## Working principles
+
+- Align **Unity version**, **URP**, and **Spine runtime** with what the project declares (`ProjectVersion.txt`, `Packages/manifest.json`).
+- Change only what the task requires; avoid broad drive-by refactors unless explicitly requested.
+
+If a skill is missing in the environment, still apply the same **ideas** (2D / URP / Spine / V2 comment style) from the table above.
+
+## Before changing any V2 system
+
+1. **Identify the owning layer:** Model, Controller, StateMachine, View, WeaponSystem, DamageReceiver, DeathHandler (or the closest existing pattern). Do not assign new responsibility to the wrong layer.
+2. **Do not place gameplay logic in View.** View is presentation and VFX; gameplay decisions stay in Controller / Model / state.
+3. **Do not place rendering or VFX logic in Model.** Keep Models oriented around data and rules, not drawing.
+4. **Prefer events** (or existing project indirection) over new tight coupling or ad-hoc direct cross-system calls.
+5. **Spine:** forward animation events through the project’s established path; do not embed business rules in raw Spine callbacks.
+6. **State:** keep state-machine transitions explicit; avoid new hidden global state for feature work unless there is a clear, documented reason.
+7. **Weapons and hits:** reuse existing separation (e.g. projectile vs hitscan, weapon composition); do not duplicate hit resolution.
+8. **Telemetry:** add or update telemetry for new gameplay-critical behavior when player-visible or balance-relevant outcomes change.
+9. **Integration tests:** add or update automated wave / integration coverage when weapons, enemies, waves, or core combat flow change.
+10. **Serialization:** new `[SerializeField]` fields need safe defaults; non-obvious fields get a short `//` comment per V2 style (file-level `/* */` blocks where appropriate, no `///` XML).

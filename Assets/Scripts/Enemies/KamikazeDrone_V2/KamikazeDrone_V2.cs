@@ -51,10 +51,17 @@ namespace iStick2War_V2
 
             _stateMachine.Initialize(_model);
             _controller.Initialize(_model, _stateMachine);
+
+            // Pooled drones keep SkeletonAnimation.valid across Disable; Initialize(false) then no-ops and the
+            // mesh pipeline can skip rebuilding for this frame — only the spawner-added CircleCollider2D is visible.
+            // Full overwrite + an immediate mesh tick matches a fresh prefab dropped into the scene.
+            SkeletonAnimation skeletonAnimation = _view != null ? _view.SkeletonAnimation : null;
+            ForceSpineMeshRebuild(skeletonAnimation);
+
             _view.Initialize(_stateMachine);
             _view.ResetVisualStateForSpawn();
 
-            SkeletonAnimation skeletonAnimation = _view.SkeletonAnimation;
+            skeletonAnimation = _view.SkeletonAnimation;
             if (skeletonAnimation != null && _spineEventForwarder != null)
             {
                 _spineEventForwarder.Init(_controller, skeletonAnimation);
@@ -112,16 +119,82 @@ namespace iStick2War_V2
                 _controller = gameObject.AddComponent<KamikazeDroneController_V2>();
             }
 
-            _view = GetComponent<KamikazeDroneView_V2>();
+            // Prefab places KamikazeDroneView_V2 + SpineEventForwarder on the child with SkeletonAnimation.
+            // GetComponent on root would miss them and AddComponent would add a duplicate root View without
+            // serialized Spine refs — animations never wire up after pool spawn (manual prefab-in-scene still works).
+            _view = null;
+            SkeletonAnimation[] skeletonAnimations = GetComponentsInChildren<SkeletonAnimation>(true);
+            for (int i = 0; i < skeletonAnimations.Length; i++)
+            {
+                SkeletonAnimation sk = skeletonAnimations[i];
+                if (sk == null)
+                {
+                    continue;
+                }
+
+                KamikazeDroneView_V2 onSkelGo = sk.GetComponent<KamikazeDroneView_V2>();
+                if (onSkelGo != null)
+                {
+                    _view = onSkelGo;
+                    break;
+                }
+            }
+
+            if (_view == null)
+            {
+                _view = GetComponent<KamikazeDroneView_V2>();
+            }
+
             if (_view == null)
             {
                 _view = gameObject.AddComponent<KamikazeDroneView_V2>();
             }
 
-            _spineEventForwarder = GetComponent<KamikazeDroneSpineEventForwarder_V2>();
+            _spineEventForwarder = null;
+            for (int i = 0; i < skeletonAnimations.Length; i++)
+            {
+                SkeletonAnimation sk = skeletonAnimations[i];
+                if (sk == null)
+                {
+                    continue;
+                }
+
+                KamikazeDroneSpineEventForwarder_V2 forwarder = sk.GetComponent<KamikazeDroneSpineEventForwarder_V2>();
+                if (forwarder != null)
+                {
+                    _spineEventForwarder = forwarder;
+                    break;
+                }
+            }
+
+            if (_spineEventForwarder == null)
+            {
+                _spineEventForwarder = GetComponent<KamikazeDroneSpineEventForwarder_V2>();
+            }
+
             if (_spineEventForwarder == null)
             {
                 _spineEventForwarder = gameObject.AddComponent<KamikazeDroneSpineEventForwarder_V2>();
+            }
+
+            // Older spawns / pooled instances could have duplicate View or Forwarder on the root; remove them
+            // when the authoritative components live under the SkeletonAnimation child (prefab layout).
+            if (_view != null && _view.transform != transform)
+            {
+                KamikazeDroneView_V2 orphanView = GetComponent<KamikazeDroneView_V2>();
+                if (orphanView != null)
+                {
+                    Object.Destroy(orphanView);
+                }
+            }
+
+            if (_spineEventForwarder != null && _spineEventForwarder.transform != transform)
+            {
+                KamikazeDroneSpineEventForwarder_V2 orphanForwarder = GetComponent<KamikazeDroneSpineEventForwarder_V2>();
+                if (orphanForwarder != null)
+                {
+                    Object.Destroy(orphanForwarder);
+                }
             }
 
             _health = GetComponent<AircraftHealth_V2>();
@@ -129,6 +202,25 @@ namespace iStick2War_V2
             {
                 _health = GetComponentInChildren<AircraftHealth_V2>(true);
             }
+        }
+
+        private static void ForceSpineMeshRebuild(SkeletonAnimation skeletonAnimation)
+        {
+            if (skeletonAnimation == null)
+            {
+                return;
+            }
+
+            skeletonAnimation.Initialize(overwrite: true);
+            MeshRenderer meshRenderer = skeletonAnimation.GetComponent<MeshRenderer>();
+            if (meshRenderer != null)
+            {
+                meshRenderer.enabled = true;
+            }
+
+            skeletonAnimation.UpdateMode = UpdateMode.FullUpdate;
+            skeletonAnimation.Update(0f);
+            skeletonAnimation.LateUpdate();
         }
     }
 }

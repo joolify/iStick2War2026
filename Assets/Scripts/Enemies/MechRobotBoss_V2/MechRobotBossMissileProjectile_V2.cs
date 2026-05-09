@@ -4,7 +4,24 @@ using UnityEngine;
 
 namespace iStick2War_V2
 {
-    /// <summary>Slow boss missile; homes on <see cref="Hero_V2"/> root and applies bunker/hero damage like mech hitscan.</summary>
+    /*
+ * MechRobotBossMissileProjectile_V2 (Boss missile projectile)
+ *
+ * PURPOSE:
+ * Kinematic homing projectile toward the hero root transform; on impact applies boss missile damage with the
+ * same bunker-cover and hero damage rules as other mech boss weapon paths, then Destroy(gameObject) on resolve or timeout.
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT
+ *
+ * - Own attack pattern cadence (MechRobotBossWeaponSystem_V2 spawns and configures each shot)
+ * - Despawn or drive lifecycle of the boss composition root (MechRobotBossDeathHandler_V2)
+ *
+ * ---------------------------------------------------------
+ * DESIGN PRINCIPLE
+ *
+ * Self-contained projectile behaviour launched by the weapon system; keeps Update logic local to the missile object.
+ */
     [DisallowMultipleComponent]
     public sealed class MechRobotBossMissileProjectile_V2 : MonoBehaviour
     {

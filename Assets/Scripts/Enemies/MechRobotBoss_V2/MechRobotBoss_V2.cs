@@ -3,7 +3,41 @@ using UnityEngine;
 
 namespace iStick2War_V2
 {
-    /// <summary>Composition root for Mech Robot Boss (Spine: idle/walk/run/aim/shoot).</summary>
+    /*
+ * MechRobotBoss_V2 (composition root — MonoBehaviour type: MechRobotBoss)
+ *
+ * MechRobotBoss acts as the COMPOSITION ROOT (entry point) of the mech boss stack.
+ *
+ * ❌ It MUST NOT contain walk/run AI, weapon hit resolution, or Spine track selection:
+ * - Attack pattern / MG, cannon, missile timing (MechRobotBossWeaponSystem_V2 + controller)
+ * - Locomotion and range-based aim/shoot state rules (MechRobotBossController_V2)
+ * - Animation playback and body presentation (MechRobotBossView_V2)
+ *
+ * ✅ It is ONLY responsible for:
+ * - Ensuring Model / StateMachine / Controller / View / WeaponSystem / DamageReceiver / DeathHandler /
+ *   SpineEventForwarder / SkeletonAnimation references exist (serialized or GetComponent)
+ * - Wiring dependencies in WireSystems (Initialize on children, Init spine forwarder)
+ * - Awake bootstrap: InitializeDependencies, WireSystems, controller.StartGame()
+ * - PrepareForSpawn: reset model/state/controller/weapon/view, re-enable RB/colliders, StartGame
+ * - ApplyWaveDifficultyMultipliers for EnemySpawner_V2 after spawn
+ * - Forwarding Die to MechRobotBossDeathHandler_V2 when the state machine enters Die
+ *
+ * ---------------------------------------------------------
+ * ARCHITECTURE MODEL
+ *
+ * MechRobotBoss   = Composition root (bootstrap + prefab wiring)
+ * Controller      = Brain (movement toward hero, attack pattern vs range, Spine event reactions)
+ * StateMachine    = Rules (MechRobotBossBodyState + events for the View)
+ * Model           = DNA (HP, flags, wave multipliers)
+ * View            = Body (Spine clips / presentation)
+ * WeaponSystem    = Combat execution (bursts, cannon telegraph, missiles)
+ *
+ * ---------------------------------------------------------
+ * DESIGN GOAL
+ *
+ * MechRobotBoss stays thin: one place for dependency resolution and lifecycle glue,
+ * mirroring Bombplane_V2’s separation between root and systems.
+ */
     [DefaultExecutionOrder(400)]
     public sealed class MechRobotBoss : MonoBehaviour
     {

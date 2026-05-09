@@ -3,6 +3,32 @@ using UnityEngine;
 
 namespace iStick2War_V2
 {
+    /*
+ * MechRobotBossController_V2 (Critical Component / Brain)
+ *
+ * PURPOSE:
+ * Drives mech boss gameplay each frame: walk/run toward the hero, enter Aim/Shoot when in attack range,
+ * coordinates with MechRobotBossWeaponSystem_V2 for MG / cannon / missile attack patterns, and reacts to
+ * Spine shoot-window events from MechRobotBossSpineEventForwarder_V2 when enabled.
+ *
+ * ---------------------------------------------------------
+ * CORE PRINCIPLES
+ *
+ * - Reads MechRobotBossModel_V2 and drives MechRobotBossStateMachine_V2 for View sync
+ * - Uses Rigidbody2D (self or child) for horizontal movement; does not replace composition root wiring
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT DO:
+ *
+ * - Act as composition root (MechRobotBoss / MechRobotBoss_V2.cs owns bootstrap)
+ * - Play Spine clips directly (MechRobotBossView_V2 owns track selection)
+ * - Apply raw damage to the model without going through MechRobotBossDamageReceiver_V2 / body parts
+ *
+ * ---------------------------------------------------------
+ * DESIGN PRINCIPLE
+ *
+ * Same separation as BombPlaneController_V2: orchestration and rules live here; presentation and hit pipeline live elsewhere.
+ */
     public sealed class MechRobotBossController_V2 : MonoBehaviour
     {
         private MechRobotBossModel_V2 _model;

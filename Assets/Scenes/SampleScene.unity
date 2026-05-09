@@ -9234,7 +9234,7 @@ MonoBehaviour:
   _helicopterPrefab: {fileID: 1036769001756595589, guid: ff288b6d598ae7143b8239dad224e1b7, type: 3}
   _bomberPrefab: {fileID: 4425500710123566599, guid: 2ec531314e8709f4da01e35018c0b526, type: 3}
   _bomberPassIntervalSeconds: 4.5
-  _kamikazeDronePrefabAsset: {fileID: 0}
+  _kamikazeDronePrefabAsset: {fileID: 6742630069675736119, guid: 3c720939265f18e45807ac65c794ca80, type: 3}
   _kamikazeDroneSpawnIntervalSeconds: 3.2
   _bombDronePrefab: {fileID: 0}
   _bombDroneSpawnIntervalSeconds: 4.1

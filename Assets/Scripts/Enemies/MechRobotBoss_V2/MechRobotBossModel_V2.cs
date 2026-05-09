@@ -2,6 +2,25 @@ using UnityEngine;
 
 namespace iStick2War_V2
 {
+    /*
+ * MechRobotBossModel_V2 (Pure Data Layer)
+ *
+ * PURPOSE:
+ * Authoritative runtime numbers for the mech boss: health / max health, mirrored MechRobotBossBodyState,
+ * and simple mutators (ApplyDamage, wave multipliers, reset for spawn). No Update loops — mutation only.
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT
+ *
+ * - Run per-frame gameplay orchestration (MechRobotBossController_V2)
+ * - Resolve hit-scan or projectile hits (MechRobotBossDamageReceiver_V2 / weapon systems)
+ * - Drive Spine or animation (MechRobotBossView_V2)
+ *
+ * ---------------------------------------------------------
+ * DESIGN PRINCIPLE
+ *
+ * Single source of truth for boss HP and high-level body state snapshot used by controller, view, and receivers.
+ */
     public sealed class MechRobotBossModel_V2 : MonoBehaviour
     {
         [SerializeField] private float _health = 420f;

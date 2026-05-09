@@ -5,7 +5,29 @@ using UnityEngine;
 
 namespace iStick2War_V2
 {
-    /// <summary>Forwards Spine animation events to <see cref="MechRobotBossController_V2"/> (shoot window only).</summary>
+    /*
+ * MechRobotBossSpineEventForwarder_V2 (Animation event bridge)
+ *
+ * PURPOSE:
+ * Subscribes to Spine AnimationState events and maps configured shoot started/finished event names to
+ * MechRobotBossController_V2 so MG-style damage can be gated to the open shoot window.
+ *
+ * ---------------------------------------------------------
+ * EVENT FLOW
+ *
+ * Spine → MechRobotBossSpineEventForwarder_V2 → MechRobotBossController_V2 (shoot window flags)
+ *
+ * ---------------------------------------------------------
+ * ❌ MUST NOT
+ *
+ * - Encode weapon damage or ray tests (MechRobotBossWeaponSystem_V2)
+ * - Change body state directly (controller / state machine own transitions)
+ *
+ * ---------------------------------------------------------
+ * DESIGN PRINCIPLE
+ *
+ * Thin sensor at the animation boundary, same role shape as other *_SpineEventForwarder_V2 components.
+ */
     public sealed class MechRobotBossSpineEventForwarder_V2 : MonoBehaviour
     {
         private MechRobotBossController_V2 _controller;
