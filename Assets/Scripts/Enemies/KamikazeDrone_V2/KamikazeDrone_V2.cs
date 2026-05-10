@@ -21,12 +21,29 @@ namespace iStick2War_V2
  * ---------------------------------------------------------
  * ARCHITECTURE MODEL
  *
- * KamikazeDrone_V2            = Composition Root (bootstrap + thin lifecycle API)
- * KamikazeDroneController_V2 = Minimal brain (Fly / Die + optional DeployStarted from Spine)
- * KamikazeDroneStateMachine  = Rules + View notifications
- * KamikazeDroneModel_V2      = DNA (currently mirrors currentState)
- * KamikazeDroneView_V2       = Body (single looping Spine clip)
- * KamikazeDroneDriver_V2      = Separate driver: cruise, dive, overlap explode, bunker/hero damage
+ * KamikazeDrone_V2                        = Composition root (bootstrap + thin lifecycle API)
+ * KamikazeDroneController_V2             = Minimal brain (Fly / Die + optional DeployStarted from Spine)
+ * KamikazeDroneStateMachine_V2           = Rules + View notifications
+ * KamikazeDroneModel_V2                  = DNA (mirrors currentState for tooling / views)
+ * KamikazeDroneView_V2                   = Body (single looping Spine clip)
+ * KamikazeDroneSpineEventForwarder_V2    = Spine → controller animation events (timing only)
+ * KamikazeDroneDriver_V2                 = Separate driver on same prefab: cruise, dive, overlap explode, bunker/hero damage
+ *
+ * ---------------------------------------------------------
+ * WHERE TO READ NEXT (navigation)
+ *
+ * State enum + terminal state → KamikazeDroneState_V2.cs
+ * State transitions + model mirror → KamikazeDroneStateMachine_V2.cs
+ * Fly / Die + Spine command bridge → KamikazeDroneController_V2.cs
+ * Spine → controller events → KamikazeDroneSpineEventForwarder_V2.cs
+ * Looping fly clip → KamikazeDroneView_V2.cs
+ * Movement, dive, explosions, damage (not this stack) → KamikazeDroneDriver_V2.cs
+ * Spawn + BeginRun / driver wiring → EnemySpawner_V2.cs (Kamikaze paths)
+ *
+ * ---------------------------------------------------------
+ * TYPICAL CALL FLOW
+ *
+ * EnemySpawner_V2 → InitializeForSpawn() → BeginFlight() → KamikazeDroneController_V2.StartFlight() (Driver runs in parallel on the prefab).
  *
  * ---------------------------------------------------------
  * DESIGN GOAL

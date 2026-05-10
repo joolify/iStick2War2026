@@ -16,6 +16,12 @@ namespace iStick2War_V2
  * - Decide wave progression (WaveManager_V2).
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2 + aircraft)
+ *
+ * Spawner / pool → SimplePrefabPool_V2.cs | Damage to bunker/hero → WaveManager_V2.cs
+ * Bomber cadence → Assets/Scripts/Enemies/BombPlane_V2/BombPlaneController_V2.cs (+ Bombplane_V2 composition root)
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Self-contained projectile MonoBehaviour pooled or destroyed by caller; Initialize sets per-drop tuning.

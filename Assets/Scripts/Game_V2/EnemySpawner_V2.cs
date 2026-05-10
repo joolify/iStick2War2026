@@ -29,6 +29,14 @@ namespace iStick2War_V2
  * - Drive hero input or hero combat rules (Hero_* systems).
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2 + stacks)
+ *
+ * Wave loop owner → WaveManager_V2.cs
+ * Per-wave numbers / aircraft counts → WaveConfig_V2.cs (+ optional WaveBalanceConfig_V2.cs scaling)
+ * Pool primitive → SimplePrefabPool_V2.cs
+ * Entity brains after spawn → Assets/Scripts/Enemies/** (Paratrooper, Helicopter, Bombplane, Kamikaze, BombDrone, Mech, …)
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Centralize spawn orchestration and prefab mounting rules; keep wave meta and game-over policy in WaveManager_V2.

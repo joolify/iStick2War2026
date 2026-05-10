@@ -16,6 +16,11 @@ namespace iStick2War_V2
  * - Sample HP (HealthBarCanvas_V2 reads models separately).
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * HP fill driver → HealthBarCanvas_V2.cs | Paratrooper world bar spawn → Paratrooper_V2.cs (runtime health bar hook)
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Presentation-only motion layer so bar prefabs stay reusable across paratroopers, bunkers, and bosses.

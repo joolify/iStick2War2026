@@ -11,6 +11,8 @@ namespace iStick2War_V2
  *
  * PURPOSE:
  * Chooses whether HealthBarCanvas_V2 tracks hero HP, a specific ParatrooperModel_V2, or bunker HP via WaveManager_V2.
+ *
+ * NAVIGATION: see HealthBarCanvas_V2 class below; prefab subclass → HeroHealthBarCanvas_V2.cs.
  */
     public enum HealthBarCanvasBindMode
     {
@@ -30,6 +32,11 @@ namespace iStick2War_V2
  * ❌ MUST NOT
  *
  * - Apply damage or mutate max HP (read-only mirror of gameplay models).
+ *
+ * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * Floating world bar motion → WorldHealthBarFollower_V2.cs | HP sources → WaveManager_V2.cs, Hero_V2.cs, ParatrooperModel_V2.cs
  *
  * ---------------------------------------------------------
  * DESIGN PRINCIPLE

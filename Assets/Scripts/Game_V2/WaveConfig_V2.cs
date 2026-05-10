@@ -24,6 +24,12 @@ namespace iStick2War_V2
  * - Mutate global economy directly (WaveManager_V2 applies rewards from config values).
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * Consumers → WaveManager_V2.cs, EnemySpawner_V2.cs
+ * Global scaling curves → WaveBalanceConfig_V2.cs (optional)
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Authoritative tuning snapshot per wave index; designers duplicate assets per wave row in the WaveManager list.

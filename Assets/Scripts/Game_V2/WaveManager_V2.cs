@@ -22,6 +22,8 @@ namespace iStick2War_V2
  * DESIGN PRINCIPLE
  *
  * Public enum at namespace scope so callers avoid stringly-typed state; values are ordered for simple comparisons only.
+ *
+ * NAVIGATION: read alongside WaveManager_V2 (phase gates), WaveRunTelemetry_V2 (snapshots), EnemySpawner_V2 (InWave spawn).
  */
     public enum WaveLoopState_V2
     {
@@ -44,6 +46,8 @@ namespace iStick2War_V2
  * DESIGN PRINCIPLE
  *
  * Separate enum from WaveLoopState_V2 so economy / UI can branch on continue policy without overloading loop states.
+ *
+ * NAVIGATION: only WaveManager_V2 mutates paths after hero death; GameOverUI_V2 / shop UI consume outcomes.
  */
     public enum DeathContinueTier_V2
     {
@@ -72,6 +76,16 @@ namespace iStick2War_V2
  *
  * - Implement per-enemy AI or per-paratrooper animation (entity *_V2 scripts).
  * - Encode low-level spawn placement rules that belong in EnemySpawner_V2 (spawner owns prefab / anchor logic).
+ *
+ * ---------------------------------------------------------
+ * NAVIGATION (Game_V2 + hero)
+ *
+ * Wave / shop data → WaveConfig_V2.cs, ShopOfferConfig_V2.cs (offers list on ShopPanel_V2)
+ * Spawning → EnemySpawner_V2.cs
+ * Shop UI → ShopPanel_V2.cs (+ ShopBuyButton_V2 / ShopNavArrow_V2 / ShopStartWaveButton_V2)
+ * Scene policy / Colt-only → GameplaySceneProfile_V2.cs, GameplaySceneRules_V2.cs, GameplaySceneProfileApplier_V2.cs
+ * Run telemetry → WaveRunTelemetry_V2.cs
+ * Hero stack → Assets/Scripts/Hero_V2/Hero_V2.cs
  *
  * ---------------------------------------------------------
  * DESIGN PRINCIPLE

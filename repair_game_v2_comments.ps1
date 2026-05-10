@@ -50,7 +50,8 @@ Repair-File (Join-Path $root 'EnemySpawner_V2.cs') @{
 }
 
 # --- Bombplane / BloodHitVfx ---
-Repair-File (Join-Path $root 'Bombplane_V2.cs') @{
+$bombplaneV2 = Join-Path (Join-Path (Split-Path $root -Parent) 'Enemies\BombPlane_V2') 'Bombplane_V2.cs'
+Repair-File $bombplaneV2 @{
     '// Prefer  from spawners so direction matches spawn side.' = '// Prefer BeginBombRun(bool fromLeft) from spawners so direction matches spawn side.'
 }
 Repair-File (Join-Path $root 'BloodHitVfx_V2.cs') @{

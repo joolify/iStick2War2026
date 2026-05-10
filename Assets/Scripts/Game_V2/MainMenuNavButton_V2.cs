@@ -16,6 +16,12 @@ namespace iStick2War_V2
  * - Pause Time.timeScale itself (MainMenu_V2 owns freeze policy).
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * Menu owner → MainMenu_V2.cs
+ * Shop world hits → ShopBuyButton_V2.cs, ShopNavArrow_V2.cs (same Collider2D pattern)
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Mirrors ShopNavArrow_V2 / ShopBuyButton_V2: thin input surface for world-space canvas stacks.

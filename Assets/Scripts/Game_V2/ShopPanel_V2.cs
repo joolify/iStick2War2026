@@ -24,6 +24,13 @@ namespace iStick2War_V2
  * - Spawn enemies or advance InWave timers (WaveManager_V2 / EnemySpawner_V2).
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * Purchases + currency rules executed here but priced by → WaveManager_V2.cs
+ * Offer rows data → ShopOfferConfig_V2.cs (+ ShopOfferKind_V2 in same file)
+ * World BUY / arrows / continue → ShopBuyButton_V2.cs, ShopNavArrow_V2.cs, ShopStartWaveButton_V2.cs
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Presentation-focused MonoBehaviour with explicit methods WaveManager invokes; keeps economy rules centralized.

@@ -14,6 +14,12 @@ namespace iStick2War_V2{
  * - Mutate hero inventory itself (applier + Hero_V2 deferred passes perform stripping).
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * Applies profile into statics → GameplaySceneProfileApplier_V2.cs → GameplaySceneRules_V2.cs
+ * Weapon policy enum → GameplayWeaponPolicyKind_V2.cs
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Keeps Colt-only and bot benchmark presets data-driven instead of hardcoding scene-specific branches.

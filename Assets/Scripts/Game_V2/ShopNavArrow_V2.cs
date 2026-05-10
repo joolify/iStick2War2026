@@ -9,6 +9,12 @@ namespace iStick2War_V2
  * Collider2D + OnMouseDown cycles ShopPanel_V2 offers (Previous/Next). Same world-space input pattern as ShopBuyButton_V2.
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * Carousel owner → ShopPanel_V2.cs
+ * Purchase click → ShopBuyButton_V2.cs
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Direction enum keeps wiring obvious in Inspector; no direct WaveManager coupling.

@@ -8,6 +8,8 @@ namespace iStick2War_V2
  * PURPOSE:
  * Identifies which WaveManager_V2 purchase path executes for a carousel row (health, bunker repair, weapon unlock,
  * ammo refill, bunker max upgrade).
+ *
+ * NAVIGATION: rows live on ShopPanel_V2; purchases execute in WaveManager_V2.
  */
     public enum ShopOfferKind_V2
     {
@@ -29,6 +31,11 @@ namespace iStick2War_V2
  * DESIGN PRINCIPLE
  *
  * Data-only serializable class so designers edit offers as list elements without custom editors.
+ *
+ * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * UI host → ShopPanel_V2.cs | Economy execution → WaveManager_V2.cs
  */
     [System.Serializable]
     public sealed class ShopOfferConfig_V2

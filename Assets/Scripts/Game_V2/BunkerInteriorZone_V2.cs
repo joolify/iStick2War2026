@@ -15,6 +15,11 @@ namespace iStick2War_V2
  * - Heal the hero or repair bunker (WaveManager shop + damage paths).
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * Safe-zone queries → WaveManager_V2.cs | Hero damage entry → Hero_V2.cs (ReceiveDamage path, Hero_V2 folder)
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Geometry-only helper; keeps safe-zone logic out of hero movement code.

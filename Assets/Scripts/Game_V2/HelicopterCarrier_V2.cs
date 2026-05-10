@@ -18,6 +18,12 @@ namespace iStick2War_V2
  * - Resolve hero damage (Paratrooper / weapon systems).
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2 + helicopter)
+ *
+ * Wires drops → EnemySpawner_V2.cs | Helicopter presentation / state → Enemies/Helicopter_V2/*
+ * Simple horizontal motion helper → AircraftFlyAcrossScreen_V2.cs
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Stateless-ish behaviour object parameterized by lambdas so the same component works for left/right flights.

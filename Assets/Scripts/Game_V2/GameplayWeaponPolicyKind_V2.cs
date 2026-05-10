@@ -13,6 +13,12 @@ namespace iStick2War_V2
  * - GameplaySceneProfile_V2 / GameplaySceneRules_V2, ShopPanel_V2 offer filtering, Hero_V2 inventory sync, AutoHero_V2.
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2 + hero)
+ *
+ * Profile asset → GameplaySceneProfile_V2.cs | Session mirror → GameplaySceneRules_V2.cs
+ * Hero / bot behaviour → Assets/Scripts/Hero_V2/Hero_V2.cs, AutoHero_V2.cs
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Enum stays int-backed for telemetry JSON and switch statements in static rule helpers.

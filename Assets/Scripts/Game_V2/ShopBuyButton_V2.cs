@@ -10,6 +10,12 @@ namespace iStick2War_V2
  * without Unity UI raycasts.
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * Shop logic → ShopPanel_V2.cs
+ * Leave shop / next wave → ShopStartWaveButton_V2.cs → WaveManager_V2.cs
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Single-responsibility micro component; pair with ShopNavArrow_V2 and ShopStartWaveButton_V2 for full shop UX.

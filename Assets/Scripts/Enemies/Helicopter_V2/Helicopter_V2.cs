@@ -12,9 +12,28 @@ namespace iStick2War_V2
  * Exposes InitializeForSpawn() and BeginFlight() as the spawn-time lifecycle for one helicopter flight.
  *
  * ---------------------------------------------------------
+ * ARCHITECTURE MODEL
+ *
+ * Helicopter_V2              = Composition root (bootstrap + spawner-facing API)
+ * HelicopterController_V2    = Brain (StartFlight / OnDestroyed / Spine command bridge)
+ * HelicopterStateMachine_V2  = Rules (state enum + transitions; mirrors into HelicopterModel_V2)
+ * HelicopterModel_V2         = DNA (currentState mirror for views / tooling)
+ * HelicopterView_V2          = Body (Spine clip selection from state changes)
+ * HelicopterSpineEventForwarder_V2 = Spine → controller animation events (timing only)
+ *
+ * ---------------------------------------------------------
+ * WHERE TO READ NEXT (navigation)
+ *
+ * State enum + terminal state → HelicopterState_V2.cs
+ * Flight entry + Die + animation commands → HelicopterController_V2.cs
+ * Fly / deploy Spine tracks → HelicopterView_V2.cs
+ * Paratrooper drop cadence + bone-side triggers → HelicopterCarrier_V2.cs (carrier prefabs; configured from EnemySpawner_V2)
+ * Horizontal “fly across” without carrier logic → AircraftFlyAcrossScreen_V2.cs (other aircraft; not this stack’s core)
+ *
+ * ---------------------------------------------------------
  * TYPICAL CALL FLOW
  *
- * EnemySpawner_V2 (or scene setup) → InitializeForSpawn() → BeginFlight() → controller / state machine / view.
+ * EnemySpawner_V2 (or scene setup) → InitializeForSpawn() → BeginFlight() → HelicopterController_V2.StartFlight().
  *
  * ---------------------------------------------------------
  * ❌ MUST NOT

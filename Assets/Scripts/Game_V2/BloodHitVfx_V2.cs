@@ -15,6 +15,11 @@ namespace iStick2War_V2
  * - Modify target HP (callers spawn VFX after damage is applied).
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2 + hero)
+ *
+ * Typical callers → Hero_V2 / weapon systems, ParatrooperDamageReceiver_V2 hit feedback paths
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Stateless static helper so Hero / enemy weapon code shares identical VFX spawn rules.

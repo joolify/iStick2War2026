@@ -17,6 +17,11 @@ namespace iStick2War_V2
  * - Replace Addressables or Resources streaming policies for large content.
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * Heavy callers → EnemySpawner_V2.cs, BombProjectile_V2.cs, AircraftHealth_V2.cs, PooledAutoDespawn_V2.cs
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Lightweight pooling API shared by enemies, VFX, and UI harnesses where Destroy churn would hurt automation.

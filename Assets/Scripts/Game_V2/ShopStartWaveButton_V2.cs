@@ -15,6 +15,12 @@ namespace iStick2War_V2
  * - Encode wave difficulty (WaveManager_V2 + configs).
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * Next wave + shop exit → WaveManager_V2.cs (StartNextWaveFromShop)
+ * Optional fallback → ShopPanel_V2.cs
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Thin bridge so world-space CONTINUE art does not depend on legacy ShopPanel.OnStartNextWaveClicked alone.

@@ -15,6 +15,8 @@ namespace iStick2War_V2
  * DESIGN PRINCIPLE
  *
  * Serializable struct so WaveBalanceConfig_V2 can edit curves in Inspector without custom property drawers.
+ *
+ * NAVIGATION: consumed only via WaveBalanceConfig_V2 → WaveManager_V2.cs.
  */
     [Serializable]
     public struct WaveBalanceWaveRow
@@ -52,6 +54,12 @@ namespace iStick2War_V2
  * ❌ MUST NOT
  *
  * - Spawn enemies or change loop state (WaveManager_V2 / EnemySpawner_V2).
+ *
+ * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * Row struct → WaveBalanceWaveRow (this file) | Per-wave base → WaveConfig_V2.cs | Consumer → WaveManager_V2.cs
+ * Telemetry snapshot struct → WaveRunScalingSnapshot (this file) + WaveRunTelemetry_V2.cs
  *
  * ---------------------------------------------------------
  * DESIGN PRINCIPLE
@@ -123,6 +131,8 @@ namespace iStick2War_V2
  * DESIGN PRINCIPLE
  *
  * Read-only struct created by WaveManager_V2 when a wave starts; avoids recomputing curves during combat frames.
+ *
+ * NAVIGATION: logged by WaveRunTelemetry_V2; built in WaveManager_V2.
  */
     public readonly struct WaveRunScalingSnapshot
     {

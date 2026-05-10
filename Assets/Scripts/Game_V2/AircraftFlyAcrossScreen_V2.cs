@@ -21,6 +21,12 @@ namespace iStick2War_V2
  * - Drop paratroopers or bombs (HelicopterCarrier_V2 / BombPlaneController_V2 own payloads).
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2 + aircraft)
+ *
+ * Mounted from → EnemySpawner_V2.cs | Full aircraft stacks → Enemies/*_V2 composition roots
+ * Paratrooper drop timing → HelicopterCarrier_V2.cs
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Reusable horizontal transit helper for simple aircraft props without a full AI stack.

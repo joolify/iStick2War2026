@@ -15,6 +15,11 @@ namespace iStick2War_V2
  * - Modify bunker max HP or apply gameplay damage (WaveManager_V2 authoritative).
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * HP source → WaveManager_V2.cs | Interior safe volume (optional) → BunkerInteriorZone_V2.cs
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Presentation-only feedback decoupled from bunker combat colliders.

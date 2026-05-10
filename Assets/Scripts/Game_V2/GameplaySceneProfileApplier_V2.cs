@@ -16,6 +16,12 @@ namespace iStick2War_V2
  * - Own combat simulation (Hero / Wave systems consume rules only).
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * Profile data → GameplaySceneProfile_V2.cs | Static session rules → GameplaySceneRules_V2.cs
+ * Wave / shop unaffected directly → WaveManager_V2.cs
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Single scene-placed MonoBehaviour keeps benchmark scenes declarative without custom scene controllers.

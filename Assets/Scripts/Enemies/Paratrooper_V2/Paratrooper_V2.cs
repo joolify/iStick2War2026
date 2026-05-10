@@ -38,6 +38,41 @@ namespace iStick2War_V2
  * View listens to state for clips; it does not replace the forwarder for gameplay-timed events.
  *
  * ---------------------------------------------------------
+ * ARCHITECTURE MODEL
+ *
+ * Paratrooper (this type)           = Composition root (serialized refs + large air/ground / probe integration)
+ * ParatrooperController_V2          = Brain (AI decisions, Spine-driven gates, weapon cadence hooks)
+ * ParatrooperStateMachine_V2        = Rules (StickmanBodyState transitions, OnStateChanged for View/Controller)
+ * ParatrooperModel_V2               = DNA (HP, mirrored state, data for UI / systems)
+ * ParatrooperView_V2                = Body (Spine clips from state, hit feedback, gib/VFX)
+ * ParatrooperDamageReceiver_V2      = Damage math, multipliers, special deaths → state / model
+ * ParatrooperDeathHandler_V2        = Despawn timing, pool return, safety paths
+ * ParatrooperWeaponSystem_V2        = Enemy shooting / grenade / weapon runtime
+ * ParatrooperBodyPart_V2            = Per-bone or limb hit targets for player raycasts
+ * ParatrooperSpineEventForwarder_V2 = Spine AnimationState events → Controller / weapon timing
+ *
+ * ---------------------------------------------------------
+ * WHERE TO READ NEXT (navigation)
+ *
+ * Shared state enum (Deploy, Glide, Shoot, Die, …) → Assets/Scripts/Components/StickmanBodyState.cs
+ * Transition rules + events → ParatrooperStateMachine_V2.cs
+ * HP + mirrored fields → ParatrooperModel_V2.cs
+ * AI + gameplay orchestration → ParatrooperController_V2.cs
+ * Presentation + Spine tracks → ParatrooperView_V2.cs
+ * Incoming damage + reactions → ParatrooperDamageReceiver_V2.cs
+ * Death + pool / delays → ParatrooperDeathHandler_V2.cs
+ * Paratrooper firearms / ordnance → ParatrooperWeaponSystem_V2.cs (+ PotatomasherProjectile_V2.cs if relevant)
+ * Raycast hit volumes → ParatrooperBodyPart_V2.cs
+ * Named Spine events → ParatrooperSpineEventForwarder_V2.cs
+ * Wave spawn / harness → EnemySpawner_V2.cs (paratrooper paths)
+ *
+ * ---------------------------------------------------------
+ * TYPICAL CALL FLOW
+ *
+ * Unity Awake / Start → wire Model, StateMachine, Controller, View, damage, death, body parts, optional health bar UI.
+ * Unity Update + LateUpdate (execution order 500) → glide/ground probes, state-driven motion; Controller owns most per-frame decisions it subscribes to or drives from here.
+ *
+ * ---------------------------------------------------------
  * DESIGN NOTE
  *
  * Much gameplay-adjacent simulation still lives on this root for historical reasons; subsystems own

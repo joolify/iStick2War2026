@@ -7,6 +7,18 @@ alwaysApply: true
 
 In this repository, follow project conventions and **load the relevant Cursor skills** (via `@` mention or equivalent) so recommendations stay consistent.
 
+For a **cold start** (repo map, build notes, PR hints), read **`AGENTS.md`** in the repository root.
+
+## Repository map (where to look first)
+
+| Area | Path | Notes |
+|------|------|--------|
+| Wave loop, shop, spawner, telemetry, pooling | `Assets/Scripts/Game_V2/` | Many files include a **`NAVIGATION (Game_V2)`** block in the file header. |
+| Hero stack | `Assets/Scripts/Hero_V2/` | Composition root **`Hero_V2.cs`**; see its architecture comment. |
+| Enemies (V2 aircraft, paratrooper, mech, …) | `Assets/Scripts/Enemies/**` | Composition roots per unit (e.g. `BombDrone_V2`, `Helicopter_V2`, `Paratrooper` in `Paratrooper_V2/`). |
+| Shared aircraft abstractions | `Assets/Scripts/Enemies/AircraftBaseClasses/` | State machine bases, Spine view bases, horizontal flight base, health composition root. |
+| Unity version | `ProjectSettings/ProjectVersion.txt` | Authoritative editor version (e.g. 6000.x). |
+
 ## Cursor skills to use
 
 | Skill | When |
@@ -24,9 +36,9 @@ In this repository, follow project conventions and **load the relevant Cursor sk
 
 If a skill is missing in the environment, still apply the same **ideas** (2D / URP / Spine / V2 comment style) from the table above.
 
-## Shared V2 aircraft bases (`EnemyBaseClasses`)
+## Shared V2 aircraft bases (`AircraftBaseClasses`)
 
-When editing **BombDrone**, **KamikazeDrone**, **Helicopter**, or **BombPlane** stacks, reuse the shared types under `Assets/Scripts/Enemies/EnemyBaseClasses/` instead of duplicating state / Spine / horizontal-flight glue:
+When editing **BombDrone**, **KamikazeDrone**, **Helicopter**, or **BombPlane** stacks, reuse the shared types under `Assets/Scripts/Enemies/AircraftBaseClasses/` instead of duplicating state / Spine / horizontal-flight glue:
 
 - **`IAircraftStateMirror_V2<TState>`** / **`IAircraftStateChangedSource_V2<TState>`** — model ↔ state machine ↔ view contracts.
 - **`AircraftStateMachineBase_V2<TState, TModel>`** — sticky terminal state, `OnStateChanged`, mirror to model.

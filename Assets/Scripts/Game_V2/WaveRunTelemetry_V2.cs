@@ -20,6 +20,8 @@ namespace iStick2War_V2
  * DESIGN PRINCIPLE
  *
  * Small int-backed enum serialized into telemetry rows; keep names stable for offline tooling.
+ *
+ * NAVIGATION: rows written in WaveRunTelemetry_V2; bomb attribution from BombProjectile_V2 paths.
  */
     public enum BunkerDamageTelemetrySource
     {
@@ -47,6 +49,12 @@ namespace iStick2War_V2
  * ❌ MUST NOT
  *
  * - Change wave rules, spawn logic, shop prices, or hero combat (observe and persist only).
+ *
+ * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * Primary subscriber / event source → WaveManager_V2.cs | Hero aggregates → Hero_V2.cs (Hero_V2 folder)
+ * Editor tooling → Game_V2/Editor/WaveRunTelemetryAnalyzerWindow.cs
  *
  * ---------------------------------------------------------
  * DESIGN PRINCIPLE

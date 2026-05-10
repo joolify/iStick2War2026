@@ -15,6 +15,11 @@ namespace iStick2War_V2
  * - Decide gameplay outcomes (callers arm after VFX spawn only).
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * Pool API → SimplePrefabPool_V2.cs | Typical arm sites → BombProjectile_V2.cs, Paratrooper/weapon VFX spawns, etc.
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Tiny MonoBehaviour add-on so pooled prefabs stay self-scheduling without bespoke coroutines everywhere.

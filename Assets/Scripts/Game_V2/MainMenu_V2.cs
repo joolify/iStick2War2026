@@ -20,6 +20,12 @@ namespace iStick2War_V2
  * - Own wave progression or shop economy (WaveManager_V2 / ShopPanel_V2 after load).
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * World-space menu hits → MainMenuNavButton_V2.cs
+ * After Play → WaveManager_V2.cs (gameplay scene), not this file
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Early execution order so gameplay systems awake after menu state is stable; keeps boot UX in one MonoBehaviour.

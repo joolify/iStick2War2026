@@ -18,6 +18,12 @@ namespace iStick2War_V2
  * - Persist across scenes once cleared (OnDestroy on applier calls Clear()).
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * Source asset → GameplaySceneProfile_V2.cs | Scene hook → GameplaySceneProfileApplier_V2.cs
+ * Readers → ShopPanel_V2.cs, Hero_V2 / AutoHero_V2 (Hero_V2 folder), WaveRunTelemetry_V2.cs
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Static mirror of last applied profile so deeply nested systems can query policy without serialized wiring everywhere.

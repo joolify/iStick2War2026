@@ -22,11 +22,28 @@ namespace iStick2War_V2
  * ---------------------------------------------------------
  * ARCHITECTURE MODEL
  *
- * Bombplane_V2 = Composition Root (bootstrap + inspector-facing config)
- * Controller   = Brain (Update: drops, flight, despawn, hitbox ensure)
- * StateMachine = Rules (state + events for the View)
- * Model        = DNA (runtime pass data: started, timers, bomb count, direction)
- * View         = Body (Spine clips, bone world sampling for drop origin)
+ * Bombplane_V2                        = Composition root (bootstrap + inspector-facing config)
+ * BombPlaneController_V2             = Brain (Update: drops, flight, despawn, hitbox ensure; Config per pass)
+ * BombPlaneStateMachine_V2           = Rules (state + events for the View)
+ * BombPlaneModel_V2                 = DNA (runtime pass data: started, timers, bomb count, direction)
+ * BombPlaneView_V2                  = Body (Spine clips, bone world sampling for drop origin)
+ * BombPlaneSpineEventForwarder_V2   = Spine → controller animation events (timing only)
+ *
+ * ---------------------------------------------------------
+ * WHERE TO READ NEXT (navigation)
+ *
+ * State enum + terminal state → BombPlaneState_V2.cs
+ * State transitions + model mirror → BombPlaneStateMachine_V2.cs
+ * Drop interval, flight, pooling, Config struct → BombPlaneController_V2.cs
+ * Spine → controller animation events → BombPlaneSpineEventForwarder_V2.cs
+ * Fly / dropBomb Spine tracks → BombPlaneView_V2.cs
+ * Pooled bomb flight + explosion → BombProjectile_V2.cs
+ * Wave bomber spawn + facing / BeginBombRun(fromLeft) → EnemySpawner_V2.cs
+ *
+ * ---------------------------------------------------------
+ * TYPICAL CALL FLOW
+ *
+ * EnemySpawner_V2 (or scene Start) → InitializeForSpawn() → BeginBombRun(fromLeft?) → BombPlaneController_V2.SetConfig + StartBombRun.
  *
  * ---------------------------------------------------------
  * DESIGN GOAL

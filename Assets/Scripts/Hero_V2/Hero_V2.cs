@@ -31,11 +31,39 @@ namespace iStick2War_V2
  * ---------------------------------------------------------
  * ARCHITECTURE MODEL
  *
- * Hero_V2   = Composition Root (main entry point / bootstrap)
- * Controller = Brain (decision making / gameplay logic)
- * Systems    = Organs (weapon, damage, state, etc.)
- * Model      = DNA (pure data, no behaviour)
- * View       = Body (visual representation: animation, VFX)
+ * Hero_V2                    = Composition root (Awake wiring, Update forwards dt to input + controller)
+ * HeroController_V2         = Brain (Tick: gameplay decisions; owns systems references)
+ * HeroInput_V2             = Input sampling (Tick; no Unity Input here beyond what Input owns)
+ * HeroStateMachine_V2      = Rules (valid transitions, current HeroState)
+ * HeroModel_V2             = DNA (data the systems read/write)
+ * HeroView_V2              = Body (Spine/VFX; Init from composition root)
+ * HeroMovementSystem_V2   = Movement / facing integration
+ * HeroWeaponSystem_V2     = Weapons / firing / inventory handoff
+ * HeroDamageReceiver_V2   = Incoming damage validation + events
+ * HeroDeathHandler_V2     = Death flow + handoff to view / game over hooks
+ * HeroSpineEventForwarder_V2 = Spine → controller animation events
+ * AutoHero_V2              = Optional bot (TickBeforeHeroFrame before hero Tick)
+ *
+ * ---------------------------------------------------------
+ * WHERE TO READ NEXT (navigation)
+ *
+ * Hero states (enum) → HeroState.cs
+ * Transition rules → HeroStateMachine_V2.cs
+ * Per-frame gameplay → HeroController_V2.cs
+ * Movement / jump / ground → HeroMovementSystem_V2.cs
+ * Weapons, loadout, shooting → HeroWeaponSystem_V2.cs (+ HeroWeaponDefinition_V2.cs)
+ * Hitscan / shot geometry helpers → HeroShotResolver_V2.cs
+ * Damage pipeline + bunker cover checks → HeroDamageReceiver_V2.cs (+ ReceiveDamage on this root)
+ * Death sequencing → HeroDeathHandler_V2.cs
+ * Spine + blood / death presentation → HeroView_V2.cs
+ * Spine → gameplay bridge → HeroSpineEventForwarder_V2.cs
+ * Automation / bot aim → AutoHero_V2.cs
+ *
+ * ---------------------------------------------------------
+ * TYPICAL CALL FLOW
+ *
+ * Unity Awake → BindComponents → CreateSystems → InitSystems (view, damage, death, Spine forwarder).
+ * Unity Update → AutoHero_V2.TickBeforeHeroFrame (if present) → HeroInput_V2.Tick → HeroController_V2.Tick.
  *
  * ---------------------------------------------------------
  * DESIGN GOAL

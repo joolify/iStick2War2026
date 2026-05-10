@@ -21,6 +21,11 @@ namespace iStick2War_V2.Editor
  * - Mutate play-mode gameplay state (read-only analysis of log files).
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * JSON producer (runtime) → ../WaveRunTelemetry_V2.cs | Wave loop context → ../WaveManager_V2.cs
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Editor-only code under Game_V2/Editor keeps runtime assembly free of UnityEditor references.

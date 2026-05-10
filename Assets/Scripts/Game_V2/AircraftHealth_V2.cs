@@ -22,6 +22,12 @@ namespace iStick2War_V2
  * - Apply damage to bunkers or heroes directly (weapon systems route through WaveManager / DamageInfo paths).
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2 + aircraft)
+ *
+ * Pool despawn / explosions → SimplePrefabPool_V2.cs, PooledAutoDespawn_V2.cs
+ * Composition roots using this → Enemies/Helicopter_V2, BombPlane_V2, BombDrone_V2, KamikazeDrone_V2, …
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Small reusable health component shared by multiple aircraft prefabs; optional explosion VFX then destroy root.

@@ -17,6 +17,12 @@ namespace iStick2War_V2
  * - Decide when the player loses (WaveManager_V2 owns GameOver transition).
  *
  * ---------------------------------------------------------
+ * NAVIGATION (Game_V2)
+ *
+ * When to show / hide → WaveManager_V2.cs
+ * Reload / return UX → MainMenuNavButton_V2.cs (ReturnToMainMenu) + MainMenu_V2.cs
+ *
+ * ---------------------------------------------------------
  * DESIGN PRINCIPLE
  *
  * Self-contained UI MonoBehaviour separate from hero-death-only overlays managed inline in WaveManager_V2.
