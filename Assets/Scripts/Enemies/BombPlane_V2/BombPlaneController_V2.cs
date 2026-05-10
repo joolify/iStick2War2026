@@ -32,7 +32,7 @@ namespace iStick2War_V2
  *
  * Immutable-ish snapshot of tuning for one pass (flight, bombs, debug flags).
  */
-    public sealed class BombPlaneController_V2 : MonoBehaviour
+    public sealed class BombPlaneController_V2 : AircraftHorizontalFlightControllerBase_V2
     {
         [System.Serializable]
         public struct Config
@@ -201,22 +201,17 @@ namespace iStick2War_V2
                 return;
             }
 
-            if (_flightCamera == null || !_flightCamera.orthographic)
+            if (TryGetOrthographicCameraHorizontalBounds(
+                    _flightCamera,
+                    _config.flightOffscreenMarginWorld,
+                    out float leftBound,
+                    out float rightBound))
             {
-                return;
-            }
-
-            float halfHeight = _flightCamera.orthographicSize;
-            float halfWidth = halfHeight * _flightCamera.aspect;
-            float margin = Mathf.Max(0.5f, _config.flightOffscreenMarginWorld);
-            float camX = _flightCamera.transform.position.x;
-            float leftBound = camX - halfWidth - margin;
-            float rightBound = camX + halfWidth + margin;
-            float x = transform.position.x;
-
-            if ((_model.directionX > 0f && x > rightBound) || (_model.directionX < 0f && x < leftBound))
-            {
-                DespawnSelf();
+                float x = transform.position.x;
+                if (IsPastHorizontalFlyBounds(x, _model.directionX, leftBound, rightBound))
+                {
+                    DespawnSelf();
+                }
             }
         }
 
@@ -237,7 +232,7 @@ namespace iStick2War_V2
         private void DespawnSelf()
         {
             _stateMachine?.ChangeState(BombPlaneState_V2.Die);
-            SimplePrefabPool_V2.Despawn(gameObject);
+            DespawnSelfViaPool(gameObject);
         }
 
         private void EnsureHitboxIfMissing()

@@ -36,15 +36,16 @@ namespace iStick2War_V2
  * Typically lives on the child object that owns SkeletonAnimation (mesh + Spine),
  * while Bombplane_V2 on the root resolves it via GetComponentInChildren.
  */
-    public sealed class BombPlaneView_V2 : MonoBehaviour
+    public sealed class BombPlaneView_V2 : AircraftDualClipSpineViewBase_V2<BombPlaneState_V2>
     {
-        [SerializeField] private SkeletonAnimation _skeletonAnimation;
-        [SerializeField] private string _flyAnim = "fly";
-        [SerializeField] private string _dropBombAnim = "";
+        protected override BombPlaneState_V2 IdleStateValue => BombPlaneState_V2.Idle;
 
-        private BombPlaneStateMachine_V2 _stateMachine;
+        protected override BombPlaneState_V2 DropBombStateValue => BombPlaneState_V2.DropBomb;
 
-        public SkeletonAnimation SkeletonAnimation => _skeletonAnimation;
+        public void Initialize(BombPlaneStateMachine_V2 stateMachine)
+        {
+            base.Initialize(stateMachine);
+        }
 
         /// <summary>
         /// World position of a named Spine bone (e.g. bomb bay). Matches paratrooper spawn bone sampling in <c>EnemySpawner_V2</c>.
@@ -129,64 +130,6 @@ namespace iStick2War_V2
                 .Replace("-", string.Empty)
                 .Replace(" ", string.Empty)
                 .ToLowerInvariant();
-        }
-
-        public void Initialize(BombPlaneStateMachine_V2 stateMachine)
-        {
-            _stateMachine = stateMachine;
-            if (_skeletonAnimation == null)
-            {
-                _skeletonAnimation = GetComponent<SkeletonAnimation>();
-                if (_skeletonAnimation == null)
-                {
-                    _skeletonAnimation = GetComponentInChildren<SkeletonAnimation>(true);
-                }
-            }
-
-            if (_stateMachine != null)
-            {
-                _stateMachine.OnStateChanged -= HandleStateChanged;
-                _stateMachine.OnStateChanged += HandleStateChanged;
-            }
-
-            PlayForState(_stateMachine != null ? _stateMachine.CurrentState : BombPlaneState_V2.Idle);
-        }
-
-        public void ResetVisualStateForSpawn()
-        {
-            PlayForState(BombPlaneState_V2.Idle);
-        }
-
-        private void OnDestroy()
-        {
-            if (_stateMachine != null)
-            {
-                _stateMachine.OnStateChanged -= HandleStateChanged;
-            }
-        }
-
-        private void HandleStateChanged(BombPlaneState_V2 from, BombPlaneState_V2 to)
-        {
-            PlayForState(to);
-        }
-
-        private void PlayForState(BombPlaneState_V2 state)
-        {
-            if (_skeletonAnimation == null || _skeletonAnimation.AnimationState == null)
-            {
-                return;
-            }
-
-            if (state == BombPlaneState_V2.DropBomb && !string.IsNullOrWhiteSpace(_dropBombAnim))
-            {
-                _skeletonAnimation.AnimationState.SetAnimation(0, _dropBombAnim, false);
-                return;
-            }
-
-            if (!string.IsNullOrWhiteSpace(_flyAnim))
-            {
-                _skeletonAnimation.AnimationState.SetAnimation(0, _flyAnim, true);
-            }
         }
     }
 }

@@ -28,15 +28,13 @@ namespace iStick2War_V2
  * Thin composition root: resolve or add sibling components, forward lifecycle, subscribe AircraftHealth_V2.OnDestroyed.
  */
     [DisallowMultipleComponent]
-    public sealed class Helicopter_V2 : MonoBehaviour
+    public sealed class Helicopter_V2 : AircraftHealthCompositionRootBase_V2
     {
         private HelicopterModel_V2 _model;
         private HelicopterStateMachine_V2 _stateMachine;
         private HelicopterController_V2 _controller;
         private HelicopterView_V2 _view;
         private HelicopterSpineEventForwarder_V2 _spineEventForwarder;
-        private AircraftHealth_V2 _health;
-        private bool _initialized;
 
         public void InitializeForSpawn()
         {
@@ -53,11 +51,8 @@ namespace iStick2War_V2
                 _spineEventForwarder.Init(_controller, skeletonAnimation);
             }
 
-            if (_health != null)
-            {
-                _health.OnDestroyed -= HandleAircraftDestroyed;
-                _health.OnDestroyed += HandleAircraftDestroyed;
-            }
+            ResolveHealthFromHierarchy();
+            SubscribeHealthDestroyed(HandleAircraftDestroyed);
 
             _initialized = true;
         }
@@ -74,10 +69,7 @@ namespace iStick2War_V2
 
         private void OnDestroy()
         {
-            if (_health != null)
-            {
-                _health.OnDestroyed -= HandleAircraftDestroyed;
-            }
+            UnsubscribeHealthDestroyed(HandleAircraftDestroyed);
         }
 
         private void HandleAircraftDestroyed(AircraftHealth_V2 aircraft)
@@ -116,8 +108,6 @@ namespace iStick2War_V2
             {
                 _spineEventForwarder = gameObject.AddComponent<HelicopterSpineEventForwarder_V2>();
             }
-
-            _health = GetComponent<AircraftHealth_V2>();
         }
     }
 }

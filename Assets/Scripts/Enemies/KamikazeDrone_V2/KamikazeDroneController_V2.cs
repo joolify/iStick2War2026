@@ -26,7 +26,7 @@ namespace iStick2War_V2
  *
  * - Move transform, query BunkerHitbox_V2, or apply explosion damage
  */
-    public sealed class KamikazeDroneController_V2 : MonoBehaviour
+    public sealed class KamikazeDroneController_V2 : MonoBehaviour, IAircraftSpineAnimationCommandReceiver_V2
     {
         private KamikazeDroneStateMachine_V2 _stateMachine;
 

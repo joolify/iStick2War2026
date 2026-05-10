@@ -35,15 +35,13 @@ namespace iStick2War_V2
  * EnemySpawner_V2 adds this component at runtime if missing, then calls InitializeForSpawn / BeginFlight.
  */
     [DisallowMultipleComponent]
-    public sealed class KamikazeDrone_V2 : MonoBehaviour
+    public sealed class KamikazeDrone_V2 : AircraftHealthCompositionRootBase_V2
     {
         private KamikazeDroneModel_V2 _model;
         private KamikazeDroneStateMachine_V2 _stateMachine;
         private KamikazeDroneController_V2 _controller;
         private KamikazeDroneView_V2 _view;
         private KamikazeDroneSpineEventForwarder_V2 _spineEventForwarder;
-        private AircraftHealth_V2 _health;
-        private bool _initialized;
 
         public void InitializeForSpawn()
         {
@@ -67,11 +65,8 @@ namespace iStick2War_V2
                 _spineEventForwarder.Init(_controller, skeletonAnimation);
             }
 
-            if (_health != null)
-            {
-                _health.OnDestroyed -= HandleDestroyed;
-                _health.OnDestroyed += HandleDestroyed;
-            }
+            ResolveHealthFromHierarchy();
+            SubscribeHealthDestroyed(HandleDestroyed);
 
             _initialized = true;
         }
@@ -88,10 +83,7 @@ namespace iStick2War_V2
 
         private void OnDestroy()
         {
-            if (_health != null)
-            {
-                _health.OnDestroyed -= HandleDestroyed;
-            }
+            UnsubscribeHealthDestroyed(HandleDestroyed);
         }
 
         private void HandleDestroyed(AircraftHealth_V2 aircraft)
@@ -195,12 +187,6 @@ namespace iStick2War_V2
                 {
                     Object.Destroy(orphanForwarder);
                 }
-            }
-
-            _health = GetComponent<AircraftHealth_V2>();
-            if (_health == null)
-            {
-                _health = GetComponentInChildren<AircraftHealth_V2>(true);
             }
         }
 

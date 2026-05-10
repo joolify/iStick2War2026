@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace iStick2War_V2
 {
@@ -25,8 +26,16 @@ namespace iStick2War_V2
  *
  * Keep the model trivial until gameplay state needs to move off KamikazeDroneDriver_V2 only.
  */
-    public sealed class KamikazeDroneModel_V2 : MonoBehaviour
+    public sealed class KamikazeDroneModel_V2 : MonoBehaviour, IAircraftStateMirror_V2<KamikazeDroneState_V2>
     {
-        public KamikazeDroneState_V2 currentState = KamikazeDroneState_V2.Idle;
+        [FormerlySerializedAs("currentState")]
+        [SerializeField]
+        private KamikazeDroneState_V2 _currentState = KamikazeDroneState_V2.Idle;
+
+        public KamikazeDroneState_V2 currentState
+        {
+            get => _currentState;
+            set => _currentState = value;
+        }
     }
 }

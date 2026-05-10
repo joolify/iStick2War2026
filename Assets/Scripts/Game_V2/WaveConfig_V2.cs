@@ -53,7 +53,8 @@ namespace iStick2War_V2
         [SerializeField] private int _kamikazeDroneCount;
         [Tooltip(
             "How many enemy bomb drones to schedule this wave. " +
-            "EnemySpawner_V2 spawns them only when a bomb drone prefab is assigned.")]
+            "Requires the Bomb Drone prefab slot on EnemySpawner_V2 in the scene (same pattern as bomber / kamikaze); " +
+            "this count alone does not spawn anything if that reference is empty.")]
         [SerializeField] private int _bombDroneCount;
 
         [Header("Boss (ground)")]

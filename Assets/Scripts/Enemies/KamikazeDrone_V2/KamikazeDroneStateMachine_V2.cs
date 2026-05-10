@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 namespace iStick2War_V2
@@ -28,49 +27,10 @@ namespace iStick2War_V2
  *
  * - Damage WaveManager / hero, spawn VFX, or despawn the prefab
  */
-    public sealed class KamikazeDroneStateMachine_V2 : MonoBehaviour
+    public sealed class KamikazeDroneStateMachine_V2 : AircraftStateMachineBase_V2<KamikazeDroneState_V2, KamikazeDroneModel_V2>
     {
-        private KamikazeDroneState_V2 _currentState;
-        private KamikazeDroneModel_V2 _model;
+        protected override KamikazeDroneState_V2 IdleState => KamikazeDroneState_V2.Idle;
 
-        public event Action<KamikazeDroneState_V2, KamikazeDroneState_V2> OnStateChanged;
-
-        public KamikazeDroneState_V2 CurrentState => _currentState;
-
-        public void Initialize(KamikazeDroneModel_V2 model)
-        {
-            _model = model;
-            _currentState = KamikazeDroneState_V2.Idle;
-            if (_model != null)
-            {
-                _model.currentState = _currentState;
-            }
-        }
-
-        public void ResetForSpawn()
-        {
-            _currentState = KamikazeDroneState_V2.Idle;
-            if (_model != null)
-            {
-                _model.currentState = _currentState;
-            }
-        }
-
-        public void ChangeState(KamikazeDroneState_V2 newState)
-        {
-            if (newState == _currentState || _currentState == KamikazeDroneState_V2.Die)
-            {
-                return;
-            }
-
-            KamikazeDroneState_V2 previous = _currentState;
-            _currentState = newState;
-            if (_model != null)
-            {
-                _model.currentState = _currentState;
-            }
-
-            OnStateChanged?.Invoke(previous, newState);
-        }
+        protected override KamikazeDroneState_V2 TerminalState => KamikazeDroneState_V2.Die;
     }
 }

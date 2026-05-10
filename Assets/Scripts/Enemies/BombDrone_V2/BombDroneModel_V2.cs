@@ -13,9 +13,9 @@ namespace iStick2War_V2
  * STORED DATA (examples):
  *
  * - currentState (mirrors state machine)
- * - directionX, started, expireAt
+ * - directionX, started, expireAt (AircraftMotionModelBase_V2)
  * - bombDropped (at most one bomb per pass when rules fire)
- * - frozenForCombatMatrixHarness
+ * - frozenForCombatMatrixHarness (base)
  *
  * ---------------------------------------------------------
  * ❌ MUST NOT CONTAIN:
@@ -29,13 +29,16 @@ namespace iStick2War_V2
  *
  * Passive “DNA” mutated by the Controller; safe for tests and debugging snapshots.
  */
-    public sealed class BombDroneModel_V2 : MonoBehaviour
+    public sealed class BombDroneModel_V2 : AircraftMotionModelBase_V2, IAircraftStateMirror_V2<BombDroneState_V2>
     {
-        [HideInInspector] public BombDroneState_V2 currentState = BombDroneState_V2.Idle;
-        [HideInInspector] public float directionX = 1f;
-        [HideInInspector] public float expireAt;
+        [HideInInspector] [SerializeField] private BombDroneState_V2 _currentState = BombDroneState_V2.Idle;
+
+        public BombDroneState_V2 currentState
+        {
+            get => _currentState;
+            set => _currentState = value;
+        }
+
         [HideInInspector] public bool bombDropped;
-        [HideInInspector] public bool started;
-        [HideInInspector] public bool frozenForCombatMatrixHarness;
     }
 }

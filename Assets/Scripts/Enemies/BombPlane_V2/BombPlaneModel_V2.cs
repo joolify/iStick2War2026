@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace iStick2War_V2
 {
@@ -13,7 +14,7 @@ namespace iStick2War_V2
  * STORED DATA (examples):
  *
  * - currentState (mirrors state machine for debugging / consumers)
- * - directionX, started, timers (nextDropAt, expireAt)
+ * - directionX, started, timers (nextDropAt, expireAt) — motion on AircraftMotionModelBase_V2
  * - bombsDropped, frozenForCombatMatrixHarness
  *
  * ---------------------------------------------------------
@@ -28,14 +29,20 @@ namespace iStick2War_V2
  *
  * Treat as passive state (“DNA”) mutated by BombPlaneController_V2 and read by tooling/tests.
  */
-    public sealed class BombPlaneModel_V2 : MonoBehaviour
+    public sealed class BombPlaneModel_V2 : AircraftMotionModelBase_V2, IAircraftStateMirror_V2<BombPlaneState_V2>
     {
-        [HideInInspector] public BombPlaneState_V2 currentState = BombPlaneState_V2.Idle;
-        [HideInInspector] public float directionX = 1f;
-        [HideInInspector] public float expireAt;
+        [HideInInspector]
+        [FormerlySerializedAs("currentState")]
+        [SerializeField]
+        private BombPlaneState_V2 _currentState = BombPlaneState_V2.Idle;
+
+        public BombPlaneState_V2 currentState
+        {
+            get => _currentState;
+            set => _currentState = value;
+        }
+
         [HideInInspector] public float nextDropAt;
         [HideInInspector] public int bombsDropped;
-        [HideInInspector] public bool started;
-        [HideInInspector] public bool frozenForCombatMatrixHarness;
     }
 }

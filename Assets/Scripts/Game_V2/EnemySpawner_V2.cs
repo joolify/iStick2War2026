@@ -102,7 +102,7 @@ namespace iStick2War_V2
         [FormerlySerializedAs("_kamikazeDronePrefab")]
         [SerializeField] private GameObject _kamikazeDronePrefabAsset;
         [SerializeField] private float _kamikazeDroneSpawnIntervalSeconds = 3.2f;
-        [Tooltip("Optional bomb drone prefab (EnemyBombDrone_V2 + AircraftHealth_V2).")]
+        [Tooltip("Optional bomb drone prefab (BombDrone_V2 + AircraftHealth_V2).")]
         [SerializeField] private GameObject _bombDronePrefab;
         [SerializeField] private float _bombDroneSpawnIntervalSeconds = 4.1f;
         [SerializeField] private float _aircraftAutoDestroySeconds = 8f;
@@ -1271,12 +1271,12 @@ namespace iStick2War_V2
                 applyApproachStagger: false,
                 onSpawned: go =>
                 {
-                    EnemyBombDrone_V2 drone = go.GetComponent<EnemyBombDrone_V2>();
+                    BombDrone_V2 drone = go.GetComponent<BombDrone_V2>();
                     if (drone == null)
                     {
-                        drone = go.AddComponent<EnemyBombDrone_V2>();
+                        drone = go.AddComponent<BombDrone_V2>();
                         Debug.LogWarning(
-                            "[EnemySpawner_V2] Bomb drone prefab missing EnemyBombDrone_V2; component added at runtime.");
+                            "[EnemySpawner_V2] Bomb drone prefab missing BombDrone_V2; component added at runtime.");
                     }
 
                     if (drone != null)

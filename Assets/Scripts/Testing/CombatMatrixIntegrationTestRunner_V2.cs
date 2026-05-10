@@ -537,7 +537,7 @@ namespace iStick2War_V2
                 bombPlanes[i]?.FreezeForCombatMatrixHarness();
             }
 
-            EnemyBombDrone_V2[] bombDrones = root.GetComponentsInChildren<EnemyBombDrone_V2>(true);
+            BombDrone_V2[] bombDrones = root.GetComponentsInChildren<BombDrone_V2>(true);
             for (int i = 0; i < bombDrones.Length; i++)
             {
                 bombDrones[i]?.FreezeForCombatMatrixHarness();

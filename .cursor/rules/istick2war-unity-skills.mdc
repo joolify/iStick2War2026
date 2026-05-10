@@ -24,6 +24,20 @@ In this repository, follow project conventions and **load the relevant Cursor sk
 
 If a skill is missing in the environment, still apply the same **ideas** (2D / URP / Spine / V2 comment style) from the table above.
 
+## Shared V2 aircraft bases (`EnemyBaseClasses`)
+
+When editing **BombDrone**, **KamikazeDrone**, **Helicopter**, or **BombPlane** stacks, reuse the shared types under `Assets/Scripts/Enemies/EnemyBaseClasses/` instead of duplicating state / Spine / horizontal-flight glue:
+
+- **`IAircraftStateMirror_V2<TState>`** / **`IAircraftStateChangedSource_V2<TState>`** — model ↔ state machine ↔ view contracts.
+- **`AircraftStateMachineBase_V2<TState, TModel>`** — sticky terminal state, `OnStateChanged`, mirror to model.
+- **`AircraftMotionModelBase_V2`** — shared horizontal-pass fields (bomb drone, bomb plane); thin state-only models use the mirror interface with a serialized backing field.
+- **`AircraftDualClipSpineViewBase_V2<TState>`** — fly loop + optional one-shot drop clip (bomb drone, bomb plane); **`AircraftSingleClipSpineViewBase_V2<TState>`** — one loop clip (kamikaze, helicopter).
+- **`AircraftSpineEventForwarderBase_V2`** — raw Spine `Event` subscription; **`AircraftFlyStartedSpineEventForwarderBase_V2<TController>`** — optional `flyStartedEventName` → `DeployStarted` (kamikaze, helicopter).
+- **`AircraftHorizontalFlightControllerBase_V2`** — orthographic camera bounds + pool despawn helpers (bomb drone, bomb plane controllers).
+- **`AircraftHealthCompositionRootBase_V2`** — resolve `AircraftHealth_V2`, subscribe `OnDestroyed` (bomb drone, kamikaze, helicopter). **`Bombplane_V2`** stays the bomb-plane composition root (serialized tuning on root); its Model / StateMachine / View / Controller / Spine forwarder still sit on those bases.
+
+When renaming a **serialized** `currentState` field to a private backing field, add **`[FormerlySerializedAs("currentState")]`** so existing prefabs keep values.
+
 ## Before changing any V2 system
 
 1. **Identify the owning layer:** Model, Controller, StateMachine, View, WeaponSystem, DamageReceiver, DeathHandler (or the closest existing pattern). Do not assign new responsibility to the wrong layer.
@@ -35,4 +49,4 @@ If a skill is missing in the environment, still apply the same **ideas** (2D / U
 7. **Weapons and hits:** reuse existing separation (e.g. projectile vs hitscan, weapon composition); do not duplicate hit resolution.
 8. **Telemetry:** add or update telemetry for new gameplay-critical behavior when player-visible or balance-relevant outcomes change.
 9. **Integration tests:** add or update automated wave / integration coverage when weapons, enemies, waves, or core combat flow change.
-10. **Serialization:** new `[SerializeField]` fields need safe defaults; non-obvious fields get a short `//` comment per V2 style (file-level `/* */` blocks where appropriate, no `///` XML).
+10. **Serialization:** new `[SerializeField]` fields need safe defaults; non-obvious fields get a short `//` comment per V2 style (file-level `/* */` blocks where appropriate, no `///` XML). If you rename or encapsulate a serialized field (e.g. public `currentState` → private backing), use **`[FormerlySerializedAs("oldName")]`** so prefabs and scenes do not lose data.

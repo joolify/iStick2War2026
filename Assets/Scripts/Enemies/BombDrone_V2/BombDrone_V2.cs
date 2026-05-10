@@ -1,11 +1,12 @@
+using Spine.Unity;
 using UnityEngine;
 
 namespace iStick2War_V2
 {
     /*
- * EnemyBombDrone_V2 Architecture Principle
+ * BombDrone_V2 Architecture Principle
  *
- * EnemyBombDrone_V2 acts as the COMPOSITION ROOT (entry point) of the bomb-drone stack.
+ * BombDrone_V2 acts as the COMPOSITION ROOT (entry point) of the bomb-drone stack.
  *
  * ❌ It MUST NOT implement flight, bunker targeting, bomb drops, or Spine playback:
  * - Horizontal movement integration
@@ -22,11 +23,13 @@ namespace iStick2War_V2
  * ---------------------------------------------------------
  * ARCHITECTURE MODEL
  *
- * EnemyBombDrone_V2 = Composition Root (bootstrap + external API for spawners)
+ * BombDrone_V2     = Composition Root (bootstrap + external API for spawners)
  * Controller        = Brain (Update: fly, bunker drop, lifetime / camera despawn)
  * StateMachine      = Rules (state + events for the View)
  * Model             = DNA (started, direction, single bomb flag, timers, harness freeze)
  * View              = Body (Spine fly / dropBomb clips from state changes)
+ *
+ * Carried payload + drop timing + physics → BombDroneController_V2 (hierarchy on BombDrone V2.prefab).
  *
  * ---------------------------------------------------------
  * DESIGN GOAL
@@ -35,15 +38,13 @@ namespace iStick2War_V2
  * mirroring Bombplane_V2 / Hero_V2 composition-root discipline.
  */
     [DisallowMultipleComponent]
-    public sealed class EnemyBombDrone_V2 : MonoBehaviour
+    public sealed class BombDrone_V2 : AircraftHealthCompositionRootBase_V2
     {
         private BombDroneModel_V2 _model;
         private BombDroneStateMachine_V2 _stateMachine;
         private BombDroneController_V2 _controller;
         private BombDroneView_V2 _view;
         private BombDroneSpineEventForwarder_V2 _spineEventForwarder;
-        private AircraftHealth_V2 _health;
-        private bool _initialized;
 
         public void BeginRun()
         {
@@ -63,17 +64,14 @@ namespace iStick2War_V2
             _view.Initialize(_stateMachine);
             _view.ResetVisualStateForSpawn();
 
-            Spine.Unity.SkeletonAnimation skeletonAnimation = _view.SkeletonAnimation;
+            SkeletonAnimation skeletonAnimation = _view.SkeletonAnimation;
             if (skeletonAnimation != null && _spineEventForwarder != null)
             {
                 _spineEventForwarder.Init(_controller, skeletonAnimation);
             }
 
-            if (_health != null)
-            {
-                _health.OnDestroyed -= HandleDestroyed;
-                _health.OnDestroyed += HandleDestroyed;
-            }
+            ResolveHealthFromHierarchy();
+            SubscribeHealthDestroyed(HandleDestroyed);
 
             _initialized = true;
         }
@@ -86,10 +84,7 @@ namespace iStick2War_V2
 
         private void OnDestroy()
         {
-            if (_health != null)
-            {
-                _health.OnDestroyed -= HandleDestroyed;
-            }
+            UnsubscribeHealthDestroyed(HandleDestroyed);
         }
 
         private void HandleDestroyed(AircraftHealth_V2 aircraft)
@@ -120,19 +115,23 @@ namespace iStick2War_V2
             _view = GetComponent<BombDroneView_V2>();
             if (_view == null)
             {
+                _view = GetComponentInChildren<BombDroneView_V2>(true);
+            }
+
+            if (_view == null)
+            {
                 _view = gameObject.AddComponent<BombDroneView_V2>();
             }
 
             _spineEventForwarder = GetComponent<BombDroneSpineEventForwarder_V2>();
             if (_spineEventForwarder == null)
             {
-                _spineEventForwarder = gameObject.AddComponent<BombDroneSpineEventForwarder_V2>();
+                _spineEventForwarder = GetComponentInChildren<BombDroneSpineEventForwarder_V2>(true);
             }
 
-            _health = GetComponent<AircraftHealth_V2>();
-            if (_health == null)
+            if (_spineEventForwarder == null)
             {
-                _health = GetComponentInChildren<AircraftHealth_V2>(true);
+                _spineEventForwarder = gameObject.AddComponent<BombDroneSpineEventForwarder_V2>();
             }
         }
     }

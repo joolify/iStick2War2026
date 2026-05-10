@@ -33,31 +33,23 @@ namespace iStick2War_V2
  *
  * Same “sensor at the edge of the animation system” role as HeroSpineEventForwarder_V2.
  */
-    public sealed class BombPlaneSpineEventForwarder_V2 : MonoBehaviour
+    public sealed class BombPlaneSpineEventForwarder_V2 : AircraftSpineEventForwarderBase_V2
     {
-        private SkeletonAnimation _skeletonAnimation;
-        private bool _initialized;
+        private BombPlaneController_V2 _controller;
 
         public void Init(BombPlaneController_V2 controller, SkeletonAnimation skeletonAnimation)
         {
-            _skeletonAnimation = skeletonAnimation;
-            if (_skeletonAnimation != null && _skeletonAnimation.AnimationState != null)
-            {
-                _skeletonAnimation.AnimationState.Event += OnSpineEvent;
-                _initialized = true;
-            }
+            _controller = controller;
+            base.Init(skeletonAnimation);
         }
 
-        private void OnDestroy()
+        protected override void OnSpineAnimationEvent(TrackEntry trackEntry, Spine.Event e)
         {
-            if (_initialized && _skeletonAnimation != null && _skeletonAnimation.AnimationState != null)
+            if (_controller == null)
             {
-                _skeletonAnimation.AnimationState.Event -= OnSpineEvent;
+                return;
             }
-        }
 
-        private void OnSpineEvent(TrackEntry trackEntry, Spine.Event e)
-        {
             // Intentionally no Spine event mapping yet for BombPlane.
         }
     }

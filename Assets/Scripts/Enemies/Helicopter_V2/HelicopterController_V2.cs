@@ -28,7 +28,7 @@ namespace iStick2War_V2
  *
  * Thin bridge between animator timing and HelicopterStateMachine_V2, same role shape as other *_Controller_V2 units.
  */
-    public sealed class HelicopterController_V2 : MonoBehaviour
+    public sealed class HelicopterController_V2 : MonoBehaviour, IAircraftSpineAnimationCommandReceiver_V2
     {
         private HelicopterStateMachine_V2 _stateMachine;
 

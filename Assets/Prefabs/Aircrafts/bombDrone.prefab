@@ -107,7 +107,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c50499406fd7abd4dad33c6d93754f16, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.EnemyBombDrone_V2
+  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.BombDrone_V2
   _horizontalFlySpeed: 6.2
   _flightOffscreenMarginWorld: 4
   _maxLifetimeSeconds: 30
