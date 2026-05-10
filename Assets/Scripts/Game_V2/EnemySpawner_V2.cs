@@ -232,9 +232,9 @@ namespace iStick2War_V2
         [Tooltip(
             "Logs anchor world positions, camera frustum snap, and fallback path. " +
             "If spawn positions look wrong: check Snap Spawns To Camera View Edges and Orthographic Frustum Inset Padding.")]
-        [SerializeField] private bool _debugAnchorSpawnDiagnostics = true;
+        [SerializeField] private bool _debugAnchorSpawnDiagnostics = false;
         [Tooltip("Logs detailed Spine skeleton/bone scanning when resolving paratrooper spawn bone.")]
-        [SerializeField] private bool _debugLogBoneScanDiagnostics = true;
+        [SerializeField] private bool _debugLogBoneScanDiagnostics = false;
 
         private readonly HashSet<ParatrooperDeathHandler_V2> _trackedDeaths = new HashSet<ParatrooperDeathHandler_V2>();
         private readonly HashSet<MechRobotBossDeathHandler_V2> _trackedMechBossDeaths = new HashSet<MechRobotBossDeathHandler_V2>();

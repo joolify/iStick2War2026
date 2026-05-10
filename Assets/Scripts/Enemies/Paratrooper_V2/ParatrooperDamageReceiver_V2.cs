@@ -57,7 +57,7 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
     [SerializeField] private float _minFinalDamageToSever = 18f;
     [SerializeField] private bool _allowTorsoSever = false;
     [SerializeField] private bool _allowHeadSever = true;
-    [SerializeField] private bool _debugDamagePathLogs = true;
+    [SerializeField] private bool _debugDamagePathLogs = false;
 
     private ParatrooperModel_V2 _model;
     private ParatrooperStateMachine_V2 _stateMachine;
@@ -140,7 +140,11 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
                 : _flamethrowerBurnDeathDelaySeconds;
             _model.StartBurning(delay, airborneBurn);
             _stateMachine.ChangeState(airborneBurn ? StickmanBodyState.Glide : StickmanBodyState.Run);
-            Debug.Log($"[ParatrooperDamageReceiver_V2] Burn started by flamethrower. dieAt={_model.burnDieAtTime:0.##}");
+            if (_debugDamagePathLogs)
+            {
+                Debug.Log($"[ParatrooperDamageReceiver_V2] Burn started by flamethrower. dieAt={_model.burnDieAtTime:0.##}");
+            }
+
             return;
         }
 
@@ -290,27 +294,38 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
             OnDamagePresentation?.Invoke(info, totalDealt);
         }
 
-        Debug.Log(
-            $"[ParatrooperDamageReceiver_V2] Hit part={info.BodyPart}, base={info.BaseDamage:0.##}, " +
-            $"mult={multiplier:0.##}, armor={_model.armorMultiplier:0.##}, final={finalDamage:0.##}, " +
-            $"hp={hpBefore:0.##}->{remainingHealth:0.##}, dead={isDead}, profile={_model.GetDamageProfileMode()}, hitPoint={info.HitPoint}"
-        );
-
-        if (isDead)
+        if (_debugDamagePathLogs)
         {
-            Debug.LogWarning($"[ParatrooperDamageReceiver_V2] LETHAL HIT on {info.BodyPart}.");
+            Debug.Log(
+                $"[ParatrooperDamageReceiver_V2] Hit part={info.BodyPart}, base={info.BaseDamage:0.##}, " +
+                $"mult={multiplier:0.##}, armor={_model.armorMultiplier:0.##}, final={finalDamage:0.##}, " +
+                $"hp={hpBefore:0.##}->{remainingHealth:0.##}, dead={isDead}, profile={_model.GetDamageProfileMode()}, hitPoint={info.HitPoint}"
+            );
+
+            if (isDead)
+            {
+                Debug.LogWarning($"[ParatrooperDamageReceiver_V2] LETHAL HIT on {info.BodyPart}.");
+                return;
+            }
+
+            if (info.BodyPart == BodyPartType.Head)
+            {
+                Debug.LogWarning("[ParatrooperDamageReceiver_V2] HEADSHOT!");
+                return;
+            }
+
+            if (multiplier <= 0.8f)
+            {
+                Debug.Log($"[ParatrooperDamageReceiver_V2] Low-damage limb hit ({info.BodyPart}).");
+            }
+        }
+        else if (isDead)
+        {
             return;
         }
-
-        if (info.BodyPart == BodyPartType.Head)
+        else if (info.BodyPart == BodyPartType.Head)
         {
-            Debug.LogWarning("[ParatrooperDamageReceiver_V2] HEADSHOT!");
             return;
-        }
-
-        if (multiplier <= 0.8f)
-        {
-            Debug.Log($"[ParatrooperDamageReceiver_V2] Low-damage limb hit ({info.BodyPart}).");
         }
     }
 

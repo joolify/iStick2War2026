@@ -13,9 +13,9 @@ namespace iStick2War_V2
  * DESIGN INTENT (early air campaign, waves ~1–10)
  *
  * - Waves 1–3: helicopter + paratroopers only, low density.
- * - Waves 4–7: ramp counts/tempo; first bomber passes when BomberPassCount is above zero.
- * - Waves 8–10: heavier air; more bomber passes when BomberPassCount is raised (spawned by EnemySpawner_V2).
- * - EnemyCount remains “drops per wave” (one helicopter approach per count with the current spawner).
+ * - Waves 4–7: ramp counts/tempo; first bomb-plane passes when BomberPassCount is above zero.
+ * - Waves 8–10: heavier air; more bomb-plane passes when BomberPassCount is raised (spawned by EnemySpawner_V2).
+ * - EnemyCount (paratrooper drops per wave) remains “drops per wave” (one helicopter approach per count with the current spawner).
  *
  * ---------------------------------------------------------
  * ❌ MUST NOT
@@ -39,7 +39,8 @@ namespace iStick2War_V2
         menuName = "iStick2War/Waves/Wave Config V2")]
     public sealed class WaveConfig_V2 : ScriptableObject
     {
-        [Header("Spawn")]
+        [Header("Paratrooper Spawn")]
+        [InspectorName("Paratrooper Count")]
         [SerializeField] private int _enemyCount = 6;
         [SerializeField] private float _waveDurationSeconds = 25f;
         [SerializeField] private float _spawnIntervalSeconds = 1.6f;
@@ -48,9 +49,10 @@ namespace iStick2War_V2
         [SerializeField] private float _enemyHealthMultiplier = 1f;
         [SerializeField] private float _enemyDamageMultiplier = 1f;
 
-        [Header("Air threats (bomber is optional)")]
+        [Header("Air threats (BombPlane optional)")]
+        [InspectorName("BombPlane Count")]
         [Tooltip(
-            "How many bomber flyovers to schedule this wave. Independent of EnemyCount (helicopter paratrooper drops). " +
+            "How many bomb-plane flyovers to schedule this wave. Independent of paratrooper helicopter drops (EnemyCount). " +
             "EnemySpawner_V2 spawns bombers only when a bomber prefab is assigned there.")]
         [SerializeField] private int _bomberPassCount;
         [Tooltip(
@@ -65,7 +67,7 @@ namespace iStick2War_V2
 
         [Header("Boss (ground)")]
         [Tooltip(
-            "Mech Robot Boss units spawned after the helicopter paratrooper schedule completes (runs even when Enemy Count is 0). " +
+            "Mech Robot Boss units spawned after the helicopter paratrooper schedule completes (runs even when Paratrooper Count is 0). " +
             "Assign the MechRobotBoss prefab (e.g. Mech Robot V2) on EnemySpawner_V2 — otherwise the count is ignored.")]
         [SerializeField] private int _mechRobotBossCount;
 

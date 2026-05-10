@@ -10,7 +10,8 @@
 	"audio": "./audio"
 },
 "bones": [
-	{ "name": "root" }
+	{ "name": "root" },
+	{ "name": "paratrooperSpawnPoint", "parent": "root", "x": 84.94, "y": 22 }
 ],
 "slots": [
 	{ "name": "helicopterBody", "bone": "root", "attachment": "helicopterBody" },

@@ -141,7 +141,8 @@ public class Paratrooper : MonoBehaviour
         "When the anchor is a child, probes use Rigidbody2D X + anchor Y only if |anchor.x - rb.x| is at most this. " +
         "Larger drift means the bone is mis-parented or not tracking the body — the anchor is ignored and collider / RB " +
         "probes are used instead (avoids huge vertical snap errors on Land / Die).")]
-    [SerializeField] private float _groundProbeAnchorMaxHorizontalDriftFromRb = 4f;
+    // Feet / Spine followers can sit several world units from Rigidbody2D.position on this rig; too low a value spams warnings and skips anchor Y.
+    [SerializeField] private float _groundProbeAnchorMaxHorizontalDriftFromRb = 10f;
     [Tooltip(
         "Ground probes use the lowest enabled non-trigger collider on this Rigidbody2D (Spine BoundingBoxFollower " +
         "polygons), not only the root collider. Negative bias moves the probe down if feet still look above Ground.")]
@@ -223,7 +224,7 @@ public class Paratrooper : MonoBehaviour
     private bool _warnedAttachedColliderBufferTruncation;
     private float _lastGroundProbeDebugUnscaledTime = float.NegativeInfinity;
     private bool _warnedGroundProbeAnchorRejected;
-    private bool _warnedGroundProbeAnchorHorizontalDrift;
+    private static bool s_loggedGroundProbeAnchorHorizontalDrift;
     private float _airborneGravityScaleCached;
     private bool _airborneGravityScaleCachedValid;
     private bool _hasBeenVisibleToMainCamera;
@@ -352,7 +353,6 @@ public class Paratrooper : MonoBehaviour
 
         _warnedAttachedColliderBufferTruncation = false;
         _warnedGroundProbeAnchorRejected = false;
-        _warnedGroundProbeAnchorHorizontalDrift = false;
         _nextColliderSummaryTime = 0f;
         _lastColliderSummary = string.Empty;
         _lastGroundProbeDebugUnscaledTime = float.NegativeInfinity;
@@ -1626,9 +1626,9 @@ public class Paratrooper : MonoBehaviour
                     return GroundProbeBuild.FromAnchor(new Vector2(anchorProbeX, y));
                 }
 
-                if (!_warnedGroundProbeAnchorHorizontalDrift)
+                if (!s_loggedGroundProbeAnchorHorizontalDrift)
                 {
-                    _warnedGroundProbeAnchorHorizontalDrift = true;
+                    s_loggedGroundProbeAnchorHorizontalDrift = true;
                     Debug.LogWarning(
                         "[Paratrooper_V2] Ground probe anchor has excessive horizontal drift vs Rigidbody2D; ignoring " +
                         "anchor for Ground probes (feet bone may be wrong or not under this character). Using collider / RB " +

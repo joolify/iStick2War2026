@@ -446,7 +446,7 @@ MonoBehaviour:
   _groundCheckDistance: 0.08
   _nearGroundRayDistance: 1.25
   _groundProbeAnchor: {fileID: 3687789801200291234}
-  _groundProbeAnchorMaxHorizontalDriftFromRb: 4
+  _groundProbeAnchorMaxHorizontalDriftFromRb: 10
   _groundProbeFootBiasWorld: 0
   _groundAttachedColliderProbeCapacity: 48
   _debugGroundProbeLogs: 1
@@ -522,7 +522,7 @@ MonoBehaviour:
   _minFinalDamageToSever: 18
   _allowTorsoSever: 0
   _allowHeadSever: 1
-  _debugDamagePathLogs: 1
+  _debugDamagePathLogs: 0
 --- !u!114 &3884552245145279488
 MonoBehaviour:
   m_ObjectHideFlags: 0

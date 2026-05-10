@@ -10,6 +10,8 @@ namespace iStick2War_V2
  * PURPOSE:
  * Coroutine-driven sequencing: wait for camera/trigger thresholds, invoke configured drop callbacks with world
  * positions, cancel remaining drops when aborted. EnemySpawner_V2 wires Func delegates when mounting paratroopers.
+ * Pooled aircraft despawn via SetActive(false) (no OnDestroy): cleanup runs in OnDisable so pending spawner drops
+ * are released and the carrier can run again on the next Spawn().
  *
  * ---------------------------------------------------------
  * ❌ MUST NOT
@@ -89,6 +91,7 @@ namespace iStick2War_V2
             _cancelRemainingDrops = cancelRemainingDrops;
             _debugLog = debugLog;
             _initialized = true;
+            _isRoutineRunning = false;
             _droppedSoFar = 0;
             _loggedTriggerReached = false;
             _hasTriggerDropPositionSnapshot = false;
@@ -108,57 +111,64 @@ namespace iStick2War_V2
 
         private IEnumerator RunDropSequence()
         {
-            float timeoutAt = Time.time + _maxWaitForTriggerSeconds;
-            while (Time.time < timeoutAt)
+            try
             {
-                if (HasReachedDropEntryTrigger())
+                float timeoutAt = Time.time + _maxWaitForTriggerSeconds;
+                while (Time.time < timeoutAt)
                 {
-                    break;
-                }
+                    if (HasReachedDropEntryTrigger())
+                    {
+                        break;
+                    }
 
-                yield return null;
-            }
-
-            if (_dropDelayAfterTriggerSeconds > 0f)
-            {
-                yield return new WaitForSeconds(_dropDelayAfterTriggerSeconds);
-            }
-
-            if (_waitOneFrameBeforeFirstDrop)
-            {
-                // Let Spine/Bone transforms settle before first spawn sample.
-                yield return null;
-            }
-
-            while (_droppedSoFar < _dropCount)
-            {
-                Vector3 dropPosForThisAttempt = (_droppedSoFar == 0 && _hasTriggerDropPositionSnapshot)
-                    ? _triggerDropPositionSnapshot
-                    : GetDropWorldPosition();
-
-                // Guard each individual drop so delayed bursts cannot spawn offscreen
-                // after the helicopter has already moved past the visible area.
-                while (!IsDropPointInsideCameraX(dropPosForThisAttempt.x))
-                {
-                    yield return null;
-                    dropPosForThisAttempt = GetDropWorldPosition();
-                }
-
-                if (_performOneDrop == null || !_performOneDrop.Invoke(dropPosForThisAttempt))
-                {
-                    CancelRemaining("carrier-drop-sequence-stopped");
-                    yield break;
-                }
-
-                _droppedSoFar++;
-                if (_droppedSoFar < _dropCount && _dropIntervalSeconds > 0f)
-                {
-                    yield return new WaitForSeconds(_dropIntervalSeconds);
-                }
-                else
-                {
                     yield return null;
                 }
+
+                if (_dropDelayAfterTriggerSeconds > 0f)
+                {
+                    yield return new WaitForSeconds(_dropDelayAfterTriggerSeconds);
+                }
+
+                if (_waitOneFrameBeforeFirstDrop)
+                {
+                    // Let Spine/Bone transforms settle before first spawn sample.
+                    yield return null;
+                }
+
+                while (_droppedSoFar < _dropCount)
+                {
+                    Vector3 dropPosForThisAttempt = (_droppedSoFar == 0 && _hasTriggerDropPositionSnapshot)
+                        ? _triggerDropPositionSnapshot
+                        : GetDropWorldPosition();
+
+                    // Guard each individual drop so delayed bursts cannot spawn offscreen
+                    // after the helicopter has already moved past the visible area.
+                    while (!IsDropPointInsideCameraX(dropPosForThisAttempt.x))
+                    {
+                        yield return null;
+                        dropPosForThisAttempt = GetDropWorldPosition();
+                    }
+
+                    if (_performOneDrop == null || !_performOneDrop.Invoke(dropPosForThisAttempt))
+                    {
+                        CancelRemaining("carrier-drop-sequence-stopped");
+                        yield break;
+                    }
+
+                    _droppedSoFar++;
+                    if (_droppedSoFar < _dropCount && _dropIntervalSeconds > 0f)
+                    {
+                        yield return new WaitForSeconds(_dropIntervalSeconds);
+                    }
+                    else
+                    {
+                        yield return null;
+                    }
+                }
+            }
+            finally
+            {
+                _isRoutineRunning = false;
             }
         }
 
@@ -280,9 +290,12 @@ namespace iStick2War_V2
             return true;
         }
 
-        private void OnDestroy()
+        private void OnDisable()
         {
-            CancelRemaining("aircraft-destroyed-before-carrier-drop");
+            // Pool despawn uses SetActive(false); OnDestroy is not called. Release planned drops so EnemySpawner_V2
+            // pending counters and spawn targets stay consistent (see RegisterCancelledPlannedParatrooperDrop).
+            CancelRemaining("aircraft-inactive-before-carrier-drop");
+            _isRoutineRunning = false;
         }
 
         private void CancelRemaining(string reason)

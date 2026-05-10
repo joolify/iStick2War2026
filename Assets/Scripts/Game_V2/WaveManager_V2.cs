@@ -1700,11 +1700,27 @@ namespace iStick2War_V2
             if (mainCam != null)
             {
                 _followCamera = mainCam.GetComponent<FollowCamera>();
+                if (_followCamera == null)
+                {
+                    // Main camera often has no FollowCamera (e.g. cutscene cam tagged MainCamera);
+                    // gameplay follow is usually on a dedicated rig elsewhere in the scene.
+                    _followCamera = UnityEngine.Object.FindFirstObjectByType<FollowCamera>(
+                        FindObjectsInactive.Exclude);
+                }
+
                 if (_debugCameraFollowLogs)
                 {
-                    Debug.Log(_followCamera != null
-                        ? $"[WaveManager_V2] Found FollowCamera on '{mainCam.name}'. enabled={_followCamera.enabled}"
-                        : $"[WaveManager_V2] No FollowCamera found on '{mainCam.name}'.");
+                    if (_followCamera != null)
+                    {
+                        Debug.Log(
+                            $"[WaveManager_V2] Found FollowCamera on '{_followCamera.gameObject.name}' " +
+                            $"(Camera.main='{mainCam.name}'). enabled={_followCamera.enabled}");
+                    }
+                    else
+                    {
+                        Debug.Log(
+                            $"[WaveManager_V2] No FollowCamera found on '{mainCam.name}' or elsewhere in loaded scenes.");
+                    }
                 }
             }
             else if (_debugCameraFollowLogs)

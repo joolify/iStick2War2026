@@ -5310,7 +5310,7 @@ MonoBehaviour:
   _clutchReviveHealthFraction: 0.6
   _restartRunPermanentDamageBonusStep: 0.05
   _debugWaveLogs: 0
-  _debugCameraFollowLogs: 1
+  _debugCameraFollowLogs: 0
   _nextWaveDebugKey: 13
 --- !u!4 &796613715
 Transform:
@@ -9292,8 +9292,8 @@ MonoBehaviour:
   _orthographicFrustumInsetPadding: 0.6
   _debugSpawnLogs: 0
   _masterDebugGrenadeOnly: 0
-  _debugAnchorSpawnDiagnostics: 1
-  _debugLogBoneScanDiagnostics: 1
+  _debugAnchorSpawnDiagnostics: 0
+  _debugLogBoneScanDiagnostics: 0
 --- !u!1 &1791821114
 GameObject:
   m_ObjectHideFlags: 0
