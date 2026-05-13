@@ -207,7 +207,7 @@ namespace iStick2War_V2
         {
             if (_hero == null)
             {
-                _hero = FindFirstObjectByType<Hero_V2>();
+                _hero = FindAnyObjectByType<Hero_V2>();
             }
 
             if (_hero != null)

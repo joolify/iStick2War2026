@@ -11,7 +11,8 @@ namespace iStick2War_V2
  * EnemySpawner_V2 (Wave-scoped enemy and aircraft spawning)
  *
  * PURPOSE:
- * Runs coroutines and spawn helpers for the active wave: helicopter flights with paratrooper drops,
+ * Runs coroutines and spawn helpers for the active wave: helicopter flights with paratrooper drops
+ * (optional horizontal bunker-footprint gate on drop world X via HelicopterCarrier_V2),
  * optional bomber passes, kamikaze / bomb-drone aircraft, mech robot boss ground spawns, and related
  * timing. Reports wave clear / kill counts upward so WaveManager_V2 can finish InWave when everything
  * that must die has died and scripted passes completed.
@@ -195,6 +196,18 @@ namespace iStick2War_V2
         [SerializeField] private float _paratrooperDropTriggerLeadDistanceWorld = 2.0f;
         [Tooltip("Wait one frame before first drop so Spine bone world position is fully updated.")]
         [SerializeField] private bool _waitOneFrameBeforeFirstParatrooperDrop = true;
+        [Header("Paratrooper spawn vs bunker (horizontal)")]
+        [Tooltip(
+            "When enabled, carrier drops wait until the sampled paratrooper door world X is outside BunkerInteriorZone_V2 " +
+            "Collider2D bounds (plus padding). If no zone exists in loaded scenes, this is a no-op.")]
+        [SerializeField] private bool _deferParatrooperDropUntilOutsideBunkerFootprintX = true;
+        [Tooltip("Expands the excluded horizontal interval on both sides (world units).")]
+        [SerializeField] private float _paratrooperBunkerFootprintHorizontalPaddingWorld = 0.75f;
+        [Tooltip("Optional. When set, uses this component's Collider2D bounds; otherwise finds BunkerInteriorZone_V2.")]
+        [SerializeField] private BunkerInteriorZone_V2 _bunkerInteriorZoneForParatrooperGateOverride;
+        [Tooltip(
+            "Max seconds per drop to wait for camera visibility plus bunker-X clear. After this, the drop uses the current sample.")]
+        [SerializeField] private float _paratrooperMaxSecondsWaitClearOfBunkerFootprintX = 6f;
         [Tooltip(
             "Extra world offset per spawn index further outside the playfield (left spawns: −X, right spawns: +X) " +
             "so multiple helicopters in one wave do not share the same approach X.")]
@@ -273,6 +286,10 @@ namespace iStick2War_V2
         private int _paratrooperDropsTimeoutCount;
         private Transform _cachedDropTriggerLeft;
         private Transform _cachedDropTriggerRight;
+        private bool _paratrooperBunkerFootprintCacheValid;
+        private bool _paratrooperBunkerFootprintHasInterval;
+        private float _paratrooperBunkerFootprintMinX;
+        private float _paratrooperBunkerFootprintMaxX;
 
         public float LastParatrooperSpawnUnscaledTime => _lastParatrooperSpawnUnscaledTime;
         public float LastSpawnAttemptUnscaledTime => _lastSpawnAttemptUnscaledTime;
@@ -390,6 +407,7 @@ namespace iStick2War_V2
 
             _isWaveActive = true;
             _waveSessionId++;
+            InvalidateParatrooperBunkerFootprintCache();
             _waveNumberForDiagnostics = Mathf.Max(0, waveNumberForLogs);
             _activeWaveConfig = config;
             _runtimeEnemyHealthMultiplier = enemyHealthMultiplier > 0f
@@ -965,6 +983,7 @@ namespace iStick2War_V2
                     {
                         Vector3 paratrooperWorldPositionNow = aircraftWorldPos + _paratrooperOffsetFromMount;
                         paratrooperWorldPositionNow.z = _anchorSpawnWorldZ;
+                        paratrooperWorldPositionNow = ClampDropPositionXInsideOrthographicCameraView(paratrooperWorldPositionNow, 0f);
                         if (!SpawnParatrooper(paratrooperWorldPositionNow, usedAnchorSpawn, fromLeft, aircraft))
                         {
                             RegisterCancelledPlannedParatrooperDrop("direct-anchor-drop-spawn-failed");
@@ -1065,6 +1084,13 @@ namespace iStick2War_V2
                 _pendingDelayedDropCoroutines = Mathf.Max(0, _pendingDelayedDropCoroutines - 1);
             }
 
+            Func<float, bool> dropWorldXGate = _deferParatrooperDropUntilOutsideBunkerFootprintX
+                ? IsParatrooperDropWorldXAcceptableForBunker
+                : null;
+            float dropWorldXGateTimeoutSeconds = _deferParatrooperDropUntilOutsideBunkerFootprintX
+                ? Mathf.Max(0f, _paratrooperMaxSecondsWaitClearOfBunkerFootprintX)
+                : 0f;
+
             carrier.Initialize(
                 fromLeft,
                 Mathf.Max(1, dropCount),
@@ -1086,6 +1112,8 @@ namespace iStick2War_V2
                     return shouldContinue;
                 },
                 () => GetParatrooperSpawnPositionFromAircraft(aircraft),
+                dropWorldXGate,
+                dropWorldXGateTimeoutSeconds,
                 (remaining, reason) =>
                 {
                     CancelRemainingCarrierDrops(remaining, reason);
@@ -1108,6 +1136,7 @@ namespace iStick2War_V2
 
             Vector3 finalDropPos = sampledDropPos;
             finalDropPos.z = _anchorSpawnWorldZ;
+            finalDropPos = ClampDropPositionXInsideOrthographicCameraView(finalDropPos, 0f);
             if (!SpawnParatrooper(finalDropPos, usedAnchorSpawn, fromLeft, aircraft))
             {
                 RegisterCancelledPlannedParatrooperDrop("carrier-drop-spawn-failed");
@@ -1123,6 +1152,57 @@ namespace iStick2War_V2
             {
                 RegisterCancelledPlannedParatrooperDrop(reason);
             }
+        }
+
+        private void InvalidateParatrooperBunkerFootprintCache()
+        {
+            _paratrooperBunkerFootprintCacheValid = false;
+            _paratrooperBunkerFootprintHasInterval = false;
+        }
+
+        private void EnsureParatrooperBunkerFootprintCacheResolved()
+        {
+            if (_paratrooperBunkerFootprintCacheValid)
+            {
+                return;
+            }
+
+            _paratrooperBunkerFootprintCacheValid = true;
+            _paratrooperBunkerFootprintHasInterval = false;
+
+            BunkerInteriorZone_V2 zone = _bunkerInteriorZoneForParatrooperGateOverride;
+            if (zone == null)
+            {
+                zone = FindAnyObjectByType<BunkerInteriorZone_V2>(FindObjectsInactive.Include);
+            }
+
+            if (zone == null)
+            {
+                return;
+            }
+
+            Collider2D c = zone.GetComponent<Collider2D>();
+            if (c == null)
+            {
+                return;
+            }
+
+            Bounds b = c.bounds;
+            float pad = Mathf.Max(0f, _paratrooperBunkerFootprintHorizontalPaddingWorld);
+            _paratrooperBunkerFootprintMinX = b.min.x - pad;
+            _paratrooperBunkerFootprintMaxX = b.max.x + pad;
+            _paratrooperBunkerFootprintHasInterval = true;
+        }
+
+        private bool IsParatrooperDropWorldXAcceptableForBunker(float worldX)
+        {
+            EnsureParatrooperBunkerFootprintCacheResolved();
+            if (!_paratrooperBunkerFootprintHasInterval)
+            {
+                return true;
+            }
+
+            return worldX < _paratrooperBunkerFootprintMinX || worldX > _paratrooperBunkerFootprintMaxX;
         }
 
         private void SpawnOneBomberPass(int spawnIndexInWave)
@@ -1529,6 +1609,7 @@ namespace iStick2War_V2
             // Awake visual sanitize / missing reconcile (e.g. SkeletonAnimation on root) can leave rigidbody root off
             // the requested drop while Spine is elsewhere — snap so gameplay matches the spawn resolution logs.
             spawned.SnapSpawnAlignmentToRequestedWorld(worldPosition);
+            spawned.SnapHealthBarToCurrentPosition();
             ApplyMasterDebugFlagsToParatrooper(spawned);
 
             if (_activeWaveConfig != null)
@@ -1891,6 +1972,7 @@ namespace iStick2War_V2
                 }
 
                 Vector3 dropPos = GetParatrooperSpawnPositionFromAircraft(aircraft);
+                dropPos = ClampDropPositionXInsideOrthographicCameraView(dropPos, 0f);
                 if (!SpawnParatrooper(dropPos, usedAnchorSpawn, fromLeft, aircraft))
                 {
                     RegisterCancelledPlannedParatrooperDrop("delayed-aircraft-drop-spawn-failed");
@@ -2457,6 +2539,26 @@ namespace iStick2War_V2
 
             worldPosition.x = Mathf.Clamp(worldPosition.x, minX, maxX);
             worldPosition.y = Mathf.Clamp(worldPosition.y, minY, maxY);
+            return worldPosition;
+        }
+
+        // X-only variant for helicopter drops: paratroopers spawn above the camera and glide down,
+        // so clamping Y would pin them at the camera top edge and push the health bar off-screen.
+        private Vector3 ClampDropPositionXInsideOrthographicCameraView(Vector3 worldPosition, float padding)
+        {
+            Camera cam = _spawnCamera != null ? _spawnCamera : Camera.main;
+            if (cam == null || !cam.orthographic)
+            {
+                return worldPosition;
+            }
+
+            float halfWidth = cam.orthographicSize * cam.aspect;
+            Vector3 camPos = cam.transform.position;
+            float inset = GetClampedVisibilityInset(padding, halfWidth, cam.orthographicSize);
+
+            float minX = camPos.x - halfWidth + inset;
+            float maxX = camPos.x + halfWidth - inset;
+            worldPosition.x = Mathf.Clamp(worldPosition.x, minX, maxX);
             return worldPosition;
         }
 

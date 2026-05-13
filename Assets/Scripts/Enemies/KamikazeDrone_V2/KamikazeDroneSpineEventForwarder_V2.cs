@@ -1,6 +1,3 @@
-using Spine.Unity;
-using UnityEngine;
-
 namespace iStick2War_V2
 {
     /*
@@ -34,9 +31,5 @@ namespace iStick2War_V2
  */
     public sealed class KamikazeDroneSpineEventForwarder_V2 : AircraftFlyStartedSpineEventForwarderBase_V2<KamikazeDroneController_V2>
     {
-        public void Init(KamikazeDroneController_V2 controller, SkeletonAnimation skeletonAnimation)
-        {
-            base.Init(controller, skeletonAnimation);
-        }
     }
 }

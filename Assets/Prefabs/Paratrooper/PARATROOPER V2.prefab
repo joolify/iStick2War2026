@@ -61,7 +61,7 @@ PolygonCollider2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 14335406216185171}
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 3
   m_Density: 1
   m_Material: {fileID: 0}
@@ -391,7 +391,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &6008574131695582798
 Transform:
   m_ObjectHideFlags: 0
@@ -408,6 +408,7 @@ Transform:
   - {fileID: 6511203771371252545}
   - {fileID: 7624897141787648253}
   - {fileID: 3687789801200291234}
+  - {fileID: 398770437775746237}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &6593194328115272059
@@ -433,6 +434,7 @@ MonoBehaviour:
   _autoFixVisualRootOffsetOnSpawn: 1
   _maxAllowedVisualRootLocalOffset: 2.5
   _debugVisualRootOffsetFixLogs: 0
+  _worldHealthBarCanvasPrefab: {fileID: 8662522561283412324, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
   _bodyParts: []
   _rigidbody2D: {fileID: 0}
   _mainCollider2D: {fileID: 0}
@@ -447,8 +449,17 @@ MonoBehaviour:
   _nearGroundRayDistance: 1.25
   _groundProbeAnchor: {fileID: 3687789801200291234}
   _groundProbeAnchorMaxHorizontalDriftFromRb: 10
+  _groundProbeAnchorMaxDistanceFromMainColliderWorld: 3.5
+  _groundProbeAnchorMaxLocalOffsetSqr: 400
   _groundProbeFootBiasWorld: 0
   _groundAttachedColliderProbeCapacity: 48
+  _landSnapAlignWithHeroGrounding: 1
+  _landSnapPreferLowestGroundHitInColumn: 1
+  _landSnapMinPrimaryGroundWidthWorld: 8
+  _landSnapCrossColumnProbeSpreadWorld: 12
+  _landSnapRaycastStartLiftWorld: 1.25
+  _landSnapMinRayOriginClearAboveRbWorld: 10
+  _landSnapCrossColumnProbeSpreadMaxWorld: 48
   _debugGroundProbeLogs: 1
   _debugGroundProbeLogIntervalSeconds: 0.35
   _debugGroundProbeLogOnlyWhenGlideOrLand: 0
@@ -478,7 +489,6 @@ MonoBehaviour:
   _enableLifetimeSafetyDespawn: 1
   _maxLifetimeSeconds: 90
   _debugSafetyDespawnLogs: 0
-  _worldHealthBarCanvasPrefab: {fileID: 8662522561283412324, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
 --- !u!114 &6969535851954692921
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -557,6 +567,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperModel_V2
   _damageProfileMode: 0
   health: 60
+  maxHealth: 60
   armorMultiplier: 1
   currentState: 0
   pendingDieAfterLandAnim: 0
@@ -626,7 +637,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   _debugDisableMp40Shooting: 0
-  _potatomasherProjectilePrefab: {fileID: 0}
+  _potatomasherProjectilePrefab: {fileID: 7106101186618047853, guid: 4c0e7ad0db2ad264db837d66759d68a9, type: 3}
   _grenadeThrowPoint: {fileID: 0}
   _grenadeBoneName: grenadeBone
   _grenadeThrowSpeed: 7.5
@@ -722,7 +733,7 @@ PolygonCollider2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2321445442868420986}
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 3
   m_Density: 1
   m_Material: {fileID: 0}
@@ -1090,7 +1101,7 @@ PolygonCollider2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2919523997494451103}
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 3
   m_Density: 1
   m_Material: {fileID: 0}
@@ -1243,7 +1254,7 @@ Transform:
   m_GameObject: {fileID: 3218899603473570638}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.029055638, w: 0.9995778}
-  m_LocalPosition: {x: -14.543653, y: -3.3158817, z: 0}
+  m_LocalPosition: {x: -14.540053, y: -3.3134794, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1509,7 +1520,7 @@ PolygonCollider2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3670587808647388623}
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 3
   m_Density: 1
   m_Material: {fileID: 0}
@@ -1686,7 +1697,7 @@ PolygonCollider2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5518520495485081694}
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 3
   m_Density: 1
   m_Material: {fileID: 0}
@@ -1873,7 +1884,7 @@ PolygonCollider2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5537713718465617609}
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 3
   m_Density: 1
   m_Material: {fileID: 0}
@@ -2107,7 +2118,7 @@ PolygonCollider2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5721318589490420545}
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 3
   m_Density: 1
   m_Material: {fileID: 0}
@@ -2205,7 +2216,7 @@ Transform:
   m_GameObject: {fileID: 5830414174421124898}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -14.259, y: -3.551, z: 0}
+  m_LocalPosition: {x: -14.38, y: -1.66, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2547,6 +2558,7 @@ MonoBehaviour:
   _debugSeverLogs: 1
   _bloodHitPrefab: {fileID: 100000, guid: 5ea5b0532c1004e4aba8a7f9fbe4d4b0, type: 3}
   _bloodHitReferenceDamage: 28
+  _bloodHitTowardShooterMeters: 0.022
 --- !u!114 &357004263934065529
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2584,6 +2596,7 @@ GameObject:
   - component: {fileID: 3009565735555275128}
   - component: {fileID: 5894018900088633540}
   - component: {fileID: 4608557550293844595}
+  - component: {fileID: 3510554000704375668}
   m_Layer: 10
   m_Name: Head-Hitbox
   m_TagString: Untagged
@@ -2701,6 +2714,61 @@ MonoBehaviour:
   _freezeBoundingBoxFollowerAtStartup: 1
   _enableColliderWatchdog: 1
   _watchdogIntervalSeconds: 1
+--- !u!60 &3510554000704375668
+PolygonCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8428395232643671833}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_SpriteTilingProperty:
+    border: {x: 0, y: 0, z: 0, w: 0}
+    pivot: {x: 0, y: 0}
+    oldSize: {x: 0, y: 0}
+    newSize: {x: 0, y: 0}
+    adaptiveTilingThreshold: 0
+    drawMode: 0
+    adaptiveTiling: 0
+  m_AutoTiling: 0
+  m_Points:
+    m_Paths:
+    - - {x: 0.47919998, y: 0.044}
+      - {x: 0.3797, y: 0.21459998}
+      - {x: 0.1563, y: 0.25169998}
+      - {x: -0.0161, y: 0.0932}
+      - {x: -0.020799998, y: -0.126}
+      - {x: 0.16860001, y: -0.2827}
+      - {x: 0.3818, y: -0.2411}
+      - {x: 0.4679, y: -0.1243}
+  m_UseDelaunayMesh: 1
 --- !u!1 &9213196044087982848
 GameObject:
   m_ObjectHideFlags: 0
@@ -2762,7 +2830,7 @@ PolygonCollider2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 9213196044087982848}
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 3
   m_Density: 1
   m_Material: {fileID: 0}
@@ -2885,3 +2953,109 @@ MonoBehaviour:
   _freezeBoundingBoxFollowerAtStartup: 1
   _enableColliderWatchdog: 1
   _watchdogIntervalSeconds: 1
+--- !u!1001 &468673707643206645
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 6008574131695582798}
+    m_Modifications:
+    - target: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_Pivot.x
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_Pivot.y
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6136890680177115995, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: _paratrooperModel
+      value: 
+      objectReference: {fileID: 577552315399567751}
+    - target: {fileID: 8662522561283412324, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+      propertyPath: m_Name
+      value: ParatrooperHealthBarCanvas
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+--- !u!224 &398770437775746237 stripped
+RectTransform:
+  m_CorrespondingSourceObject: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
+  m_PrefabInstance: {fileID: 468673707643206645}
+  m_PrefabAsset: {fileID: 0}

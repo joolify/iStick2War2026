@@ -1704,7 +1704,7 @@ namespace iStick2War_V2
                 {
                     // Main camera often has no FollowCamera (e.g. cutscene cam tagged MainCamera);
                     // gameplay follow is usually on a dedicated rig elsewhere in the scene.
-                    _followCamera = UnityEngine.Object.FindFirstObjectByType<FollowCamera>(
+                    _followCamera = UnityEngine.Object.FindAnyObjectByType<FollowCamera>(
                         FindObjectsInactive.Exclude);
                 }
 

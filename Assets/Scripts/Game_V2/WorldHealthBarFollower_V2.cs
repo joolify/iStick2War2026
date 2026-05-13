@@ -195,6 +195,11 @@ namespace iStick2War_V2
             _followTarget = target;
             enabled = true;
             _loggedMissingTarget = false;
+
+            if (target != null)
+            {
+                transform.position = target.position + _worldOffset;
+            }
         }
     }
 }

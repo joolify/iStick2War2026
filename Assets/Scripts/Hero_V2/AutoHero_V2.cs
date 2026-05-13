@@ -2051,8 +2051,7 @@ namespace iStick2War_V2
             Collider2D best = null;
             float bestDist = float.MaxValue;
             Bombplane_V2[] bombPlanes = Object.FindObjectsByType<Bombplane_V2>(
-                FindObjectsInactive.Exclude,
-                FindObjectsSortMode.None);
+                FindObjectsInactive.Exclude);
             for (int i = 0; bombPlanes != null && i < bombPlanes.Length; i++)
             {
                 Bombplane_V2 plane = bombPlanes[i];
@@ -2133,8 +2132,7 @@ namespace iStick2War_V2
             }
 
             AircraftHealth_V2[] aircraft = Object.FindObjectsByType<AircraftHealth_V2>(
-                FindObjectsInactive.Exclude,
-                FindObjectsSortMode.None);
+                FindObjectsInactive.Exclude);
             for (int i = 0; aircraft != null && i < aircraft.Length; i++)
             {
                 AircraftHealth_V2 a = aircraft[i];
@@ -2147,8 +2145,7 @@ namespace iStick2War_V2
             }
 
             KamikazeDroneDriver_V2[] kamikazeDrones = Object.FindObjectsByType<KamikazeDroneDriver_V2>(
-                FindObjectsInactive.Exclude,
-                FindObjectsSortMode.None);
+                FindObjectsInactive.Exclude);
             for (int i = 0; kamikazeDrones != null && i < kamikazeDrones.Length; i++)
             {
                 KamikazeDroneDriver_V2 drone = kamikazeDrones[i];
@@ -2161,8 +2158,7 @@ namespace iStick2War_V2
             }
 
             BombDrone_V2[] bombDrones = Object.FindObjectsByType<BombDrone_V2>(
-                FindObjectsInactive.Exclude,
-                FindObjectsSortMode.None);
+                FindObjectsInactive.Exclude);
             for (int i = 0; bombDrones != null && i < bombDrones.Length; i++)
             {
                 BombDrone_V2 drone = bombDrones[i];
@@ -2175,8 +2171,7 @@ namespace iStick2War_V2
             }
 
             Bombplane_V2[] bombPlanes = Object.FindObjectsByType<Bombplane_V2>(
-                FindObjectsInactive.Exclude,
-                FindObjectsSortMode.None);
+                FindObjectsInactive.Exclude);
             for (int i = 0; bombPlanes != null && i < bombPlanes.Length; i++)
             {
                 Bombplane_V2 plane = bombPlanes[i];
@@ -2208,8 +2203,7 @@ namespace iStick2War_V2
             _telemetryFallbackEnabledEnemyBodyPartColliders = 0;
 
             ParatrooperBodyPart_V2[] parts = Object.FindObjectsByType<ParatrooperBodyPart_V2>(
-                FindObjectsInactive.Exclude,
-                FindObjectsSortMode.None);
+                FindObjectsInactive.Exclude);
             Collider2D best = null;
             float bestDist = float.MaxValue;
             int enemyBodyPartLayer = LayerMask.NameToLayer("EnemyBodyPart");
@@ -2256,8 +2250,7 @@ namespace iStick2War_V2
             }
 
             MechRobotBossBodyPart_V2[] mechParts = Object.FindObjectsByType<MechRobotBossBodyPart_V2>(
-                FindObjectsInactive.Exclude,
-                FindObjectsSortMode.None);
+                FindObjectsInactive.Exclude);
             if (mechParts != null)
             {
                 for (int i = 0; i < mechParts.Length; i++)
@@ -2308,8 +2301,7 @@ namespace iStick2War_V2
 
             // Second-pass fallback by model/state in case bodypart cache or component wiring is temporarily stale.
             ParatrooperModel_V2[] models = Object.FindObjectsByType<ParatrooperModel_V2>(
-                FindObjectsInactive.Exclude,
-                FindObjectsSortMode.None);
+                FindObjectsInactive.Exclude);
             if (models != null)
             {
                 for (int i = 0; i < models.Length; i++)
@@ -2362,8 +2354,7 @@ namespace iStick2War_V2
             }
 
             MechRobotBossModel_V2[] mechModels = Object.FindObjectsByType<MechRobotBossModel_V2>(
-                FindObjectsInactive.Exclude,
-                FindObjectsSortMode.None);
+                FindObjectsInactive.Exclude);
             if (mechModels != null)
             {
                 for (int i = 0; i < mechModels.Length; i++)
@@ -2669,8 +2660,7 @@ namespace iStick2War_V2
         private bool IsBombSplashThreatActive(Vector2 heroPos)
         {
             BombProjectile_V2[] bombs = Object.FindObjectsByType<BombProjectile_V2>(
-                FindObjectsInactive.Exclude,
-                FindObjectsSortMode.None);
+                FindObjectsInactive.Exclude);
             if (bombs == null || bombs.Length == 0)
             {
                 return false;

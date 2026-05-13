@@ -8,8 +8,9 @@ namespace iStick2War_V2
  * HelicopterCarrier_V2 (Paratrooper drop sequencer for one flight)
  *
  * PURPOSE:
- * Coroutine-driven sequencing: wait for camera/trigger thresholds, invoke configured drop callbacks with world
- * positions, cancel remaining drops when aborted. EnemySpawner_V2 wires Func delegates when mounting paratroopers.
+ * Coroutine-driven sequencing: wait for camera/trigger thresholds (and optional extra world-X gates such as
+ * avoiding the bunker footprint), invoke configured drop callbacks with world positions, cancel remaining drops
+ * when aborted. EnemySpawner_V2 wires Func delegates when mounting paratroopers.
  * Pooled aircraft despawn via SetActive(false) (no OnDestroy): cleanup runs in OnDisable so pending spawner drops
  * are released and the carrier can run again on the next Spawn().
  *
@@ -47,6 +48,10 @@ namespace iStick2War_V2
         private float _cameraVisiblePaddingWorld;
         private Func<Vector3, bool> _performOneDrop;
         private Func<Vector3> _getDropWorldPosition;
+        // When non-null, drop X must satisfy this before the first trigger snapshot and each spawn sample (e.g. clear of bunker bounds).
+        private Func<float, bool> _isDropWorldXAcceptableForSpawn;
+        // Upper bound on spinning while waiting for camera + optional X gate; 0 falls back to maxWaitForTriggerSeconds when gate is set.
+        private float _maxSecondsWaitForAcceptableDropWorldX;
         private Action<int, string> _cancelRemainingDrops;
         private Action<string> _debugLog;
         private bool _initialized;
@@ -71,6 +76,8 @@ namespace iStick2War_V2
             float cameraVisiblePaddingWorld,
             Func<Vector3, bool> performOneDrop,
             Func<Vector3> getDropWorldPosition,
+            Func<float, bool> isDropWorldXAcceptableForSpawn,
+            float maxSecondsWaitForAcceptableDropWorldX,
             Action<int, string> cancelRemainingDrops,
             Action<string> debugLog)
         {
@@ -88,6 +95,8 @@ namespace iStick2War_V2
             _cameraVisiblePaddingWorld = Mathf.Max(0f, cameraVisiblePaddingWorld);
             _performOneDrop = performOneDrop;
             _getDropWorldPosition = getDropWorldPosition;
+            _isDropWorldXAcceptableForSpawn = isDropWorldXAcceptableForSpawn;
+            _maxSecondsWaitForAcceptableDropWorldX = Mathf.Max(0f, maxSecondsWaitForAcceptableDropWorldX);
             _cancelRemainingDrops = cancelRemainingDrops;
             _debugLog = debugLog;
             _initialized = true;
@@ -143,8 +152,20 @@ namespace iStick2War_V2
 
                     // Guard each individual drop so delayed bursts cannot spawn offscreen
                     // after the helicopter has already moved past the visible area.
-                    while (!IsDropPointInsideCameraX(dropPosForThisAttempt.x))
+                    float waitAcceptableStarted = Time.time;
+                    float acceptTimeout = ResolveAcceptableDropWorldXWaitSeconds();
+                    while (!IsDropPointInsideCameraX(dropPosForThisAttempt.x) || !IsDropWorldXAcceptable(dropPosForThisAttempt.x))
                     {
+                        if (acceptTimeout > 0f && Time.time - waitAcceptableStarted >= acceptTimeout)
+                        {
+                            _debugLog?.Invoke(
+                                $"[HelicopterCarrier_V2] Drop world-X gate timed out after {acceptTimeout:0.###}s " +
+                                $"(cameraInside={IsDropPointInsideCameraX(dropPosForThisAttempt.x)} " +
+                                $"xAcceptable={IsDropWorldXAcceptable(dropPosForThisAttempt.x)} dropX={dropPosForThisAttempt.x:0.###}). " +
+                                "Spawning at current sample.");
+                            break;
+                        }
+
                         yield return null;
                         dropPosForThisAttempt = GetDropWorldPosition();
                     }
@@ -183,7 +204,7 @@ namespace iStick2War_V2
                 Vector3 dropPos = GetDropWorldPosition();
                 bool reachedTrigger = _fromLeft ? dropPos.x >= adjustedTriggerX : dropPos.x <= adjustedTriggerX;
                 bool dropPointInsideCameraX = IsDropPointInsideCameraX(dropPos.x);
-                bool reached = reachedTrigger && dropPointInsideCameraX;
+                bool reached = reachedTrigger && dropPointInsideCameraX && IsDropWorldXAcceptable(dropPos.x);
                 if (reached && !_loggedTriggerReached)
                 {
                     _loggedTriggerReached = true;
@@ -210,7 +231,7 @@ namespace iStick2War_V2
             float minX = cam.transform.position.x - halfWidth + inset;
             float maxX = cam.transform.position.x + halfWidth - inset;
             float xPos = GetDropWorldPosition().x;
-            bool inside = xPos >= minX && xPos <= maxX;
+            bool inside = xPos >= minX && xPos <= maxX && IsDropWorldXAcceptable(xPos);
             if (inside && !_loggedTriggerReached)
             {
                 _loggedTriggerReached = true;
@@ -221,6 +242,26 @@ namespace iStick2War_V2
             }
 
             return inside;
+        }
+
+        private float ResolveAcceptableDropWorldXWaitSeconds()
+        {
+            if (_isDropWorldXAcceptableForSpawn == null)
+            {
+                return 0f;
+            }
+
+            if (_maxSecondsWaitForAcceptableDropWorldX > 0f)
+            {
+                return _maxSecondsWaitForAcceptableDropWorldX;
+            }
+
+            return _maxWaitForTriggerSeconds;
+        }
+
+        private bool IsDropWorldXAcceptable(float worldX)
+        {
+            return _isDropWorldXAcceptableForSpawn == null || _isDropWorldXAcceptableForSpawn.Invoke(worldX);
         }
 
         private bool IsDropPointInsideCameraX(float dropX)

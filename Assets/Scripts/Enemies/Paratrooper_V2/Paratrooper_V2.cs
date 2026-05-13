@@ -115,6 +115,7 @@ public class Paratrooper : MonoBehaviour
 
     /// <summary>Unparented world UI so paratrooper scale / negative X flip does not shear the bar.</summary>
     private GameObject _runtimeHealthBarRoot;
+    private WorldHealthBarFollower_V2 _cachedHealthBarFollower;
 
     [Header("Body Parts")]
     [SerializeField] private ParatrooperBodyPart_V2[] _bodyParts;
@@ -144,11 +145,53 @@ public class Paratrooper : MonoBehaviour
     // Feet / Spine followers can sit several world units from Rigidbody2D.position on this rig; too low a value spams warnings and skips anchor Y.
     [SerializeField] private float _groundProbeAnchorMaxHorizontalDriftFromRb = 10f;
     [Tooltip(
+        "When _mainCollider2D is set: if _groundProbeAnchor is farther than this (world units) from the collider bounds " +
+        "(ClosestPoint), probes ignore it — catches a 'GroundCheck' left in world space while still allowing large local " +
+        "offsets when the mesh is offset from the RB pivot (e.g. local X ~ -14 inside the same hit volume).")]
+    [SerializeField] [Min(0.05f)] private float _groundProbeAnchorMaxDistanceFromMainColliderWorld = 3.5f;
+    [Tooltip(
+        "Only when _mainCollider2D is missing: if anchor child |localPosition|² exceeds this, ignore the anchor. " +
+        "Ignored when main collider exists (distance check is used instead).")]
+    [SerializeField] [Min(0.5f)] private float _groundProbeAnchorMaxLocalOffsetSqr = 400f;
+    [Tooltip(
         "Ground probes use the lowest enabled non-trigger collider on this Rigidbody2D (Spine BoundingBoxFollower " +
         "polygons), not only the root collider. Negative bias moves the probe down if feet still look above Ground.")]
     [SerializeField] private float _groundProbeFootBiasWorld;
     [Tooltip("Buffer size for Rigidbody2D.GetAttachedColliders (raise if you add many hitboxes).")]
     [SerializeField] [Min(8)] private int _groundAttachedColliderProbeCapacity = 48;
+    [Tooltip(
+        "Glide→Land snap: Hero_V2 uses root Collider2D.bounds.min.y as ray origin and only the Ground layer. When true, " +
+        "snap casts from min(feet probe Y, main collider bottom + 2 cm) and uses Ground layer only for the cast " +
+        "(unless _groundSurfaceCollider is set). Avoids snapping to a higher LandingPoint helper or a misaligned foot anchor.")]
+    [SerializeField] private bool _landSnapAlignWithHeroGrounding = true;
+    [Tooltip(
+        "When multiple Ground colliders stack vertically (thin decorative ice on Ground above the main snow BoxCollider2D), " +
+        "Glide→Land snap uses the lowest standable surface in the ray column instead of the first hit. Hero_V2 only sees " +
+        "the collider under his feet, so he never picks those higher slivers. Turn off to keep topmost Ground only, or set " +
+        "_groundSurfaceCollider to one explicit floor.")]
+    [SerializeField] private bool _landSnapPreferLowestGroundHitInColumn = true;
+    [Tooltip(
+        "When choosing among several Ground hits (same downward cast), any collider at least this wide in world space " +
+        "counts as a primary floor (the big foreground2@4K snow box). If at least one primary exists, narrower Ground " +
+        "colliders (thin ice decals) are ignored and the lowest primary surface wins — fixes landing when the ray column " +
+        "only intersects a small strip so lowest-Y was still the wrong collider. Set to 0 to disable width filtering.")]
+    [SerializeField] [Min(0f)] private float _landSnapMinPrimaryGroundWidthWorld = 8f;
+    [Tooltip(
+        "Extra downward raycasts at snapOrigin.x ± this offset (world units) are merged with the center cast. " +
+        "When the trooper stands above a thin Ground strip, the center column can miss the wide foreground2@4K floor " +
+        "while a shifted column still hits it — needed so width filtering can prefer the main slab. 0 disables side probes.")]
+    [SerializeField] [Min(0f)] private float _landSnapCrossColumnProbeSpreadWorld = 6f;
+    [Tooltip(
+        "Added to snap ray origin Y before casting down. When the trooper's hull/feet overlap a thin Ground collider, " +
+        "Unity can treat the ray as starting inside geometry and return no usable hits — a small lift fixes that.")]
+    [SerializeField] [Min(0f)] private float _landSnapRaycastStartLiftWorld = 1.25f;
+    [Tooltip(
+        "Land snap rays start at max(feet+hull lift, RB.y + this). Hero probes from low on the body; paratrooper feet " +
+        "can sit on a thin Ground strip so a short cast only sees that slab and deltaY≈0 — spread then changes nothing. " +
+        "A high start pierces the stack to the wide foreground Ground below. Set 0 to only use feet-based height.")]
+    [SerializeField] [Min(0f)] private float _landSnapMinRayOriginClearAboveRbWorld = 10f;
+    [Tooltip("Hard clamp for cross-column spread (huge values do not help and only move ray origins far from gameplay).")]
+    [SerializeField] [Min(0.5f)] private float _landSnapCrossColumnProbeSpreadMaxWorld = 48f;
 
     [Header("Debug — Ground probe")]
     [Tooltip("Throttled logs for ray origin, mask, hits, and rigidbody vs probe (feet vs colliders vs anchor).")]
@@ -210,6 +253,9 @@ public class Paratrooper : MonoBehaviour
     [SerializeField] private bool _enableWorldBoundsSafetyDespawn = true;
     [SerializeField] private Vector2 _worldBoundsMin = new Vector2(-40f, -20f);
     [SerializeField] private Vector2 _worldBoundsMax = new Vector2(40f, 25f);
+    [Tooltip("Grace period (unscaled seconds) after spawn before world-bounds despawn activates. " +
+        "Prevents helicopter-dropped paratroopers from being killed on their first frame while still above the camera view.")]
+    [SerializeField] private float _worldBoundsDespawnGraceSeconds = 1.5f;
     [Tooltip("Absolute fail-safe max lifetime (unscaled). Prevents orphaned enemies from living forever.")]
     [SerializeField] private bool _enableLifetimeSafetyDespawn = true;
     [SerializeField] private float _maxLifetimeSeconds = 90f;
@@ -217,6 +263,9 @@ public class Paratrooper : MonoBehaviour
 
     private float _nextColliderSummaryTime;
     private string _lastColliderSummary;
+    // Mirrors HeroMovementSystem_V2.GroundCheckDistance for aligned ground probes / Glide→Land.
+    private const float HeroStyleGroundCheckDistance = 0.2f;
+
     private int _groundLayer = -1;
     private int _landingPointLayer = -1;
     private int _trackedAirborneRigidbodyExcludeBits;
@@ -224,6 +273,7 @@ public class Paratrooper : MonoBehaviour
     private bool _warnedAttachedColliderBufferTruncation;
     private float _lastGroundProbeDebugUnscaledTime = float.NegativeInfinity;
     private bool _warnedGroundProbeAnchorRejected;
+    private bool _warnedGroundProbeAnchorOutsideColliderOnce;
     private static bool s_loggedGroundProbeAnchorHorizontalDrift;
     private float _airborneGravityScaleCached;
     private bool _airborneGravityScaleCachedValid;
@@ -353,6 +403,7 @@ public class Paratrooper : MonoBehaviour
 
         _warnedAttachedColliderBufferTruncation = false;
         _warnedGroundProbeAnchorRejected = false;
+        _warnedGroundProbeAnchorOutsideColliderOnce = false;
         _nextColliderSummaryTime = 0f;
         _lastColliderSummary = string.Empty;
         _lastGroundProbeDebugUnscaledTime = float.NegativeInfinity;
@@ -377,6 +428,7 @@ public class Paratrooper : MonoBehaviour
         _weaponSystem?.ResetForSpawn();
         _view?.ResetVisualStateForSpawn();
         _view?.EnsureDamagePresentationSubscribed(_damageReceiver);
+        SanitizeVisualRootAlignment();
         EnsureWorldHealthBar();
         _controller?.StartGame();
         CaptureSpineWorldAnchorForPostSpawnFacingReconcile();
@@ -458,6 +510,8 @@ public class Paratrooper : MonoBehaviour
             _runtimeHealthBarRoot.transform.SetParent(null, true);
         }
 
+        NormalizeHealthBarCanvasPivot();
+
         _runtimeHealthBarRoot.SetActive(true);
         WorldHealthBarFollower_V2 follower = _runtimeHealthBarRoot.GetComponent<WorldHealthBarFollower_V2>();
         if (follower == null)
@@ -465,7 +519,13 @@ public class Paratrooper : MonoBehaviour
             follower = _runtimeHealthBarRoot.GetComponentInChildren<WorldHealthBarFollower_V2>(true);
         }
 
+        if (follower == null)
+        {
+            follower = _runtimeHealthBarRoot.GetComponentInParent<WorldHealthBarFollower_V2>();
+        }
+
         follower?.SetFollowTarget(transform);
+        _cachedHealthBarFollower = follower;
 
         if (_model == null)
         {
@@ -476,6 +536,29 @@ public class Paratrooper : MonoBehaviour
         if (barCanvas != null && _model != null)
         {
             barCanvas.SetParatrooperModelExternal(_model);
+        }
+    }
+
+    private void NormalizeHealthBarCanvasPivot()
+    {
+        RectTransform rt = _runtimeHealthBarRoot.transform as RectTransform;
+        if (rt == null) return;
+
+        Vector2 pivot = rt.pivot;
+        if (Mathf.Approximately(pivot.x, 0.5f) && Mathf.Approximately(pivot.y, 0.5f)) return;
+
+        Vector3 worldBefore = rt.position;
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.position = worldBefore;
+    }
+
+    // Called by the spawner after SnapSpawnAlignmentToRequestedWorld so the health bar
+    // tracks the final position instead of a stale pre-snap location.
+    public void SnapHealthBarToCurrentPosition()
+    {
+        if (_cachedHealthBarFollower != null)
+        {
+            _cachedHealthBarFollower.SetFollowTarget(transform);
         }
     }
 
@@ -815,7 +898,10 @@ public class Paratrooper : MonoBehaviour
 
         UpdateAirborneBunkerCollisionExclusion(to);
 
-        if (to == StickmanBodyState.Land && (from == StickmanBodyState.Glide || from == StickmanBodyState.GlideDie))
+        // Snap whenever we first enter Land from any non-Land state (not only Glide/GlideDie). Other paths
+        // (e.g. GlideElectrocuted→Land, Idle→Land from damage) previously skipped snap, so tuning _landSnapCrossColumn*
+        // had no effect while the RB still rested on non-floor colliders.
+        if (to == StickmanBodyState.Land && from != StickmanBodyState.Land)
         {
             SnapRigidbodyToGroundUnderProbe();
         }
@@ -1001,6 +1087,14 @@ public class Paratrooper : MonoBehaviour
     private void HandleWorldBoundsSafetyDespawn()
     {
         if (!_enableWorldBoundsSafetyDespawn || !gameObject.activeInHierarchy)
+        {
+            return;
+        }
+
+        // Helicopter-dropped paratroopers start above the camera view and glide into the play area.
+        // Without a grace window the bounds check fires on the first Update frame and despawns them instantly.
+        if (_worldBoundsDespawnGraceSeconds > 0f &&
+            Time.unscaledTime - _spawnUnscaledTime < _worldBoundsDespawnGraceSeconds)
         {
             return;
         }
@@ -1433,8 +1527,12 @@ public class Paratrooper : MonoBehaviour
             return false;
         }
 
-        float rayLength = Mathf.Max(0.01f, _groundCheckDistance);
-        RaycastHit2D[] hits = Physics2D.RaycastAll(probe.Origin, Vector2.down, rayLength, _groundMask);
+        Vector2 origin = GetLandSnapRayOrigin(in probe);
+        LayerMask mask = GetLandSnapRaycastMask();
+        float rayLength = _landSnapAlignWithHeroGrounding
+            ? Mathf.Max(Mathf.Max(0.01f, _groundCheckDistance), HeroStyleGroundCheckDistance)
+            : Mathf.Max(0.01f, _groundCheckDistance);
+        RaycastHit2D[] hits = Physics2D.RaycastAll(origin, Vector2.down, rayLength, mask);
         bool grounded = EvaluateGroundHits(hits);
 
         MaybeLogGroundProbe("IsGrounded", in probe, rayLength, hits, grounded);
@@ -1480,8 +1578,10 @@ public class Paratrooper : MonoBehaviour
             return false;
         }
 
+        Vector2 origin = GetLandSnapRayOrigin(in probe);
+        LayerMask mask = GetLandSnapRaycastMask();
         float rayLength = Mathf.Max(_groundCheckDistance, _nearGroundRayDistance);
-        RaycastHit2D[] hits = Physics2D.RaycastAll(probe.Origin, Vector2.down, rayLength, _groundMask);
+        RaycastHit2D[] hits = Physics2D.RaycastAll(origin, Vector2.down, rayLength, mask);
         bool near = EvaluateGroundHits(hits);
 
         MaybeLogGroundProbe("IsNearGround", in probe, rayLength, hits, near);
@@ -1505,21 +1605,33 @@ public class Paratrooper : MonoBehaviour
             return;
         }
 
+        Vector2 snapOrigin = GetLandSnapRayOrigin(in probe);
+        LayerMask snapMask = GetLandSnapRaycastMask();
         float rayLen = Mathf.Max(_nearGroundRayDistance, 4f);
-        RaycastHit2D hit = Physics2D.Raycast(probe.Origin, Vector2.down, rayLen, _groundMask);
-        if (hit.collider == null)
-        {
-            return;
-        }
+        float lift = Mathf.Max(0f, _landSnapRaycastStartLiftWorld);
+        float feetRefY = snapOrigin.y + lift;
+        float minSkyY = _rigidbody2D.position.y + Mathf.Max(0f, _landSnapMinRayOriginClearAboveRbWorld);
+        float skyStartY = Mathf.Max(feetRefY, minSkyY);
+        // Long enough to traverse from sky start down past the feet column and reach the main floor slab.
+        float extendedRayLen = rayLen + Mathf.Max(0f, skyStartY - snapOrigin.y) + 6f;
 
-        if (hit.collider.transform.IsChildOf(transform))
+        RaycastHit2D[] hits = GatherLandSnapHitsMergedColumns(new Vector2(snapOrigin.x, skyStartY), extendedRayLen, snapMask, 0f);
+        if (!TrySelectGroundHitForLandSnap(hits, probe.Origin.x, out RaycastHit2D hit))
         {
-            return;
-        }
-
-        if (!IsUsableGroundCollider(hit.collider))
-        {
-            return;
+            Vector2 altSky = new Vector2(_rigidbody2D.position.x, skyStartY);
+            RaycastHit2D[] hits2 = GatherLandSnapHitsMergedColumns(altSky, extendedRayLen * 1.35f, snapMask, 0f);
+            if (!TrySelectGroundHitForLandSnap(hits2, probe.Origin.x, out hit))
+            {
+                RaycastHit2D[] skyHits = Physics2D.RaycastAll(
+                    new Vector2(_rigidbody2D.position.x, _rigidbody2D.position.y + 40f),
+                    Vector2.down,
+                    150f,
+                    snapMask);
+                if (!TrySelectGroundHitForLandSnap(skyHits, probe.Origin.x, out hit))
+                {
+                    return;
+                }
+            }
         }
 
         float surfaceY = GetStandFeetSurfaceYWorld(hit, probe.Origin.x);
@@ -1533,12 +1645,223 @@ public class Paratrooper : MonoBehaviour
         _rigidbody2D.linearVelocity = v;
     }
 
+    /// <summary>
+    /// Merges center + optional ±X column casts so a wide floor collider can be found even when the RB X sits over a
+    /// narrow Ground strip that does not overlap the main slab in the same vertical column.
+    /// </summary>
+    private RaycastHit2D[] GatherLandSnapHitsMergedColumns(
+        Vector2 snapOrigin,
+        float rayLen,
+        LayerMask snapMask,
+        float startLiftWorld)
+    {
+        Vector2 lift = Vector2.up * Mathf.Max(0f, startLiftWorld);
+        float castLen = rayLen + Mathf.Max(0f, startLiftWorld);
+
+        float spread = Mathf.Min(
+            Mathf.Max(0f, _landSnapCrossColumnProbeSpreadWorld),
+            Mathf.Max(0.5f, _landSnapCrossColumnProbeSpreadMaxWorld));
+        if (spread < 0.01f)
+        {
+            return Physics2D.RaycastAll(snapOrigin + lift, Vector2.down, castLen, snapMask);
+        }
+
+        RaycastHit2D[] left = Physics2D.RaycastAll(snapOrigin + lift + Vector2.left * spread, Vector2.down, castLen, snapMask);
+        RaycastHit2D[] center = Physics2D.RaycastAll(snapOrigin + lift, Vector2.down, castLen, snapMask);
+        RaycastHit2D[] right = Physics2D.RaycastAll(snapOrigin + lift + Vector2.right * spread, Vector2.down, castLen, snapMask);
+        int n = left.Length + center.Length + right.Length;
+        if (n == 0)
+        {
+            return Array.Empty<RaycastHit2D>();
+        }
+
+        RaycastHit2D[] merged = new RaycastHit2D[n];
+        int w = 0;
+        for (int i = 0; i < left.Length; i++)
+        {
+            merged[w++] = left[i];
+        }
+
+        for (int i = 0; i < center.Length; i++)
+        {
+            merged[w++] = center[i];
+        }
+
+        for (int i = 0; i < right.Length; i++)
+        {
+            merged[w++] = right[i];
+        }
+
+        return merged;
+    }
+
+    /// <summary>
+    /// Raycast order is closest-first; thin Ground props above the main floor would otherwise win. Optionally pick the
+    /// lowest stand Y among wide primary floors so snap matches the large foreground Ground under thin Ground strips.
+    /// </summary>
+    private bool TrySelectGroundHitForLandSnap(RaycastHit2D[] hits, float probeXWorld, out RaycastHit2D chosen)
+    {
+        chosen = default;
+        bool preferLowest =
+            _landSnapPreferLowestGroundHitInColumn &&
+            _landSnapAlignWithHeroGrounding &&
+            _groundSurfaceCollider == null;
+
+        if (!preferLowest)
+        {
+            for (int i = 0; i < hits.Length; i++)
+            {
+                Collider2D hc = hits[i].collider;
+                if (hc == null || hc.isTrigger || hc.transform.IsChildOf(transform))
+                {
+                    continue;
+                }
+
+                if (!IsUsableGroundCollider(hc))
+                {
+                    continue;
+                }
+
+                if (_landSnapAlignWithHeroGrounding && _groundSurfaceCollider == null && _groundLayer >= 0 &&
+                    hc.gameObject.layer != _groundLayer)
+                {
+                    continue;
+                }
+
+                chosen = hits[i];
+                return true;
+            }
+
+            return false;
+        }
+
+        float minSerialized = Mathf.Max(0f, _landSnapMinPrimaryGroundWidthWorld);
+        float maxWx = 0f;
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Collider2D hc = hits[i].collider;
+            if (hc == null || hc.isTrigger || hc.transform.IsChildOf(transform))
+            {
+                continue;
+            }
+
+            if (!IsUsableGroundCollider(hc))
+            {
+                continue;
+            }
+
+            if (_landSnapAlignWithHeroGrounding && _groundSurfaceCollider == null && _groundLayer >= 0 &&
+                hc.gameObject.layer != _groundLayer)
+            {
+                continue;
+            }
+
+            maxWx = Mathf.Max(maxWx, hc.bounds.size.x);
+        }
+
+        float widthCut = Mathf.Max(minSerialized, maxWx * 0.32f);
+        bool anyMeetsCut = false;
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Collider2D hc = hits[i].collider;
+            if (hc == null || hc.isTrigger || hc.transform.IsChildOf(transform))
+            {
+                continue;
+            }
+
+            if (!IsUsableGroundCollider(hc))
+            {
+                continue;
+            }
+
+            if (_landSnapAlignWithHeroGrounding && _groundSurfaceCollider == null && _groundLayer >= 0 &&
+                hc.gameObject.layer != _groundLayer)
+            {
+                continue;
+            }
+
+            if (hc.bounds.size.x >= widthCut)
+            {
+                anyMeetsCut = true;
+                break;
+            }
+        }
+
+        bool haveAny = false;
+        float lowestSurfaceY = float.PositiveInfinity;
+        RaycastHit2D lowestHit = default;
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Collider2D hc = hits[i].collider;
+            if (hc == null || hc.isTrigger || hc.transform.IsChildOf(transform))
+            {
+                continue;
+            }
+
+            if (!IsUsableGroundCollider(hc))
+            {
+                continue;
+            }
+
+            if (_landSnapAlignWithHeroGrounding && _groundSurfaceCollider == null && _groundLayer >= 0 &&
+                hc.gameObject.layer != _groundLayer)
+            {
+                continue;
+            }
+
+            if (anyMeetsCut && hc.bounds.size.x < widthCut)
+            {
+                continue;
+            }
+
+            float sy = GetStandFeetSurfaceYWorld(hits[i], probeXWorld);
+            if (!haveAny || sy < lowestSurfaceY)
+            {
+                lowestSurfaceY = sy;
+                lowestHit = hits[i];
+            }
+
+            haveAny = true;
+        }
+
+        if (!haveAny)
+        {
+            return false;
+        }
+
+        chosen = lowestHit;
+        return true;
+    }
+
+    // Hero_V2: HeroMovementSystem_V2.RefreshGroundedState uses Collider2D.bounds.min.y + 0.02f and Ground layer only.
+    private Vector2 GetLandSnapRayOrigin(in GroundProbeBuild probe)
+    {
+        if (!_landSnapAlignWithHeroGrounding || _mainCollider2D == null)
+        {
+            return probe.Origin;
+        }
+
+        float hullBottom = _mainCollider2D.bounds.min.y + 0.02f;
+        return hullBottom < probe.Origin.y ? new Vector2(probe.Origin.x, hullBottom) : probe.Origin;
+    }
+
+    private LayerMask GetLandSnapRaycastMask()
+    {
+        if (!_landSnapAlignWithHeroGrounding || _groundSurfaceCollider != null)
+        {
+            return _groundMask;
+        }
+
+        return _groundLayer >= 0 ? (LayerMask)(1 << _groundLayer) : _groundMask;
+    }
+
     private bool EvaluateGroundHits(RaycastHit2D[] hits)
     {
         for (int i = 0; i < hits.Length; i++)
         {
             Collider2D hitCollider = hits[i].collider;
-            if (hitCollider == null)
+            if (hitCollider == null || hitCollider.isTrigger)
             {
                 continue;
             }
@@ -1549,6 +1872,12 @@ public class Paratrooper : MonoBehaviour
             }
 
             if (!IsUsableGroundCollider(hitCollider))
+            {
+                continue;
+            }
+
+            if (_landSnapAlignWithHeroGrounding && _groundSurfaceCollider == null && _groundLayer >= 0 &&
+                hitCollider.gameObject.layer != _groundLayer)
             {
                 continue;
             }
@@ -1604,18 +1933,55 @@ public class Paratrooper : MonoBehaviour
         return b.Ok;
     }
 
+    /// <summary>
+    /// Large local offsets are valid when the Spine mesh is shifted from the RB pivot but the anchor still lies inside
+    /// the main hit volume — use distance to <see cref="_mainCollider2D"/> bounds when available.
+    /// </summary>
+    private bool ShouldSkipGroundProbeAnchorChildForProbes()
+    {
+        if (_groundProbeAnchor == null || _groundProbeAnchor == transform || !_groundProbeAnchor.IsChildOf(transform))
+        {
+            return false;
+        }
+
+        if (_mainCollider2D != null)
+        {
+            Vector3 a = _groundProbeAnchor.position;
+            Bounds b = _mainCollider2D.bounds;
+            float margin = Mathf.Max(0.05f, _groundProbeAnchorMaxDistanceFromMainColliderWorld);
+            return Vector3.Distance(b.ClosestPoint(a), a) > margin;
+        }
+
+        return _groundProbeAnchor.localPosition.sqrMagnitude > Mathf.Max(0.25f, _groundProbeAnchorMaxLocalOffsetSqr);
+    }
+
     private GroundProbeBuild BuildGroundProbeOrigin()
     {
         if (_groundProbeAnchor != null)
         {
-            if (_groundProbeAnchor == transform)
+            if (ShouldSkipGroundProbeAnchorChildForProbes())
+            {
+                if (!_warnedGroundProbeAnchorOutsideColliderOnce)
+                {
+                    _warnedGroundProbeAnchorOutsideColliderOnce = true;
+                    string detail =
+                        _mainCollider2D != null
+                            ? $"world distance from '{_mainCollider2D.name}' bounds exceeds " +
+                              $"{_groundProbeAnchorMaxDistanceFromMainColliderWorld:F2} (ClosestPoint check)."
+                            : $"|localPosition|² exceeds {_groundProbeAnchorMaxLocalOffsetSqr:F0} (no main Collider2D).";
+                    Debug.LogWarning(
+                        "[Paratrooper_V2] Ignoring _groundProbeAnchor '" + _groundProbeAnchor.name + "' — " + detail +
+                        " Probes use RB colliders like Hero_V2. Move GroundCheck onto the feet inside the hit volume, assign " +
+                        "_mainCollider2D, or clear the anchor field.");
+                }
+            }
+            else if (_groundProbeAnchor == transform)
             {
                 Vector3 p = _groundProbeAnchor.position;
                 Vector2 origin = new Vector2(p.x, p.y + 0.01f + _groundProbeFootBiasWorld);
                 return GroundProbeBuild.FromAnchor(origin);
             }
-
-            if (_groundProbeAnchor.IsChildOf(transform))
+            else if (_groundProbeAnchor.IsChildOf(transform))
             {
                 float anchorProbeX = _rigidbody2D != null ? _rigidbody2D.position.x : transform.position.x;
                 float dx = Mathf.Abs(_groundProbeAnchor.position.x - anchorProbeX);
