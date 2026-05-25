@@ -78,6 +78,37 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
     [SerializeField] private string _aimPointBoneName = "mp40-aim";
     [SerializeField] private string _crossHairBoneName = "crosshair";
 
+    [Header("MP40 Muzzle Flash (optional)")]
+    [Tooltip("Paratrooper-local muzzle flash prefab. If empty, falls back to scene-level MuzzleFlash_V2.")]
+    [SerializeField] private GameObject _muzzleFlashPrefab;
+    [Tooltip(
+        "Added to atan2(direction). Use 0 if prefab points along +X/right at rotation 0. " +
+        "Use -90 if prefab art points up at rotation 0.")]
+    [SerializeField] private float _muzzleFlashRotationOffsetDegrees;
+    [SerializeField] private float _muzzleFlashWorldZ = 0f;
+    [SerializeField] private float _muzzleFlashLifetimeSeconds = 0.08f;
+    [SerializeField] private Vector2 _muzzleFlashRandomScaleRange = new Vector2(0.9f, 1.15f);
+    [SerializeField] private Transform _muzzleFlashParent;
+
+    [Header("MP40 Shell Casings (optional)")]
+    [Tooltip("Paratrooper MP40 shell casing prefab. Spawned through SimplePrefabPool_V2.")]
+    [SerializeField] private GameObject _shellCasingPrefab;
+    [Tooltip(
+        "Added to atan2(eject direction). Use 0 if prefab points along +X/right at rotation 0. " +
+        "If your casing art lies sideways but points 90 degrees to the right, try -90 or 90.")]
+    [SerializeField] private float _shellCasingRotationOffsetDegrees;
+    [SerializeField] private float _shellCasingWorldZ = 0f;
+    [SerializeField] private float _shellCasingLifetimeSeconds = 2.4f;
+    [SerializeField] private Transform _shellCasingParent;
+    [SerializeField] private Vector2 _shellCasingLocalSpawnOffset = new Vector2(-0.08f, 0.03f);
+    [SerializeField] private Vector2 _shellCasingBackwardSpeedRange = new Vector2(1.1f, 2f);
+    [SerializeField] private Vector2 _shellCasingUpwardSpeedRange = new Vector2(1.2f, 2.2f);
+    [SerializeField] private Vector2 _shellCasingAngularVelocityRange = new Vector2(380f, 760f);
+    [Tooltip("If set, casing renderers use this sorting layer. Empty = keep prefab layer.")]
+    [SerializeField] private string _shellCasingSortingLayerName = "";
+    [SerializeField] private int _shellCasingSortingOrder = 6000;
+    [SerializeField] private bool _debugShellCasingLogs;
+
     [Header("Line Renderer Effect")]
     [SerializeField] private LineRenderer _shotLineRenderer;
     [SerializeField] private Transform _shotTrailPrefab;
@@ -107,6 +138,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
     private string _combatStunReason = "";
     private Coroutine _lineCoroutine;
     private int _lineSortingLayerId = -1;
+    private int _shellCasingSortingLayerId = -1;
     private Collider2D _cachedHeroCollider;
 
     public void ApplyWaveDamageMultiplier(float multiplier)
@@ -166,6 +198,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 
         EnsureShotLineRenderer();
         CacheLineSortingLayer();
+        CacheShellCasingSortingLayer();
 
         _heroRoot = FindAnyObjectByType<Hero_V2>();
         _heroModel = _heroRoot != null ? _heroRoot.GetComponent<HeroModel_V2>() : FindAnyObjectByType<HeroModel_V2>();
@@ -570,6 +603,8 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         }
 
         Vector2 direction = toHero.normalized;
+        PlayMuzzleFlash(origin, direction);
+        EjectShellCasing(origin, direction);
 
         // Include triggers (bunker cover may use trigger colliders) and all layers so bunker is never skipped.
         bool prevHitTriggers = Physics2D.queriesHitTriggers;
@@ -945,6 +980,15 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         _lineSortingLayerId = GetTopSortingLayerId();
     }
 
+    private void CacheShellCasingSortingLayer()
+    {
+        _shellCasingSortingLayerId = -1;
+        if (TryResolveSortingLayerId(_shellCasingSortingLayerName, out int forcedId))
+        {
+            _shellCasingSortingLayerId = forcedId;
+        }
+    }
+
     private static bool TryResolveSortingLayerId(string layerName, out int id)
     {
         id = 0;
@@ -1140,6 +1184,124 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
     {
         ValidateFirePointOwnership();
         return _firePoint != null ? _firePoint.position : transform.position;
+    }
+
+    private void PlayMuzzleFlash(Vector2 origin, Vector2 direction)
+    {
+        if (_muzzleFlashPrefab == null)
+        {
+            MuzzleFlash_V2.Play(origin, direction);
+            return;
+        }
+
+        Vector2 dir = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector2.right;
+        float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg + _muzzleFlashRotationOffsetDegrees;
+        Vector3 pos = new Vector3(origin.x, origin.y, _muzzleFlashWorldZ);
+        GameObject go = Instantiate(
+            _muzzleFlashPrefab,
+            pos,
+            Quaternion.Euler(0f, 0f, angle),
+            _muzzleFlashParent);
+
+        float minScale = Mathf.Min(_muzzleFlashRandomScaleRange.x, _muzzleFlashRandomScaleRange.y);
+        float maxScale = Mathf.Max(_muzzleFlashRandomScaleRange.x, _muzzleFlashRandomScaleRange.y);
+        float scale = UnityEngine.Random.Range(Mathf.Max(0.01f, minScale), Mathf.Max(0.01f, maxScale));
+        go.transform.localScale = go.transform.localScale * scale;
+        Destroy(go, Mathf.Max(0.01f, _muzzleFlashLifetimeSeconds));
+    }
+
+    private void EjectShellCasing(Vector2 origin, Vector2 direction)
+    {
+        if (_shellCasingPrefab == null)
+        {
+            if (_debugShellCasingLogs)
+            {
+                Debug.LogWarning("[ParatrooperWeaponSystem_V2] Shell casing skipped: prefab is not assigned.");
+            }
+            return;
+        }
+
+        Vector2 shotDir = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector2.right;
+        Vector2 spawnOffset =
+            (shotDir * _shellCasingLocalSpawnOffset.x) +
+            (Vector2.up * _shellCasingLocalSpawnOffset.y);
+        Vector2 spawnPos = origin + spawnOffset;
+
+        float backSpeed = UnityEngine.Random.Range(
+            Mathf.Min(_shellCasingBackwardSpeedRange.x, _shellCasingBackwardSpeedRange.y),
+            Mathf.Max(_shellCasingBackwardSpeedRange.x, _shellCasingBackwardSpeedRange.y));
+        float upSpeed = UnityEngine.Random.Range(
+            Mathf.Min(_shellCasingUpwardSpeedRange.x, _shellCasingUpwardSpeedRange.y),
+            Mathf.Max(_shellCasingUpwardSpeedRange.x, _shellCasingUpwardSpeedRange.y));
+        Vector2 ejectVelocity = (-shotDir * Mathf.Max(0f, backSpeed)) + (Vector2.up * Mathf.Max(0f, upSpeed));
+
+        float angle = Mathf.Atan2(ejectVelocity.y, ejectVelocity.x) * Mathf.Rad2Deg + _shellCasingRotationOffsetDegrees;
+        Vector3 pos = new Vector3(spawnPos.x, spawnPos.y, _shellCasingWorldZ);
+        GameObject casing = SimplePrefabPool_V2.Spawn(
+            _shellCasingPrefab,
+            pos,
+            Quaternion.Euler(0f, 0f, angle),
+            _shellCasingParent);
+        if (casing == null)
+        {
+            return;
+        }
+
+        ApplyShellCasingRendererSorting(casing);
+
+        ShellCasing_V2 shellCasing = casing.GetComponent<ShellCasing_V2>();
+        if (shellCasing == null)
+        {
+            shellCasing = casing.AddComponent<ShellCasing_V2>();
+        }
+
+        float spin = UnityEngine.Random.Range(
+            Mathf.Min(_shellCasingAngularVelocityRange.x, _shellCasingAngularVelocityRange.y),
+            Mathf.Max(_shellCasingAngularVelocityRange.x, _shellCasingAngularVelocityRange.y));
+        if (UnityEngine.Random.value < 0.5f)
+        {
+            spin = -spin;
+        }
+
+        shellCasing.Arm(ejectVelocity, spin, _shellCasingLifetimeSeconds);
+
+        if (_debugShellCasingLogs)
+        {
+            Debug.Log(
+                $"[ParatrooperWeaponSystem_V2] Shell casing spawned pos={pos}, velocity={ejectVelocity}, " +
+                $"spin={spin:0.#}, prefab='{_shellCasingPrefab.name}'.");
+        }
+    }
+
+    private void ApplyShellCasingRendererSorting(GameObject casing)
+    {
+        if (casing == null)
+        {
+            return;
+        }
+
+        Renderer[] renderers = casing.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer r = renderers[i];
+            if (r == null)
+            {
+                continue;
+            }
+
+            if (_shellCasingSortingLayerId >= 0)
+            {
+                r.sortingLayerID = _shellCasingSortingLayerId;
+            }
+
+            r.sortingOrder = _shellCasingSortingOrder;
+        }
+    }
+
+    [ContextMenu("Test MP40 Shell Casing Right")]
+    private void TestMp40ShellCasingRight()
+    {
+        EjectShellCasing(transform.position, Vector2.right);
     }
 
     private void ResolveAimBones()

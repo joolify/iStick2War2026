@@ -107,6 +107,7 @@ namespace iStick2War_V2
             lastShootTime = Time.time;
 
             ConsumeAmmo(1);
+            AddWorldShakeForCommittedHitscanShot(_model.currentWeaponType);
 
             // IMPORTANT:
             // här kan du senare trigga events:
@@ -131,8 +132,22 @@ namespace iStick2War_V2
 
             shotResult = _shotResolver.ResolveShot(shotContext);
             OnCommittedAttack?.Invoke(_model.currentWeaponType, false, shotResult.DidHit);
+            AddWorldShakeForCommittedHitscanShot(_model.currentWeaponType);
             LogWeapon($"[HeroWeaponSystem_V2] Shoot OK. didHit={shotResult.DidHit}, finalPos={shotResult.FinalPos}, ammoLeft={_model.currentAmmo}");
             return true;
+        }
+
+        private static void AddWorldShakeForCommittedHitscanShot(WeaponType weaponType)
+        {
+            switch (weaponType)
+            {
+                case WeaponType.Colt45:
+                    WorldShake_V2.AddImpulse(WorldShakeImpulseKind_V2.Colt45Shot);
+                    break;
+                case WeaponType.Thompson:
+                    WorldShake_V2.AddImpulse(WorldShakeImpulseKind_V2.ThompsonShot);
+                    break;
+            }
         }
 
         // -------------------------

@@ -310,6 +310,7 @@ namespace iStick2War_V2
 
             _bunkerHealth = Mathf.Max(0, _bunkerHealth - amount);
             Log($"Bunker took {amount} damage. hp={_bunkerHealth}/{_bunkerMaxHealthRuntime}");
+            WorldShake_V2.AddImpulse(WorldShakeImpulseKind_V2.BunkerHit);
             WaveRunTelemetry_V2.NotifyBunkerDamageTaken(amount, telemetrySource);
             OnBunkerDamaged?.Invoke(amount);
             EmitMetaChanged();

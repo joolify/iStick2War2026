@@ -604,6 +604,14 @@ public class ParatrooperView_V2 : MonoBehaviour
                 _skeletonAnimation.AnimationState.ClearTrack(0);
             }
 
+            if (state == StickmanBodyState.Shoot && _lastStateBeforeChange == StickmanBodyState.Run)
+            {
+                // Groundtrooper Run can key legs/body parts that the MP40 shoot loop does not key.
+                // Reset bones so the first Shoot frame does not inherit a frozen run pose.
+                _skeletonAnimation.Skeleton.SetBonesToSetupPose();
+                _skeletonAnimation.AnimationState.ClearTracks();
+            }
+
             if (state == StickmanBodyState.Electrocuted)
             {
                 _skeletonAnimation.AnimationState.ClearTrack(1);
@@ -621,9 +629,11 @@ public class ParatrooperView_V2 : MonoBehaviour
             {
                 trackEntry.TrackTime = 0f;
             }
-            else if (state == StickmanBodyState.Shoot && _lastStateBeforeChange == StickmanBodyState.Grenade)
+            else if (state == StickmanBodyState.Shoot &&
+                     (_lastStateBeforeChange == StickmanBodyState.Grenade ||
+                      _lastStateBeforeChange == StickmanBodyState.Run))
             {
-                // Grenade may leave MP40 track stale; always restart the loop from t=0 when resuming fire.
+                // Grenade / ground-run may leave stale pose data; always restart the loop from t=0 when resuming fire.
                 trackEntry.TrackTime = 0f;
             }
 

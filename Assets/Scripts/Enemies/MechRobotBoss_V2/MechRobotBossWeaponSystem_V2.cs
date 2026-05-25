@@ -343,6 +343,7 @@ namespace iStick2War_V2
             {
                 _nextMachineGunShotTime = Time.time + _machineGunShotInterval;
                 ApplyHitscanDamage(_machineGunDamageScaled);
+                WorldShake_V2.AddImpulse(WorldShakeImpulseKind_V2.MechMachineGun);
             }
         }
 
@@ -389,6 +390,7 @@ namespace iStick2War_V2
         private void FireCannonOnce()
         {
             ApplyHitscanDamage(_cannonDamageScaled);
+            WorldShake_V2.AddImpulse(WorldShakeImpulseKind_V2.MechCannon);
         }
 
         private void TickMissileVolley()
@@ -658,6 +660,8 @@ namespace iStick2War_V2
             {
                 return;
             }
+
+            MuzzleFlash_V2.Play(origin, direction);
 
             bool prevHitTriggers = Physics2D.queriesHitTriggers;
             Physics2D.queriesHitTriggers = true;

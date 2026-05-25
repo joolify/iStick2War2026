@@ -147,6 +147,33 @@ namespace iStick2War_V2
         [SerializeField] private bool _debugTrailLogs = false;
         [SerializeField] private bool _debugViewLogs = false;
 
+        [Header("Hero muzzle flash (optional)")]
+        [Tooltip("Hero-local muzzle flash prefab. If empty, HeroController falls back to scene-level MuzzleFlash_V2.")]
+        [SerializeField] private GameObject _muzzleFlashPrefab;
+        [Tooltip(
+            "Added to atan2(direction). Use 0 if prefab points along +X/right at rotation 0. " +
+            "Use -90 if prefab art points up at rotation 0.")]
+        [SerializeField] private float _muzzleFlashRotationOffsetDegrees;
+        [SerializeField] private float _muzzleFlashWorldZ = 0f;
+        [SerializeField] private float _muzzleFlashLifetimeSeconds = 0.08f;
+        [SerializeField] private Vector2 _muzzleFlashRandomScaleRange = new Vector2(0.9f, 1.15f);
+        [SerializeField] private Transform _muzzleFlashParent;
+
+        [Header("Hero shell casings (optional)")]
+        [Tooltip("Prefab for Colt45/Thompson shell casings. Spawned through SimplePrefabPool_V2.")]
+        [SerializeField] private GameObject _shellCasingPrefab;
+        [Tooltip(
+            "Added to atan2(eject direction). Use 0 if prefab points along +X/right at rotation 0. " +
+            "If your casing art lies sideways but points 90 degrees to the right, try -90 or 90.")]
+        [SerializeField] private float _shellCasingRotationOffsetDegrees;
+        [SerializeField] private float _shellCasingWorldZ = 0f;
+        [SerializeField] private float _shellCasingLifetimeSeconds = 2.4f;
+        [SerializeField] private Transform _shellCasingParent;
+        [SerializeField] private Vector2 _shellCasingLocalSpawnOffset = new Vector2(-0.08f, 0.03f);
+        [SerializeField] private Vector2 _shellCasingBackwardSpeedRange = new Vector2(1.2f, 2.1f);
+        [SerializeField] private Vector2 _shellCasingUpwardSpeedRange = new Vector2(1.3f, 2.4f);
+        [SerializeField] private Vector2 _shellCasingAngularVelocityRange = new Vector2(420f, 820f);
+
         [Header("Hero damage VFX (optional)")]
         [Tooltip("Small blood or impact burst; leave empty to skip.")]
         [SerializeField] private GameObject _heroBloodHitPrefab;
@@ -747,6 +774,92 @@ namespace iStick2War_V2
 
             // Keep same lifetime as legacy GunBase effect.
             Destroy(trail.gameObject, Mathf.Max(0.05f, _trailVisibleDuration));
+        }
+
+        public bool TryPlayMuzzleFlash(Vector2 origin, Vector2 direction)
+        {
+            if (_muzzleFlashPrefab == null)
+            {
+                return false;
+            }
+
+            Vector2 dir = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector2.right;
+            float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg + _muzzleFlashRotationOffsetDegrees;
+            Vector3 pos = new Vector3(origin.x, origin.y, _muzzleFlashWorldZ);
+            GameObject go = Instantiate(
+                _muzzleFlashPrefab,
+                pos,
+                Quaternion.Euler(0f, 0f, angle),
+                _muzzleFlashParent);
+
+            float minScale = Mathf.Min(_muzzleFlashRandomScaleRange.x, _muzzleFlashRandomScaleRange.y);
+            float maxScale = Mathf.Max(_muzzleFlashRandomScaleRange.x, _muzzleFlashRandomScaleRange.y);
+            float scale = UnityEngine.Random.Range(Mathf.Max(0.01f, minScale), Mathf.Max(0.01f, maxScale));
+            go.transform.localScale = go.transform.localScale * scale;
+            Destroy(go, Mathf.Max(0.01f, _muzzleFlashLifetimeSeconds));
+            return true;
+        }
+
+        public bool TryEjectShellCasing(WeaponType weaponType, Vector2 origin, Vector2 direction)
+        {
+            if (_shellCasingPrefab == null || !ShouldEjectShellCasingForWeapon(weaponType))
+            {
+                return false;
+            }
+
+            Vector2 shotDir = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector2.right;
+            Vector2 spawnOffset =
+                (shotDir * _shellCasingLocalSpawnOffset.x) +
+                (Vector2.up * _shellCasingLocalSpawnOffset.y);
+            Vector2 spawnPos = origin + spawnOffset;
+
+            float backSpeed = UnityEngine.Random.Range(
+                Mathf.Min(_shellCasingBackwardSpeedRange.x, _shellCasingBackwardSpeedRange.y),
+                Mathf.Max(_shellCasingBackwardSpeedRange.x, _shellCasingBackwardSpeedRange.y));
+            float upSpeed = UnityEngine.Random.Range(
+                Mathf.Min(_shellCasingUpwardSpeedRange.x, _shellCasingUpwardSpeedRange.y),
+                Mathf.Max(_shellCasingUpwardSpeedRange.x, _shellCasingUpwardSpeedRange.y));
+            Vector2 ejectVelocity = (-shotDir * Mathf.Max(0f, backSpeed)) + (Vector2.up * Mathf.Max(0f, upSpeed));
+
+            float angle = Mathf.Atan2(ejectVelocity.y, ejectVelocity.x) * Mathf.Rad2Deg + _shellCasingRotationOffsetDegrees;
+            Vector3 pos = new Vector3(spawnPos.x, spawnPos.y, _shellCasingWorldZ);
+            GameObject casing = SimplePrefabPool_V2.Spawn(
+                _shellCasingPrefab,
+                pos,
+                Quaternion.Euler(0f, 0f, angle),
+                _shellCasingParent);
+            if (casing == null)
+            {
+                return false;
+            }
+
+            ShellCasing_V2 shellCasing = casing.GetComponent<ShellCasing_V2>();
+            if (shellCasing == null)
+            {
+                shellCasing = casing.AddComponent<ShellCasing_V2>();
+            }
+
+            float spin = UnityEngine.Random.Range(
+                Mathf.Min(_shellCasingAngularVelocityRange.x, _shellCasingAngularVelocityRange.y),
+                Mathf.Max(_shellCasingAngularVelocityRange.x, _shellCasingAngularVelocityRange.y));
+            if (UnityEngine.Random.value < 0.5f)
+            {
+                spin = -spin;
+            }
+
+            shellCasing.Arm(ejectVelocity, spin, _shellCasingLifetimeSeconds);
+            return true;
+        }
+
+        private static bool ShouldEjectShellCasingForWeapon(WeaponType weaponType)
+        {
+            return weaponType == WeaponType.Colt45 || weaponType == WeaponType.Thompson;
+        }
+
+        [ContextMenu("Test Shell Casing Right")]
+        private void TestShellCasingRight()
+        {
+            TryEjectShellCasing(WeaponType.Colt45, transform.position, Vector2.right);
         }
 
         private int ResolveTrailSortingLayerId()

@@ -659,6 +659,24 @@ MonoBehaviour:
   _firePoint: {fileID: 0}
   _aimPointBoneName: mp40-aim
   _crossHairBoneName: crosshair
+  _muzzleFlashPrefab: {fileID: 718690339124133421, guid: f7e20248994499f41830519da369e9cc, type: 3}
+  _muzzleFlashRotationOffsetDegrees: 0
+  _muzzleFlashWorldZ: 0
+  _muzzleFlashLifetimeSeconds: 0.08
+  _muzzleFlashRandomScaleRange: {x: 0.9, y: 1.15}
+  _muzzleFlashParent: {fileID: 0}
+  _shellCasingPrefab: {fileID: 5869214448978215262, guid: e6642a07e656bf6469edecb391302997, type: 3}
+  _shellCasingRotationOffsetDegrees: 0
+  _shellCasingWorldZ: 0
+  _shellCasingLifetimeSeconds: 2.4
+  _shellCasingParent: {fileID: 2880439816489826258, guid: e6642a07e656bf6469edecb391302997, type: 3}
+  _shellCasingLocalSpawnOffset: {x: -0.08, y: 0.03}
+  _shellCasingBackwardSpeedRange: {x: 1.1, y: 2}
+  _shellCasingUpwardSpeedRange: {x: 1.2, y: 2.2}
+  _shellCasingAngularVelocityRange: {x: 380, y: 760}
+  _shellCasingSortingLayerName: 
+  _shellCasingSortingOrder: 6000
+  _debugShellCasingLogs: 0
   _shotLineRenderer: {fileID: 2565440054647899737, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
   _shotTrailPrefab: {fileID: 1070164800395407800, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
   _lineVisibleDuration: 0.1

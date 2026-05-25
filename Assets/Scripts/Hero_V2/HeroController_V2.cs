@@ -392,7 +392,11 @@ namespace iStick2War_V2
 
             if (_weaponSystem.ActiveWeaponUsesProjectile())
             {
-                _weaponSystem.ShootProjectile(aimPos, direction);
+                if (_weaponSystem.ShootProjectile(aimPos, direction) &&
+                    ShouldPlayMuzzleFlashForWeapon(_model.currentWeaponType))
+                {
+                    PlayHeroMuzzleFlash(aimPos, direction);
+                }
                 return;
             }
 
@@ -412,6 +416,12 @@ namespace iStick2War_V2
                     _view.PlayShotTrail(aimPos, shotVisualEnd);
                 }
 
+                if (ShouldPlayMuzzleFlashForWeapon(_model.currentWeaponType))
+                {
+                    PlayHeroMuzzleFlash(aimPos, direction);
+                }
+                _view.TryEjectShellCasing(_model.currentWeaponType, aimPos, direction);
+
                 if (isFlamethrower && Time.time >= _nextFlamethrowerDebugLogAt)
                 {
                     _nextFlamethrowerDebugLogAt = Time.time + 0.2f;
@@ -422,6 +432,32 @@ namespace iStick2War_V2
                         $"[HeroController_V2] Flamethrower debug: shot committed. didHit={shotResult.DidHit}, " +
                         $"hitCollider={hitName}, aimPos={aimPos}, dir={direction}, ammo={_model.currentAmmo}");
                 }
+            }
+        }
+
+        private void PlayHeroMuzzleFlash(Vector2 origin, Vector2 direction)
+        {
+            if (_view != null && _view.TryPlayMuzzleFlash(origin, direction))
+            {
+                return;
+            }
+
+            MuzzleFlash_V2.Play(origin, direction);
+        }
+
+        private static bool ShouldPlayMuzzleFlashForWeapon(WeaponType weaponType)
+        {
+            switch (weaponType)
+            {
+                case WeaponType.None:
+                case WeaponType.Flamethrower:
+                case WeaponType.Tesla:
+                case WeaponType.MagicStaff:
+                case WeaponType.Mk2:
+                case WeaponType.Potatomasher:
+                    return false;
+                default:
+                    return true;
             }
         }
 

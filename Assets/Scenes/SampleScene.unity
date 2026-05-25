@@ -715,6 +715,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d529b52d36edb27498ae0a3a5dcaebf8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Hero_V2.Hero_V2
+--- !u!4 &167222068 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 865140650397979084, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+  m_PrefabInstance: {fileID: 1640422542864705052}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &194176245
 GameObject:
   m_ObjectHideFlags: 0
@@ -1041,7 +1046,7 @@ Transform:
   - {fileID: 775414996}
   - {fileID: 1275965429}
   - {fileID: 960687818}
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 977369561}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &244598617
 MonoBehaviour:
@@ -1801,6 +1806,64 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!1 &347428890
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 347428891}
+  - component: {fileID: 347428892}
+  m_Layer: 9
+  m_Name: WorldShakeController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &347428891
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 347428890}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 977369561}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &347428892
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 347428890}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 74859ab4b76ee1340bc1b5a9cf2bcf18, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.WorldShake_V2
+  _shakeRoot: {fileID: 977369561}
+  _additionalShakeTargets: []
+  _maxOffsetWorld: 1
+  _frequency: 35
+  _decayPerSecond: 2.8
+  _returnSpeed: 25
+  _useUnscaledTime: 0
+  _warnWhenNoTargets: 1
+  _colt45ShotShake: 0.045
+  _thompsonShotShake: 0.09
+  _bazookaExplosionShake: 0.35
+  _bunkerHitShake: 0.2
+  _mechMachineGunShake: 0.1
+  _mechCannonShake: 0.45
 --- !u!1 &357300261
 GameObject:
   m_ObjectHideFlags: 0
@@ -5757,6 +5820,41 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 218890606031642440, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
   m_PrefabInstance: {fileID: 905505133}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &977369560
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 977369561}
+  m_Layer: 9
+  m_Name: GroundShakeRoot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &977369561
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 977369560}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1733754171}
+  - {fileID: 244598616}
+  - {fileID: 167222068}
+  - {fileID: 347428891}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &993082971 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5338020879963498576, guid: 19caa9dad6b21694d8bcff0624084466, type: 3}
@@ -8691,12 +8789,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1733754169}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0.02, y: -4.46, z: 16}
   m_LocalScale: {x: 0.725, y: 0.5, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 977369561}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!61 &1733754172
 BoxCollider2D:
@@ -9266,6 +9364,12 @@ MonoBehaviour:
   _mechBossExtraOffscreenHorizontalWorld: 2
   _mechBossGroundYOffsetWorld: 4.5
   _mechBossSpawnVerticalNormalized01: 0.62
+  _spawnGroundTroopersFromOffscreenGround: 1
+  _groundTrooperExtraOffscreenHorizontalWorld: 1.5
+  _groundTrooperGroundYOffsetWorld: 0.05
+  _groundTrooperRunSpeed: 2.75
+  _groundTrooperStopInsetFromCameraEdgeWorld: 1.25
+  _groundTrooperSpawnVerticalNormalized01: 0.18
   _leftSpawnPoints: []
   _rightSpawnPoints: []
   _autoBindSpawnPointsByName: 1
@@ -11462,45 +11566,13 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 448389956453340950, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
-      propertyPath: m_Enabled
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 831212924974289917, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
-      propertyPath: m_Enabled
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 1425890025568105950, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
       propertyPath: m_Name
       value: PARATROOPER V2
       objectReference: {fileID: 0}
-    - target: {fileID: 1425890025568105950, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1601239482513851408, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
-      propertyPath: m_Enabled
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1953199649443728269, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
-      propertyPath: m_Enabled
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3510554000704375668, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
-      propertyPath: m_Enabled
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 3632910999784026234, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
       propertyPath: m_Mesh
       value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 3870540566190495260, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
-      propertyPath: m_Enabled
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4323983175327905619, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
-      propertyPath: m_Enabled
-      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5557619074076993570, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
       propertyPath: _camera
@@ -11550,14 +11622,6 @@ PrefabInstance:
       propertyPath: _waveManager
       value: 
       objectReference: {fileID: 796613714}
-    - target: {fileID: 6294064176622600355, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
-      propertyPath: m_Enabled
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7144713946482834582, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
-      propertyPath: m_Enabled
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 8388115924448806785, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
       propertyPath: m_Camera
       value: 
@@ -11573,7 +11637,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 0}
+    m_TransformParent: {fileID: 977369561}
     m_Modifications:
     - target: {fileID: 478474903044464581, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: m_Mesh
@@ -11597,15 +11661,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 865140650397979084, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 865140650397979084, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 865140650397979084, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: 865140650397979084, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -12620,7 +12684,6 @@ SceneRoots:
   - {fileID: 410087041}
   - {fileID: 832575519}
   - {fileID: 638875885}
-  - {fileID: 1733754171}
   - {fileID: 258693049}
   - {fileID: 1724279412}
   - {fileID: 652812391}
@@ -12631,9 +12694,9 @@ SceneRoots:
   - {fileID: 1991422066}
   - {fileID: 635239655}
   - {fileID: 2147091497}
+  - {fileID: 977369561}
   - {fileID: 1721460134}
   - {fileID: 1550648995142526425}
-  - {fileID: 1640422542864705052}
   - {fileID: 796613715}
   - {fileID: 1714380459}
   - {fileID: 1504774667}
@@ -12642,7 +12705,6 @@ SceneRoots:
   - {fileID: 1544733062}
   - {fileID: 2100369401}
   - {fileID: 562393368}
-  - {fileID: 244598616}
   - {fileID: 2055013476}
   - {fileID: 94604671}
   - {fileID: 1296170498}

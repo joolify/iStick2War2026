@@ -290,6 +290,21 @@ MonoBehaviour:
   _trailSortingLayerName: 
   _debugTrailLogs: 0
   _debugViewLogs: 0
+  _muzzleFlashPrefab: {fileID: 718690339124133421, guid: d1517ff3d61bbc0439d6919782b53a16, type: 3}
+  _muzzleFlashRotationOffsetDegrees: 0
+  _muzzleFlashWorldZ: 0
+  _muzzleFlashLifetimeSeconds: 0.08
+  _muzzleFlashRandomScaleRange: {x: 0.9, y: 1.15}
+  _muzzleFlashParent: {fileID: 0}
+  _shellCasingPrefab: {fileID: 5869214448978215262, guid: e6642a07e656bf6469edecb391302997, type: 3}
+  _shellCasingRotationOffsetDegrees: 0
+  _shellCasingWorldZ: 0
+  _shellCasingLifetimeSeconds: 2.4
+  _shellCasingParent: {fileID: 0}
+  _shellCasingLocalSpawnOffset: {x: -0.08, y: 0.03}
+  _shellCasingBackwardSpeedRange: {x: 1.2, y: 2.1}
+  _shellCasingUpwardSpeedRange: {x: 1.3, y: 2.4}
+  _shellCasingAngularVelocityRange: {x: 420, y: 820}
   _heroBloodHitPrefab: {fileID: 0}
   _heroBloodWorldOffset: {x: 0, y: 0.35}
   _heroBloodReferenceDamage: 14
@@ -540,6 +555,7 @@ MonoBehaviour:
   _automationChunkSize: 25
   _automationMemoryCleanupEveryRuns: 3
   _automationEnableMemoryCleanup: 1
+  _automationQueueMainMenuPlayAfterMaxRuns: 1
   _automationActionDelaySeconds: 0.5
   _automationLogs: 1
   _autoRefillAmmoWhenDryInAutomation: 1
