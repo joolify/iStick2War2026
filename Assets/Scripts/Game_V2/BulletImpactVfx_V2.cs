@@ -60,6 +60,11 @@ namespace iStick2War_V2
 
         public static void PlayIfSurfaceHit(RaycastHit2D hit, Vector2 shotDirection)
         {
+            PlayIfSurfaceHit(hit, shotDirection, null);
+        }
+
+        public static void PlayIfSurfaceHit(RaycastHit2D hit, Vector2 shotDirection, bool? alignToHitNormalOverride)
+        {
             if (hit.collider == null || !IsSurfaceCollider(hit.collider))
             {
                 return;
@@ -76,10 +81,15 @@ namespace iStick2War_V2
                 return;
             }
 
-            s_instance.Spawn(hit, shotDirection);
+            s_instance.Spawn(hit, shotDirection, alignToHitNormalOverride);
         }
 
-        public static bool PlayFirstSurfaceHitAlongRay(Vector2 origin, Vector2 direction, float range)
+        public static bool PlayFirstSurfaceHitAlongRay(
+            Vector2 origin,
+            Vector2 direction,
+            float range,
+            bool includeBunker = true,
+            bool? alignToHitNormalOverride = null)
         {
             if (s_instance == null)
             {
@@ -94,7 +104,7 @@ namespace iStick2War_V2
 
             Vector2 dir = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector2.right;
             float dist = Mathf.Max(0.1f, range);
-            int mask = s_instance.ResolveSurfaceRaycastMask();
+            int mask = s_instance.ResolveSurfaceRaycastMask(includeBunker);
             if (mask == 0)
             {
                 return false;
@@ -121,12 +131,12 @@ namespace iStick2War_V2
             for (int i = 0; i < hits.Length; i++)
             {
                 RaycastHit2D hit = hits[i];
-                if (hit.collider == null || !IsSurfaceCollider(hit.collider))
+                if (hit.collider == null || !IsSurfaceCollider(hit.collider, includeBunker))
                 {
                     continue;
                 }
 
-                PlayIfSurfaceHit(hit, dir);
+                PlayIfSurfaceHit(hit, dir, alignToHitNormalOverride);
                 return true;
             }
 
@@ -154,7 +164,7 @@ namespace iStick2War_V2
             }
         }
 
-        private void Spawn(RaycastHit2D hit, Vector2 shotDirection)
+        private void Spawn(RaycastHit2D hit, Vector2 shotDirection, bool? alignToHitNormalOverride)
         {
             if (_impactPrefab == null)
             {
@@ -168,7 +178,8 @@ namespace iStick2War_V2
             }
 
             Vector2 normal = hit.normal.sqrMagnitude > 0.0001f ? hit.normal.normalized : -shotDirection.normalized;
-            Vector2 facing = _alignToHitNormal
+            bool alignToNormal = alignToHitNormalOverride ?? _alignToHitNormal;
+            Vector2 facing = alignToNormal
                 ? normal
                 : (shotDirection.sqrMagnitude > 0.0001f ? -shotDirection.normalized : Vector2.up);
             float prefabAxisOffset = _prefabPointsUpAtZero ? -90f : 0f;
@@ -231,14 +242,14 @@ namespace iStick2War_V2
             return lifetime;
         }
 
-        private static bool IsSurfaceCollider(Collider2D c)
+        private static bool IsSurfaceCollider(Collider2D c, bool includeBunker = true)
         {
             if (c == null)
             {
                 return false;
             }
 
-            if (c.GetComponentInParent<BunkerHitbox_V2>() != null)
+            if (includeBunker && c.GetComponentInParent<BunkerHitbox_V2>() != null)
             {
                 return true;
             }
@@ -247,30 +258,40 @@ namespace iStick2War_V2
             int ground = LayerMask.NameToLayer("Ground");
             int bunker = LayerMask.NameToLayer("Bunker");
             return (ground >= 0 && layer == ground) ||
-                   (bunker >= 0 && layer == bunker);
+                   (includeBunker && bunker >= 0 && layer == bunker);
         }
 
-        private int ResolveSurfaceRaycastMask()
+        private int ResolveSurfaceRaycastMask(bool includeBunker)
         {
             if (_surfaceRaycastMask.value != 0)
             {
-                return _surfaceRaycastMask.value;
+                int configuredMask = _surfaceRaycastMask.value;
+                if (!includeBunker)
+                {
+                    int bunkerLayer = LayerMask.NameToLayer("Bunker");
+                    if (bunkerLayer >= 0)
+                    {
+                        configuredMask &= ~(1 << bunkerLayer);
+                    }
+                }
+
+                return configuredMask;
             }
 
-            int mask = 0;
-            int ground = LayerMask.NameToLayer("Ground");
-            if (ground >= 0)
+            int resolvedMask = 0;
+            int groundLayer = LayerMask.NameToLayer("Ground");
+            if (groundLayer >= 0)
             {
-                mask |= 1 << ground;
+                resolvedMask |= 1 << groundLayer;
             }
 
-            int bunker = LayerMask.NameToLayer("Bunker");
-            if (bunker >= 0)
+            int bunkerDefaultLayer = LayerMask.NameToLayer("Bunker");
+            if (includeBunker && bunkerDefaultLayer >= 0)
             {
-                mask |= 1 << bunker;
+                resolvedMask |= 1 << bunkerDefaultLayer;
             }
 
-            return mask;
+            return resolvedMask;
         }
 
         private void CacheSortingLayer()

@@ -123,6 +123,13 @@ namespace iStick2War_V2
                 return false;
             }
 
+            // Hero bullets should not be blocked by his own bunker / terrain helper colliders.
+            // Ground dirt VFX is handled separately by HeroController_V2 after a gameplay miss.
+            if (IsHeroIgnoredSurfaceCollider(hit.collider))
+            {
+                return false;
+            }
+
             // Any hero hitscan weapon should pass through already-dead paratrooper hitboxes.
             ParatrooperBodyPart_V2 bodyPart = hit.collider.GetComponent<ParatrooperBodyPart_V2>();
             if (bodyPart != null && !bodyPart.IsLivingCharacterForTargeting())
@@ -137,6 +144,25 @@ namespace iStick2War_V2
             }
 
             return true;
+        }
+
+        private static bool IsHeroIgnoredSurfaceCollider(Collider2D collider)
+        {
+            if (collider == null)
+            {
+                return false;
+            }
+
+            if (collider.GetComponentInParent<BunkerHitbox_V2>() != null)
+            {
+                return true;
+            }
+
+            int layer = collider.gameObject.layer;
+            int bunker = LayerMask.NameToLayer("Bunker");
+            int ground = LayerMask.NameToLayer("Ground");
+            return (bunker >= 0 && layer == bunker) ||
+                   (ground >= 0 && layer == ground);
         }
 
         private static void ApplyDamage(RaycastHit2D hit, HeroShotContext_V2 context)

@@ -1239,11 +1239,12 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 
         float angle = Mathf.Atan2(ejectVelocity.y, ejectVelocity.x) * Mathf.Rad2Deg + _shellCasingRotationOffsetDegrees;
         Vector3 pos = new Vector3(spawnPos.x, spawnPos.y, _shellCasingWorldZ);
+        Transform parent = IsSceneTransform(_shellCasingParent) ? _shellCasingParent : null;
         GameObject casing = SimplePrefabPool_V2.Spawn(
             _shellCasingPrefab,
             pos,
             Quaternion.Euler(0f, 0f, angle),
-            _shellCasingParent);
+            parent);
         if (casing == null)
         {
             return;
@@ -1298,6 +1299,11 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 
             r.sortingOrder = _shellCasingSortingOrder;
         }
+    }
+
+    private static bool IsSceneTransform(Transform t)
+    {
+        return t != null && t.gameObject.scene.IsValid() && t.gameObject.scene.isLoaded;
     }
 
     [ContextMenu("Test MP40 Shell Casing Right")]

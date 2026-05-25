@@ -411,7 +411,9 @@ namespace iStick2War_V2
                     BulletImpactVfx_V2.PlayFirstSurfaceHitAlongRay(
                         aimPos,
                         direction,
-                        Mathf.Max(0.1f, shotContext.Range));
+                        Mathf.Max(0.1f, shotContext.Range),
+                        includeBunker: false,
+                        alignToHitNormalOverride: false);
                 }
 
                 Vector2 shotVisualEnd = shotResult.FinalPos;
