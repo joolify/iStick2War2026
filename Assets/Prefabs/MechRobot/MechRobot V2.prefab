@@ -30,11 +30,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3768205212369437262}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.7071068, y: -0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: -4.3500004, y: -10.88234, z: -2.130001}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 89602123458764038}
   m_Father: {fileID: 3595415902689726711}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &1887463398402924751
@@ -262,7 +263,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 3595415902689726711}
+  m_Father: {fileID: 6453582547698925538}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &7905896281688636698
 GameObject:
@@ -296,15 +297,14 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7905896281688636698}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 6453582547698925538}
-  - {fileID: 89602123458764038}
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: -90, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &426558945792923027
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -342,6 +342,8 @@ MonoBehaviour:
   _runSpeed: 4.2
   _runEnterDistance: 9
   _attackMaxDistance: 14
+  _requireInsideCameraBeforeCombat: 1
+  _cameraCombatEntryInsetWorld: 0.35
   _useAttackPattern: 1
   _useSpineShootWindow: 0
   _shootStateHoldSecondsNoEvents: 0.65
@@ -445,6 +447,15 @@ MonoBehaviour:
   _respectBunkerCover: 1
   _heroCombatAimHeightLerp: 0.42
   _debugDrawShotRay: 1
+  _shotLineRenderer: {fileID: 0}
+  _shotLineVisibleDuration: 0.12
+  _shotLineWidth: 0.08
+  _shotLineColor: {r: 1, g: 0.95, b: 0.5, a: 1}
+  _overrideShotLineColor: 0
+  _shotLineSortingOrder: 5000
+  _shotLineSortingLayerName: 
+  _preferUrpUnlitShotLineMaterial: 1
+  _debugShotLineLogs: 0
 --- !u!114 &5688721189288510621
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -1747,7 +1747,9 @@ namespace iStick2War_V2
                     : worldPosition.x;
             }
 
-            MechRobotBoss spawned = SimplePrefabPool_V2.Spawn(_mechRobotBossPrefab, worldPosition, Quaternion.identity);
+            // MechRobot V2 keeps a non-identity root rotation so its Spine mesh faces the orthographic camera.
+            Quaternion prefabRotation = _mechRobotBossPrefab.transform.localRotation;
+            MechRobotBoss spawned = SimplePrefabPool_V2.Spawn(_mechRobotBossPrefab, worldPosition, prefabRotation);
             if (spawned == null)
             {
                 return false;

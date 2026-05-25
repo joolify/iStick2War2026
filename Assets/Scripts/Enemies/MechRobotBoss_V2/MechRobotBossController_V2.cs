@@ -42,6 +42,10 @@ namespace iStick2War_V2
         [SerializeField] private float _runEnterDistance = 9f;
         [Header("Combat")]
         [SerializeField] private float _attackMaxDistance = 14f;
+        [Tooltip("Prevents off-screen ground spawns from starting their attack loop before entering the Game view.")]
+        [SerializeField] private bool _requireInsideCameraBeforeCombat = true;
+        [Tooltip("Extra inset from the camera left/right edge before the mech is allowed to stop and attack.")]
+        [SerializeField] private float _cameraCombatEntryInsetWorld = 0.35f;
         [Tooltip("When enabled, weapon system runs MG / cannon / missile loop; Aim↔Shoot follows telegraph + bursts.")]
         [SerializeField] private bool _useAttackPattern = true;
         [Header("Spine")]
@@ -178,7 +182,7 @@ namespace iStick2War_V2
             FaceToward(dx);
 
             float absDx = Mathf.Abs(dx);
-            bool inCombatRange = absDx <= _attackMaxDistance;
+            bool inCombatRange = absDx <= _attackMaxDistance && IsInsideCameraCombatBand(pos);
 
             if (_weaponSystem != null && _useAttackPattern && _weaponSystem.AttackPatternEnabled)
             {
@@ -195,9 +199,10 @@ namespace iStick2War_V2
             }
 
             bool mayFire =
-                !_useSpineShootWindow
+                inCombatRange &&
+                (!_useSpineShootWindow
                     ? _stateMachine.CurrentState == MechRobotBossBodyState.Shoot
-                    : _shootWindowOpen && _stateMachine.CurrentState == MechRobotBossBodyState.Shoot;
+                    : _shootWindowOpen && _stateMachine.CurrentState == MechRobotBossBodyState.Shoot);
 
             if (_weaponSystem != null && _useAttackPattern && _weaponSystem.AttackPatternEnabled && inCombatRange)
             {
@@ -259,6 +264,26 @@ namespace iStick2War_V2
             }
 
             _stateMachine.ChangeState(absDx >= _runEnterDistance ? MechRobotBossBodyState.Run : MechRobotBossBodyState.Walk);
+        }
+
+        private bool IsInsideCameraCombatBand(Vector2 position)
+        {
+            if (!_requireInsideCameraBeforeCombat)
+            {
+                return true;
+            }
+
+            Camera cam = Camera.main;
+            if (cam == null || !cam.orthographic)
+            {
+                return true;
+            }
+
+            float halfWidth = cam.orthographicSize * cam.aspect;
+            float inset = Mathf.Max(0f, _cameraCombatEntryInsetWorld);
+            float minX = cam.transform.position.x - halfWidth + inset;
+            float maxX = cam.transform.position.x + halfWidth - inset;
+            return position.x >= minX && position.x <= maxX;
         }
 
         private void StopHorizontal()

@@ -2576,11 +2576,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 933b9ea67a00e6247a22af27839d5d11, type: 3}
   m_Name: 
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.BulletImpactVfx_V2
-  _impactPrefab: {fileID: 7711364014828396377, guid: fcfe15c7c7d930a4fbc0723227d22e5c, type: 3}
+  _impactPrefab: {fileID: 4666229884585852623, guid: 88f17ea47e2596c4587f98ee2428833f, type: 3}
   _alignToHitNormal: 1
+  _prefabPointsUpAtZero: 1
   _rotationOffsetDegrees: 0
   _worldZ: 0
   _lifetimeSeconds: 0.6
+  _surfaceOffsetWorld: 0.035
+  _minimumParticleLifetimeSeconds: 1.25
   _optionalParent: {fileID: 0}
   _surfaceRaycastMask:
     serializedVersion: 2

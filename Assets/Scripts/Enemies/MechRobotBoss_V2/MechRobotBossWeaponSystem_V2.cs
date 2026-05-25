@@ -2,6 +2,7 @@ using iStick2War;
 using Spine;
 using Spine.Unity;
 using System;
+using System.Collections;
 using UnityEngine;
 
 namespace iStick2War_V2
@@ -107,6 +108,19 @@ namespace iStick2War_V2
         [SerializeField] [Range(0f, 1f)] private float _heroCombatAimHeightLerp = 0.42f;
         [SerializeField] private bool _debugDrawShotRay = true;
 
+        [Header("Shot line effect")]
+        [SerializeField] private LineRenderer _shotLineRenderer;
+        [Tooltip("How long one mech hitscan tracer stays visible.")]
+        [SerializeField] private float _shotLineVisibleDuration = 0.12f;
+        [SerializeField] private float _shotLineWidth = 0.08f;
+        [SerializeField] private Color _shotLineColor = new Color(1f, 0.95f, 0.5f, 1f);
+        [SerializeField] private bool _overrideShotLineColor = false;
+        [SerializeField] private int _shotLineSortingOrder = 5000;
+        [Tooltip("If set, tracer uses this sorting layer. Empty = highest sorting layer in project.")]
+        [SerializeField] private string _shotLineSortingLayerName = "";
+        [SerializeField] private bool _preferUrpUnlitShotLineMaterial = true;
+        [SerializeField] private bool _debugShotLineLogs = false;
+
         private float _lastFireTime = -999f;
         private Collider2D _cachedHeroCollider;
 
@@ -117,6 +131,9 @@ namespace iStick2War_V2
         private float _nextMissileSpawnTime;
 
         private LineRenderer _telegraphLine;
+        private Coroutine _shotLineCoroutine;
+        private int _shotLineSortingLayerId = -1;
+        private Material _shotLineMaterial;
         private static bool s_warnedMissilePrefab;
 
         private int _machineGunDamageScaled = 5;
@@ -206,6 +223,7 @@ namespace iStick2War_V2
             _heroModel = _heroRoot != null ? _heroRoot.GetComponent<HeroModel_V2>() : FindAnyObjectByType<HeroModel_V2>();
             CacheHeroCollider();
             EnsureTelegraphLine();
+            EnsureShotLineRenderer();
         }
 
         public void ResetForSpawn()
@@ -214,13 +232,14 @@ namespace iStick2War_V2
             _segment = PatternSegment.None;
             _missilesSpawnedInVolley = 0;
             ClearTelegraph();
+            ClearShotLine();
             _heroRoot = FindAnyObjectByType<Hero_V2>();
             _heroModel = _heroRoot != null ? _heroRoot.GetComponent<HeroModel_V2>() : FindAnyObjectByType<HeroModel_V2>();
             CacheHeroCollider();
             CacheScaledDamages();
         }
 
-        /// <summary>Advance attack loop while the boss is in combat range. Safe to call every <see cref="FixedUpdate"/>.</summary>
+        // Advance attack loop while the boss is in combat range. Safe to call every FixedUpdate.
         public void TickAttackPattern(bool inCombatRange)
         {
             if (!_attackPatternEnabled || _model == null || _model.IsDead())
@@ -291,7 +310,7 @@ namespace iStick2War_V2
             return _model.health / _model.maxHealth <= _phaseTwoHpFraction;
         }
 
-        /// <summary>Missile volleys after cannon (and skipped volley if prefab missing) use this gate.</summary>
+        // Missile volleys after cannon (and skipped volley if prefab missing) use this gate.
         private bool ShouldRunMissileVolleysAfterCannon()
         {
             return _missilesInPhaseOne || IsPhaseTwo();
@@ -830,6 +849,8 @@ namespace iStick2War_V2
             {
                 Debug.DrawLine(origin, finalPos, Color.magenta, 0.45f);
             }
+
+            PlayShotLine(origin, finalPos);
         }
 
         private void EnsureTelegraphLine()
@@ -879,6 +900,281 @@ namespace iStick2War_V2
             {
                 _telegraphLine.enabled = false;
             }
+        }
+
+        private void PlayShotLine(Vector2 from, Vector2 to)
+        {
+            if (_shotLineRenderer == null)
+            {
+                EnsureShotLineRenderer();
+            }
+
+            if (_shotLineRenderer == null)
+            {
+                return;
+            }
+
+            ConfigureAndRenderShotLine(_shotLineRenderer, from, to);
+            if (_debugShotLineLogs)
+            {
+                Debug.Log($"[MechRobotBossWeaponSystem_V2] Shot line rendered. from={from}, to={to}, width={_shotLineRenderer.widthMultiplier:0.000}, sortingOrder={_shotLineRenderer.sortingOrder}");
+            }
+
+            if (_shotLineCoroutine != null)
+            {
+                StopCoroutine(_shotLineCoroutine);
+            }
+
+            _shotLineCoroutine = StartCoroutine(HideShotLineAfterDelay());
+        }
+
+        private void EnsureShotLineRenderer()
+        {
+            if (_shotLineRenderer == null)
+            {
+                Transform child = transform.Find("MechShotLine");
+                if (child == null)
+                {
+                    GameObject lineGo = new GameObject("MechShotLine");
+                    lineGo.transform.SetParent(transform, false);
+                    child = lineGo.transform;
+                }
+
+                _shotLineRenderer = child.GetComponent<LineRenderer>();
+                if (_shotLineRenderer == null)
+                {
+                    _shotLineRenderer = child.gameObject.AddComponent<LineRenderer>();
+                }
+            }
+
+            _shotLineRenderer.useWorldSpace = true;
+            _shotLineRenderer.enabled = false;
+            _shotLineRenderer.positionCount = 2;
+            _shotLineRenderer.widthMultiplier = Mathf.Max(0.01f, _shotLineWidth);
+            _shotLineRenderer.numCapVertices = 2;
+            _shotLineRenderer.numCornerVertices = 0;
+            _shotLineRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            _shotLineRenderer.receiveShadows = false;
+            _shotLineRenderer.textureMode = LineTextureMode.Stretch;
+            _shotLineRenderer.alignment = LineAlignment.View;
+            ApplyShotLineMaterial(_shotLineRenderer, _overrideShotLineColor ? _shotLineColor : Color.white);
+        }
+
+        private void ConfigureAndRenderShotLine(LineRenderer line, Vector2 from, Vector2 to)
+        {
+            if (line == null)
+            {
+                return;
+            }
+
+            Color tint = _overrideShotLineColor ? _shotLineColor : Color.white;
+            line.enabled = false;
+            line.transform.localScale = Vector3.one;
+            line.useWorldSpace = true;
+            line.positionCount = 2;
+            line.widthMultiplier = Mathf.Max(0.01f, _shotLineWidth);
+            line.startWidth = line.widthMultiplier;
+            line.endWidth = line.widthMultiplier;
+            line.widthCurve = AnimationCurve.Constant(0f, 1f, 1f);
+            line.numCapVertices = 2;
+            line.textureMode = LineTextureMode.Stretch;
+            line.alignment = LineAlignment.View;
+            line.sortingOrder = Mathf.Max(5000, _shotLineSortingOrder);
+            CacheShotLineSortingLayer();
+            line.sortingLayerID = _shotLineSortingLayerId;
+            line.startColor = new Color(tint.r, tint.g, tint.b, 1f);
+            line.endColor = new Color(tint.r, tint.g, tint.b, 1f);
+
+            Gradient gradient = new Gradient();
+            gradient.SetKeys(
+                new GradientColorKey[]
+                {
+                    new GradientColorKey(tint, 0f),
+                    new GradientColorKey(tint, 1f)
+                },
+                new GradientAlphaKey[]
+                {
+                    new GradientAlphaKey(1f, 0f),
+                    new GradientAlphaKey(1f, 1f)
+                });
+            line.colorGradient = gradient;
+
+            ApplyShotLineMaterial(line, tint);
+
+            float z = _firePoint != null ? _firePoint.position.z : transform.position.z;
+            line.SetPosition(0, new Vector3(from.x, from.y, z));
+            line.SetPosition(1, new Vector3(to.x, to.y, z));
+            line.enabled = true;
+        }
+
+        private void CacheShotLineSortingLayer()
+        {
+            if (_shotLineSortingLayerId >= 0)
+            {
+                return;
+            }
+
+            if (TryResolveSortingLayerId(_shotLineSortingLayerName, out int forcedId))
+            {
+                _shotLineSortingLayerId = forcedId;
+                return;
+            }
+
+            _shotLineSortingLayerId = GetTopSortingLayerId();
+        }
+
+        private static bool TryResolveSortingLayerId(string layerName, out int id)
+        {
+            id = 0;
+            if (string.IsNullOrWhiteSpace(layerName))
+            {
+                return false;
+            }
+
+            SortingLayer[] layers = SortingLayer.layers;
+            for (int i = 0; i < layers.Length; i++)
+            {
+                if (layers[i].name == layerName)
+                {
+                    id = layers[i].id;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static int GetTopSortingLayerId()
+        {
+            SortingLayer[] layers = SortingLayer.layers;
+            if (layers == null || layers.Length == 0)
+            {
+                return SortingLayer.NameToID("Default");
+            }
+
+            int topId = layers[0].id;
+            int topValue = layers[0].value;
+            for (int i = 1; i < layers.Length; i++)
+            {
+                if (layers[i].value > topValue)
+                {
+                    topValue = layers[i].value;
+                    topId = layers[i].id;
+                }
+            }
+
+            return topId;
+        }
+
+        private void ApplyShotLineMaterial(LineRenderer line, Color tint)
+        {
+            if (line == null)
+            {
+                return;
+            }
+
+            if (_shotLineMaterial == null)
+            {
+                Shader shader = null;
+                if (_preferUrpUnlitShotLineMaterial)
+                {
+                    shader = Shader.Find("Universal Render Pipeline/Unlit");
+                }
+
+                if (shader == null)
+                {
+                    shader = Shader.Find("Sprites/Default");
+                }
+
+                if (shader != null)
+                {
+                    _shotLineMaterial = new Material(shader);
+                }
+            }
+
+            ConfigureShotLineMaterial(_shotLineMaterial, tint);
+            if (_shotLineMaterial != null)
+            {
+                line.sharedMaterial = _shotLineMaterial;
+            }
+        }
+
+        private static void ConfigureShotLineMaterial(Material mat, Color tint)
+        {
+            if (mat == null)
+            {
+                return;
+            }
+
+            if (mat.HasProperty("_BaseMap"))
+            {
+                mat.SetTexture("_BaseMap", Texture2D.whiteTexture);
+            }
+            if (mat.HasProperty("_MainTex"))
+            {
+                mat.SetTexture("_MainTex", Texture2D.whiteTexture);
+            }
+
+            Color solidTint = new Color(tint.r, tint.g, tint.b, 1f);
+            if (mat.HasProperty("_BaseColor"))
+            {
+                mat.SetColor("_BaseColor", solidTint);
+            }
+            if (mat.HasProperty("_Color"))
+            {
+                mat.SetColor("_Color", solidTint);
+            }
+            if (mat.HasProperty("_Surface"))
+            {
+                mat.SetFloat("_Surface", 0f);
+            }
+            if (mat.HasProperty("_Blend"))
+            {
+                mat.SetFloat("_Blend", 0f);
+            }
+            if (mat.HasProperty("_SrcBlend"))
+            {
+                mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.One);
+            }
+            if (mat.HasProperty("_DstBlend"))
+            {
+                mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.Zero);
+            }
+            if (mat.HasProperty("_ZWrite"))
+            {
+                mat.SetFloat("_ZWrite", 1f);
+            }
+            if (mat.HasProperty("_ZTest"))
+            {
+                mat.SetFloat("_ZTest", (float)UnityEngine.Rendering.CompareFunction.Always);
+            }
+
+            mat.renderQueue = 5000;
+        }
+
+        private void ClearShotLine()
+        {
+            if (_shotLineCoroutine != null)
+            {
+                StopCoroutine(_shotLineCoroutine);
+                _shotLineCoroutine = null;
+            }
+
+            if (_shotLineRenderer != null)
+            {
+                _shotLineRenderer.enabled = false;
+            }
+        }
+
+        private IEnumerator HideShotLineAfterDelay()
+        {
+            yield return new WaitForSeconds(Mathf.Max(0.01f, _shotLineVisibleDuration));
+            if (_shotLineRenderer != null)
+            {
+                _shotLineRenderer.enabled = false;
+            }
+
+            _shotLineCoroutine = null;
         }
 
         private static bool IsBunkerCoverHit(Collider2D collider)
