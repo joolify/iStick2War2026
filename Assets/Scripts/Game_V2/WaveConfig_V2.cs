@@ -6,8 +6,9 @@ namespace iStick2War_V2
  * WaveConfig_V2 (Per-wave ScriptableObject tuning)
  *
  * PURPOSE:
- * Data-only asset consumed by WaveManager_V2 and EnemySpawner_V2: paratrooper/helicopter counts, spawn pacing,
- * difficulty multipliers, optional bomber / mech boss knobs, and wave reward currency. No runtime behaviour here.
+ * Data-only asset consumed by WaveManager_V2 and EnemySpawner_V2: paratrooper/helicopter counts, groundtrooper
+ * counts, spawn pacing, difficulty multipliers, optional bomber / mech boss knobs, and wave reward currency.
+ * No runtime behaviour here.
  *
  * ---------------------------------------------------------
  * DESIGN INTENT (early air campaign, waves ~1–10)
@@ -16,6 +17,7 @@ namespace iStick2War_V2
  * - Waves 4–7: ramp counts/tempo; first bomb-plane passes when BomberPassCount is above zero.
  * - Waves 8–10: heavier air; more bomb-plane passes when BomberPassCount is raised (spawned by EnemySpawner_V2).
  * - EnemyCount (paratrooper drops per wave) remains “drops per wave” (one helicopter approach per count with the current spawner).
+ * - GroundTrooperCount spawns the same Paratrooper_V2 prefab from off-screen ground without Deploy / Glide.
  *
  * ---------------------------------------------------------
  * ❌ MUST NOT
@@ -44,6 +46,11 @@ namespace iStick2War_V2
         [SerializeField] private int _enemyCount = 6;
         [SerializeField] private float _waveDurationSeconds = 25f;
         [SerializeField] private float _spawnIntervalSeconds = 1.6f;
+
+        [Header("Groundtrooper Spawn")]
+        [InspectorName("Groundtrooper Count")]
+        [SerializeField] private int _groundTrooperCount;
+        [SerializeField] private float _groundTrooperSpawnIntervalSeconds = 1.8f;
 
         [Header("Difficulty Multipliers")]
         [SerializeField] private float _enemyHealthMultiplier = 1f;
@@ -75,8 +82,10 @@ namespace iStick2War_V2
         [SerializeField] private int _waveRewardCurrency = 80;
 
         public int EnemyCount => Mathf.Max(0, _enemyCount);
+        public int GroundTrooperCount => Mathf.Max(0, _groundTrooperCount);
         public float WaveDurationSeconds => Mathf.Max(1f, _waveDurationSeconds);
         public float SpawnIntervalSeconds => Mathf.Max(0.1f, _spawnIntervalSeconds);
+        public float GroundTrooperSpawnIntervalSeconds => Mathf.Max(0.1f, _groundTrooperSpawnIntervalSeconds);
         public float EnemyHealthMultiplier => Mathf.Max(0.1f, _enemyHealthMultiplier);
         public float EnemyDamageMultiplier => Mathf.Max(0.1f, _enemyDamageMultiplier);
         public int BomberPassCount => Mathf.Max(0, _bomberPassCount);

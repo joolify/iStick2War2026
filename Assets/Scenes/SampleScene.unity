@@ -9333,6 +9333,10 @@ MonoBehaviour:
   _paratrooperDropDelayAfterTriggerSeconds: 0.15
   _paratrooperDropTriggerLeadDistanceWorld: 0.6
   _waitOneFrameBeforeFirstParatrooperDrop: 1
+  _deferParatrooperDropUntilOutsideBunkerFootprintX: 1
+  _paratrooperBunkerFootprintHorizontalPaddingWorld: 0.75
+  _bunkerInteriorZoneForParatrooperGateOverride: {fileID: 0}
+  _paratrooperMaxSecondsWaitClearOfBunkerFootprintX: 6
   _aircraftSameWaveApproachAxisStagger: 5
   _invertAircraftFlightDirectionX: 0
   _aircraftSpriteFacesRightWhenScaleXPositive: 0
@@ -11629,7 +11633,7 @@ PrefabInstance:
       objectReference: {fileID: 796613714}
     - target: {fileID: 3453683051127376714, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3453683051127376714, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: _waveManager

@@ -620,21 +620,8 @@ MonoBehaviour:
       m_Data: 86574
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 52426
-    - m_Data: 52428
-    - m_Data: 52430
-    - m_Data: 52432
-    - m_Data: 52434
-    - m_Data: 52436
-    - m_Data: 52438
-    - m_Data: 52440
-    - m_Data: 52442
-    - m_Data: 52444
-    - m_Data: 52446
-    - m_Data: 52448
-    - m_Data: 52450
-    - m_Data: 52452
-    - m_Data: 52454
+    - m_Data: 49142
+    - m_Data: 1000000000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -668,21 +655,8 @@ MonoBehaviour:
       m_Data: 0
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 52426
-    - m_Data: 52428
-    - m_Data: 52430
-    - m_Data: 52432
-    - m_Data: 52434
-    - m_Data: 52436
-    - m_Data: 52438
-    - m_Data: 52440
-    - m_Data: 52442
-    - m_Data: 52444
-    - m_Data: 52446
-    - m_Data: 52448
-    - m_Data: 52450
-    - m_Data: 52452
-    - m_Data: 52454
+    - m_Data: 49142
+    - m_Data: 1000000000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -793,7 +767,9 @@ MonoBehaviour:
       m_LastClickedID:
         m_Data: 0
       m_ExpandedIDs:
-      - m_Data: -1650
+      - m_Data: -1652
+      - m_Data: -1602
+      - m_Data: 49670
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -1331,9 +1307,9 @@ MonoBehaviour:
   m_AudioPlay: 0
   m_DebugDrawModesUseInteractiveLightBakingData: 0
   m_Position:
-    m_Target: {x: -1.3024892, y: 0.4543504, z: -0.06584772}
+    m_Target: {x: 4.3772287, y: 3.9551976, z: -0.13599797}
     speed: 2
-    m_Value: {x: -1.3024892, y: 0.4543504, z: -0.06584772}
+    m_Value: {x: 4.3772287, y: 3.9551976, z: -0.13599797}
   m_RenderMode: 0
   m_CameraMode:
     drawMode: 0
@@ -1384,9 +1360,9 @@ MonoBehaviour:
     speed: 2
     m_Value: {x: 0, y: 0, z: 0, w: 1}
   m_Size:
-    m_Target: 7.522266
+    m_Target: 14.537144
     speed: 2
-    m_Value: 7.522266
+    m_Value: 14.537144
   m_Ortho:
     m_Target: 1
     speed: 2
@@ -3534,8 +3510,8 @@ MonoBehaviour:
     m_ControlHash: -371814159
     m_PrefName: Preview_InspectorPreview
   m_LastInspectedObjectEntityId:
-    m_Data: 53922
-  m_LastVerticalScrollValue: 0
+    m_Data: 0
+  m_LastVerticalScrollValue: 420.8
   m_GlobalObjectId: 
   m_InspectorMode: 0
   m_LockTracker:

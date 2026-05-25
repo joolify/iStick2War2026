@@ -12,7 +12,8 @@ namespace iStick2War_V2
  *
  * PURPOSE:
  * Runs coroutines and spawn helpers for the active wave: helicopter flights with paratrooper drops
- * (optional horizontal bunker-footprint gate on drop world X via HelicopterCarrier_V2),
+ * (optional horizontal bunker-footprint gate on drop world X via HelicopterCarrier_V2), groundtrooper
+ * walk-ins using the Paratrooper_V2 prefab,
  * optional bomber passes, kamikaze / bomb-drone aircraft, mech robot boss ground spawns, and related
  * timing. Reports wave clear / kill counts upward so WaveManager_V2 can finish InWave when everything
  * that must die has died and scripted passes completed.
@@ -61,6 +62,21 @@ namespace iStick2War_V2
         [Tooltip("Fallback Y when no ground hit: lerp between bottom and top of visible frustum (0 = bottom).")]
         [Range(0f, 1f)]
         [SerializeField] private float _mechBossSpawnVerticalNormalized01 = 0.62f;
+
+        [Header("Groundtrooper spawn")]
+        [Tooltip("Spawn WaveConfig.GroundTrooperCount as Paratrooper_V2 instances on the ground outside the Game view.")]
+        [SerializeField] private bool _spawnGroundTroopersFromOffscreenGround = true;
+        [Tooltip("Extra horizontal distance beyond the frustum edge for groundtrooper spawn.")]
+        [SerializeField] private float _groundTrooperExtraOffscreenHorizontalWorld = 1.5f;
+        [Tooltip("Added to probed ground Y when spawning a groundtrooper root.")]
+        [SerializeField] private float _groundTrooperGroundYOffsetWorld = 0.05f;
+        [Tooltip("Groundtrooper run-in speed before switching to combat.")]
+        [SerializeField] private float _groundTrooperRunSpeed = 2.75f;
+        [Tooltip("How far inside the visible frustum edge the groundtrooper runs before entering Shoot/Grenade combat.")]
+        [SerializeField] private float _groundTrooperStopInsetFromCameraEdgeWorld = 1.25f;
+        [Tooltip("Fallback Y when no ground hit: lerp between bottom and top of visible frustum (0 = bottom).")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _groundTrooperSpawnVerticalNormalized01 = 0.18f;
 
         [Header("Spawn Anchors (left/right)")]
         [SerializeField] private Transform[] _leftSpawnPoints;
@@ -396,12 +412,12 @@ namespace iStick2War_V2
                 return;
             }
 
-            // Allow pure air-threat waves (EnemyCount == 0) even when paratrooper prefab is not assigned.
-            if (_paratrooperPrefab == null && config.EnemyCount > 0)
+            // Allow pure air-threat waves only when no infantry-style Paratrooper prefab is needed.
+            if (_paratrooperPrefab == null && (config.EnemyCount > 0 || config.GroundTrooperCount > 0))
             {
                 Debug.LogWarning(
-                    "[EnemySpawner_V2] Wave has EnemyCount > 0 but Paratrooper prefab is missing. " +
-                    "Cannot spawn paratroopers for this wave.");
+                    "[EnemySpawner_V2] Wave requests paratroopers/groundtroopers but Paratrooper prefab is missing. " +
+                    "Cannot spawn infantry for this wave.");
                 return;
             }
 
@@ -420,7 +436,7 @@ namespace iStick2War_V2
                 ? spawnIntervalSeconds
                 : config.SpawnIntervalSeconds;
             _onEnemyKilled = onEnemyKilled;
-            _targetSpawnCount = Mathf.Max(0, config.EnemyCount);
+            _targetSpawnCount = Mathf.Max(0, config.EnemyCount) + Mathf.Max(0, config.GroundTrooperCount);
             _spawnedCount = 0;
             _spawnRoutineFinished = false;
             _pendingDelayedDropCoroutines = 0;
@@ -607,13 +623,14 @@ namespace iStick2War_V2
                 }
             }
 
+            yield return RunGroundTrooperSpawnRoutine(config, waveSession);
             yield return RunMechRobotBossSpawnRoutine(config, waveSession);
 
             _spawnRoutine = null;
             _spawnRoutineFinished = true;
             if (_spawnRoutineExitReason == "running")
             {
-                _spawnRoutineExitReason = "completed-planned-flights";
+                _spawnRoutineExitReason = "completed-planned-infantry";
             }
             if (_spawnedCount < _targetSpawnCount && _pendingDelayedDropCoroutines == 0)
             {
@@ -1556,7 +1573,9 @@ namespace iStick2War_V2
             Vector3 worldPosition,
             bool usedAnchorSpawn,
             bool fromLeft,
-            GameObject aircraft)
+            GameObject aircraft,
+            bool spawnAsGroundTrooper = false,
+            float groundAssaultStopX = 0f)
         {
             _lastSpawnAttemptUnscaledTime = Time.unscaledTime;
             if (!_isWaveActive)
@@ -1581,7 +1600,7 @@ namespace iStick2War_V2
                 spawned.gameObject.SetActive(true);
             }
 
-            spawned.PrepareForSpawn();
+            spawned.PrepareForSpawn(startAirborneDeploy: !spawnAsGroundTrooper);
 
             int spawnSeq = ++_paratrooperDebugSpawnSeq;
 
@@ -1598,7 +1617,7 @@ namespace iStick2War_V2
                 IgnoreParatrooperCollisionsWithAircraft(spawned, aircraft);
             }
 
-            if (usedAnchorSpawn)
+            if (usedAnchorSpawn || spawnAsGroundTrooper)
             {
                 ApplyParatrooperSpawnFacing(spawned.transform, fromLeft);
                 // Awake() may flatten Spine local offset while prefab scale is still default; facing flips root X
@@ -1619,6 +1638,14 @@ namespace iStick2War_V2
                     _runtimeEnemyDamageMultiplier);
             }
 
+            if (spawnAsGroundTrooper)
+            {
+                spawned.BeginGroundAssault(
+                    fromLeft,
+                    Mathf.Max(0.05f, _groundTrooperRunSpeed),
+                    groundAssaultStopX);
+            }
+
             _spawnedCount++;
             _lastParatrooperSpawnUnscaledTime = Time.unscaledTime;
 
@@ -1636,7 +1663,7 @@ namespace iStick2War_V2
             {
                 Debug.Log(
                     $"[EnemySpawner_V2] Spawned Paratrooper at {worldPosition} " +
-                    $"(anchorSpawn={usedAnchorSpawn}, aircraft={(aircraft != null ? aircraft.name : "none")})");
+                    $"(anchorSpawn={usedAnchorSpawn}, groundTrooper={spawnAsGroundTrooper}, aircraft={(aircraft != null ? aircraft.name : "none")})");
             }
 
             if (_debugAnchorSpawnDiagnostics)
@@ -1769,6 +1796,69 @@ namespace iStick2War_V2
             }
 
             return true;
+        }
+
+        private IEnumerator RunGroundTrooperSpawnRoutine(WaveConfig_V2 config, int waveSession)
+        {
+            int n = config != null ? config.GroundTrooperCount : 0;
+            if (n <= 0)
+            {
+                yield break;
+            }
+
+            float interval = Mathf.Max(0.1f, config.GroundTrooperSpawnIntervalSeconds);
+            for (int i = 0; i < n; i++)
+            {
+                if (!_isWaveActive || waveSession != _waveSessionId)
+                {
+                    yield break;
+                }
+
+                if (IsEarlyWaveSimultaneousCapReached())
+                {
+                    yield return new WaitForSeconds(0.2f);
+                    i--;
+                    continue;
+                }
+
+                if (!SpawnGroundTrooper())
+                {
+                    RegisterCancelledPlannedParatrooperDrop("groundtrooper-spawn-failed");
+                }
+
+                if (i < n - 1)
+                {
+                    yield return new WaitForSeconds(interval);
+                }
+            }
+        }
+
+        private bool SpawnGroundTrooper()
+        {
+            if (!_isWaveActive || _paratrooperPrefab == null)
+            {
+                return false;
+            }
+
+            if (!_spawnGroundTroopersFromOffscreenGround ||
+                !TryComputeGroundTrooperOffscreenGroundSpawn(out Vector3 worldPosition, out bool fromLeft, out float stopX))
+            {
+                worldPosition = new Vector3(
+                    UnityEngine.Random.Range(Mathf.Min(_spawnXRange.x, _spawnXRange.y), Mathf.Max(_spawnXRange.x, _spawnXRange.y)),
+                    UnityEngine.Random.Range(Mathf.Min(_spawnYRange.x, _spawnYRange.y), Mathf.Max(_spawnYRange.x, _spawnYRange.y)),
+                    _anchorSpawnWorldZ);
+                worldPosition = ClampToCameraView(worldPosition);
+                fromLeft = worldPosition.x <= 0f;
+                stopX = worldPosition.x;
+            }
+
+            return SpawnParatrooper(
+                worldPosition,
+                usedAnchorSpawn: false,
+                fromLeft,
+                aircraft: null,
+                spawnAsGroundTrooper: true,
+                groundAssaultStopX: stopX);
         }
 
         private void ApplyMasterDebugFlagsToParatrooper(Paratrooper spawned)
@@ -2926,6 +3016,57 @@ namespace iStick2War_V2
 
             float yFallback = Mathf.Lerp(minY, maxY, Mathf.Clamp01(_mechBossSpawnVerticalNormalized01));
             worldPosition = new Vector3(x, yFallback, _anchorSpawnWorldZ);
+            return true;
+        }
+
+        // Groundtrooper: place X just outside the orthographic frustum; Y follows the Ground surface and stop X sits inside the edge.
+        private bool TryComputeGroundTrooperOffscreenGroundSpawn(out Vector3 worldPosition, out bool fromLeft, out float stopX)
+        {
+            worldPosition = Vector3.zero;
+            fromLeft = false;
+            stopX = 0f;
+
+            Camera cam = _spawnCamera != null ? _spawnCamera : Camera.main;
+            if (cam == null || !cam.orthographic)
+            {
+                return false;
+            }
+
+            fromLeft = UnityEngine.Random.value < 0.5f;
+            float halfHeight = cam.orthographicSize;
+            float halfWidth = halfHeight * cam.aspect;
+            float rawPad = Mathf.Max(0f, _orthographicFrustumInsetPadding);
+            float pad = GetClampedFrustumPadding(rawPad, halfWidth, halfHeight);
+            Vector3 camPos = cam.transform.position;
+            float margin =
+                Mathf.Max(0f, _offscreenBeyondFrustumHorizontalWorld + Mathf.Max(0f, _groundTrooperExtraOffscreenHorizontalWorld));
+            float visibleMinX = camPos.x - halfWidth;
+            float visibleMaxX = camPos.x + halfWidth;
+            float spawnX = fromLeft ? visibleMinX - margin : visibleMaxX + margin;
+            float stopInset = Mathf.Max(0f, _groundTrooperStopInsetFromCameraEdgeWorld);
+            stopX = fromLeft ? visibleMinX + stopInset : visibleMaxX - stopInset;
+
+            float minY = camPos.y - halfHeight + pad;
+            float maxY = camPos.y + halfHeight - pad;
+            float y = Mathf.Lerp(minY, maxY, Mathf.Clamp01(_groundTrooperSpawnVerticalNormalized01));
+            int mask = ResolveGroundSurfaceProbeMask();
+            if (mask != 0)
+            {
+                float topY = camPos.y + halfHeight - pad + Mathf.Max(0f, _groundProbeStartPaddingAboveFrustumTop);
+                float probeDist = Mathf.Max(1f, _groundProbeMaxDistanceWorld);
+                Vector2 originOffscreen = new Vector2(spawnX, topY);
+                RaycastHit2D hit = Physics2D.Raycast(originOffscreen, Vector2.down, probeDist, mask);
+                if (hit.collider != null)
+                {
+                    y = hit.point.y + Mathf.Max(0f, _groundTrooperGroundYOffsetWorld);
+                }
+                else if (TryProbeGroundSurfaceY(cam, camPos, mask, out float groundYAtCam))
+                {
+                    y = groundYAtCam + Mathf.Max(0f, _groundTrooperGroundYOffsetWorld);
+                }
+            }
+
+            worldPosition = new Vector3(spawnX, y, _anchorSpawnWorldZ);
             return true;
         }
 

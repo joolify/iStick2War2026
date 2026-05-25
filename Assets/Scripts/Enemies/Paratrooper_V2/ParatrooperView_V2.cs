@@ -80,6 +80,7 @@ public class ParatrooperView_V2 : MonoBehaviour
     private StickmanBodyState _lastStateBeforeChange;
     private bool _deathAnimationLocked;
     private bool _suppressParachuteVisuals;
+    private bool _suppressParachuteVisualsForGroundSpawn;
     private bool _groundDeathParachuteLogPrinted;
     private bool _isExploded;
     private Spine.Animation _cachedBurnRunAnimation;
@@ -102,6 +103,7 @@ public class ParatrooperView_V2 : MonoBehaviour
     [Header("Animations")]
     public AnimationReferenceAsset _deployAnim;
     public AnimationReferenceAsset _glideAnim;
+    public AnimationReferenceAsset _runAnim;
     public AnimationReferenceAsset _landAnim;
     public AnimationReferenceAsset _grenadeAnim;
     public AnimationReferenceAsset _glideDeathAnim;
@@ -307,6 +309,7 @@ public class ParatrooperView_V2 : MonoBehaviour
         _isExploded = false;
         _deathAnimationLocked = false;
         _suppressParachuteVisuals = false;
+        _suppressParachuteVisualsForGroundSpawn = false;
         _groundDeathParachuteLogPrinted = false;
         _lastStateBeforeChange = StickmanBodyState.Idle;
         _alreadySeveredParts.Clear();
@@ -440,7 +443,7 @@ public class ParatrooperView_V2 : MonoBehaviour
         bool landAfterAirborneDeath =
             state == StickmanBodyState.Land && _lastStateBeforeChange == StickmanBodyState.GlideDie;
 
-        if (!isDeathState && !landAfterAirborneDeath)
+        if (!isDeathState && !landAfterAirborneDeath && !_suppressParachuteVisualsForGroundSpawn)
         {
             _suppressParachuteVisuals = false;
         }
@@ -530,7 +533,7 @@ public class ParatrooperView_V2 : MonoBehaviour
             case StickmanBodyState.Run:
                 nextAnimation = (_model != null && _model.isBurning)
                     ? GetBurnRunAnimation()
-                    : _glideAnim;
+                    : (_runAnim != null ? _runAnim : _glideAnim);
                 loop = true;
                 trackIndex = 1;
                 break;
@@ -978,12 +981,19 @@ public class ParatrooperView_V2 : MonoBehaviour
             ApplySeveredBodyPartPlaceholdersFromState();
         }
 
-        if (!_suppressParachuteVisuals)
+        if (!_suppressParachuteVisuals && !_suppressParachuteVisualsForGroundSpawn)
         {
             _groundDeathParachuteLogPrinted = false;
             return;
         }
 
+        HideParachuteVisualsForGroundDeath();
+    }
+
+    public void SuppressParachuteVisualsForGroundSpawn()
+    {
+        _suppressParachuteVisualsForGroundSpawn = true;
+        _suppressParachuteVisuals = true;
         HideParachuteVisualsForGroundDeath();
     }
 

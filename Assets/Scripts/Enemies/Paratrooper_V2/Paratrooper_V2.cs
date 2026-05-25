@@ -126,6 +126,15 @@ public class Paratrooper : MonoBehaviour
     [SerializeField] private float _glideMaxFallSpeed = 1.35f;
     [SerializeField] private float _glideMinFallSpeed = 0.5f;
     [SerializeField] private float _glideDeathMaxFallSpeed = 4.75f;
+
+    [Header("Ground Assault")]
+    [Tooltip("Default fallback speed if EnemySpawner_V2 starts this unit as a groundtrooper with an invalid speed.")]
+    [SerializeField] private float _groundAssaultFallbackRunSpeed = 2.75f;
+    private bool _groundAssaultActive;
+    private float _groundAssaultDirectionX;
+    private float _groundAssaultRunSpeed;
+    private float _groundAssaultStopX;
+
     [SerializeField] private LayerMask _groundMask = 0;
     [Tooltip(
         "Optional: the BoxCollider2D (or any Collider2D) on your Ground GameObject. When set, landing / near-ground " +
@@ -370,7 +379,7 @@ public class Paratrooper : MonoBehaviour
         CaptureSpineWorldAnchorForPostSpawnFacingReconcile();
     }
 
-    public void PrepareForSpawn()
+    public void PrepareForSpawn(bool startAirborneDeploy = true)
     {
         EnsureAttachedColliderScratch();
 
@@ -430,8 +439,51 @@ public class Paratrooper : MonoBehaviour
         _view?.EnsureDamagePresentationSubscribed(_damageReceiver);
         SanitizeVisualRootAlignment();
         EnsureWorldHealthBar();
-        _controller?.StartGame();
+        _groundAssaultActive = false;
+        _groundAssaultDirectionX = 0f;
+        _groundAssaultRunSpeed = 0f;
+        _groundAssaultStopX = 0f;
+
+        if (startAirborneDeploy)
+        {
+            _controller?.StartGame();
+        }
         CaptureSpineWorldAnchorForPostSpawnFacingReconcile();
+    }
+
+    public void BeginGroundAssault(bool fromLeft, float runSpeed, float stopX)
+    {
+        if (_stateMachine == null)
+        {
+            return;
+        }
+
+        ClearAirborneBunkerCollisionExclusion();
+
+        _groundAssaultActive = true;
+        _groundAssaultDirectionX = fromLeft ? 1f : -1f;
+        _groundAssaultRunSpeed = Mathf.Max(0.05f, runSpeed > 0f ? runSpeed : _groundAssaultFallbackRunSpeed);
+        _groundAssaultStopX = stopX;
+
+        if (_view != null)
+        {
+            _view.SuppressParachuteVisualsForGroundSpawn();
+        }
+
+        if (_rigidbody2D != null)
+        {
+            if (!_airborneGravityScaleCachedValid)
+            {
+                _airborneGravityScaleCached = _rigidbody2D.gravityScale;
+                _airborneGravityScaleCachedValid = true;
+            }
+
+            _rigidbody2D.gravityScale = 0f;
+            _rigidbody2D.linearVelocity = new Vector2(_groundAssaultDirectionX * _groundAssaultRunSpeed, 0f);
+            _rigidbody2D.angularVelocity = 0f;
+        }
+
+        _stateMachine.ChangeState(StickmanBodyState.Run);
     }
 
     private void CaptureSpineWorldAnchorForPostSpawnFacingReconcile()
@@ -1019,6 +1071,7 @@ public class Paratrooper : MonoBehaviour
         HandleWorldBoundsSafetyDespawn();
         HandleLifetimeSafetyDespawn();
         HandleOffscreenSafetyDespawn();
+        ApplyGroundAssaultMovement();
         _controller.Tick(Time.deltaTime);
         ApplyGlideAirMovement();
         HandleNearGroundLandingTransition();
@@ -1248,7 +1301,7 @@ public class Paratrooper : MonoBehaviour
         }
 
         StickmanBodyState s = _stateMachine.CurrentState;
-        if (s == StickmanBodyState.Land || s == StickmanBodyState.Shoot || s == StickmanBodyState.Grenade ||
+        if (s == StickmanBodyState.Run || s == StickmanBodyState.Land || s == StickmanBodyState.Shoot || s == StickmanBodyState.Grenade ||
             s == StickmanBodyState.Electrocuted)
         {
             if (!_airborneGravityScaleCachedValid)
@@ -1259,11 +1312,21 @@ public class Paratrooper : MonoBehaviour
 
             _rigidbody2D.gravityScale = 0f;
             Vector2 v = _rigidbody2D.linearVelocity;
+            if (s == StickmanBodyState.Run && _groundAssaultActive)
+            {
+                v.x = _groundAssaultDirectionX * _groundAssaultRunSpeed;
+            }
+            else if (!Mathf.Approximately(v.x, 0f))
+            {
+                v.x = 0f;
+            }
+
             if (!Mathf.Approximately(v.y, 0f))
             {
                 v.y = 0f;
-                _rigidbody2D.linearVelocity = v;
             }
+
+            _rigidbody2D.linearVelocity = v;
 
             return;
         }
@@ -1273,6 +1336,48 @@ public class Paratrooper : MonoBehaviour
              s == StickmanBodyState.GlideElectrocuted))
         {
             _rigidbody2D.gravityScale = _airborneGravityScaleCached;
+        }
+    }
+
+    private void ApplyGroundAssaultMovement()
+    {
+        if (!_groundAssaultActive || _stateMachine == null)
+        {
+            return;
+        }
+
+        StickmanBodyState s = _stateMachine.CurrentState;
+        if (s == StickmanBodyState.Die || s == StickmanBodyState.GlideDie)
+        {
+            _groundAssaultActive = false;
+            return;
+        }
+
+        if (s != StickmanBodyState.Run)
+        {
+            _groundAssaultActive = false;
+            return;
+        }
+
+        bool reachedStopX = _groundAssaultDirectionX > 0f
+            ? transform.position.x >= _groundAssaultStopX
+            : transform.position.x <= _groundAssaultStopX;
+        if (reachedStopX)
+        {
+            _groundAssaultActive = false;
+            if (_rigidbody2D != null)
+            {
+                _rigidbody2D.linearVelocity = new Vector2(0f, 0f);
+                _rigidbody2D.angularVelocity = 0f;
+            }
+
+            _controller?.OnLanded();
+            return;
+        }
+
+        if (_rigidbody2D != null)
+        {
+            _rigidbody2D.linearVelocity = new Vector2(_groundAssaultDirectionX * _groundAssaultRunSpeed, 0f);
         }
     }
 

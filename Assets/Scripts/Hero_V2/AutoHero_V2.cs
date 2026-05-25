@@ -1263,7 +1263,7 @@ namespace iStick2War_V2
             }
 
             bool isImmediateGroundParatrooperThreat =
-                target != null && IsGroundCombatInfantryTarget(target);
+                target != null && IsImmediateGroundCombatInfantryTarget(target);
 
             RefreshAimNoiseForProfile(hasTarget);
             if (hasTarget && _testProfile != AutoHeroTestProfileKind_V2.Perfect)
@@ -2614,6 +2614,32 @@ namespace iStick2War_V2
             {
                 MechRobotBossBodyState s = GetMechBossStateOrDie(c);
                 return s != MechRobotBossBodyState.Die;
+            }
+
+            return false;
+        }
+
+        // Emergency shoot bypass: only enemies already able to attack should ignore camera gating.
+        // Groundtrooper run-in uses Run while still outside the view, so it must wait for normal visibility.
+        private static bool IsImmediateGroundCombatInfantryTarget(Collider2D c)
+        {
+            if (c == null)
+            {
+                return false;
+            }
+
+            if (IsParatrooperCollider(c))
+            {
+                StickmanBodyState s = GetParatrooperStateOrDie(c);
+                return s == StickmanBodyState.Shoot ||
+                       s == StickmanBodyState.CrouchShoot ||
+                       s == StickmanBodyState.Grenade ||
+                       s == StickmanBodyState.CrouchGrenade;
+            }
+
+            if (IsMechBossCollider(c))
+            {
+                return ShouldBypassShootFrustumForMechBossCombatThreat(c);
             }
 
             return false;
