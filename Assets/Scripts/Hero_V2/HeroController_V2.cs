@@ -402,6 +402,18 @@ namespace iStick2War_V2
 
             if (_weaponSystem.Shoot(shotContext, out var shotResult))
             {
+                if (shotResult.DidHit)
+                {
+                    BulletImpactVfx_V2.PlayIfSurfaceHit(shotResult.Hit, direction);
+                }
+                else
+                {
+                    BulletImpactVfx_V2.PlayFirstSurfaceHitAlongRay(
+                        aimPos,
+                        direction,
+                        Mathf.Max(0.1f, shotContext.Range));
+                }
+
                 Vector2 shotVisualEnd = shotResult.FinalPos;
                 if (!shotResult.DidHit &&
                     TryGetMainCameraEdgePoint(aimPos, direction, out Vector2 cameraEdgePoint))

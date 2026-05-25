@@ -695,6 +695,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 
                 didApplyDamage = true;
                 damageHit = firstBunkerAlongRay;
+                BulletImpactVfx_V2.PlayIfSurfaceHit(damageHit, direction);
             }
         }
 
@@ -732,6 +733,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 
                     didApplyDamage = true;
                     damageHit = h;
+                    BulletImpactVfx_V2.PlayIfSurfaceHit(damageHit, direction);
                     break;
                 }
 

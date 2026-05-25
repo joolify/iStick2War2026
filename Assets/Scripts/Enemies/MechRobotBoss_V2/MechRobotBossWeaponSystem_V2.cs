@@ -738,6 +738,7 @@ namespace iStick2War_V2
                     waveManager?.ApplyBunkerDamage(damage);
                     didApplyDamage = true;
                     damageHit = firstBunkerAlongRay;
+                    BulletImpactVfx_V2.PlayIfSurfaceHit(damageHit, direction);
                 }
             }
 
@@ -761,6 +762,7 @@ namespace iStick2War_V2
                         waveManager?.ApplyBunkerDamage(damage);
                         didApplyDamage = true;
                         damageHit = h;
+                        BulletImpactVfx_V2.PlayIfSurfaceHit(damageHit, direction);
                         break;
                     }
 

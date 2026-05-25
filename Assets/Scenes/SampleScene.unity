@@ -2547,6 +2547,63 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 441154572}
   m_CullTransparentMesh: 1
+--- !u!1 &466348351
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 466348353}
+  - component: {fileID: 466348352}
+  m_Layer: 9
+  m_Name: BulletImpactVfxController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &466348352
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 466348351}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 933b9ea67a00e6247a22af27839d5d11, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.BulletImpactVfx_V2
+  _impactPrefab: {fileID: 7711364014828396377, guid: fcfe15c7c7d930a4fbc0723227d22e5c, type: 3}
+  _alignToHitNormal: 1
+  _rotationOffsetDegrees: 0
+  _worldZ: 0
+  _lifetimeSeconds: 0.6
+  _optionalParent: {fileID: 0}
+  _surfaceRaycastMask:
+    serializedVersion: 2
+    m_Bits: 0
+  _sortingLayerName: 
+  _sortingOrder: 6500
+  _randomScaleRange: {x: 0.85, y: 1.2}
+  _logSpawn: 0
+--- !u!4 &466348353
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 466348351}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -2.5105433, y: -2.3442585, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &488909758
 GameObject:
   m_ObjectHideFlags: 0
@@ -11275,6 +11332,57 @@ Transform:
   - {fileID: 1704538418}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2105046607
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2105046609}
+  - component: {fileID: 2105046608}
+  m_Layer: 9
+  m_Name: MuzzleFlashController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2105046608
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2105046607}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 87de4d1e9ea97574d83f403c228d6ba9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.MuzzleFlash_V2
+  _muzzleFlashPrefab: {fileID: 718690339124133421, guid: f7e20248994499f41830519da369e9cc, type: 3}
+  _prefabRotationOffsetDegrees: 0
+  _worldZ: 0
+  _lifetimeSeconds: 0.08
+  _optionalParent: {fileID: 0}
+  _randomScaleRange: {x: 0.9, y: 1.15}
+  _logSpawn: 0
+--- !u!4 &2105046609
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2105046607}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: -2.5105433, y: -2.3442585, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &2147091497
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -11570,10 +11678,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: PARATROOPER V2
       objectReference: {fileID: 0}
-    - target: {fileID: 3632910999784026234, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
-      propertyPath: m_Mesh
-      value: 
-      objectReference: {fileID: 0}
     - target: {fileID: 5557619074076993570, guid: 5ed290580ac831f409a15ae3cd00ec3e, type: 3}
       propertyPath: _camera
       value: 
@@ -11697,7 +11801,7 @@ PrefabInstance:
       objectReference: {fileID: 796613714}
     - target: {fileID: 3453683051127376714, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: m_Enabled
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3453683051127376714, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: _waveManager
@@ -12694,6 +12798,8 @@ SceneRoots:
   - {fileID: 1991422066}
   - {fileID: 635239655}
   - {fileID: 2147091497}
+  - {fileID: 2105046609}
+  - {fileID: 466348353}
   - {fileID: 977369561}
   - {fileID: 1721460134}
   - {fileID: 1550648995142526425}
