@@ -64,21 +64,21 @@ namespace iStick2War_V2
 
         [Header("Attack pattern")]
         [SerializeField] private bool _attackPatternEnabled = true;
-        [Tooltip("Below this HP fraction (current/max), boss uses phase-2 loop (missile volley after cannon, and may open with missiles).")]
+        [Tooltip("Below this HP fraction (current/max), missiles are enabled even when phase-one missiles are off.")]
         [SerializeField] [Range(0.05f, 0.95f)] private float _phaseTwoHpFraction = 0.5f;
-        [Tooltip("If true, missile volleys are used even above Phase Two HP (cannon is still followed by missiles). Phase Two still adds the stronger entry pattern when HP is low.")]
+        [Tooltip("If true, the boss uses the full MG -> cannon -> missile loop from phase one.")]
         [SerializeField] private bool _missilesInPhaseOne;
 
         [Header("Machine gun")]
         [SerializeField] private int _machineGunDamage = 5;
-        [SerializeField] private float _machineGunShotInterval = 0.09f;
-        [SerializeField] private float _machineGunBurstDuration = 2.2f;
-        [SerializeField] private float _afterMachineGunCooldown = 3.5f;
+        [SerializeField] private float _machineGunShotInterval = 0.11f;
+        [SerializeField] private float _machineGunBurstDuration = 1.4f;
+        [SerializeField] private float _afterMachineGunCooldown = 3.2f;
 
         [Header("Cannon (hitscan)")]
         [SerializeField] private int _cannonDamage = 56;
-        [SerializeField] private float _cannonTelegraphSeconds = 1f;
-        [SerializeField] private float _afterCannonCooldown = 7f;
+        [SerializeField] private float _cannonTelegraphSeconds = 1.4f;
+        [SerializeField] private float _afterCannonCooldown = 3.2f;
         [SerializeField] private Color _cannonTelegraphColor = new Color(1f, 0.15f, 0.1f, 0.92f);
         [SerializeField] private float _telegraphLineWidth = 0.065f;
         [SerializeField] private float _telegraphDrawDistance = 24f;
@@ -89,8 +89,16 @@ namespace iStick2War_V2
         [SerializeField] private float _missileSpeed = 5.5f;
         [SerializeField] private float _missileLifetime = 10f;
         [SerializeField] private int _missilesPerVolley = 3;
-        [SerializeField] private float _missileSpawnSpacing = 0.18f;
-        [SerializeField] private float _afterMissileVolleyCooldown = 2.2f;
+        [SerializeField] private float _missileSpawnSpacing = 0.35f;
+        [SerializeField] private float _afterMissileVolleyCooldown = 4.5f;
+        [SerializeField] private float _missileArcDurationSeconds = 1.15f;
+        [SerializeField] private float _missileArcHeightWorld = 3.2f;
+        [SerializeField] private string[] _missileSpawnBoneNames =
+        {
+            "missile-slot-1",
+            "missile-slot-2",
+            "missile-slot-3",
+        };
         [SerializeField] private Transform _missileSpawnPoint;
 
         [Header("Legacy / shared")]
@@ -123,6 +131,7 @@ namespace iStick2War_V2
 
         private float _lastFireTime = -999f;
         private Collider2D _cachedHeroCollider;
+        private Bone[] _missileSpawnBones;
 
         private PatternSegment _segment = PatternSegment.None;
         private float _segmentStartedAt;
@@ -190,6 +199,7 @@ namespace iStick2War_V2
 
             ResolveAimBone();
             ResolveCrossHairBone();
+            ResolveMissileSpawnBones();
 
             if (_firePoint == null)
             {
@@ -237,6 +247,7 @@ namespace iStick2War_V2
             _heroModel = _heroRoot != null ? _heroRoot.GetComponent<HeroModel_V2>() : FindAnyObjectByType<HeroModel_V2>();
             CacheHeroCollider();
             CacheScaledDamages();
+            ResolveMissileSpawnBones();
         }
 
         // Advance attack loop while the boss is in combat range. Safe to call every FixedUpdate.
@@ -290,14 +301,7 @@ namespace iStick2War_V2
 
         private void StartPatternFromEntry()
         {
-            if (IsPhaseTwo())
-            {
-                EnterSegment(PatternSegment.MissileVolley);
-            }
-            else
-            {
-                EnterSegment(PatternSegment.MachineGunBurst);
-            }
+            EnterSegment(PatternSegment.MachineGunBurst);
         }
 
         private bool IsPhaseTwo()
@@ -444,9 +448,9 @@ namespace iStick2War_V2
 
         private void SpawnOneMissile()
         {
-            Transform sp = _missileSpawnPoint != null ? _missileSpawnPoint : _firePoint;
-            Vector3 pos = sp != null ? sp.position : transform.position;
-            GameObject go = Instantiate(_missilePrefab, pos, Quaternion.identity);
+            Vector3 pos = GetMissileSpawnPosition();
+            Vector2 target = ResolveMissileTargetWorldPoint(pos, out bool targetIsBunker);
+            GameObject go = Instantiate(_missilePrefab, pos, Quaternion.Euler(0f, 0f, 90f));
             MechRobotBossMissileProjectile_V2 missile = go.GetComponent<MechRobotBossMissileProjectile_V2>();
             if (missile == null)
             {
@@ -459,7 +463,11 @@ namespace iStick2War_V2
                 _missileSpeed,
                 _missileLifetime,
                 _respectBunkerCover,
-                _heroRoot != null ? _heroRoot.transform : null);
+                _heroRoot != null ? _heroRoot.transform : null,
+                _missileArcDurationSeconds,
+                _missileArcHeightWorld,
+                target,
+                targetIsBunker);
         }
 
         public bool CanShoot()
@@ -579,6 +587,156 @@ namespace iStick2War_V2
             {
                 _crossHairBone = _skeletonAnimation.Skeleton.FindBone("crosshair");
             }
+        }
+
+        private void ResolveMissileSpawnBones()
+        {
+            _missileSpawnBones = null;
+            if (_skeletonAnimation == null ||
+                _skeletonAnimation.Skeleton == null ||
+                _missileSpawnBoneNames == null ||
+                _missileSpawnBoneNames.Length == 0)
+            {
+                return;
+            }
+
+            Bone[] resolved = new Bone[_missileSpawnBoneNames.Length];
+            int resolvedCount = 0;
+            for (int i = 0; i < _missileSpawnBoneNames.Length; i++)
+            {
+                string boneName = _missileSpawnBoneNames[i];
+                if (string.IsNullOrWhiteSpace(boneName))
+                {
+                    continue;
+                }
+
+                Bone bone = _skeletonAnimation.Skeleton.FindBone(boneName);
+                if (bone == null)
+                {
+                    continue;
+                }
+
+                resolved[resolvedCount] = bone;
+                resolvedCount++;
+            }
+
+            if (resolvedCount <= 0)
+            {
+                return;
+            }
+
+            if (resolvedCount != resolved.Length)
+            {
+                Array.Resize(ref resolved, resolvedCount);
+            }
+
+            _missileSpawnBones = resolved;
+        }
+
+        private Vector3 GetMissileSpawnPosition()
+        {
+            Bone spawnBone = GetMissileSpawnBoneForNextShot();
+            if (spawnBone != null && _skeletonAnimation != null)
+            {
+                return _skeletonAnimation.transform.TransformPoint(new Vector3(spawnBone.WorldX, spawnBone.WorldY, 0f));
+            }
+
+            Transform sp = _missileSpawnPoint != null ? _missileSpawnPoint : _firePoint;
+            return sp != null ? sp.position : transform.position;
+        }
+
+        private Bone GetMissileSpawnBoneForNextShot()
+        {
+            if (_missileSpawnBones == null || _missileSpawnBones.Length == 0)
+            {
+                ResolveMissileSpawnBones();
+            }
+
+            if (_missileSpawnBones == null || _missileSpawnBones.Length == 0)
+            {
+                return null;
+            }
+
+            int index = Mathf.Abs(_missilesSpawnedInVolley) % _missileSpawnBones.Length;
+            return _missileSpawnBones[index];
+        }
+
+        private Vector2 ResolveMissileTargetWorldPoint(Vector3 missileSpawnPosition, out bool targetIsBunker)
+        {
+            if (TryResolveBunkerTargetWorldPoint(out Vector2 bunkerTarget))
+            {
+                targetIsBunker = true;
+                return bunkerTarget;
+            }
+
+            Vector2 heroPoint = GetHeroCombatAimWorldPoint();
+            if (heroPoint.sqrMagnitude > 0.0001f)
+            {
+                targetIsBunker = false;
+                return heroPoint;
+            }
+
+            targetIsBunker = false;
+            return (Vector2)missileSpawnPosition + Vector2.left;
+        }
+
+        private static bool TryResolveBunkerTargetWorldPoint(out Vector2 target)
+        {
+            target = default;
+
+            BunkerHitbox_V2 bunkerHitbox = FindAnyObjectByType<BunkerHitbox_V2>(FindObjectsInactive.Include);
+            if (bunkerHitbox != null && TryGetCombinedColliderBounds(bunkerHitbox.transform, out Bounds hitboxBounds))
+            {
+                target = hitboxBounds.center;
+                return true;
+            }
+
+            GameObject bunkerRoot = GameObject.Find("BunkerRoot");
+            if (bunkerRoot != null)
+            {
+                if (TryGetCombinedColliderBounds(bunkerRoot.transform, out Bounds rootBounds))
+                {
+                    target = rootBounds.center;
+                    return true;
+                }
+
+                target = bunkerRoot.transform.position;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetCombinedColliderBounds(Transform root, out Bounds bounds)
+        {
+            bounds = default;
+            if (root == null)
+            {
+                return false;
+            }
+
+            Collider2D[] colliders = root.GetComponentsInChildren<Collider2D>(true);
+            bool hasBounds = false;
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                Collider2D col = colliders[i];
+                if (col == null || !col.enabled)
+                {
+                    continue;
+                }
+
+                if (!hasBounds)
+                {
+                    bounds = col.bounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(col.bounds);
+                }
+            }
+
+            return hasBounds;
         }
 
         private void CacheHeroCollider()

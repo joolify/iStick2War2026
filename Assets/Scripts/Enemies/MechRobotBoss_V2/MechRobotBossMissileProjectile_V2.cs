@@ -8,8 +8,9 @@ namespace iStick2War_V2
  * MechRobotBossMissileProjectile_V2 (Boss missile projectile)
  *
  * PURPOSE:
- * Kinematic homing projectile toward the hero root transform; on impact applies boss missile damage with the
- * same bunker-cover and hero damage rules as other mech boss weapon paths, then Destroy(gameObject) on resolve or timeout.
+ * Kinematic boss missile projectile. It follows a high arcing curve toward the hero root transform; on impact it
+ * applies boss missile damage with the same bunker-cover and hero damage rules as other mech boss weapon paths,
+ * then Destroy(gameObject) on resolve or timeout.
  *
  * ---------------------------------------------------------
  * ❌ MUST NOT
@@ -27,6 +28,11 @@ namespace iStick2War_V2
     {
         [SerializeField] private float _radius = 0.22f;
         [SerializeField] private bool _debugLogs;
+        [SerializeField] private GameObject _explosionEffectPrefab;
+        [SerializeField] private float _explosionEffectLifetime = 1.5f;
+        [SerializeField] private bool _overrideExplosionSorting = true;
+        [SerializeField] private string _explosionSortingLayerName = "MechRobot";
+        [SerializeField] private int _explosionSortingOrder = 200;
 
         private int _damage;
         private float _speed;
@@ -35,13 +41,24 @@ namespace iStick2War_V2
         private bool _respectBunkerCover;
         private Transform _heroFollow;
         private bool _didHit;
+        private Vector2 _arcStartPosition;
+        private float _arcProgress;
+        private float _arcDurationSeconds = 1.15f;
+        private float _arcHeightWorld = 3.2f;
+        private Vector2 _targetWorldPoint;
+        private bool _hasTargetWorldPoint;
+        private bool _targetIsBunker;
 
         public void Launch(
             int damage,
             float speed,
             float maxLifetime,
             bool respectBunkerCover,
-            Transform heroFollow)
+            Transform heroFollow,
+            float arcDurationSeconds = 1.15f,
+            float arcHeightWorld = 3.2f,
+            Vector2 targetWorldPoint = default,
+            bool targetIsBunker = false)
         {
             _damage = Mathf.Max(1, damage);
             _speed = Mathf.Max(0.5f, speed);
@@ -50,6 +67,13 @@ namespace iStick2War_V2
             _heroFollow = heroFollow;
             _spawnTime = Time.time;
             _didHit = false;
+            _arcStartPosition = transform.position;
+            _arcProgress = 0f;
+            _arcDurationSeconds = Mathf.Max(0.1f, arcDurationSeconds);
+            _arcHeightWorld = Mathf.Max(0.1f, arcHeightWorld);
+            _targetWorldPoint = targetWorldPoint;
+            _hasTargetWorldPoint = targetIsBunker || targetWorldPoint.sqrMagnitude > 0.0001f;
+            _targetIsBunker = targetIsBunker;
 
             if (TryGetComponent(out Rigidbody2D rb))
             {
@@ -79,25 +103,86 @@ namespace iStick2War_V2
             }
 
             Vector2 pos = transform.position;
-            Vector2 dir;
-            if (_heroFollow != null)
+            if (HasTarget() && _arcProgress < 1f)
             {
-                dir = ((Vector2)_heroFollow.position - pos);
-            }
-            else
-            {
-                dir = transform.right;
+                Vector2 nextPos = GetArcPosition(_arcProgress + Time.deltaTime / _arcDurationSeconds);
+                Vector2 tangent = nextPos - pos;
+                if (tangent.sqrMagnitude > 0.0001f)
+                {
+                    MoveTo(nextPos, tangent);
+                    TryApplyTargetArrivalDamage();
+                }
+
+                return;
             }
 
+            Vector2 targetPoint = GetTargetWorldPoint();
+            Vector2 dir = targetPoint - pos;
             if (dir.sqrMagnitude < 0.0001f)
             {
+                TryApplyTargetArrivalDamage();
                 return;
             }
 
             dir.Normalize();
-            transform.position = pos + dir * (_speed * Time.deltaTime);
-            float ang = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
+            MoveTo(pos + dir * (_speed * Time.deltaTime), dir);
+            TryApplyTargetArrivalDamage();
+        }
+
+        private Vector2 GetArcPosition(float progress)
+        {
+            _arcProgress = Mathf.Clamp01(progress);
+
+            Vector2 end = GetTargetWorldPoint();
+            Vector2 middle = (_arcStartPosition + end) * 0.5f;
+            Vector2 control = middle + Vector2.up * _arcHeightWorld;
+            float t = Mathf.SmoothStep(0f, 1f, _arcProgress);
+            float inv = 1f - t;
+            return inv * inv * _arcStartPosition + 2f * inv * t * control + t * t * end;
+        }
+
+        private void MoveTo(Vector2 position, Vector2 direction)
+        {
+            transform.position = position;
+            float ang = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
             transform.rotation = Quaternion.Euler(0f, 0f, ang);
+        }
+
+        private bool HasTarget()
+        {
+            return _hasTargetWorldPoint || _heroFollow != null;
+        }
+
+        private Vector2 GetTargetWorldPoint()
+        {
+            if (_hasTargetWorldPoint)
+            {
+                return _targetWorldPoint;
+            }
+
+            return _heroFollow != null ? (Vector2)_heroFollow.position : (Vector2)transform.position + (Vector2)transform.right;
+        }
+
+        private void TryApplyTargetArrivalDamage()
+        {
+            if (_didHit || !_targetIsBunker)
+            {
+                return;
+            }
+
+            Vector2 delta = _targetWorldPoint - (Vector2)transform.position;
+            if (delta.sqrMagnitude > _radius * _radius)
+            {
+                return;
+            }
+
+            WaveManager_V2 waveManager = FindAnyObjectByType<WaveManager_V2>();
+            if (waveManager != null && waveManager.BunkerHealth > 0)
+            {
+                waveManager.ApplyBunkerDamage(_damage);
+            }
+
+            CompleteImpact();
         }
 
         private void OnTriggerEnter2D(Collider2D other)
@@ -109,8 +194,7 @@ namespace iStick2War_V2
 
             if (TryApplyHit(other))
             {
-                _didHit = true;
-                Destroy(gameObject);
+                CompleteImpact();
             }
         }
 
@@ -168,6 +252,77 @@ namespace iStick2War_V2
             if (_debugLogs)
             {
                 Debug.Log($"[MechMissile] ignored trigger: {collider.name}");
+            }
+
+            return false;
+        }
+
+        private void CompleteImpact()
+        {
+            if (_didHit)
+            {
+                return;
+            }
+
+            _didHit = true;
+            SpawnExplosionEffect();
+            Destroy(gameObject);
+        }
+
+        private void SpawnExplosionEffect()
+        {
+            if (_explosionEffectPrefab == null)
+            {
+                return;
+            }
+
+            GameObject effect = Instantiate(_explosionEffectPrefab, transform.position, Quaternion.identity);
+            ApplyExplosionSorting(effect);
+            Destroy(effect, Mathf.Max(0.05f, _explosionEffectLifetime));
+        }
+
+        private void ApplyExplosionSorting(GameObject effect)
+        {
+            if (!_overrideExplosionSorting || effect == null)
+            {
+                return;
+            }
+
+            bool hasSortingLayer = TryResolveSortingLayerId(_explosionSortingLayerName, out int sortingLayerId);
+            Renderer[] renderers = effect.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Renderer renderer = renderers[i];
+                if (renderer == null)
+                {
+                    continue;
+                }
+
+                if (hasSortingLayer)
+                {
+                    renderer.sortingLayerID = sortingLayerId;
+                }
+
+                renderer.sortingOrder = _explosionSortingOrder;
+            }
+        }
+
+        private static bool TryResolveSortingLayerId(string layerName, out int id)
+        {
+            id = 0;
+            if (string.IsNullOrWhiteSpace(layerName))
+            {
+                return false;
+            }
+
+            SortingLayer[] layers = SortingLayer.layers;
+            for (int i = 0; i < layers.Length; i++)
+            {
+                if (layers[i].name == layerName)
+                {
+                    id = layers[i].id;
+                    return true;
+                }
             }
 
             return false;

@@ -1,11 +1,11 @@
 {
 "skeleton": {
-	"hash": "yW2LiRfEUQg",
+	"hash": "byZ4o6s/RdE",
 	"spine": "4.2.43",
-	"x": -9.27,
+	"x": -14.5,
 	"y": -6.18,
-	"width": 585.41,
-	"height": 349.99,
+	"width": 590.65,
+	"height": 354.31,
 	"images": "./4K/",
 	"audio": ""
 },
@@ -37,7 +37,10 @@
 		"y": -0.59,
 		"color": "abe323ff"
 	},
-	{ "name": "crosshair", "parent": "root", "x": 546.35, "y": 271.49, "color": "ff3f00ff", "icon": "ik" }
+	{ "name": "crosshair", "parent": "root", "x": 546.35, "y": 271.49, "color": "ff3f00ff", "icon": "ik" },
+	{ "name": "missile-slot-1", "parent": "cannon", "x": 9.63, "y": -16.1 },
+	{ "name": "missile-slot-2", "parent": "cannon", "x": 25.09, "y": -16.1 },
+	{ "name": "missile-slot-3", "parent": "cannon", "x": 39.5, "y": -16.1 }
 ],
 "slots": [
 	{ "name": "toe-back", "bone": "toe-back", "attachment": "toe" },
@@ -45,12 +48,14 @@
 	{ "name": "calf-back", "bone": "calf-back", "attachment": "calf" },
 	{ "name": "thigh-back", "bone": "thigh-back", "attachment": "thigh" },
 	{ "name": "cannon", "bone": "cannon", "attachment": "cannon" },
-	{ "name": "controlcabin", "bone": "controlcabin", "attachment": "controlcabin" },
+	{ "name": "controlcabin", "bone": "controlcabin", "attachment": "body" },
 	{ "name": "toe-front", "bone": "toe-front", "attachment": "toe" },
 	{ "name": "foot-front", "bone": "foot-front", "attachment": "foot" },
 	{ "name": "calf-front", "bone": "calf-front", "attachment": "calf" },
 	{ "name": "thigh-front", "bone": "thigh-front", "attachment": "thigh" },
-	{ "name": "crosshair", "bone": "crosshair", "attachment": "crosshair" }
+	{ "name": "crosshair", "bone": "crosshair", "attachment": "crosshair" },
+	{ "name": "body", "bone": "root" },
+	{ "name": "missiles", "bone": "controlcabin", "attachment": "missiles" }
 ],
 "ik": [
 	{
@@ -141,14 +146,14 @@
 				}
 			},
 			"controlcabin": {
-				"controlcabin": {
-					"x": 74.72,
-					"y": 6.12,
-					"scaleX": 0.23,
-					"scaleY": 0.23,
+				"body": {
+					"x": 71.53,
+					"y": 6.66,
+					"scaleX": 0.265,
+					"scaleY": 0.265,
 					"rotation": -50.16,
-					"width": 955,
-					"height": 837
+					"width": 871,
+					"height": 775
 				}
 			},
 			"crosshair": {
@@ -176,12 +181,23 @@
 					"height": 463
 				}
 			},
+			"missiles": {
+				"missiles": {
+					"x": 37.37,
+					"y": 24.32,
+					"scaleX": 0.25,
+					"scaleY": 0.25,
+					"rotation": 44.98,
+					"width": 267,
+					"height": 242
+				}
+			},
 			"thigh-back": {
 				"thigh": {
 					"x": 46.25,
 					"y": 4.16,
-					"scaleX": 0.23,
-					"scaleY": 0.23,
+					"scaleX": 0.2119,
+					"scaleY": 0.2119,
 					"rotation": 53.39,
 					"width": 444,
 					"height": 472

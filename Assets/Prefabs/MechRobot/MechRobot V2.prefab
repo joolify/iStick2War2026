@@ -416,12 +416,12 @@ MonoBehaviour:
   _phaseTwoHpFraction: 0.5
   _missilesInPhaseOne: 1
   _machineGunDamage: 5
-  _machineGunShotInterval: 0.09
-  _machineGunBurstDuration: 2.2
-  _afterMachineGunCooldown: 3.5
+  _machineGunShotInterval: 0.11
+  _machineGunBurstDuration: 1.4
+  _afterMachineGunCooldown: 3.2
   _cannonDamage: 56
-  _cannonTelegraphSeconds: 1
-  _afterCannonCooldown: 7
+  _cannonTelegraphSeconds: 1.4
+  _afterCannonCooldown: 3.2
   _cannonTelegraphColor: {r: 1, g: 0.15, b: 0.1, a: 0.92}
   _telegraphLineWidth: 0.065
   _telegraphDrawDistance: 24
@@ -430,8 +430,8 @@ MonoBehaviour:
   _missileSpeed: 5.5
   _missileLifetime: 10
   _missilesPerVolley: 3
-  _missileSpawnSpacing: 0.18
-  _afterMissileVolleyCooldown: 2.2
+  _missileSpawnSpacing: 0.35
+  _afterMissileVolleyCooldown: 4.5
   _missileSpawnPoint: {fileID: 89602123458764038}
   _range: 100
   _baseDamage: 14

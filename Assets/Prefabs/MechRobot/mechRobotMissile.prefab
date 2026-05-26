@@ -106,3 +106,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.MechRobotBossMissileProjectile_V2
   _radius: 0.22
   _debugLogs: 0
+  _explosionEffectPrefab: {fileID: 4499060826324477447, guid: f73e60829c6dce94987212d502d3ae91, type: 3}
+  _explosionEffectLifetime: 1.5
+  _overrideExplosionSorting: 1
+  _explosionSortingLayerName: MechRobot
+  _explosionSortingOrder: 200
