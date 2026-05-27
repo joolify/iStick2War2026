@@ -154,13 +154,13 @@ namespace iStick2War_V2
                     // after the helicopter has already moved past the visible area.
                     float waitAcceptableStarted = Time.time;
                     float acceptTimeout = ResolveAcceptableDropWorldXWaitSeconds();
-                    while (!IsDropPointInsideCameraX(dropPosForThisAttempt.x) || !IsDropWorldXAcceptable(dropPosForThisAttempt.x))
+                    while (!IsDropPointInsideAllowedCombatX(dropPosForThisAttempt.x) || !IsDropWorldXAcceptable(dropPosForThisAttempt.x))
                     {
                         if (acceptTimeout > 0f && Time.time - waitAcceptableStarted >= acceptTimeout)
                         {
                             _debugLog?.Invoke(
                                 $"[HelicopterCarrier_V2] Drop world-X gate timed out after {acceptTimeout:0.###}s " +
-                                $"(cameraInside={IsDropPointInsideCameraX(dropPosForThisAttempt.x)} " +
+                                $"(combatBandInside={IsDropPointInsideAllowedCombatX(dropPosForThisAttempt.x)} " +
                                 $"xAcceptable={IsDropWorldXAcceptable(dropPosForThisAttempt.x)} dropX={dropPosForThisAttempt.x:0.###}). " +
                                 "Spawning at current sample.");
                             break;
@@ -203,8 +203,8 @@ namespace iStick2War_V2
                 Vector3 helicopterPos = transform.position;
                 Vector3 dropPos = GetDropWorldPosition();
                 bool reachedTrigger = _fromLeft ? dropPos.x >= adjustedTriggerX : dropPos.x <= adjustedTriggerX;
-                bool dropPointInsideCameraX = IsDropPointInsideCameraX(dropPos.x);
-                bool reached = reachedTrigger && dropPointInsideCameraX && IsDropWorldXAcceptable(dropPos.x);
+                bool dropPointInsideCombatX = IsDropPointInsideAllowedCombatX(dropPos.x);
+                bool reached = reachedTrigger && dropPointInsideCombatX && IsDropWorldXAcceptable(dropPos.x);
                 if (reached && !_loggedTriggerReached)
                 {
                     _loggedTriggerReached = true;
@@ -231,7 +231,9 @@ namespace iStick2War_V2
             float minX = cam.transform.position.x - halfWidth + inset;
             float maxX = cam.transform.position.x + halfWidth - inset;
             float xPos = GetDropWorldPosition().x;
-            bool inside = xPos >= minX && xPos <= maxX && IsDropWorldXAcceptable(xPos);
+            bool inside = xPos >= minX && xPos <= maxX
+                && CombatBand_V2.IsWorldXInsideForGameplay(xPos)
+                && IsDropWorldXAcceptable(xPos);
             if (inside && !_loggedTriggerReached)
             {
                 _loggedTriggerReached = true;
@@ -262,6 +264,16 @@ namespace iStick2War_V2
         private bool IsDropWorldXAcceptable(float worldX)
         {
             return _isDropWorldXAcceptableForSpawn == null || _isDropWorldXAcceptableForSpawn.Invoke(worldX);
+        }
+
+        private bool IsDropPointInsideAllowedCombatX(float dropX)
+        {
+            if (!IsDropPointInsideCameraX(dropX))
+            {
+                return false;
+            }
+
+            return CombatBand_V2.IsWorldXInsideForGameplay(dropX);
         }
 
         private bool IsDropPointInsideCameraX(float dropX)

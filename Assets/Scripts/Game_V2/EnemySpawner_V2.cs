@@ -224,6 +224,16 @@ namespace iStick2War_V2
         [Tooltip(
             "Max seconds per drop to wait for camera visibility plus bunker-X clear. After this, the drop uses the current sample.")]
         [SerializeField] private float _paratrooperMaxSecondsWaitClearOfBunkerFootprintX = 6f;
+
+        [Header("Combat band (paratrooper drops / bomber release)")]
+        [Tooltip(
+            "Optional scene guide with BoxCollider2D (CombatBand_V2). When set and enforcing, paratrooper drops and bomber bombs " +
+            "clamp to the band X interval (intersected with the camera). Size/move the box to match your blue safe-area guide.")]
+        [SerializeField] private CombatBand_V2 _combatBand;
+        [Tooltip("Auto-assign CombatBand_V2 from the scene when this reference is empty.")]
+        [SerializeField] private bool _autoFindCombatBand = true;
+        [SerializeField] private bool _useCombatBandForParatrooperDrops = true;
+        [SerializeField] private bool _useCombatBandForBomberReleases = true;
         [Tooltip(
             "Extra world offset per spawn index further outside the playfield (left spawns: −X, right spawns: +X) " +
             "so multiple helicopters in one wave do not share the same approach X.")]
@@ -1101,9 +1111,7 @@ namespace iStick2War_V2
                 _pendingDelayedDropCoroutines = Mathf.Max(0, _pendingDelayedDropCoroutines - 1);
             }
 
-            Func<float, bool> dropWorldXGate = _deferParatrooperDropUntilOutsideBunkerFootprintX
-                ? IsParatrooperDropWorldXAcceptableForBunker
-                : null;
+            Func<float, bool> dropWorldXGate = BuildParatrooperDropWorldXGate();
             float dropWorldXGateTimeoutSeconds = _deferParatrooperDropUntilOutsideBunkerFootprintX
                 ? Mathf.Max(0f, _paratrooperMaxSecondsWaitClearOfBunkerFootprintX)
                 : 0f;
@@ -1220,6 +1228,70 @@ namespace iStick2War_V2
             }
 
             return worldX < _paratrooperBunkerFootprintMinX || worldX > _paratrooperBunkerFootprintMaxX;
+        }
+
+        private Func<float, bool> BuildParatrooperDropWorldXGate()
+        {
+            bool useBunker = _deferParatrooperDropUntilOutsideBunkerFootprintX;
+            CombatBand_V2 combatBand = ResolveCombatBand();
+            bool useCombatBand = _useCombatBandForParatrooperDrops && combatBand != null && combatBand.AppliesToParatrooperDrops;
+            if (!useBunker && !useCombatBand)
+            {
+                return null;
+            }
+
+            return worldX =>
+            {
+                if (useCombatBand && !CombatBand_V2.IsWorldXInsideForGameplay(worldX))
+                {
+                    return false;
+                }
+
+                if (useBunker && !IsParatrooperDropWorldXAcceptableForBunker(worldX))
+                {
+                    return false;
+                }
+
+                return true;
+            };
+        }
+
+        private CombatBand_V2 ResolveCombatBand()
+        {
+            if (_combatBand != null)
+            {
+                return _combatBand;
+            }
+
+            if (!_autoFindCombatBand)
+            {
+                return null;
+            }
+
+            _combatBand = CombatBand_V2.ActiveInstance;
+            if (_combatBand != null)
+            {
+                return _combatBand;
+            }
+
+            _combatBand = FindAnyObjectByType<CombatBand_V2>(FindObjectsInactive.Include);
+            return _combatBand;
+        }
+
+        private void OnEnable()
+        {
+            ApplyCombatBandSpawnerToggles();
+        }
+
+        private void ApplyCombatBandSpawnerToggles()
+        {
+            CombatBand_V2 band = ResolveCombatBand();
+            if (band == null)
+            {
+                return;
+            }
+
+            band.SetSpawnerFeatureToggles(_useCombatBandForParatrooperDrops, _useCombatBandForBomberReleases);
         }
 
         private void SpawnOneBomberPass(int spawnIndexInWave)
@@ -2626,6 +2698,13 @@ namespace iStick2War_V2
 
             float minX = camPos.x - halfWidth + inset;
             float maxX = camPos.x + halfWidth - inset;
+            if (_useCombatBandForParatrooperDrops
+                && CombatBand_V2.TryGetParatrooperDropXInterval(minX, maxX, out float combatMinX, out float combatMaxX))
+            {
+                minX = combatMinX;
+                maxX = combatMaxX;
+            }
+
             float minY = camPos.y - halfHeight + inset;
             float maxY = camPos.y + halfHeight - inset;
 
@@ -2650,6 +2729,13 @@ namespace iStick2War_V2
 
             float minX = camPos.x - halfWidth + inset;
             float maxX = camPos.x + halfWidth - inset;
+            if (_useCombatBandForParatrooperDrops
+                && CombatBand_V2.TryGetParatrooperDropXInterval(minX, maxX, out float combatMinX, out float combatMaxX))
+            {
+                minX = combatMinX;
+                maxX = combatMaxX;
+            }
+
             worldPosition.x = Mathf.Clamp(worldPosition.x, minX, maxX);
             return worldPosition;
         }

@@ -152,6 +152,7 @@ namespace iStick2War_V2
         private void DropBomb()
         {
             Vector3 dropPos = ResolveBombDropWorldPosition();
+            dropPos.x = CombatBand_V2.ClampBomberReleaseWorldX(dropPos.x);
             BombProjectile_V2 bomb = SimplePrefabPool_V2.Spawn(_config.bombProjectilePrefab, dropPos, Quaternion.identity);
             if (bomb == null)
             {
