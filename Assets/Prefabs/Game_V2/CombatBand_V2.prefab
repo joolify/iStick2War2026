@@ -88,7 +88,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 882233445501}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f8a3c2e14b5d6a70948e3f1c2d4b5e6, type: 3}
+  m_Script: {fileID: 11500000, guid: a7f3c9e24b1d608497e2f5c3d6a8b0e1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::iStick2War_V2.CombatBand_V2
   _enforceAtRuntime: 1

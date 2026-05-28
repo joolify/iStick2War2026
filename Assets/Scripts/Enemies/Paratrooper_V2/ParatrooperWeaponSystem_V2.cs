@@ -1499,4 +1499,5 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         _lineCoroutine = null;
     }
 }
+
 }

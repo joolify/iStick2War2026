@@ -58,6 +58,9 @@ namespace iStick2War_V2
         [SerializeField] private bool _pauseTimeWhileMenuOpen = true;
 
         [Header("Gameplay")]
+        [Tooltip("When enabled, Play loads this scene instead of starting gameplay in the current scene.")]
+        [SerializeField] private bool _loadGameplaySceneOnPlay;
+        [SerializeField] private string _gameplaySceneName = "SampleScene";
         [Tooltip("Optional; if unset, resolved once when Play is pressed.")]
         [SerializeField] private WaveManager_V2 _waveManager;
 
@@ -221,6 +224,12 @@ namespace iStick2War_V2
             // Unity does not reset timeScale when loading scenes; ReturnToMainMenu loads with timeScale 0.
             // Always resume simulation when leaving the menu so Play works for every boot path.
             Time.timeScale = 1f;
+
+            if (_loadGameplaySceneOnPlay && !string.IsNullOrWhiteSpace(_gameplaySceneName))
+            {
+                SceneManager.LoadScene(_gameplaySceneName, LoadSceneMode.Single);
+                return;
+            }
 
             NotifyWaveManagerGameStartedIfPossible();
         }

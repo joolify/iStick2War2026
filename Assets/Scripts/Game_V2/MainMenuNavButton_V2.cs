@@ -30,11 +30,13 @@ namespace iStick2War_V2
     [RequireComponent(typeof(Collider2D))]
     public sealed class MainMenuNavButton_V2 : MonoBehaviour
     {
+        private const string MainMenuSceneName = "MainMenuScene";
+
         public enum MenuAction
         {
             Play,
             Settings,
-            // Reload active scene (single-scene: full run reset). Time stays frozen until MainMenu Play resumes.
+            // Load dedicated main menu scene.
             ReturnToMainMenu
         }
 
@@ -80,7 +82,7 @@ namespace iStick2War_V2
                     Debug.Log($"[MainMenuNavButton_V2] '{name}' OnMouseDown -> {_action} (reload active scene, pause first)");
                 }
 
-                ReloadActiveSceneToMainMenu();
+                LoadMainMenuScene();
                 return;
             }
 
@@ -109,24 +111,13 @@ namespace iStick2War_V2
             }
         }
 
-        // Build only has one scene (game + main menu in SampleScene). Reload resets the run, but Unity keeps
-        // across SceneManager.LoadScene — if it stays 1 after game over,
-        // leaves Preparing immediately and waves start without showing the menu.
-        // Freeze time before load so boot matches a fresh editor play: menu first, then Play resumes time.
-        private static void ReloadActiveSceneToMainMenu()
+        // Freeze time before scene load so boot state always starts paused in menu.
+        private static void LoadMainMenuScene()
         {
             Time.timeScale = 0f;
             SceneManager.sceneLoaded -= FinishReturnToMainMenuAfterSceneLoad;
             SceneManager.sceneLoaded += FinishReturnToMainMenuAfterSceneLoad;
-            Scene active = SceneManager.GetActiveScene();
-            if (active.IsValid())
-            {
-                SceneManager.LoadScene(active.buildIndex, LoadSceneMode.Single);
-            }
-            else
-            {
-                SceneManager.LoadScene(0, LoadSceneMode.Single);
-            }
+            SceneManager.LoadScene(MainMenuSceneName, LoadSceneMode.Single);
         }
 
         // may be on an inactive GameObject (so Awake never runs on load). Restore menu visibility
