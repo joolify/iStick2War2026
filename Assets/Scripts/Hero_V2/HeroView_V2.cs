@@ -174,11 +174,34 @@ namespace iStick2War_V2
         [SerializeField] private Vector2 _shellCasingUpwardSpeedRange = new Vector2(1.3f, 2.4f);
         [SerializeField] private Vector2 _shellCasingAngularVelocityRange = new Vector2(420f, 820f);
 
+        [Header("Visual recoil (presentation only)")]
+        [SerializeField] private float _recoilRecoverySpeed = 18f;
+        [SerializeField] private float _colt45RecoilBack = 0.045f;
+        [SerializeField] private float _colt45RecoilUp = 0.015f;
+        [SerializeField] private float _colt45RecoilAngleZ = 1.8f;
+        [SerializeField] private float _thompsonRecoilBack = 0.06f;
+        [SerializeField] private float _thompsonRecoilUp = 0.03f;
+        [SerializeField] private float _thompsonRecoilAngleZ = 2.2f;
+        [SerializeField] private float _bazookaRecoilBack = 0.14f;
+        [SerializeField] private float _bazookaRecoilUp = 0.02f;
+        [SerializeField] private float _bazookaRecoilAngleZ = 5.5f;
+        [SerializeField] private float _teslaVibrateAmplitude = 0.018f;
+        [SerializeField] private float _teslaVibrateAngleZ = 0.9f;
+        [SerializeField] private float _flamethrowerRecoilBack = 0.025f;
+        [SerializeField] private float _flamethrowerRecoilUp = 0.008f;
+        [SerializeField] private float _flamethrowerRecoilAngleZ = 0.8f;
+
         [Header("Hero damage VFX (optional)")]
         [Tooltip("Small blood or impact burst; leave empty to skip.")]
         [SerializeField] private GameObject _heroBloodHitPrefab;
         [SerializeField] private Vector2 _heroBloodWorldOffset = new Vector2(0f, 0.35f);
         [SerializeField] private float _heroBloodReferenceDamage = 14f;
+
+        private Vector3 _recoilOffsetLocal;
+        private float _recoilAngleLocalZ;
+        private Vector3 _recoilBaseLocalPosition;
+        private Quaternion _recoilBaseLocalRotation;
+        private bool _recoilBaseCached;
 
         // -------------------------
         // INIT
@@ -198,6 +221,9 @@ namespace iStick2War_V2
 
             _crossHairBone = _skeletonAnimation.Skeleton.FindBone("crosshair");
             _facingRight = _skeletonAnimation.Skeleton.ScaleX >= 0f;
+            _recoilBaseCached = false;
+            _recoilOffsetLocal = Vector3.zero;
+            _recoilAngleLocalZ = 0f;
 
             if (_crossHairBone == null)
                 Debug.LogError("Crosshair bone not found in skeleton!");
@@ -274,6 +300,7 @@ namespace iStick2War_V2
             FaceTowardWorldX(_touchPos);
             SetCrosshair(_touchPos);
             UpdateFlamethrowerVfxPose();
+            TickVisualRecoil();
 
             // Runtime failsafe: even if ParticleSystem has Play On Awake, never show flamethrower
             // unless controller currently holds shoot.
@@ -318,6 +345,107 @@ namespace iStick2War_V2
 
             if (_deathHandler != null)
                 _deathHandler.OnDeathHandled -= HandleDeath;
+        }
+
+        internal void PlayVisualRecoil(WeaponType weaponType, Vector2 shotDirectionWorld)
+        {
+            Transform target = ResolveRecoilTarget();
+            if (target == null)
+            {
+                return;
+            }
+
+            if (!_recoilBaseCached)
+            {
+                _recoilBaseLocalPosition = target.localPosition;
+                _recoilBaseLocalRotation = target.localRotation;
+                _recoilBaseCached = true;
+            }
+
+            Vector2 dir = shotDirectionWorld.sqrMagnitude > 0.0001f ? shotDirectionWorld.normalized : Vector2.right;
+            Vector3 worldBack = -new Vector3(dir.x, dir.y, 0f);
+            Vector3 localBack = target.parent != null ? target.parent.InverseTransformDirection(worldBack) : worldBack;
+            Vector3 localUp = target.parent != null ? target.parent.InverseTransformDirection(Vector3.up) : Vector3.up;
+            localBack.z = 0f;
+            localUp.z = 0f;
+            localBack = localBack.sqrMagnitude > 0.0001f ? localBack.normalized : Vector3.left;
+            localUp = localUp.sqrMagnitude > 0.0001f ? localUp.normalized : Vector3.up;
+
+            float back = 0f;
+            float up = 0f;
+            float angle = 0f;
+            if (weaponType == WeaponType.Colt45)
+            {
+                back = _colt45RecoilBack;
+                up = _colt45RecoilUp;
+                angle = _colt45RecoilAngleZ;
+            }
+            else if (weaponType == WeaponType.Thompson)
+            {
+                back = _thompsonRecoilBack;
+                up = _thompsonRecoilUp;
+                angle = _thompsonRecoilAngleZ;
+            }
+            else if (weaponType == WeaponType.Bazooka)
+            {
+                back = _bazookaRecoilBack;
+                up = _bazookaRecoilUp;
+                angle = _bazookaRecoilAngleZ;
+            }
+            else if (weaponType == WeaponType.Tesla)
+            {
+                Vector2 jitter = UnityEngine.Random.insideUnitCircle * Mathf.Max(0f, _teslaVibrateAmplitude);
+                _recoilOffsetLocal += new Vector3(jitter.x, jitter.y, 0f);
+                _recoilAngleLocalZ += UnityEngine.Random.Range(-_teslaVibrateAngleZ, _teslaVibrateAngleZ);
+                return;
+            }
+            else if (weaponType == WeaponType.Flamethrower)
+            {
+                back = _flamethrowerRecoilBack;
+                up = _flamethrowerRecoilUp;
+                angle = _flamethrowerRecoilAngleZ;
+            }
+            else
+            {
+                return;
+            }
+
+            _recoilOffsetLocal += localBack * Mathf.Max(0f, back);
+            _recoilOffsetLocal += localUp * Mathf.Max(0f, up);
+            _recoilAngleLocalZ += Mathf.Sign(-dir.x) * Mathf.Max(0f, angle);
+        }
+
+        private void TickVisualRecoil()
+        {
+            Transform target = ResolveRecoilTarget();
+            if (target == null)
+            {
+                return;
+            }
+
+            if (!_recoilBaseCached)
+            {
+                _recoilBaseLocalPosition = target.localPosition;
+                _recoilBaseLocalRotation = target.localRotation;
+                _recoilBaseCached = true;
+            }
+
+            float lerp = 1f - Mathf.Exp(-Mathf.Max(0.01f, _recoilRecoverySpeed) * Mathf.Max(0f, Time.deltaTime));
+            _recoilOffsetLocal = Vector3.Lerp(_recoilOffsetLocal, Vector3.zero, lerp);
+            _recoilAngleLocalZ = Mathf.Lerp(_recoilAngleLocalZ, 0f, lerp);
+
+            target.localPosition = _recoilBaseLocalPosition + _recoilOffsetLocal;
+            target.localRotation = _recoilBaseLocalRotation * Quaternion.Euler(0f, 0f, _recoilAngleLocalZ);
+        }
+
+        private Transform ResolveRecoilTarget()
+        {
+            if (_skeletonAnimation != null)
+            {
+                return _skeletonAnimation.transform;
+            }
+
+            return transform;
         }
 
         // -------------------------

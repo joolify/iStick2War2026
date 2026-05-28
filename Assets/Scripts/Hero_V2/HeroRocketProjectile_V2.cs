@@ -281,6 +281,7 @@ namespace iStick2War_V2
             }
 
             WorldShake_V2.AddImpulse(WorldShakeImpulseKind_V2.BazookaExplosion);
+            HitStop_V2.Request(HitStopKind_V2.BazookaExplosion);
 
             Collider2D[] hits = Physics2D.OverlapCircleAll(explosionCenter, Mathf.Max(0.1f, _explosionRadius), _explosionMask);
             HashSet<ParatrooperDamageReceiver_V2> damagedParatroopers = new HashSet<ParatrooperDamageReceiver_V2>();

@@ -392,10 +392,16 @@ namespace iStick2War_V2
 
             if (_weaponSystem.ActiveWeaponUsesProjectile())
             {
-                if (_weaponSystem.ShootProjectile(aimPos, direction) &&
+                bool didShootProjectile = _weaponSystem.ShootProjectile(aimPos, direction);
+                if (didShootProjectile &&
                     ShouldPlayMuzzleFlashForWeapon(_model.currentWeaponType))
                 {
                     PlayHeroMuzzleFlash(aimPos, direction);
+                }
+
+                if (didShootProjectile)
+                {
+                    _view?.PlayVisualRecoil(_model.currentWeaponType, direction);
                 }
                 return;
             }
@@ -435,6 +441,7 @@ namespace iStick2War_V2
                     PlayHeroMuzzleFlash(aimPos, direction);
                 }
                 _view.TryEjectShellCasing(_model.currentWeaponType, aimPos, direction);
+                _view?.PlayVisualRecoil(_model.currentWeaponType, direction);
 
                 if (isFlamethrower && Time.time >= _nextFlamethrowerDebugLogAt)
                 {

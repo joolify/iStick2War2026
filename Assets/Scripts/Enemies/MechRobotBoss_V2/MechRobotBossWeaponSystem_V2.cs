@@ -414,6 +414,7 @@ namespace iStick2War_V2
         {
             ApplyHitscanDamage(_cannonDamageScaled);
             WorldShake_V2.AddImpulse(WorldShakeImpulseKind_V2.MechCannon);
+            HitStop_V2.Request(HitStopKind_V2.MechCannon);
         }
 
         private void TickMissileVolley()
