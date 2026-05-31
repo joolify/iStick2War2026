@@ -1682,6 +1682,12 @@ namespace iStick2War_V2
             RefreshTopBar();
         }
 
+        // Called when hero-side state changes (e.g. AutoHero weapon test lock) without meta/currency changes.
+        public void NotifyTopBarRefresh()
+        {
+            RefreshTopBar();
+        }
+
         private void Log(string message)
         {
             if (_debugWaveLogs)
@@ -1832,12 +1838,19 @@ namespace iStick2War_V2
 
             if (_topBarCurrentAmmoText != null)
             {
-                bool isColt45 = _hero.CurrentWeaponType == WeaponType.Colt45;
-                string reserveText = isColt45
-                    ? "∞"
-                    : _hero.GetCurrentWeaponReserveAmmo().ToString(CultureInfo.InvariantCulture);
-                _topBarCurrentAmmoText.text =
-                    $"Ammo: {_hero.GetCurrentWeaponAmmo()}/{reserveText}";
+                if (AutoHero_V2.WeaponTestLockShowsInfiniteAmmoOnTopBar)
+                {
+                    _topBarCurrentAmmoText.text = "Ammo: ∞/∞";
+                }
+                else
+                {
+                    bool isColt45 = _hero.CurrentWeaponType == WeaponType.Colt45;
+                    string reserveText = isColt45
+                        ? "∞"
+                        : _hero.GetCurrentWeaponReserveAmmo().ToString(CultureInfo.InvariantCulture);
+                    _topBarCurrentAmmoText.text =
+                        $"Ammo: {_hero.GetCurrentWeaponAmmo()}/{reserveText}";
+                }
             }
 
             if (_topBarReloadText != null)

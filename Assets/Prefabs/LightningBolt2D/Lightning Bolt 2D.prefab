@@ -46,8 +46,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c38ffe61d4e86c14e9a30775f5f576f9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  startPoint: {x: -1.3991627, y: -3.0710456}
-  endPoint: {x: 0.79250383, y: 2.1859999}
+  startPoint: {x: -0.7238277, y: -1.7927415}
+  endPoint: {x: -3.5207794, y: 1.9672016}
   arcLifetimeMin: 0.1
   arcLifetimeMax: 1
   arcCount: 5

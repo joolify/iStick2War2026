@@ -72,6 +72,12 @@ namespace iStick2War_V2
         [Tooltip("Ignore collisions/triggers until this long after spawn (avoids instant pops from spawn overlap).")]
         [SerializeField] private float _armingDelaySeconds = 0.08f;
         [Tooltip(
+            "Paratrooper carrier helicopters have a large solid hull. When the rocket grazes that hull above the " +
+            "muzzle while shooting at troops below, pass through instead of detonating mid-air.")]
+        [SerializeField] private bool _enableCarrierPassthroughWhileShootingLow = true;
+        [Tooltip("Passthrough only when the carrier impact center is at least this far above spawn Y.")]
+        [SerializeField] private float _carrierPassthroughMinImpactYAboveSpawn = 0.55f;
+        [Tooltip(
             "Trigger colliders only detonate the rocket if they are on these layers OR carry a damage/bunker component " +
             "(paratrooper, aircraft, explodable, BunkerHitbox). Empty = Ground, Bunker, Enemy, EnemyBodyPart, Aircraft.")]
         [SerializeField] private LayerMask _detonateOnTriggerLayers;
@@ -115,10 +121,14 @@ namespace iStick2War_V2
         private float _travelSpeed = 14f;
         private bool _useManualMovement;
         private float _armedAt;
+        private Vector2 _spawnWorldPos;
+        private readonly HashSet<Collider2D> _passthroughIgnoredColliders = new HashSet<Collider2D>();
 
         public void Initialize(Vector2 direction, float speed, float lifetime, float damage, float explosionDamageVsAircraft = -1f)
         {
             _isInitialized = true;
+            _spawnWorldPos = transform.position;
+            _passthroughIgnoredColliders.Clear();
             _damage = Mathf.Max(0f, damage);
             _explosionDamageVsAircraft = explosionDamageVsAircraft >= 0f ? explosionDamageVsAircraft : _damage;
             _lifetime = Mathf.Max(0.1f, lifetime);
@@ -250,6 +260,16 @@ namespace iStick2War_V2
                             $"'{LayerMask.LayerToName(impactCollider.gameObject.layer)}' (no detonation rule).");
                     }
 
+                    return;
+                }
+
+                if (TryPassthroughCarrierAircraftImpact(impactCollider))
+                {
+                    return;
+                }
+
+                if (TryPassthroughInactiveInfantryBodyPartImpact(impactCollider))
+                {
                     return;
                 }
             }
@@ -426,6 +446,116 @@ namespace iStick2War_V2
         /// <summary>
         /// Short tag for detonation logs so "mid-air pop" reports are easy to read (e.g. aircraft vs stray trigger).
         /// </summary>
+        // Carrier helis dropping troops: large hull colliders sit above ground targets and caused mid-air pops.
+        private bool TryPassthroughCarrierAircraftImpact(Collider2D impactCollider)
+        {
+            if (!_enableCarrierPassthroughWhileShootingLow || impactCollider == null)
+            {
+                return false;
+            }
+
+            if (_passthroughIgnoredColliders.Contains(impactCollider))
+            {
+                return true;
+            }
+
+            if (impactCollider.GetComponentInParent<HelicopterCarrier_V2>() == null)
+            {
+                return false;
+            }
+
+            if (impactCollider.GetComponent<AircraftHealth_V2>() == null &&
+                impactCollider.GetComponentInParent<AircraftHealth_V2>() == null)
+            {
+                return false;
+            }
+
+            float minY = _spawnWorldPos.y + Mathf.Max(0f, _carrierPassthroughMinImpactYAboveSpawn);
+            if (impactCollider.bounds.center.y <= minY)
+            {
+                return false;
+            }
+
+            TryRegisterPassthroughIgnore(impactCollider);
+
+            if (_debugImpactLogs)
+            {
+                Debug.Log(
+                    $"[HeroRocketProjectile_V2] Passthrough carrier aircraft '{impactCollider.name}' " +
+                    $"(impactY={impactCollider.bounds.center.y:0.###} > minY={minY:0.###}).");
+            }
+
+            return true;
+        }
+
+        // Dead/disabled paratrooper or mech hitboxes (ragdoll/gib cleanup) must not pop rockets mid-flight.
+        private bool TryPassthroughInactiveInfantryBodyPartImpact(Collider2D impactCollider)
+        {
+            if (impactCollider == null || !IsInactiveInfantryBodyPartCollider(impactCollider))
+            {
+                return false;
+            }
+
+            TryRegisterPassthroughIgnore(impactCollider);
+
+            if (_debugImpactLogs)
+            {
+                Debug.Log(
+                    $"[HeroRocketProjectile_V2] Passthrough inactive infantry collider " +
+                    $"'{impactCollider.name}' (dead, disabled, or bodypart off).");
+            }
+
+            return true;
+        }
+
+        private bool TryRegisterPassthroughIgnore(Collider2D impactCollider)
+        {
+            if (impactCollider == null)
+            {
+                return false;
+            }
+
+            if (_passthroughIgnoredColliders.Contains(impactCollider))
+            {
+                return true;
+            }
+
+            Collider2D selfCollider = GetComponent<Collider2D>();
+            if (selfCollider != null)
+            {
+                Physics2D.IgnoreCollision(selfCollider, impactCollider, true);
+                _passthroughIgnoredColliders.Add(impactCollider);
+            }
+
+            return true;
+        }
+
+        private static bool IsInactiveInfantryBodyPartCollider(Collider2D impactCollider)
+        {
+            if (impactCollider == null || !impactCollider.enabled)
+            {
+                return true;
+            }
+
+            ParatrooperBodyPart_V2 paratrooperPart =
+                impactCollider.GetComponent<ParatrooperBodyPart_V2>() ??
+                impactCollider.GetComponentInParent<ParatrooperBodyPart_V2>();
+            if (paratrooperPart != null)
+            {
+                return !paratrooperPart.isActiveAndEnabled || !paratrooperPart.IsLivingCharacterForTargeting();
+            }
+
+            MechRobotBossBodyPart_V2 mechPart =
+                impactCollider.GetComponent<MechRobotBossBodyPart_V2>() ??
+                impactCollider.GetComponentInParent<MechRobotBossBodyPart_V2>();
+            if (mechPart != null)
+            {
+                return !mechPart.isActiveAndEnabled || !mechPart.IsLivingCharacterForTargeting();
+            }
+
+            return false;
+        }
+
         private static string ClassifyImpactForDebugLog(Collider2D impactCollider)
         {
             if (impactCollider == null)
@@ -523,8 +653,8 @@ namespace iStick2War_V2
         }
 
         /// <summary>
-        /// Non-trigger colliders always detonate (after arming). Triggers must be gameplay surfaces or damage targets —
-        /// otherwise large sensor volumes cause mid-air pops.
+        /// Solid colliders detonate after arming unless passthrough/dead-infantry filters apply. Triggers must be
+        /// living gameplay surfaces or damage targets — otherwise large sensor volumes cause mid-air pops.
         /// </summary>
         private bool ShouldDetonateOnTrigger(Collider2D other)
         {
@@ -533,12 +663,26 @@ namespace iStick2War_V2
                 return false;
             }
 
-            if (other.GetComponent<ParatrooperBodyPart_V2>() != null ||
-                other.GetComponentInParent<ParatrooperDamageReceiver_V2>() != null ||
-                other.GetComponent<MechRobotBossBodyPart_V2>() != null ||
+            ParatrooperBodyPart_V2 paratrooperPart =
+                other.GetComponent<ParatrooperBodyPart_V2>() ??
+                other.GetComponentInParent<ParatrooperBodyPart_V2>();
+            if (paratrooperPart != null)
+            {
+                return paratrooperPart.isActiveAndEnabled && paratrooperPart.IsLivingCharacterForTargeting();
+            }
+
+            MechRobotBossBodyPart_V2 mechPart =
+                other.GetComponent<MechRobotBossBodyPart_V2>() ??
+                other.GetComponentInParent<MechRobotBossBodyPart_V2>();
+            if (mechPart != null)
+            {
+                return mechPart.isActiveAndEnabled && mechPart.IsLivingCharacterForTargeting();
+            }
+
+            if (other.GetComponentInParent<ParatrooperDamageReceiver_V2>() != null ||
                 other.GetComponentInParent<MechRobotBossDamageReceiver_V2>() != null)
             {
-                return true;
+                return !IsInactiveInfantryBodyPartCollider(other);
             }
 
             if (other.GetComponent<AircraftHealth_V2>() != null ||

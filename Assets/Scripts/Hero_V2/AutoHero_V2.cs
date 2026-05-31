@@ -25,6 +25,17 @@ namespace iStick2War_V2
         [Tooltip("Current HP after override. Use -1 to set current = max.")]
         [SerializeField] private int _testHeroCurrentHp = -1;
 
+        [Header("Weapon test mode")]
+        [Tooltip(
+            "Lock the hero to one weapon with infinite ammo for all waves (balance / weapon testing). " +
+            "Overrides scene Colt-only allowlists after startup.")]
+        [SerializeField] private bool _lockToSingleWeaponForTesting;
+        [SerializeField] private WeaponType _lockedTestWeaponType = WeaponType.Thompson;
+        [Tooltip(
+            "Optional weapon asset used to unlock the locked type when missing from loadout. " +
+            "If empty, AutoHero tries shop offer definitions for the selected WeaponType.")]
+        [SerializeField] private HeroWeaponDefinition_V2 _lockedTestWeaponDefinition;
+
         [Header("References (optional — resolved at runtime if empty)")]
         [SerializeField] private Hero_V2 _hero;
         [SerializeField] private HeroModel_V2 _model;
@@ -177,6 +188,8 @@ namespace iStick2War_V2
         private float _lastAimAtEnemyUnscaledTime;
         private float _lastShootHeldUnscaledTime;
         private bool _heroHpTestOverrideApplied;
+        private bool _lockedWeaponTestModeApplied;
+        private HeroWeaponDefinition_V2 _resolvedLockedTestWeaponDefinition;
         private float _nextLowHpWarningAtUnscaled;
         private bool _lowHpWarningActiveLastTick;
         private bool _telemetryHasTarget;
@@ -216,6 +229,18 @@ namespace iStick2War_V2
 
         /// <summary>Active preset for balance/telemetry runs (Inspector).</summary>
         public AutoHeroTestProfileKind_V2 TestProfile => _testProfile;
+
+        // Locked single-weapon test mode with infinite ammo refill (see Weapon test mode block).
+        public bool IsWeaponTestModeEnabledForUi => IsLockedWeaponTestModeActive();
+
+        public bool IsLockedWeaponTestModeAppliedForUi =>
+            IsLockedWeaponTestModeActive() && _lockedWeaponTestModeApplied;
+
+        // Top bar reads this so it does not depend on WaveManager resolving AutoHero on Hero_V2.
+        public static bool WeaponTestLockShowsInfiniteAmmoOnTopBar =>
+            _uiInstance != null && _uiInstance.IsWeaponTestModeEnabledForUi;
+
+        private static AutoHero_V2 _uiInstance;
         public float LastAimAtEnemyUnscaledTime => _lastAimAtEnemyUnscaledTime;
         public float LastShootHeldUnscaledTime => _lastShootHeldUnscaledTime;
         public bool TelemetryHasTarget => _telemetryHasTarget;
@@ -264,9 +289,25 @@ namespace iStick2War_V2
             HideTestRunDoneTopBarBanner();
         }
 
+        private void OnEnable()
+        {
+            _uiInstance = this;
+        }
+
         private void Start()
         {
             TryApplyHeroHpTestOverride();
+            if (IsLockedWeaponTestModeActive())
+            {
+                CacheWaveManagerIfNeeded();
+                _waveManager?.NotifyTopBarRefresh();
+                StartCoroutine(ApplyLockedWeaponTestModeAfterSceneProfileRoutine());
+            }
+        }
+
+        private bool IsLockedWeaponTestModeActive()
+        {
+            return _lockToSingleWeaponForTesting && _lockedTestWeaponType != WeaponType.None;
         }
 
         private void ApplySceneGameplayBotOverride()
@@ -279,6 +320,11 @@ namespace iStick2War_V2
 
         private void OnDisable()
         {
+            if (_uiInstance == this)
+            {
+                _uiInstance = null;
+            }
+
             _shopExitScheduledThisVisit = false;
             _lastRawShootHeld = false;
             _shootEngageAllowedAfterUnscaled = 0f;
@@ -335,6 +381,107 @@ namespace iStick2War_V2
             _heroHpTestOverrideApplied = true;
         }
 
+        private IEnumerator ApplyLockedWeaponTestModeAfterSceneProfileRoutine()
+        {
+            // GameplaySceneProfileApplier_V2 may strip weapons one frame later on Colt-only scenes.
+            yield return null;
+            TryApplyLockedWeaponTestModeOnce();
+        }
+
+        private void TryApplyLockedWeaponTestModeOnce()
+        {
+            if (!IsLockedWeaponTestModeActive() || _lockedWeaponTestModeApplied)
+            {
+                return;
+            }
+
+            CacheReferences();
+            if (_hero == null)
+            {
+                return;
+            }
+
+            HeroWeaponDefinition_V2 definition = ResolveLockedTestWeaponDefinition();
+            if (definition == null)
+            {
+                Debug.LogWarning(
+                    $"[AutoHero_V2] Weapon test lock enabled for '{_lockedTestWeaponType}' but no " +
+                    "HeroWeaponDefinition_V2 was found. Assign Locked Test Weapon Definition or add a shop offer for that weapon.");
+                return;
+            }
+
+            _resolvedLockedTestWeaponDefinition = definition;
+
+            if (!_hero.HasWeaponUnlocked(definition))
+            {
+                _hero.UnlockWeapon(definition, autoEquip: false);
+            }
+
+            var allowedWeapons = new List<WeaponType>(1) { _lockedTestWeaponType };
+            _hero.ApplySceneWeaponAllowlist(allowedWeapons);
+            _hero.TrySwitchToWeaponType(_lockedTestWeaponType);
+            _hero.TryRefillWeaponMagazine(definition);
+
+            _lockedWeaponTestModeApplied = true;
+            LogAutomation(
+                $"Weapon test lock applied: '{_lockedTestWeaponType}' only, infinite ammo refill enabled.");
+            CacheWaveManagerIfNeeded();
+            _waveManager?.NotifyTopBarRefresh();
+        }
+
+        private HeroWeaponDefinition_V2 ResolveLockedTestWeaponDefinition()
+        {
+            if (_resolvedLockedTestWeaponDefinition != null)
+            {
+                return _resolvedLockedTestWeaponDefinition;
+            }
+
+            if (_lockedTestWeaponDefinition != null &&
+                _lockedTestWeaponDefinition.WeaponType == _lockedTestWeaponType)
+            {
+                return _lockedTestWeaponDefinition;
+            }
+
+            ShopPanel_V2 shopPanel = FindAnyObjectByType<ShopPanel_V2>(FindObjectsInactive.Include);
+            if (shopPanel != null)
+            {
+                IReadOnlyList<ShopOfferConfig_V2> offers = shopPanel.ConfiguredShopOffers;
+                for (int i = 0; i < offers.Count; i++)
+                {
+                    ShopOfferConfig_V2 offer = offers[i];
+                    if (offer?.Weapon != null && offer.Weapon.WeaponType == _lockedTestWeaponType)
+                    {
+                        return offer.Weapon;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private void TryMaintainLockedWeaponInfiniteAmmo()
+        {
+            if (!IsLockedWeaponTestModeActive() || !_lockedWeaponTestModeApplied || _hero == null || _model == null || _model.isDead)
+            {
+                return;
+            }
+
+            if (_resolvedLockedTestWeaponDefinition == null)
+            {
+                return;
+            }
+
+            if (_model.currentWeaponType != _lockedTestWeaponType)
+            {
+                _hero.TrySwitchToWeaponType(_lockedTestWeaponType);
+            }
+
+            if (!_hero.IsWeaponMagazineFull(_resolvedLockedTestWeaponDefinition))
+            {
+                _hero.TryRefillWeaponMagazine(_resolvedLockedTestWeaponDefinition);
+            }
+        }
+
         private void CacheWaveManagerIfNeeded()
         {
             if (_waveManager == null)
@@ -349,6 +496,8 @@ namespace iStick2War_V2
             CacheReferences();
             CacheWaveManagerIfNeeded();
             TryApplyHeroHpTestOverride();
+            TryApplyLockedWeaponTestModeOnce();
+            TryMaintainLockedWeaponInfiniteAmmo();
 
             if (_hero == null || _model == null || _view == null || _input == null)
             {
@@ -1144,6 +1293,12 @@ namespace iStick2War_V2
                 return false;
             }
 
+            if (IsLockedWeaponTestModeActive() &&
+                o.Kind is ShopOfferKind_V2.WeaponUnlock or ShopOfferKind_V2.AmmoRefill)
+            {
+                return false;
+            }
+
             switch (o.Kind)
             {
                 case ShopOfferKind_V2.HealthPack:
@@ -1454,6 +1609,11 @@ namespace iStick2War_V2
 
         private void TryPreventAmmoDeadlockInAutomation()
         {
+            if (IsLockedWeaponTestModeActive() && _lockedWeaponTestModeApplied)
+            {
+                return;
+            }
+
             if (!_enableAutomationRunLoop || !_autoRefillAmmoWhenDryInAutomation)
             {
                 return;
@@ -1534,6 +1694,16 @@ namespace iStick2War_V2
         {
             if (!hasTarget)
             {
+                return;
+            }
+
+            if (IsLockedWeaponTestModeActive() && _lockedWeaponTestModeApplied)
+            {
+                if (_model.currentWeaponType != _lockedTestWeaponType)
+                {
+                    _hero.TrySwitchToWeaponType(_lockedTestWeaponType);
+                }
+
                 return;
             }
 
@@ -2739,10 +2909,24 @@ namespace iStick2War_V2
             // Lock infantry aim to torso/head so selection flicker on foot/leg hitboxes does not yank aim to the ground.
             if (IsInfantryEnemyCollider(target))
             {
-                Vector2? preferredPoint = TryResolveParatrooperTorsoOrHeadAimPoint(target, heroPos);
-                if (preferredPoint.HasValue)
+                bool preferTorsoAim = true;
+                if (_hero != null &&
+                    _hero.WeaponSystem != null &&
+                    _hero.WeaponSystem.ActiveWeaponUsesProjectile() &&
+                    IsParatrooperCollider(target) &&
+                    !IsGroundCombatParatrooper(target))
                 {
-                    return preferredPoint.Value;
+                    // Deploy/Glide: torso is often still under the carrier; torso aim steers rockets into the heli hull.
+                    preferTorsoAim = false;
+                }
+
+                if (preferTorsoAim)
+                {
+                    Vector2? preferredPoint = TryResolveParatrooperTorsoOrHeadAimPoint(target, heroPos);
+                    if (preferredPoint.HasValue)
+                    {
+                        return preferredPoint.Value;
+                    }
                 }
             }
 

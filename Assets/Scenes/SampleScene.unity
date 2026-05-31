@@ -4868,7 +4868,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &768283724
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11517,7 +11517,7 @@ PrefabInstance:
       objectReference: {fileID: 796613714}
     - target: {fileID: 3453683051127376714, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3453683051127376714, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: _waveManager
@@ -11539,6 +11539,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: HERO V2
       objectReference: {fileID: 0}
+    - target: {fileID: 8158568889302826421, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: _startingWeapon
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 8158568889302826421, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: '_initialWeapons.Array.data[0]'
+      value: 
+      objectReference: {fileID: 11400000, guid: 9f7d5ca56d7245f482d438dd6a5ef0d1, type: 2}
     - target: {fileID: 8349641459453035569, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: _cam
       value: 
