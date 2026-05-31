@@ -388,7 +388,11 @@ namespace iStick2War_V2
                 return;
             }
 
-            HeroShotContext_V2 shotContext = _weaponSystem.CreateShotContext(aimPos, direction, DebugDrawShotRay);
+            HeroShotContext_V2 shotContext = _weaponSystem.CreateShotContext(
+                aimPos,
+                direction,
+                DebugDrawShotRay,
+                _view != null ? _view.FlamethrowerViewReachFraction : -1f);
 
             if (_weaponSystem.ActiveWeaponUsesProjectile())
             {
@@ -484,73 +488,19 @@ namespace iStick2War_V2
 
         private static bool TryGetMainCameraEdgePoint(Vector2 origin, Vector2 direction, out Vector2 edgePoint)
         {
+            if (HeroCombatCameraReach_V2.TryGetReachPoint(
+                    Camera.main,
+                    origin,
+                    direction,
+                    1f,
+                    out edgePoint,
+                    out _))
+            {
+                return true;
+            }
+
             edgePoint = origin;
-
-            Camera cam = Camera.main;
-            if (cam == null)
-            {
-                return false;
-            }
-
-            Vector2 dir = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector2.zero;
-            if (dir == Vector2.zero)
-            {
-                return false;
-            }
-
-            if (!cam.orthographic)
-            {
-                return false;
-            }
-
-            float halfHeight = cam.orthographicSize;
-            float halfWidth = halfHeight * cam.aspect;
-            Vector3 camPos = cam.transform.position;
-
-            float minX = camPos.x - halfWidth;
-            float maxX = camPos.x + halfWidth;
-            float minY = camPos.y - halfHeight;
-            float maxY = camPos.y + halfHeight;
-
-            const float epsilon = 0.0001f;
-            float bestT = float.PositiveInfinity;
-            bool found = false;
-
-            if (Mathf.Abs(dir.x) > epsilon)
-            {
-                float tx = ((dir.x > 0f ? maxX : minX) - origin.x) / dir.x;
-                if (tx > epsilon)
-                {
-                    float yAtTx = origin.y + dir.y * tx;
-                    if (yAtTx >= minY - epsilon && yAtTx <= maxY + epsilon)
-                    {
-                        bestT = tx;
-                        found = true;
-                    }
-                }
-            }
-
-            if (Mathf.Abs(dir.y) > epsilon)
-            {
-                float ty = ((dir.y > 0f ? maxY : minY) - origin.y) / dir.y;
-                if (ty > epsilon)
-                {
-                    float xAtTy = origin.x + dir.x * ty;
-                    if (xAtTy >= minX - epsilon && xAtTy <= maxX + epsilon && ty < bestT)
-                    {
-                        bestT = ty;
-                        found = true;
-                    }
-                }
-            }
-
-            if (!found || float.IsInfinity(bestT))
-            {
-                return false;
-            }
-
-            edgePoint = origin + dir * bestT;
-            return true;
+            return false;
         }
 
         private static void LogCombat(string message)

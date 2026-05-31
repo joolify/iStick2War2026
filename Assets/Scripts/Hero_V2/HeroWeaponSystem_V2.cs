@@ -223,7 +223,11 @@ namespace iStick2War_V2
             TryShoot();
         }
 
-        public HeroShotContext_V2 CreateShotContext(Vector2 origin, Vector2 direction, bool defaultDebugDrawShotRay)
+        public HeroShotContext_V2 CreateShotContext(
+            Vector2 origin,
+            Vector2 direction,
+            bool defaultDebugDrawShotRay,
+            float flamethrowerViewReachFraction = -1f)
         {
             TickMinigunHeat();
             HeroWeaponRuntimeState_V2 activeWeapon = _inventory.ActiveWeapon;
@@ -231,10 +235,6 @@ namespace iStick2War_V2
             float baseDamage = activeWeapon != null ? activeWeapon.Definition.BaseDamage : 30f;
             float aircraftDamage = activeWeapon != null ? activeWeapon.Definition.DamageVsAircraft : baseDamage;
             bool debugRay = activeWeapon != null ? activeWeapon.Definition.DebugDrawShotRay : defaultDebugDrawShotRay;
-            if (_model.currentWeaponType == WeaponType.Flamethrower)
-            {
-                debugRay = false;
-            }
 
             WeaponType weaponForDamage =
                 activeWeapon != null && activeWeapon.Definition != null
@@ -245,6 +245,24 @@ namespace iStick2War_V2
             if (weaponForDamage == WeaponType.Minigun)
             {
                 adjustedDirection = ApplyMinigunSpread(direction);
+            }
+
+            if (_model.currentWeaponType == WeaponType.Flamethrower)
+            {
+                debugRay = false;
+                float reachFraction = flamethrowerViewReachFraction >= 0f
+                    ? Mathf.Clamp01(flamethrowerViewReachFraction)
+                    : HeroCombatCameraReach_V2.DefaultFlamethrowerViewReachFraction;
+                if (HeroCombatCameraReach_V2.TryGetReachPoint(
+                        Camera.main,
+                        origin,
+                        adjustedDirection,
+                        reachFraction,
+                        out _,
+                        out float flamethrowerReach))
+                {
+                    range = flamethrowerReach;
+                }
             }
 
             return new HeroShotContext_V2

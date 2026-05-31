@@ -102,6 +102,8 @@ namespace iStick2War_V2
         [SerializeField] private ParticleSystem _flamethrowerTestPs;
         [SerializeField] private float _flamethrowerVfxAngleOffsetDegrees;
         [Header("Flamethrower spray tuning")]
+        [Tooltip("Max flamethrower reach as a fraction of orthographic view edge distance along the aim ray (0.7 = ~70% of game view).")]
+        [SerializeField] private float _flamethrowerViewReachFraction = HeroCombatCameraReach_V2.DefaultFlamethrowerViewReachFraction;
         [SerializeField] private float _flamethrowerSprayDistanceMeters = 10f;
         [SerializeField] private float _flamethrowerSprayTravelSeconds = 0.22f;
         [SerializeField] private bool _overrideFlamethrowerParticleSettings = false;
@@ -118,6 +120,9 @@ namespace iStick2War_V2
         [SerializeField] private float _flamethrowerAimForceStrength = 20f;
         private Vector2 _lockedFlamethrowerDirection = Vector2.right;
         private bool _hasLockedFlamethrowerDirection;
+
+        internal float FlamethrowerViewReachFraction =>
+            Mathf.Clamp01(_flamethrowerViewReachFraction);
 
         [Header("Tesla animation overrides (optional)")]
         [Tooltip("When the active weapon is Tesla, non-null entries replace the weapon-definition set (grenade: reserved for future grenade playback).")]
@@ -320,11 +325,17 @@ namespace iStick2War_V2
 
         private Vector2 ResolveAimWorldPoint()
         {
-            if (_overrideAimWorld.HasValue)
+            Vector2 aim = _overrideAimWorld ?? ReadPointerAimWorldPoint();
+            if (_model != null && _model.currentWeaponType == WeaponType.Flamethrower)
             {
-                return _overrideAimWorld.Value;
+                aim = ClampFlamethrowerAimWorldPoint(aim);
             }
 
+            return aim;
+        }
+
+        private Vector2 ReadPointerAimWorldPoint()
+        {
             Camera cam = _cam != null ? _cam : Camera.main;
             if (cam == null)
             {
@@ -333,6 +344,36 @@ namespace iStick2War_V2
 
             Vector3 w = cam.ScreenToWorldPoint(Input.mousePosition);
             return new Vector2(w.x, w.y);
+        }
+
+        private Vector2 ClampFlamethrowerAimWorldPoint(Vector2 rawAimWorld)
+        {
+            if (!TryGetFlamethrowerPose(out Vector2 origin, out _))
+            {
+                return rawAimWorld;
+            }
+
+            Vector2 toAim = rawAimWorld - origin;
+            float dist = toAim.magnitude;
+            if (dist <= 0.0001f)
+            {
+                return rawAimWorld;
+            }
+
+            Vector2 dir = toAim / dist;
+            Camera cam = _cam != null ? _cam : Camera.main;
+            if (!HeroCombatCameraReach_V2.TryGetReachPoint(
+                    cam,
+                    origin,
+                    dir,
+                    Mathf.Clamp01(_flamethrowerViewReachFraction),
+                    out _,
+                    out float maxReach))
+            {
+                return rawAimWorld;
+            }
+
+            return dist <= maxReach ? rawAimWorld : origin + dir * maxReach;
         }
 
         private void OnDestroy()
@@ -1317,6 +1358,7 @@ namespace iStick2War_V2
             Transform vfxTransform = _flamethrowerTestPs.transform;
             vfxTransform.SetPositionAndRotation(origin, Quaternion.Euler(0f, 0f, z));
             EnsureFlamethrowerSimulationSpaceLocal();
+            ApplyFlamethrowerReachSprayTuning();
             ApplyFlamethrowerForceFromAim(dir);
         }
 
@@ -1347,13 +1389,25 @@ namespace iStick2War_V2
             }
 
             Vector2 dir = direction.normalized;
-            float strength = Mathf.Max(0f, _flamethrowerAimForceStrength);
+            float strength = ComputeFlamethrowerAimForceStrength();
 
             ParticleSystem.ForceOverLifetimeModule force = _flamethrowerTestPs.forceOverLifetime;
             force.enabled = true;
             force.space = ParticleSystemSimulationSpace.World;
             force.x = new ParticleSystem.MinMaxCurve(dir.x * strength);
             force.y = new ParticleSystem.MinMaxCurve(dir.y * strength);
+        }
+
+        private float ComputeFlamethrowerAimForceStrength()
+        {
+            float baseStrength = Mathf.Max(0f, _flamethrowerAimForceStrength);
+            if (!_autoTuneFlamethrowerParticleSpeed)
+            {
+                return baseStrength;
+            }
+
+            // Same fraction as gameplay reach: full force at 1.0, ~70% travel at 0.7.
+            return baseStrength * FlamethrowerViewReachFraction;
         }
 
         private bool TryGetFlamethrowerPose(out Vector2 origin, out Vector2 direction)
@@ -1380,23 +1434,66 @@ namespace iStick2War_V2
             return true;
         }
 
-        private void ApplyFlamethrowerSprayProfile()
+        private float ResolveFlamethrowerSprayDistanceMeters()
+        {
+            if (TryGetFlamethrowerPose(out Vector2 origin, out Vector2 direction))
+            {
+                Camera cam = _cam != null ? _cam : Camera.main;
+                if (HeroCombatCameraReach_V2.TryGetReachPoint(
+                        cam,
+                        origin,
+                        direction,
+                        Mathf.Clamp01(_flamethrowerViewReachFraction),
+                        out _,
+                        out float reach))
+                {
+                    return reach;
+                }
+            }
+
+            return _flamethrowerSprayDistanceMeters;
+        }
+
+        // Visual reach follows view fraction via scaled force + stretch length (no velocity cap — that shrinks Stretch mode).
+        private void ApplyFlamethrowerReachSprayTuning()
         {
             if (!_autoTuneFlamethrowerParticleSpeed || _flamethrowerTestPs == null)
             {
                 return;
             }
 
-            float lifetime = Mathf.Max(0.05f, _flamethrowerSprayTravelSeconds);
-            float distance = Mathf.Max(0.5f, _flamethrowerSprayDistanceMeters);
-            float requiredSpeed = distance / lifetime;
+            ParticleSystem.VelocityOverLifetimeModule velocity = _flamethrowerTestPs.velocityOverLifetime;
+            if (velocity.enabled)
+            {
+                velocity.enabled = false;
+            }
+
+            ParticleSystem.LimitVelocityOverLifetimeModule limitVelocity =
+                _flamethrowerTestPs.limitVelocityOverLifetime;
+            if (limitVelocity.enabled)
+            {
+                limitVelocity.enabled = false;
+            }
+
+            if (_autoConfigureFlamethrowerBeamRenderer &&
+                _flamethrowerTestPs.TryGetComponent(out ParticleSystemRenderer psRenderer))
+            {
+                psRenderer.lengthScale = Mathf.Max(
+                    0.1f,
+                    _flamethrowerBeamLengthScale * FlamethrowerViewReachFraction);
+            }
+        }
+
+        private void ApplyFlamethrowerSprayProfile()
+        {
+            ApplyFlamethrowerReachSprayTuning();
+            if (!_autoTuneFlamethrowerParticleSpeed || _flamethrowerTestPs == null)
+            {
+                return;
+            }
 
             ParticleSystem.MainModule main = _flamethrowerTestPs.main;
-            main.startLifetime = new ParticleSystem.MinMaxCurve(lifetime);
-            main.startSpeed = new ParticleSystem.MinMaxCurve(requiredSpeed);
             main.startSize = new ParticleSystem.MinMaxCurve(Mathf.Max(0.01f, _flamethrowerBeamStartSize));
-            main.simulationSpace = ParticleSystemSimulationSpace.Local;
-            main.gravityModifier = new ParticleSystem.MinMaxCurve(0f);
             main.emitterVelocityMode = ParticleSystemEmitterVelocityMode.Transform;
 
             ParticleSystem.EmissionModule emission = _flamethrowerTestPs.emission;
@@ -1456,7 +1553,9 @@ namespace iStick2War_V2
                 _flamethrowerTestPs.TryGetComponent(out ParticleSystemRenderer psRenderer))
             {
                 psRenderer.renderMode = ParticleSystemRenderMode.Stretch;
-                psRenderer.lengthScale = Mathf.Max(0.1f, _flamethrowerBeamLengthScale);
+                psRenderer.lengthScale = Mathf.Max(
+                    0.1f,
+                    _flamethrowerBeamLengthScale * FlamethrowerViewReachFraction);
                 psRenderer.velocityScale = Mathf.Max(0f, _flamethrowerBeamSpeedScale);
                 psRenderer.cameraVelocityScale = 0f;
                 psRenderer.normalDirection = 1f;
