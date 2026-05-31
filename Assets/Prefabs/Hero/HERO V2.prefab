@@ -279,7 +279,8 @@ MonoBehaviour:
   jumpTeslaAnim: {fileID: 0}
   runTeslaAnim: {fileID: 0}
   shootingTeslaAnim: {fileID: 0}
-  teslaLightningBolt: {fileID: 8297807800781792528, guid: 85d0a94c48b1c4d42874f500047618a8, type: 3}
+  _teslaLightningBoltPrefab: {fileID: 4070861326612119536, guid: 85d0a94c48b1c4d42874f500047618a8, type: 3}
+  teslaLightningBolt: {fileID: 0}
   _syncTeslaLightningSortingWithTrail: 1
   _trailPrefab: {fileID: 1070164800395407800, guid: a69e897f8da83f04eb3aa26af134c272, type: 3}
   _trailWidth: 0.06

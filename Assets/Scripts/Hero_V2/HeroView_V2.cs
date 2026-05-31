@@ -135,7 +135,9 @@ namespace iStick2War_V2
 
         [Space(10)]
         [Header("Tesla blixt (LightningBolt2D)")]
-        [Tooltip("Dra hit LightningBolt2D-komponenten (objektet med blixteffekten).")]
+        [Tooltip("Prefab with LightningBolt2D (instantiated under the hero at runtime).")]
+        [SerializeField] private GameObject _teslaLightningBoltPrefab;
+        [Tooltip("Optional runtime instance; auto-created from prefab when empty or still a prefab-asset reference.")]
         [SerializeField] private MonoBehaviour teslaLightningBolt;
         [SerializeField] private bool _syncTeslaLightningSortingWithTrail = true;
         [System.NonSerialized] private TeslaLightningBoltCache _teslaLightningCache;
@@ -289,6 +291,7 @@ namespace iStick2War_V2
                 PlayLoop(idle);
             }
             PlayAimLoop();
+            EnsureTeslaLightningBoltInstance();
             StopFlamethrowerVfxIfActive();
             StopTeslaLightningVfxIfActive();
         }
@@ -314,6 +317,13 @@ namespace iStick2War_V2
                 !_model.isShootingPressed)
             {
                 StopFlamethrowerVfxIfActive();
+            }
+
+            if (_model == null ||
+                _model.currentWeaponType != WeaponType.Tesla ||
+                !_model.isShootingPressed)
+            {
+                StopTeslaLightningVfxIfActive();
             }
         }
 
@@ -841,8 +851,48 @@ namespace iStick2War_V2
             return true;
         }
 
+        private void EnsureTeslaLightningBoltInstance()
+        {
+            if (teslaLightningBolt != null && teslaLightningBolt.gameObject.scene.IsValid())
+            {
+                return;
+            }
+
+            if (_teslaLightningBoltPrefab == null)
+            {
+                return;
+            }
+
+            GameObject instance = Instantiate(_teslaLightningBoltPrefab, transform);
+            instance.name = "Tesla Lightning Bolt";
+            teslaLightningBolt = null;
+            MonoBehaviour[] behaviours = instance.GetComponentsInChildren<MonoBehaviour>(true);
+            for (int i = 0; i < behaviours.Length; i++)
+            {
+                MonoBehaviour behaviour = behaviours[i];
+                if (behaviour != null && behaviour.GetType().Name == "LightningBolt2D")
+                {
+                    teslaLightningBolt = behaviour;
+                    break;
+                }
+            }
+
+            if (teslaLightningBolt == null)
+            {
+                Debug.LogWarning(
+                    "[HeroView_V2] Tesla lightning prefab is missing a LightningBolt2D component.",
+                    _teslaLightningBoltPrefab);
+                Destroy(instance);
+                return;
+            }
+
+            instance.SetActive(false);
+            _teslaLightningCache = null;
+        }
+
         private TeslaLightningBoltCache ResolveTeslaLightningCache()
         {
+            EnsureTeslaLightningBoltInstance();
             if (teslaLightningBolt == null)
             {
                 _teslaLightningCache = null;
@@ -1668,6 +1718,7 @@ namespace iStick2War_V2
             private readonly FieldInfo _sortingLayer;
             private readonly FieldInfo _orderInLayer;
             private readonly MethodInfo _scheduleRegenerate;
+            private readonly MethodInfo _fireOnce;
 
             public MonoBehaviour Target => _target;
 
@@ -1689,6 +1740,7 @@ namespace iStick2War_V2
                 _sortingLayer = t.GetField("sortingLayer", Flags);
                 _orderInLayer = t.GetField("orderInLayer", Flags);
                 _scheduleRegenerate = t.GetMethod("ScheduleRegenerate", Flags);
+                _fireOnce = t.GetMethod("FireOnce", Flags);
             }
 
             public void PlayShot(
@@ -1709,7 +1761,14 @@ namespace iStick2War_V2
                     _orderInLayer?.SetValue(_target, orderInLayer);
                 }
 
-                _scheduleRegenerate?.Invoke(_target, null);
+                if (_fireOnce != null)
+                {
+                    _fireOnce.Invoke(_target, null);
+                }
+                else
+                {
+                    _scheduleRegenerate?.Invoke(_target, null);
+                }
             }
 
             public void Stop()
