@@ -28,7 +28,7 @@ namespace iStick2War_V2
  *
  * Purchases + currency rules executed here but priced by → WaveManager_V2.cs
  * Offer rows data → ShopOfferConfig_V2.cs (+ ShopOfferKind_V2 in same file)
- * World BUY / arrows / continue → ShopBuyButton_V2.cs, ShopNavArrow_V2.cs, ShopStartWaveButton_V2.cs
+ * World BUY / arrows / continue → ShopBuyButton_V2.cs, ShopNavArrow_V2.cs, ShopNavArrowUiButton_V2.cs, ShopStartWaveButton_V2.cs
  *
  * ---------------------------------------------------------
  * DESIGN PRINCIPLE
@@ -66,6 +66,24 @@ namespace iStick2War_V2
         [SerializeField] private bool _useCachedVisualScaleWhenParentedToCamera = true;
         [SerializeField] private bool _debugShopPanelLogs = false;
         [SerializeField] private bool _debugShopNavigationLogs = true;
+        [Header("UI carousel navigation (optional)")]
+        [Tooltip("Canvas/TextBTN previous offer control. Auto-bound by name when empty.")]
+        [SerializeField] private Button _uiPreviousOfferButton;
+        [Tooltip("Canvas/TextBTN next offer control. Auto-bound by name when empty.")]
+        [SerializeField] private Button _uiNextOfferButton;
+        [SerializeField] private string _uiPreviousOfferButtonObjectName = "TextBTN_MediumPrev";
+        [SerializeField] private string[] _uiPreviousOfferButtonAlternateNames =
+        {
+            "TextBTN_MediumPrevious",
+            "TextBTN_Medium_Prev",
+            "TextBTN_MediumBack",
+        };
+        [SerializeField] private string _uiNextOfferButtonObjectName = "TextBTN_MediumNext";
+        [SerializeField] private string[] _uiNextOfferButtonAlternateNames =
+        {
+            "TextBTN_Medium_Next",
+            "TextBTN_MediumForward",
+        };
         [Header("Offer previews (carousel)")]
         [Tooltip(
             "Parent transform for 3D/2D weapon preview objects. When set, every direct child is deactivated first, " +
@@ -108,6 +126,7 @@ namespace iStick2War_V2
             MaybeDetachFromScaledParent();
             CacheVisualRootTransform();
             EnsureLooseShopPreviewReparentedOnce();
+            BindUiCarouselNavigationButtons();
             Refresh();
         }
 
@@ -126,6 +145,7 @@ namespace iStick2War_V2
             RestoreVisualRootTransformIfNeeded();
             AttachToCameraIfNeeded();
             SetVisualComponentsVisible(true);
+            BindUiCarouselNavigationButtons();
             Refresh();
         }
 
@@ -153,6 +173,220 @@ namespace iStick2War_V2
             SetText(_bunkerCostText, $"Repair cost: {_waveManager.GetScaledBunkerRepairCost()}");
             EnsureLooseShopPreviewReparentedOnce();
             RefreshOfferSelection();
+        }
+
+        private void BindUiCarouselNavigationButtons()
+        {
+            _uiPreviousOfferButton = ResolveUiCarouselButton(
+                _uiPreviousOfferButtonObjectName,
+                _uiPreviousOfferButtonAlternateNames,
+                _uiPreviousOfferButton);
+            _uiNextOfferButton = ResolveUiCarouselButton(
+                _uiNextOfferButtonObjectName,
+                _uiNextOfferButtonAlternateNames,
+                _uiNextOfferButton);
+
+            EnsureUiNavComponent(_uiPreviousOfferButton, ShopNavArrow_V2.ArrowDirection.Previous);
+            EnsureUiNavComponent(_uiNextOfferButton, ShopNavArrow_V2.ArrowDirection.Next);
+
+            if (_uiPreviousOfferButton == null)
+            {
+                EnsureUiNavComponentOnNamedObject(
+                    _uiPreviousOfferButtonObjectName,
+                    ShopNavArrow_V2.ArrowDirection.Previous);
+            }
+
+            if (_uiNextOfferButton == null)
+            {
+                EnsureUiNavComponentOnNamedObject(
+                    _uiNextOfferButtonObjectName,
+                    ShopNavArrow_V2.ArrowDirection.Next);
+            }
+
+            if (_debugShopNavigationLogs)
+            {
+                Debug.Log(
+                    $"[ShopPanel_V2] UI carousel nav bound: previous='{DescribeUiButton(_uiPreviousOfferButton)}', " +
+                    $"next='{DescribeUiButton(_uiNextOfferButton)}'.");
+            }
+
+            if (_uiPreviousOfferButton == null)
+            {
+                Debug.LogWarning(
+                    $"[ShopPanel_V2] UI previous offer button not found. Expected '{_uiPreviousOfferButtonObjectName}' " +
+                    "under ShopPanel or Visual Root with a UnityEngine.UI.Button.");
+            }
+        }
+
+        private Button ResolveUiCarouselButton(
+            string primaryObjectName,
+            string[] alternateObjectNames,
+            Button serializedFallback)
+        {
+            Button resolved = FindUiButtonByNames(primaryObjectName, alternateObjectNames);
+            return resolved != null ? resolved : serializedFallback;
+        }
+
+        private Button FindUiButtonByNames(string primaryObjectName, string[] alternateObjectNames)
+        {
+            if (!string.IsNullOrWhiteSpace(primaryObjectName))
+            {
+                Button primary = FindUiButtonUnderShopHierarchy(primaryObjectName);
+                if (primary != null)
+                {
+                    return primary;
+                }
+            }
+
+            if (alternateObjectNames == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < alternateObjectNames.Length; i++)
+            {
+                string alternate = alternateObjectNames[i];
+                if (string.IsNullOrWhiteSpace(alternate))
+                {
+                    continue;
+                }
+
+                Button alternateMatch = FindUiButtonUnderShopHierarchy(alternate);
+                if (alternateMatch != null)
+                {
+                    return alternateMatch;
+                }
+            }
+
+            return null;
+        }
+
+        private Button FindUiButtonUnderShopHierarchy(string objectName)
+        {
+            if (string.IsNullOrWhiteSpace(objectName))
+            {
+                return null;
+            }
+
+            Transform[] searchRoots =
+            {
+                _visualRoot,
+                transform,
+            };
+
+            for (int rootIndex = 0; rootIndex < searchRoots.Length; rootIndex++)
+            {
+                Transform searchRoot = searchRoots[rootIndex];
+                if (searchRoot == null)
+                {
+                    continue;
+                }
+
+                Button match = FindUiButtonUnderRoot(searchRoot, objectName);
+                if (match != null)
+                {
+                    return match;
+                }
+            }
+
+            return null;
+        }
+
+        private static Button FindUiButtonUnderRoot(Transform searchRoot, string objectName)
+        {
+            Transform[] transforms = searchRoot.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                Transform candidate = transforms[i];
+                if (candidate == null ||
+                    !string.Equals(candidate.name, objectName, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                Button button = candidate.GetComponent<Button>();
+                if (button == null)
+                {
+                    button = candidate.GetComponentInChildren<Button>(true);
+                }
+
+                if (button == null)
+                {
+                    button = candidate.GetComponentInParent<Button>();
+                }
+
+                if (button != null)
+                {
+                    return button;
+                }
+            }
+
+            return null;
+        }
+
+        private void EnsureUiNavComponent(Button button, ShopNavArrow_V2.ArrowDirection direction)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            ShopNavArrowUiButton_V2 nav = button.GetComponent<ShopNavArrowUiButton_V2>();
+            if (nav == null)
+            {
+                nav = button.gameObject.AddComponent<ShopNavArrowUiButton_V2>();
+            }
+
+            nav.Configure(this, direction);
+        }
+
+        // Binds TextBTN roots that may only have SpriteRenderer + Collider2D (no Unity UI Button).
+        private void EnsureUiNavComponentOnNamedObject(string objectName, ShopNavArrow_V2.ArrowDirection direction)
+        {
+            if (string.IsNullOrWhiteSpace(objectName))
+            {
+                return;
+            }
+
+            Transform[] searchRoots =
+            {
+                _visualRoot,
+                transform,
+            };
+
+            for (int rootIndex = 0; rootIndex < searchRoots.Length; rootIndex++)
+            {
+                Transform searchRoot = searchRoots[rootIndex];
+                if (searchRoot == null)
+                {
+                    continue;
+                }
+
+                Transform[] transforms = searchRoot.GetComponentsInChildren<Transform>(true);
+                for (int i = 0; i < transforms.Length; i++)
+                {
+                    Transform candidate = transforms[i];
+                    if (candidate == null ||
+                        !string.Equals(candidate.name, objectName, System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    ShopNavArrowUiButton_V2 nav = candidate.GetComponent<ShopNavArrowUiButton_V2>();
+                    if (nav == null)
+                    {
+                        nav = candidate.gameObject.AddComponent<ShopNavArrowUiButton_V2>();
+                    }
+
+                    nav.Configure(this, direction);
+                    return;
+                }
+            }
+        }
+
+        private static string DescribeUiButton(Button button)
+        {
+            return button != null ? button.name : "none";
         }
 
         // Wire left arrow (e.g. btn_shop_arrow_left OnClick).

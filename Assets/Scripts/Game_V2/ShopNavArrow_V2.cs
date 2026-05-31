@@ -6,7 +6,8 @@ namespace iStick2War_V2
  * ShopNavArrow_V2 (Carousel previous/next hit target)
  *
  * PURPOSE:
- * Collider2D + OnMouseDown cycles ShopPanel_V2 offers (Previous/Next). Same world-space input pattern as ShopBuyButton_V2.
+     * Collider2D + OnMouseDown cycles ShopPanel_V2 offers (Previous/Next). Same world-space input pattern as ShopBuyButton_V2.
+     * For canvas TextBTN controls (TextBTN_MediumPrev/Next) use ShopNavArrowUiButton_V2 instead — not this component.
  *
  * ---------------------------------------------------------
  * NAVIGATION (Game_V2)
