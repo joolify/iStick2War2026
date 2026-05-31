@@ -413,6 +413,22 @@ public class ParatrooperView_V2 : MonoBehaviour
         return reference != null ? reference.Animation : null;
     }
 
+    private Spine.Animation FindSkeletonAnimation(string animationName)
+    {
+        if (_skeletonAnimation == null || string.IsNullOrEmpty(animationName))
+        {
+            return null;
+        }
+
+        SkeletonData data = _skeletonAnimation.Skeleton?.Data;
+        if (data == null && _skeletonAnimation.skeletonDataAsset != null)
+        {
+            data = _skeletonAnimation.skeletonDataAsset.GetSkeletonData(false);
+        }
+
+        return data?.FindAnimation(animationName);
+    }
+
     private void CheckAnimationNames()
     {
         if (!_deployAnim.name.Equals("E_deploy")) Debug.LogError(nameof(_deployAnim) + " has wrong animation");
@@ -539,6 +555,7 @@ public class ParatrooperView_V2 : MonoBehaviour
                 break;
             case StickmanBodyState.Electrocuted:
                 nextAnimation = AnimationFromRef(electrocutedAnim)
+                    ?? FindSkeletonAnimation("E/electrocuted")
                     ?? AnimationFromRef(_shootingMP40Anim)
                     ?? AnimationFromRef(_glideAnim);
                 loop = !(_model != null && _model.pendingDieAfterElectrocuteAnim);
@@ -546,7 +563,9 @@ public class ParatrooperView_V2 : MonoBehaviour
                 break;
             case StickmanBodyState.GlideElectrocuted:
                 nextAnimation = AnimationFromRef(glideElectrocuted)
+                    ?? FindSkeletonAnimation("E/glide_electrocuted")
                     ?? AnimationFromRef(electrocutedAnim)
+                    ?? FindSkeletonAnimation("E/electrocuted")
                     ?? AnimationFromRef(_glideAnim);
                 loop = !(_model != null && _model.pendingDieAfterElectrocuteAnim);
                 trackIndex = 1;
