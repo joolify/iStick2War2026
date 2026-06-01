@@ -141,6 +141,7 @@ namespace iStick2War_V2
         private readonly Dictionary<int, GameObject> _runtimeInstantiatedPreviewsBySourceId = new Dictionary<int, GameObject>();
         private bool _didEnsureShopNavButtons;
         private bool _didBuildPreviewCatalog;
+        private bool _shopIsVisible;
 
         // Carousel rows configured in the Inspector (read-only for bots / tools).
         public IReadOnlyList<ShopOfferConfig_V2> ConfiguredShopOffers =>
@@ -176,11 +177,13 @@ namespace iStick2War_V2
 
         public void Show()
         {
+            _shopIsVisible = true;
             gameObject.SetActive(true);
             _offerIndex = 0;
             RestoreVisualRootTransformIfNeeded();
             AttachToCameraIfNeeded();
             SetVisualComponentsVisible(true);
+            SetShopTextButtonsVisible(true);
             EnsureShopNavButtonsReady();
             BindUiCarouselNavigationButtons();
             BindShopActionTextButtons();
@@ -192,6 +195,9 @@ namespace iStick2War_V2
 
         public void Hide()
         {
+            _shopIsVisible = false;
+            SetShopTextButtonsVisible(false);
+            ResetShopNavPressedVisuals();
             DetachFromCameraIfNeeded();
             SetVisualComponentsVisible(false);
             gameObject.SetActive(false);
@@ -747,8 +753,37 @@ namespace iStick2War_V2
                 _textBtnMediumStartGameLocalPosition);
 
             _didEnsureShopNavButtons = true;
-            EnsureShopNavButtonsActive();
+            if (_shopIsVisible)
+            {
+                EnsureShopNavButtonsActive();
+            }
+
             ResetShopNavPressedVisuals();
+        }
+
+        private void SetShopTextButtonsVisible(bool visible)
+        {
+            SetShopNavButtonVisible(_uiPreviousOfferButtonObjectName, visible);
+            SetShopNavButtonVisible(_uiNextOfferButtonObjectName, visible);
+            SetShopNavButtonVisible(_uiBuyButtonObjectName, visible);
+            SetShopNavButtonVisible(_uiStartGameButtonObjectName, visible);
+            SetShopNavButtonVisible(_uiPreviousOfferButtonObjectName + "_Pressed", false);
+            SetShopNavButtonVisible(_uiNextOfferButtonObjectName + "_Pressed", false);
+            SetShopNavButtonVisible(_uiBuyButtonObjectName + "_Pressed", false);
+            SetShopNavButtonVisible(_uiStartGameButtonObjectName + "_Pressed", false);
+
+            if (!visible)
+            {
+                ShopNavArrowUiButton_V2[] navButtons = GetComponentsInChildren<ShopNavArrowUiButton_V2>(true);
+                for (int i = 0; i < navButtons.Length; i++)
+                {
+                    ShopNavArrowUiButton_V2 navButton = navButtons[i];
+                    if (navButton != null)
+                    {
+                        navButton.ResetToNormalVisual();
+                    }
+                }
+            }
         }
 
         private void EnsureShopNavButtonPair(
@@ -786,6 +821,11 @@ namespace iStick2War_V2
         // Keeps normal TextBTN roots alive during carousel refresh without clearing an in-progress pressed visual.
         private void EnsureShopNavButtonsActive()
         {
+            if (!_shopIsVisible)
+            {
+                return;
+            }
+
             EnsureNormalShopNavButtonActive(_uiPreviousOfferButtonObjectName);
             EnsureNormalShopNavButtonActive(_uiNextOfferButtonObjectName);
             EnsureNormalShopNavButtonActive(_uiBuyButtonObjectName);
@@ -921,6 +961,30 @@ namespace iStick2War_V2
         {
             return !string.IsNullOrWhiteSpace(objectName) &&
                    objectName.StartsWith("TextBTN_Medium", System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsShopTextButtonSprite(SpriteRenderer spriteRenderer)
+        {
+            if (spriteRenderer == null)
+            {
+                return false;
+            }
+
+            Transform walk = spriteRenderer.transform;
+            while (walk != null)
+            {
+                if (IsShopNavButtonObjectName(walk.name) ||
+                    (walk.name.EndsWith("_Pressed", System.StringComparison.OrdinalIgnoreCase) &&
+                     IsShopNavButtonObjectName(
+                         walk.name.Substring(0, walk.name.Length - "_Pressed".Length))))
+                {
+                    return true;
+                }
+
+                walk = walk.parent;
+            }
+
+            return false;
         }
 
         private void EnsureCarouselPreviewCatalogReady(Transform carouselRoot)
@@ -1778,7 +1842,9 @@ namespace iStick2War_V2
             for (int i = 0; i < spriteRenderers.Length; i++)
             {
                 SpriteRenderer spriteRenderer = spriteRenderers[i];
-                if (spriteRenderer == null || IsShopPreviewSprite(spriteRenderer))
+                if (spriteRenderer == null ||
+                    IsShopPreviewSprite(spriteRenderer) ||
+                    IsShopTextButtonSprite(spriteRenderer))
                 {
                     continue;
                 }
