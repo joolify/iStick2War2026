@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -5,11 +6,18 @@ using UnityEngine.UI;
 namespace iStick2War_V2
 {
     /*
-     * Shop carousel prev/next for TextBTN_MediumPrev/Next-style controls.
-     * Supports canvas UI (Button + raycast Graphic) and world-space sprites (Collider2D + OnMouseDown),
-     * matching btn_shop_arrow_left/right when TextBTN uses SpriteRenderer instead of UI Image.
-     * Swaps sibling *_Pressed visuals while held.
+     * TextBTN_Medium* shop controls: carousel prev/next, BUY, and start-game.
+     * Supports canvas UI (Button + raycast Graphic) and world-space sprites (Collider2D + mouse overlap).
+     * Sibling *_Pressed visuals show while the button is held (same as TextBTN_MediumNext).
      */
+    public enum ShopTextButtonBehavior
+    {
+        CarouselPrevious = 0,
+        CarouselNext = 1,
+        Buy = 2,
+        StartNextWave = 3,
+    }
+
     [AddComponentMenu("iStick2War/Shop Nav Arrow UI Button V2")]
     public sealed class ShopNavArrowUiButton_V2 :
         MonoBehaviour,
@@ -18,6 +26,8 @@ namespace iStick2War_V2
         IPointerExitHandler
     {
         [SerializeField] private ShopPanel_V2 _shopPanel;
+        [SerializeField] private WaveManager_V2 _waveManager;
+        [SerializeField] private ShopTextButtonBehavior _behavior = ShopTextButtonBehavior.CarouselPrevious;
         [SerializeField] private ShopNavArrow_V2.ArrowDirection _direction = ShopNavArrow_V2.ArrowDirection.Previous;
 
         [Header("Pressed visual (TextBTN siblings)")]
@@ -33,18 +43,21 @@ namespace iStick2War_V2
         private bool _listenerRegistered;
         private bool _visualPairResolved;
         private bool _usesUiClickPath;
+        private bool _isWorldPointerDown;
 
         private void Awake()
         {
             _button = GetComponent<Button>();
+            ResolveVisualPairIfNeeded();
+            ConfigureDecorativeLabelPassthrough();
             _usesUiClickPath = HasRaycastableGraphic();
             EnsureWorldSpaceHitTargetIfNeeded();
-            ResolveVisualPairIfNeeded();
             ShowNormalVisual();
         }
 
         private void OnEnable()
         {
+            ConfigureDecorativeLabelPassthrough();
             RegisterListenerIfNeeded();
             ResolveVisualPairIfNeeded();
             ShowNormalVisual();
@@ -53,6 +66,7 @@ namespace iStick2War_V2
         private void OnDisable()
         {
             UnregisterListener();
+            _isWorldPointerDown = false;
             ShowNormalVisual();
         }
 
@@ -60,11 +74,70 @@ namespace iStick2War_V2
         {
             _shopPanel = shopPanel;
             _direction = direction;
+            _behavior = direction == ShopNavArrow_V2.ArrowDirection.Previous
+                ? ShopTextButtonBehavior.CarouselPrevious
+                : ShopTextButtonBehavior.CarouselNext;
+            SyncShopInputLayer();
+            ResolveVisualPairIfNeeded();
+            ConfigureDecorativeLabelPassthrough();
             _usesUiClickPath = HasRaycastableGraphic();
             EnsureWorldSpaceHitTargetIfNeeded();
             UnregisterListener();
             RegisterListenerIfNeeded();
+            ShowNormalVisual();
+        }
+
+        internal void Configure(ShopPanel_V2 shopPanel, ShopTextButtonBehavior behavior, WaveManager_V2 waveManager = null)
+        {
+            _shopPanel = shopPanel;
+            _waveManager = waveManager;
+            _behavior = behavior;
+            if (behavior == ShopTextButtonBehavior.CarouselPrevious)
+            {
+                _direction = ShopNavArrow_V2.ArrowDirection.Previous;
+            }
+            else if (behavior == ShopTextButtonBehavior.CarouselNext)
+            {
+                _direction = ShopNavArrow_V2.ArrowDirection.Next;
+            }
+
+            SyncShopInputLayer();
             ResolveVisualPairIfNeeded();
+            ConfigureDecorativeLabelPassthrough();
+            _usesUiClickPath = HasRaycastableGraphic();
+            EnsureWorldSpaceHitTargetIfNeeded();
+            UnregisterListener();
+            RegisterListenerIfNeeded();
+            ShowNormalVisual();
+        }
+
+        // Re-fit collider after ShopPanel reparents to the camera (Show()).
+        internal void RefitHitTarget()
+        {
+            _usesUiClickPath = HasRaycastableGraphic();
+            EnsureWorldSpaceHitTargetIfNeeded();
+        }
+
+        internal void ResetToNormalVisual()
+        {
+            _isWorldPointerDown = false;
+            ShowNormalVisual();
+        }
+
+        internal void ForwardLabelPointerDown()
+        {
+            ShowPressedVisual();
+            HandleClick();
+            ShowPressedVisual();
+        }
+
+        internal void ForwardLabelPointerUp()
+        {
+            ShowNormalVisual();
+        }
+
+        internal void ForwardLabelPointerExit()
+        {
             ShowNormalVisual();
         }
 
@@ -98,35 +171,31 @@ namespace iStick2War_V2
             ShowNormalVisual();
         }
 
-        private void OnMouseDown()
+        private void Update()
         {
-            if (_usesUiClickPath)
+            if (_usesUiClickPath || !isActiveAndEnabled)
             {
                 return;
             }
 
-            ShowPressedVisual();
-            HandleClick();
-        }
-
-        private void OnMouseUp()
-        {
-            if (_usesUiClickPath)
+            if (Input.GetMouseButtonDown(0) && TryHandleWorldPointerDown())
             {
+                _isWorldPointerDown = true;
+                ShowPressedVisual();
+                HandleClick();
+                if (_isWorldPointerDown)
+                {
+                    ShowPressedVisual();
+                }
+
                 return;
             }
 
-            ShowNormalVisual();
-        }
-
-        private void OnMouseExit()
-        {
-            if (_usesUiClickPath)
+            if (_isWorldPointerDown && !Input.GetMouseButton(0))
             {
-                return;
+                _isWorldPointerDown = false;
+                ShowNormalVisual();
             }
-
-            ShowNormalVisual();
         }
 
         private void RegisterListenerIfNeeded()
@@ -170,16 +239,36 @@ namespace iStick2War_V2
 
             if (_debugLogs)
             {
-                Debug.Log($"[ShopNavArrowUiButton_V2] '{name}' click -> {_direction}");
+                Debug.Log($"[ShopNavArrowUiButton_V2] '{name}' click -> {_behavior}");
             }
 
-            if (_direction == ShopNavArrow_V2.ArrowDirection.Previous)
+            switch (_behavior)
             {
-                _shopPanel.OnShopArrowPreviousClicked();
-            }
-            else
-            {
-                _shopPanel.OnShopArrowNextClicked();
+                case ShopTextButtonBehavior.CarouselPrevious:
+                    _shopPanel.OnShopArrowPreviousClicked();
+                    break;
+                case ShopTextButtonBehavior.CarouselNext:
+                    _shopPanel.OnShopArrowNextClicked();
+                    break;
+                case ShopTextButtonBehavior.Buy:
+                    _shopPanel.OnPurchaseSelectedOfferClicked();
+                    break;
+                case ShopTextButtonBehavior.StartNextWave:
+                    if (_waveManager == null)
+                    {
+                        _waveManager = FindAnyObjectByType<WaveManager_V2>();
+                    }
+
+                    if (_waveManager != null)
+                    {
+                        _waveManager.StartNextWaveFromShop();
+                    }
+                    else
+                    {
+                        _shopPanel.OnStartNextWaveClicked();
+                    }
+
+                    break;
             }
         }
 
@@ -190,10 +279,202 @@ namespace iStick2War_V2
                 return;
             }
 
-            if (GetComponent<Collider2D>() != null)
+            BoxCollider2D boxCollider = GetComponent<BoxCollider2D>();
+            if (boxCollider == null)
+            {
+                SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();
+                if (spriteRenderer == null)
+                {
+                    spriteRenderer = GetComponentInChildren<SpriteRenderer>(true);
+                }
+
+                if (spriteRenderer == null)
+                {
+                    if (_debugLogs)
+                    {
+                        Debug.LogWarning(
+                            $"[ShopNavArrowUiButton_V2] '{name}' has no UI Graphic raycast target and no Collider2D. " +
+                            "Add a Collider2D (world sprite) or an Image with Raycast Target enabled (canvas UI).");
+                    }
+
+                    return;
+                }
+
+                boxCollider = gameObject.AddComponent<BoxCollider2D>();
+                if (_debugLogs)
+                {
+                    Debug.Log($"[ShopNavArrowUiButton_V2] '{name}' added BoxCollider2D for world-space clicks.");
+                }
+            }
+
+            FitBoxColliderToVisuals(boxCollider);
+        }
+
+        private void SyncShopInputLayer()
+        {
+            if (_shopPanel == null)
             {
                 return;
             }
+
+            int shopLayer = _shopPanel.gameObject.layer;
+            SetLayerRecursively(gameObject, shopLayer);
+        }
+
+        private static void SetLayerRecursively(GameObject root, int layer)
+        {
+            if (root == null)
+            {
+                return;
+            }
+
+            root.layer = layer;
+            Transform transform = root.transform;
+            for (int i = 0; i < transform.childCount; i++)
+            {
+                Transform child = transform.GetChild(i);
+                if (child != null)
+                {
+                    SetLayerRecursively(child.gameObject, layer);
+                }
+            }
+        }
+
+        private bool TryHandleWorldPointerDown()
+        {
+            if (_shopPanel == null || !_shopPanel.isActiveAndEnabled)
+            {
+                return false;
+            }
+
+            Collider2D hitCollider = GetComponent<Collider2D>();
+            if (hitCollider == null || !hitCollider.enabled)
+            {
+                return false;
+            }
+
+            Camera camera = Camera.main;
+            if (camera == null)
+            {
+                return false;
+            }
+
+            Vector3 screenPoint = Input.mousePosition;
+            screenPoint.z = 0f;
+            Vector2 worldPoint = camera.ScreenToWorldPoint(screenPoint);
+            return hitCollider.OverlapPoint(worldPoint);
+        }
+
+        private void ConfigureDecorativeLabelPassthrough()
+        {
+            TMP_Text label = FindAssociatedShopLabel();
+            if (label == null)
+            {
+                return;
+            }
+
+            // Label must receive UI raycasts so clicks on text forward to the nav button.
+            label.raycastTarget = true;
+
+            Graphic[] graphics = label.GetComponentsInChildren<Graphic>(true);
+            for (int i = 0; i < graphics.Length; i++)
+            {
+                Graphic graphic = graphics[i];
+                if (graphic != null)
+                {
+                    graphic.raycastTarget = true;
+                }
+            }
+
+            Collider2D[] colliders = label.GetComponentsInChildren<Collider2D>(true);
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                Collider2D collider = colliders[i];
+                if (collider != null)
+                {
+                    collider.enabled = false;
+                }
+            }
+
+            ShopNavArrowLabelForwarder_V2 forwarder = label.GetComponent<ShopNavArrowLabelForwarder_V2>();
+            if (forwarder == null)
+            {
+                forwarder = label.gameObject.AddComponent<ShopNavArrowLabelForwarder_V2>();
+            }
+
+            forwarder.Configure(this);
+
+            if (_debugLogs)
+            {
+                Debug.Log(
+                    $"[ShopNavArrowUiButton_V2] '{name}' wired label forwarder on '{label.name}'.");
+            }
+        }
+
+        private TMP_Text FindAssociatedShopLabel()
+        {
+            string labelName = ResolveAssociatedShopLabelName();
+            if (string.IsNullOrEmpty(labelName))
+            {
+                return null;
+            }
+
+            Transform anchor = _normalVisual != null ? _normalVisual.transform : transform;
+            Transform parent = anchor != null ? anchor.parent : null;
+            if (parent != null)
+            {
+                TMP_Text[] localTexts = parent.GetComponentsInChildren<TMP_Text>(true);
+                for (int i = 0; i < localTexts.Length; i++)
+                {
+                    TMP_Text localText = localTexts[i];
+                    if (localText != null &&
+                        localText.gameObject.name.Equals(labelName, System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        return localText;
+                    }
+                }
+            }
+
+            TMP_Text[] allTexts = UnityEngine.Object.FindObjectsByType<TMP_Text>(FindObjectsInactive.Include);
+            for (int i = 0; i < allTexts.Length; i++)
+            {
+                TMP_Text text = allTexts[i];
+                if (text != null &&
+                    text.gameObject.name.Equals(labelName, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return text;
+                }
+            }
+
+            return null;
+        }
+
+        private string ResolveAssociatedShopLabelName()
+        {
+            switch (_behavior)
+            {
+                case ShopTextButtonBehavior.CarouselPrevious:
+                    return "txt_shop_previous";
+                case ShopTextButtonBehavior.CarouselNext:
+                    return "txt_shop_next";
+                case ShopTextButtonBehavior.Buy:
+                    return "txt_shop_buy";
+                case ShopTextButtonBehavior.StartNextWave:
+                    return "txt_shop_startGame";
+                default:
+                    return null;
+            }
+        }
+
+        private void FitBoxColliderToVisuals(BoxCollider2D boxCollider)
+        {
+            if (boxCollider == null)
+            {
+                return;
+            }
+
+            bool hasBounds = false;
+            Bounds combined = default;
 
             SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();
             if (spriteRenderer == null)
@@ -201,46 +482,65 @@ namespace iStick2War_V2
                 spriteRenderer = GetComponentInChildren<SpriteRenderer>(true);
             }
 
-            if (spriteRenderer == null)
+            if (spriteRenderer != null)
             {
-                if (_debugLogs)
-                {
-                    Debug.LogWarning(
-                        $"[ShopNavArrowUiButton_V2] '{name}' has no UI Graphic raycast target and no Collider2D. " +
-                        "Add a Collider2D (world sprite) or an Image with Raycast Target enabled (canvas UI).");
-                }
-
-                return;
+                EncapsulateBounds(ref combined, ref hasBounds, spriteRenderer.bounds);
             }
 
-            BoxCollider2D boxCollider = gameObject.AddComponent<BoxCollider2D>();
-            FitBoxColliderToSprite(boxCollider, spriteRenderer);
-
-            if (_debugLogs)
+            TMP_Text label = FindAssociatedShopLabel();
+            if (label != null)
             {
-                Debug.Log($"[ShopNavArrowUiButton_V2] '{name}' added BoxCollider2D for world-space clicks.");
+                EncapsulateRectTransformBounds(label.rectTransform, ref combined, ref hasBounds);
             }
-        }
 
-        private void FitBoxColliderToSprite(BoxCollider2D boxCollider, SpriteRenderer spriteRenderer)
-        {
-            if (boxCollider == null || spriteRenderer == null)
+            if (!hasBounds)
             {
                 return;
             }
 
-            if (spriteRenderer.transform == transform && spriteRenderer.sprite != null)
-            {
-                boxCollider.size = spriteRenderer.sprite.bounds.size;
-                boxCollider.offset = spriteRenderer.sprite.bounds.center;
-                return;
-            }
-
-            Bounds bounds = spriteRenderer.bounds;
-            Vector3 localCenter = transform.InverseTransformPoint(bounds.center);
-            Vector3 localSize = transform.InverseTransformVector(bounds.size);
+            Vector3 localCenter = transform.InverseTransformPoint(combined.center);
+            Vector3 localSize = transform.InverseTransformVector(combined.size);
             boxCollider.offset = localCenter;
             boxCollider.size = new Vector2(Mathf.Abs(localSize.x), Mathf.Abs(localSize.y));
+        }
+
+        private static void EncapsulateBounds(ref Bounds combined, ref bool hasBounds, Bounds next)
+        {
+            if (!hasBounds)
+            {
+                combined = next;
+                hasBounds = true;
+                return;
+            }
+
+            combined.Encapsulate(next.min);
+            combined.Encapsulate(next.max);
+        }
+
+        private static void EncapsulateRectTransformBounds(
+            RectTransform rectTransform,
+            ref Bounds combined,
+            ref bool hasBounds)
+        {
+            if (rectTransform == null)
+            {
+                return;
+            }
+
+            Vector3[] corners = new Vector3[4];
+            rectTransform.GetWorldCorners(corners);
+            for (int i = 0; i < corners.Length; i++)
+            {
+                if (!hasBounds)
+                {
+                    combined = new Bounds(corners[i], Vector3.zero);
+                    hasBounds = true;
+                }
+                else
+                {
+                    combined.Encapsulate(corners[i]);
+                }
+            }
         }
 
         private bool HasRaycastableGraphic()
@@ -249,13 +549,29 @@ namespace iStick2War_V2
             for (int i = 0; i < graphics.Length; i++)
             {
                 Graphic graphic = graphics[i];
-                if (graphic != null && graphic.raycastTarget)
+                if (graphic != null &&
+                    graphic.raycastTarget &&
+                    !IsDecorativeShopButtonLabel(graphic.gameObject))
                 {
                     return true;
                 }
             }
 
             return false;
+        }
+
+        private static bool IsDecorativeShopButtonLabel(GameObject target)
+        {
+            if (target == null)
+            {
+                return false;
+            }
+
+            string name = target.name;
+            return name.Equals("txt_shop_previous", System.StringComparison.OrdinalIgnoreCase) ||
+                   name.Equals("txt_shop_next", System.StringComparison.OrdinalIgnoreCase) ||
+                   name.Equals("txt_shop_buy", System.StringComparison.OrdinalIgnoreCase) ||
+                   name.Equals("txt_shop_startGame", System.StringComparison.OrdinalIgnoreCase);
         }
 
         private void ResolveVisualPairIfNeeded()
@@ -282,11 +598,10 @@ namespace iStick2War_V2
 
             _visualPairResolved = _normalVisual != null && _pressedVisual != null;
 
-            if (!_visualPairResolved && _debugLogs)
+            if (_pressedVisual == null && _debugLogs && _normalVisual != null)
             {
                 Debug.LogWarning(
-                    $"[ShopNavArrowUiButton_V2] '{name}' could not resolve normal/pressed visuals. " +
-                    $"normal='{DescribeObject(_normalVisual)}', pressed='{DescribeObject(_pressedVisual)}'.");
+                    $"[ShopNavArrowUiButton_V2] '{name}' could not find pressed visual sibling for '{_normalVisual.name}'.");
             }
         }
 
@@ -307,62 +622,66 @@ namespace iStick2War_V2
             return candidate;
         }
 
-        private static bool IsShopTextButtonRoot(Transform transform)
-        {
-            if (transform == null)
-            {
-                return false;
-            }
-
-            string name = transform.name;
-            return name.StartsWith("TextBTN_Medium", System.StringComparison.OrdinalIgnoreCase) &&
-                   !name.EndsWith("_Pressed", System.StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static Transform FindPressedVisualForNormal(Transform normalRoot)
-        {
-            if (normalRoot == null)
-            {
-                return null;
-            }
-
-            string pressedName = normalRoot.name + "_Pressed";
-            Transform pressedChild = normalRoot.Find(pressedName);
-            if (pressedChild != null)
-            {
-                return pressedChild;
-            }
-
-            Transform parent = normalRoot.parent;
-            if (parent == null)
-            {
-                return null;
-            }
-
-            for (int i = 0; i < parent.childCount; i++)
-            {
-                Transform sibling = parent.GetChild(i);
-                if (sibling != null &&
-                    string.Equals(sibling.name, pressedName, System.StringComparison.OrdinalIgnoreCase))
-                {
-                    return sibling;
-                }
-            }
-
-            return null;
-        }
-
         private void ShowPressedVisual()
         {
             ResolveVisualPairIfNeeded();
+            if (_pressedVisual == null)
+            {
+                return;
+            }
+
+            SyncPressedTransformToNormal();
+            SyncPressedRenderingFromNormal();
             SetVisualRootActive(_normalVisual, false);
             SetVisualRootActive(_pressedVisual, true);
+        }
+
+        private void SyncPressedRenderingFromNormal()
+        {
+            if (_normalVisual == null || _pressedVisual == null)
+            {
+                return;
+            }
+
+            SpriteRenderer normalSprite = _normalVisual.GetComponent<SpriteRenderer>();
+            if (normalSprite == null)
+            {
+                normalSprite = _normalVisual.GetComponentInChildren<SpriteRenderer>(true);
+            }
+
+            SpriteRenderer pressedSprite = _pressedVisual.GetComponent<SpriteRenderer>();
+            if (pressedSprite == null)
+            {
+                pressedSprite = _pressedVisual.GetComponentInChildren<SpriteRenderer>(true);
+            }
+
+            if (normalSprite == null || pressedSprite == null)
+            {
+                return;
+            }
+
+            pressedSprite.sortingLayerID = normalSprite.sortingLayerID;
+            pressedSprite.sortingOrder = normalSprite.sortingOrder;
         }
 
         private void ShowNormalVisual()
         {
             SetVisualRootActive(_pressedVisual, false);
             SetVisualRootActive(_normalVisual, true);
+        }
+
+        private void SyncPressedTransformToNormal()
+        {
+            if (_normalVisual == null || _pressedVisual == null)
+            {
+                return;
+            }
+
+            Transform normalTransform = _normalVisual.transform;
+            Transform pressedTransform = _pressedVisual.transform;
+            pressedTransform.localPosition = normalTransform.localPosition;
+            pressedTransform.localRotation = normalTransform.localRotation;
+            pressedTransform.localScale = normalTransform.localScale;
         }
 
         private void SetVisualRootActive(GameObject visualRoot, bool visible)
@@ -410,9 +729,49 @@ namespace iStick2War_V2
             }
         }
 
-        private static string DescribeObject(GameObject target)
+        private static bool IsShopTextButtonRoot(Transform transform)
         {
-            return target != null ? target.name : "none";
+            if (transform == null)
+            {
+                return false;
+            }
+
+            string name = transform.name;
+            return name.StartsWith("TextBTN_Medium", System.StringComparison.OrdinalIgnoreCase) &&
+                   !name.EndsWith("_Pressed", System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static Transform FindPressedVisualForNormal(Transform normalRoot)
+        {
+            if (normalRoot == null)
+            {
+                return null;
+            }
+
+            string pressedName = normalRoot.name + "_Pressed";
+            Transform pressedChild = normalRoot.Find(pressedName);
+            if (pressedChild != null)
+            {
+                return pressedChild;
+            }
+
+            Transform parent = normalRoot.parent;
+            if (parent == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                Transform sibling = parent.GetChild(i);
+                if (sibling != null &&
+                    string.Equals(sibling.name, pressedName, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return sibling;
+                }
+            }
+
+            return null;
         }
     }
 }

@@ -217,6 +217,8 @@ namespace iStick2War_V2
             _lastMinigunHeatUpdateTime = Time.time;
         }
 
+        public bool IsCombatDisabled => isDisabled;
+
         internal void Shoot()
         {
             // Backwards-compatible entry point while caller migration is in progress.

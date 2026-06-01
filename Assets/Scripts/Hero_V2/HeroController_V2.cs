@@ -79,6 +79,24 @@ namespace iStick2War_V2
             ExecuteActions(deltaTime);
         }
 
+        internal void SetCombatPaused(bool paused)
+        {
+            if (!paused)
+            {
+                return;
+            }
+
+            _isShootLoopActive = false;
+            _outOfAmmoLatched = false;
+            _view.StopShoot();
+
+            HeroState currentState = _stateMachine.CurrentState;
+            if (currentState == HeroState.Shooting || currentState == HeroState.Reloading)
+            {
+                _stateMachine.ChangeState(HeroState.Idle);
+            }
+        }
+
         // -------------------------
         // INPUT
         // -------------------------
@@ -161,6 +179,16 @@ namespace iStick2War_V2
 
         private void HandleCombat()
         {
+            if (_weaponSystem.IsCombatDisabled)
+            {
+                if (_isShootLoopActive || _stateMachine.CurrentState == HeroState.Shooting)
+                {
+                    SetCombatPaused(true);
+                }
+
+                return;
+            }
+
             // Programmatic weapon switches (e.g. AutoHero_V2) bypass HandleWeaponSwitchInput, so _outOfAmmoLatched
             // can stay true after a dry-fire on the previous weapon even when the new weapon has a loaded magazine.
             if (_outOfAmmoLatched && _model.currentAmmo > 0)
@@ -300,7 +328,7 @@ namespace iStick2War_V2
             {
                 case AnimationEventType.ShootStarted:
                     LogCombat("OnAnimationEvent.ShootStarted");
-                    if (!_isShootLoopActive)
+                    if (_weaponSystem.IsCombatDisabled || !_isShootLoopActive)
                     {
                         LogCombat("[HeroController_V2] ShootStarted ignored: shoot loop inactive.");
                         return;

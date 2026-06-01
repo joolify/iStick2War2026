@@ -136,8 +136,18 @@ namespace iStick2War_V2
             _deathHandler.OnDeathHandled += OnGameOver;
         }
 
+        private void Start()
+        {
+            TrySubscribeWaveLoopCombatGate();
+        }
+
         private void OnDestroy()
         {
+            if (_cachedWaveManager != null)
+            {
+                _cachedWaveManager.OnStateChanged -= HandleWaveLoopStateChanged;
+            }
+
             if (_damageReceiver != null && _view != null)
             {
                 _damageReceiver.OnDamageTakenVfx -= _view.PlayHitBloodVfx;
@@ -203,6 +213,54 @@ namespace iStick2War_V2
             _input.Tick();
 
             _controller.Tick(dt);
+        }
+
+        private void TrySubscribeWaveLoopCombatGate()
+        {
+            if (_weaponSystem == null || _controller == null)
+            {
+                return;
+            }
+
+            if (_cachedWaveManager == null)
+            {
+                _cachedWaveManager = FindAnyObjectByType<WaveManager_V2>();
+            }
+
+            if (_cachedWaveManager == null)
+            {
+                return;
+            }
+
+            _cachedWaveManager.OnStateChanged -= HandleWaveLoopStateChanged;
+            _cachedWaveManager.OnStateChanged += HandleWaveLoopStateChanged;
+            ApplyWaveLoopCombatGate(_cachedWaveManager.State);
+        }
+
+        private void HandleWaveLoopStateChanged(WaveLoopState_V2 state)
+        {
+            ApplyWaveLoopCombatGate(state);
+        }
+
+        private void ApplyWaveLoopCombatGate(WaveLoopState_V2 state)
+        {
+            if (_weaponSystem == null || _controller == null)
+            {
+                return;
+            }
+
+            bool allowCombat = state == WaveLoopState_V2.InWave && !IsDead();
+            if (allowCombat)
+            {
+                _weaponSystem.Enable();
+                return;
+            }
+
+            _controller.SetCombatPaused(true);
+            if (!IsDead())
+            {
+                _weaponSystem.Disable();
+            }
         }
 
         private void OnGameOver()

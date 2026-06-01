@@ -958,7 +958,13 @@ namespace iStick2War_V2
         private void EnterPreparingState()
         {
             SetState(WaveLoopState_V2.Preparing);
-            float prepare = Mathf.Max(0.1f, _prepareDurationSeconds) + Mathf.Max(0f, _extraPrepareDelaySecondsForNextWave);
+            WaveConfig_V2 wave = GetCurrentWaveConfig();
+            float prepare = 0f;
+            if (wave == null || !wave.OpenShopDirectly)
+            {
+                prepare = Mathf.Max(0.1f, _prepareDurationSeconds) + Mathf.Max(0f, _extraPrepareDelaySecondsForNextWave);
+            }
+
             _extraPrepareDelaySecondsForNextWave = 0f;
             _stateEndTime = Time.time + prepare;
             _enemiesKilledThisWave = 0;
@@ -997,6 +1003,11 @@ namespace iStick2War_V2
                 return;
             }
 
+            if (TryOpenShopDirectlyFromWave(wave))
+            {
+                return;
+            }
+
             SetState(WaveLoopState_V2.InWave);
             SetCameraFollowEnabled(true);
             _stateEndTime = Time.time + wave.WaveDurationSeconds;
@@ -1031,6 +1042,21 @@ namespace iStick2War_V2
                 $"configDuration={wave.WaveDurationSeconds:0.0}s (not used as hard cap when spawner active), " +
                 $"spawnerFailSafe={failSafeBasis:0.0}s");
             _continueEnemyPressureMultiplierRuntime = 1f;
+        }
+
+        private bool TryOpenShopDirectlyFromWave(WaveConfig_V2 wave)
+        {
+            if (wave == null || !wave.OpenShopDirectly)
+            {
+                return false;
+            }
+
+            _scalingForActiveWave = BuildScalingSnapshot(wave, CurrentWaveNumber);
+            _hasScalingForActiveWave = true;
+            _inWaveEnteredUnscaledTime = Time.unscaledTime;
+            Log($"Wave {CurrentWaveNumber} skipped (OpenShopDirectly). Opening shop.");
+            CompleteWave();
+            return true;
         }
 
         private static WaveRunScalingSnapshot BuildContinuePressureSnapshot(

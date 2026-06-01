@@ -66,6 +66,14 @@ namespace iStick2War.Tests.EditMode
         }
 
         [Test]
+        public void OpenShopDirectly_ReflectsSerializedFlag()
+        {
+            EditModeTestHelpers.SetPrivateField(_config, "_openShopDirectly", true);
+
+            Assert.That(_config.OpenShopDirectly, Is.True);
+        }
+
+        [Test]
         public void WaveRewardCurrency_IsNotNegative()
         {
             EditModeTestHelpers.SetPrivateField(_config, "_waveRewardCurrency", -50);

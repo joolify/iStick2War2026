@@ -81,6 +81,12 @@ namespace iStick2War_V2
         [Header("Economy Reward")]
         [SerializeField] private int _waveRewardCurrency = 80;
 
+        [Header("Dev shortcut")]
+        [Tooltip(
+            "Skip playing this wave: after Prepare, open the shop immediately (wave reward still granted). " +
+            "Useful for testing shop UI on the first wave row. Turn off before shipping.")]
+        [SerializeField] private bool _openShopDirectly;
+
         public int EnemyCount => Mathf.Max(0, _enemyCount);
         public int GroundTrooperCount => Mathf.Max(0, _groundTrooperCount);
         public float WaveDurationSeconds => Mathf.Max(1f, _waveDurationSeconds);
@@ -93,5 +99,6 @@ namespace iStick2War_V2
         public int BombDroneCount => Mathf.Max(0, _bombDroneCount);
         public int MechRobotBossCount => Mathf.Max(0, _mechRobotBossCount);
         public int WaveRewardCurrency => Mathf.Max(0, _waveRewardCurrency);
+        public bool OpenShopDirectly => _openShopDirectly;
     }
 }
