@@ -251,6 +251,9 @@ namespace iStick2War_V2
         public int BunkerMaxHealth => _bunkerMaxHealthRuntime;
         public ShopPanel_V2 ShopPanel => _shopPanel;
         public Hero_V2 Hero => _hero;
+        public int DefaultHealthPackHealAmount => _healthPurchaseAmount;
+        public int DefaultBunkerRepairAmount => _bunkerRepairAmount;
+        public int DefaultBunkerMaxUpgradeAmount => _bunkerMaxUpgradeAmount;
         // Kill counter for the active wave (reset when a new wave starts).
         public int EnemiesKilledThisWave => _enemiesKilledThisWave;
         public int CheckpointContinueCost => Mathf.Max(0, _checkpointContinueCost);

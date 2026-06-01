@@ -142,6 +142,10 @@ namespace iStick2War_V2
         private bool _didEnsureShopNavButtons;
         private bool _didBuildPreviewCatalog;
         private bool _shopIsVisible;
+        private readonly ShopOfferStatsPresenter_V2 _offerStatsPresenter = new ShopOfferStatsPresenter_V2();
+        private bool _didResolveOfferStats;
+        private bool _didRebuildOfferStatBaselines;
+        private readonly HashSet<TMP_Text> _statTmpBindingUsed = new HashSet<TMP_Text>();
 
         // Carousel rows configured in the Inspector (read-only for bots / tools).
         public IReadOnlyList<ShopOfferConfig_V2> ConfiguredShopOffers =>
@@ -162,6 +166,8 @@ namespace iStick2War_V2
             _didBuildPreviewCatalog = false;
             EnsureLooseShopPreviewReparentedOnce();
             EnsureShopNavButtonsReady();
+            ResolveOfferStatsIfNeeded();
+            RebuildOfferStatBaselinesIfNeeded();
             BindUiCarouselNavigationButtons();
             BindShopActionTextButtons();
             Refresh();
@@ -198,6 +204,7 @@ namespace iStick2War_V2
             _shopIsVisible = false;
             SetShopTextButtonsVisible(false);
             ResetShopNavPressedVisuals();
+            _offerStatsPresenter.HideAll();
             DetachFromCameraIfNeeded();
             SetVisualComponentsVisible(false);
             gameObject.SetActive(false);
@@ -720,6 +727,52 @@ namespace iStick2War_V2
 
             EnsureShopNavButtonsActive();
             SetBuyButtonLabel(ResolveBuyButtonLabel(offer));
+            RefreshOfferStats(offer);
+        }
+
+        private void ResolveOfferStatsIfNeeded()
+        {
+            if (_didResolveOfferStats)
+            {
+                return;
+            }
+
+            _statTmpBindingUsed.Clear();
+            _offerStatsPresenter.ResolveBindings(
+                FindShopStatLabelTmpForBinding,
+                FindShopStatValueTmpForBinding,
+                FindShopObjectByName,
+                FindShopStatLabelNearValue);
+            _didResolveOfferStats = true;
+
+            if (_debugShopPanelLogs)
+            {
+                Debug.Log("[ShopPanel_V2] Resolved shop offer stat TMP bindings.");
+            }
+        }
+
+        private void RebuildOfferStatBaselinesIfNeeded()
+        {
+            if (_didRebuildOfferStatBaselines)
+            {
+                return;
+            }
+
+            _offerStatsPresenter.RebuildBaselines(_shopOffers, _waveManager);
+            _didRebuildOfferStatBaselines = true;
+        }
+
+        private void RefreshOfferStats(ShopOfferConfig_V2 offer)
+        {
+            if (!_shopIsVisible)
+            {
+                _offerStatsPresenter.HideAll();
+                return;
+            }
+
+            ResolveOfferStatsIfNeeded();
+            RebuildOfferStatBaselinesIfNeeded();
+            _offerStatsPresenter.Refresh(offer, _waveManager);
         }
 
         private void EnsureShopNavButtonsReady()
@@ -1740,11 +1793,148 @@ namespace iStick2War_V2
             }
         }
 
-        private TMP_Text FindShopTmpByObjectName(string objectName)
+        private enum ShopStatTmpBindingSlot
+        {
+            Any,
+            Label,
+            Value,
+        }
+
+        private TMP_Text FindShopStatLabelTmpForBinding(string objectName)
+        {
+            return RegisterShopStatTmpBinding(
+                FindShopTmpByObjectName(objectName, allowTextContentFallback: true, slot: ShopStatTmpBindingSlot.Label));
+        }
+
+        private TMP_Text FindShopStatValueTmpForBinding(string objectName)
+        {
+            return RegisterShopStatTmpBinding(
+                FindShopTmpByObjectName(objectName, allowTextContentFallback: true, slot: ShopStatTmpBindingSlot.Value));
+        }
+
+        private TMP_Text RegisterShopStatTmpBinding(TMP_Text match)
+        {
+            if (match != null)
+            {
+                _statTmpBindingUsed.Add(match);
+            }
+
+            return match;
+        }
+
+        private TMP_Text FindShopStatLabelNearValue(TMP_Text valueText, string labelObjectName, string[] labelAlternateNames)
+        {
+            if (valueText == null)
+            {
+                return null;
+            }
+
+            TMP_Text match = FindShopStatLabelNearValueOnParent(valueText.transform.parent, labelObjectName);
+            if (match != null)
+            {
+                return match;
+            }
+
+            if (labelAlternateNames == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < labelAlternateNames.Length; i++)
+            {
+                match = FindShopStatLabelNearValueOnParent(valueText.transform.parent, labelAlternateNames[i]);
+                if (match != null)
+                {
+                    return match;
+                }
+            }
+
+            return null;
+        }
+
+        private TMP_Text FindShopStatLabelNearValueOnParent(Transform parent, string labelObjectName)
+        {
+            if (parent == null || string.IsNullOrWhiteSpace(labelObjectName))
+            {
+                return null;
+            }
+
+            string normalizedTarget = NormalizeShopUiName(labelObjectName);
+            Transform[] transforms = parent.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                Transform candidate = transforms[i];
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                string normalizedCandidateName = NormalizeShopUiName(candidate.name);
+                bool nameMatches = normalizedCandidateName.Equals(normalizedTarget, System.StringComparison.Ordinal) ||
+                                   MatchesArmorPenLabelFuzzy(normalizedTarget, normalizedCandidateName);
+                if (!nameMatches)
+                {
+                    continue;
+                }
+
+                TMP_Text labelText = GetTmpOnTransform(candidate);
+                if (labelText == null ||
+                    _statTmpBindingUsed.Contains(labelText) ||
+                    !MatchesBindingSlot(labelText, ShopStatTmpBindingSlot.Label))
+                {
+                    continue;
+                }
+
+                _statTmpBindingUsed.Add(labelText);
+                return labelText;
+            }
+
+            return null;
+        }
+
+        private TMP_Text FindShopTmpByObjectName(
+            string objectName,
+            bool allowTextContentFallback = false,
+            ShopStatTmpBindingSlot slot = ShopStatTmpBindingSlot.Any)
         {
             if (string.IsNullOrWhiteSpace(objectName))
             {
                 return null;
+            }
+
+            string normalizedTarget = NormalizeShopUiName(objectName);
+            if (string.IsNullOrEmpty(normalizedTarget))
+            {
+                return null;
+            }
+
+            List<TMP_Text> matches = new List<TMP_Text>();
+            CollectShopStatTmpMatches(normalizedTarget, matches, matchTextContent: false, slot);
+            TMP_Text best = PickBestShopStatTmp(matches);
+            if (best != null)
+            {
+                return best;
+            }
+
+            if (!allowTextContentFallback || !normalizedTarget.StartsWith("txt_shop_stat", System.StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            matches.Clear();
+            CollectShopStatTmpMatches(normalizedTarget, matches, matchTextContent: true, slot);
+            return PickBestShopStatTmp(matches);
+        }
+
+        private void CollectShopStatTmpMatches(
+            string normalizedTarget,
+            List<TMP_Text> matches,
+            bool matchTextContent,
+            ShopStatTmpBindingSlot slot)
+        {
+            if (matches == null || string.IsNullOrEmpty(normalizedTarget))
+            {
+                return;
             }
 
             Transform[] searchRoots =
@@ -1761,41 +1951,283 @@ namespace iStick2War_V2
                     continue;
                 }
 
-                TMP_Text match = FindTmpUnderRoot(searchRoot, objectName);
-                if (match != null)
-                {
-                    return match;
-                }
+                CollectShopStatTmpMatchesUnderRoot(searchRoot, normalizedTarget, matches, matchTextContent, slot);
             }
 
             TMP_Text[] allTexts = Object.FindObjectsByType<TMP_Text>(FindObjectsInactive.Include);
             for (int i = 0; i < allTexts.Length; i++)
             {
-                TMP_Text text = allTexts[i];
-                if (text != null &&
-                    text.gameObject.name.Equals(objectName, System.StringComparison.OrdinalIgnoreCase))
-                {
-                    return text;
-                }
+                TryAddShopStatTmpMatchFromText(allTexts[i], normalizedTarget, matches, matchTextContent, slot);
             }
-
-            return null;
         }
 
-        private static TMP_Text FindTmpUnderRoot(Transform searchRoot, string objectName)
+        private void CollectShopStatTmpMatchesUnderRoot(
+            Transform searchRoot,
+            string normalizedTarget,
+            List<TMP_Text> matches,
+            bool matchTextContent,
+            ShopStatTmpBindingSlot slot)
         {
-            TMP_Text[] texts = searchRoot.GetComponentsInChildren<TMP_Text>(true);
-            for (int i = 0; i < texts.Length; i++)
+            Transform[] transforms = searchRoot.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < transforms.Length; i++)
             {
-                TMP_Text text = texts[i];
-                if (text != null &&
-                    text.gameObject.name.Equals(objectName, System.StringComparison.OrdinalIgnoreCase))
+                TryAddShopStatTmpMatch(transforms[i], normalizedTarget, matches, matchTextContent, slot);
+            }
+        }
+
+        private void TryAddShopStatTmpMatch(
+            Transform candidate,
+            string normalizedTarget,
+            List<TMP_Text> matches,
+            bool matchTextContent,
+            ShopStatTmpBindingSlot slot)
+        {
+            if (candidate == null)
+            {
+                return;
+            }
+
+            string normalizedCandidateName = NormalizeShopUiName(candidate.name);
+            bool transformNameMatches = normalizedCandidateName.Equals(normalizedTarget, System.StringComparison.Ordinal);
+            bool fuzzyArmorPenLabelMatch =
+                slot == ShopStatTmpBindingSlot.Label &&
+                MatchesArmorPenLabelFuzzy(normalizedTarget, normalizedCandidateName);
+            TMP_Text text = GetTmpOnTransform(candidate);
+            if (text == null || _statTmpBindingUsed.Contains(text) || matches.Contains(text))
+            {
+                return;
+            }
+
+            if (!MatchesBindingSlot(text, slot))
+            {
+                return;
+            }
+
+            if (transformNameMatches || fuzzyArmorPenLabelMatch)
+            {
+                matches.Add(text);
+                return;
+            }
+
+            if (matchTextContent &&
+                NormalizeShopUiName(text.text).Equals(normalizedTarget, System.StringComparison.Ordinal))
+            {
+                matches.Add(text);
+            }
+        }
+
+        private void TryAddShopStatTmpMatchFromText(
+            TMP_Text text,
+            string normalizedTarget,
+            List<TMP_Text> matches,
+            bool matchTextContent,
+            ShopStatTmpBindingSlot slot)
+        {
+            if (text == null || _statTmpBindingUsed.Contains(text) || matches.Contains(text))
+            {
+                return;
+            }
+
+            if (!MatchesBindingSlot(text, slot))
+            {
+                return;
+            }
+
+            if (NormalizeShopUiName(text.gameObject.name).Equals(normalizedTarget, System.StringComparison.Ordinal) ||
+                HasAncestorWithNormalizedName(text.transform, normalizedTarget) ||
+                (slot == ShopStatTmpBindingSlot.Label &&
+                 MatchesArmorPenLabelFuzzy(normalizedTarget, NormalizeShopUiName(text.gameObject.name))))
+            {
+                matches.Add(text);
+                return;
+            }
+
+            if (matchTextContent &&
+                NormalizeShopUiName(text.text).Equals(normalizedTarget, System.StringComparison.Ordinal))
+            {
+                matches.Add(text);
+            }
+        }
+
+        private static bool MatchesArmorPenLabelFuzzy(string normalizedTarget, string normalizedCandidateName)
+        {
+            if (!normalizedTarget.Contains("armor_pen_label", System.StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (!normalizedCandidateName.Contains("armor", System.StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (!normalizedCandidateName.Contains("pen", System.StringComparison.Ordinal) &&
+                !normalizedCandidateName.Contains("pe_n", System.StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (normalizedCandidateName.Contains("value", System.StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            return normalizedCandidateName.Contains("label", System.StringComparison.Ordinal) ||
+                   normalizedCandidateName.Contains("labael", System.StringComparison.Ordinal) ||
+                   normalizedCandidateName.Contains("labeal", System.StringComparison.Ordinal);
+        }
+
+        private static bool MatchesBindingSlot(TMP_Text text, ShopStatTmpBindingSlot slot)
+        {
+            if (text == null || slot == ShopStatTmpBindingSlot.Any)
+            {
+                return true;
+            }
+
+            string objectName = NormalizeShopUiName(text.gameObject.name);
+            string hierarchyNames = GetNormalizedHierarchyNames(text.transform);
+            bool looksLikeValue =
+                objectName.Contains("value", System.StringComparison.Ordinal) ||
+                hierarchyNames.Contains("value", System.StringComparison.Ordinal);
+            bool looksLikeLabel =
+                objectName.Contains("label", System.StringComparison.Ordinal) ||
+                objectName.Contains("labael", System.StringComparison.Ordinal) ||
+                objectName.Contains("labeal", System.StringComparison.Ordinal) ||
+                hierarchyNames.Contains("label", System.StringComparison.Ordinal) ||
+                hierarchyNames.Contains("labael", System.StringComparison.Ordinal) ||
+                hierarchyNames.Contains("labeal", System.StringComparison.Ordinal);
+
+            if (slot == ShopStatTmpBindingSlot.Label)
+            {
+                return !looksLikeValue || looksLikeLabel;
+            }
+
+            return !looksLikeLabel || looksLikeValue;
+        }
+
+        private static string GetNormalizedHierarchyNames(Transform node)
+        {
+            if (node == null)
+            {
+                return string.Empty;
+            }
+
+            System.Text.StringBuilder builder = new System.Text.StringBuilder();
+            Transform walk = node;
+            while (walk != null)
+            {
+                builder.Append(NormalizeShopUiName(walk.name));
+                walk = walk.parent;
+            }
+
+            return builder.ToString();
+        }
+
+        private static bool HasAncestorWithNormalizedName(Transform node, string normalizedTarget)
+        {
+            Transform walk = node != null ? node.parent : null;
+            while (walk != null)
+            {
+                if (NormalizeShopUiName(walk.name).Equals(normalizedTarget, System.StringComparison.Ordinal))
                 {
-                    return text;
+                    return true;
+                }
+
+                walk = walk.parent;
+            }
+
+            return false;
+        }
+
+        private TMP_Text PickBestShopStatTmp(List<TMP_Text> matches)
+        {
+            if (matches == null || matches.Count == 0)
+            {
+                return null;
+            }
+
+            Transform preferredRoot = _visualRoot != null ? _visualRoot : transform;
+            TMP_Text best = null;
+            int bestScore = int.MinValue;
+            for (int i = 0; i < matches.Count; i++)
+            {
+                TMP_Text candidate = matches[i];
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                int score = 0;
+                if (candidate.gameObject.activeInHierarchy)
+                {
+                    score += 8;
+                }
+
+                if (preferredRoot != null && candidate.transform.IsChildOf(preferredRoot))
+                {
+                    score += 16;
+                }
+
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = candidate;
                 }
             }
 
-            return null;
+            return best;
+        }
+
+        private static TMP_Text GetTmpOnTransform(Transform transformNode)
+        {
+            if (transformNode == null)
+            {
+                return null;
+            }
+
+            TMP_Text text = transformNode.GetComponent<TMP_Text>();
+            if (text != null)
+            {
+                return text;
+            }
+
+            return transformNode.GetComponentInChildren<TMP_Text>(true);
+        }
+
+        private static string NormalizeShopUiName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return string.Empty;
+            }
+
+            string trimmed = name.Trim();
+            System.Text.StringBuilder builder = new System.Text.StringBuilder(trimmed.Length);
+            bool pendingSeparator = false;
+            for (int i = 0; i < trimmed.Length; i++)
+            {
+                char character = trimmed[i];
+                if (char.IsWhiteSpace(character) || character == '_' || character == '-')
+                {
+                    pendingSeparator = builder.Length > 0;
+                    continue;
+                }
+
+                if (pendingSeparator)
+                {
+                    builder.Append('_');
+                    pendingSeparator = false;
+                }
+
+                builder.Append(char.ToLowerInvariant(character));
+            }
+
+            while (builder.Length > 0 && builder[builder.Length - 1] == '_')
+            {
+                builder.Length--;
+            }
+
+            return builder.ToString();
         }
 
         private static bool IsShopPreviewSprite(SpriteRenderer spriteRenderer)
