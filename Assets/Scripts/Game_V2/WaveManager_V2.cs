@@ -175,16 +175,16 @@ namespace iStick2War_V2
         [SerializeField] private float _waveSpawnerStuckFailSafeSeconds = 300f;
 
         [Header("Economy")]
-        [SerializeField] private int _startingCurrency = 100;
-        [SerializeField] private int _healthPurchaseCost = 60;
+        [SerializeField] private int _startingCurrency = 750;
+        [SerializeField] private int _healthPurchaseCost = 79;
         [SerializeField] private int _healthPurchaseAmount = 25;
-        [SerializeField] private int _bunkerRepairCost = 80;
+        [SerializeField] private int _bunkerRepairCost = 425;
         [SerializeField] private int _bunkerRepairAmount = 25;
         [Tooltip("Starting bunker max HP for the run (can be raised via shop BunkerMaxUpgrade).")]
         [SerializeField] private int _bunkerMaxHealth = 250;
         [SerializeField] private int _startingBunkerHealth = 250;
         [Tooltip("Base cost for bunker max upgrade; scales with each purchase.")]
-        [SerializeField] private int _bunkerMaxUpgradeBaseCost = 90;
+        [SerializeField] private int _bunkerMaxUpgradeBaseCost = 649;
         [Tooltip("HP added to bunker max (and current, up to new max) per upgrade.")]
         [SerializeField] private int _bunkerMaxUpgradeAmount = 25;
         [Tooltip("0 = no cap on bunker max from upgrades.")]

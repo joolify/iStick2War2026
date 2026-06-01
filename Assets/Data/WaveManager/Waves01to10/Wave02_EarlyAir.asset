@@ -18,4 +18,4 @@ MonoBehaviour:
   _enemyHealthMultiplier: 1
   _enemyDamageMultiplier: 1
   _bomberPassCount: 0
-  _waveRewardCurrency: 80
+  _waveRewardCurrency: 520

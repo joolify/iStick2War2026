@@ -21,4 +21,4 @@ MonoBehaviour:
   _kamikazeDroneCount: 0
   _bombDroneCount: 0
   _mechRobotBossCount: 0
-  _waveRewardCurrency: 120
+  _waveRewardCurrency: 1510

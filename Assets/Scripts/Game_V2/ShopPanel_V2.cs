@@ -171,6 +171,7 @@ namespace iStick2War_V2
             BindUiCarouselNavigationButtons();
             BindShopActionTextButtons();
             Refresh();
+            HideShopCarouselPreviews();
         }
 
         private void OnDestroy()
@@ -205,6 +206,7 @@ namespace iStick2War_V2
             SetShopTextButtonsVisible(false);
             ResetShopNavPressedVisuals();
             _offerStatsPresenter.HideAll();
+            HideShopCarouselPreviews();
             DetachFromCameraIfNeeded();
             SetVisualComponentsVisible(false);
             gameObject.SetActive(false);
@@ -218,13 +220,17 @@ namespace iStick2War_V2
             }
 
             SetText(_waveText, $"Wave: {_waveManager.CurrentWaveNumber}");
-            SetText(_currencyText, $"Currency: {_waveManager.Currency}");
+            SetText(_currencyText, $"Balance: {ShopMoneyFormat_V2.Format(_waveManager.Currency)}");
             SetText(
                 _bunkerText,
                 $"Bunker HP: {_waveManager.BunkerHealth}/{_waveManager.BunkerMaxHealth}");
             SetText(_buyButtonText, _buyButtonDefaultLabel);
-            SetText(_healthCostText, $"Heal cost: {_waveManager.GetHealthPurchaseCost()}");
-            SetText(_bunkerCostText, $"Repair cost: {_waveManager.GetScaledBunkerRepairCost()}");
+            SetText(
+                _healthCostText,
+                $"Heal: {ShopMoneyFormat_V2.Format(_waveManager.GetHealthPurchaseCost())}");
+            SetText(
+                _bunkerCostText,
+                $"Repair: {ShopMoneyFormat_V2.Format(_waveManager.GetScaledBunkerRepairCost())}");
             EnsureLooseShopPreviewReparentedOnce();
             Transform carouselRoot = ResolveCarouselPreviewObjectsRoot();
             ReparentLooseShopPreviewsUnderCarousel(carouselRoot);
@@ -700,7 +706,14 @@ namespace iStick2War_V2
                 _didBuildPreviewCatalog = true;
             }
 
-            ApplySelectedOfferPreviewVisibility(carouselRoot, offer);
+            if (!_shopIsVisible)
+            {
+                HideShopCarouselPreviews();
+            }
+            else
+            {
+                ApplySelectedOfferPreviewVisibility(carouselRoot, offer);
+            }
 
             if (_debugShopPanelLogs)
             {
@@ -730,6 +743,7 @@ namespace iStick2War_V2
                 FindShopStatValueTmpForBinding,
                 FindShopObjectByName,
                 FindShopStatLabelNearValue);
+            SuppressUnboundDuplicateShopStatTmps();
             _didResolveOfferStats = true;
 
             if (_debugShopPanelLogs)
@@ -1089,6 +1103,11 @@ namespace iStick2War_V2
             }
         }
 
+        private void HideShopCarouselPreviews()
+        {
+            HideAllShopPreviewsUnder(ResolveCarouselPreviewObjectsRoot());
+        }
+
         private void HideAllShopPreviewsUnder(Transform carouselRoot)
         {
             if (carouselRoot == null)
@@ -1111,6 +1130,31 @@ namespace iStick2War_V2
                 }
 
                 candidate.gameObject.SetActive(false);
+            }
+
+            DisableUnnamedCarouselPreviewSprites(carouselRoot);
+        }
+
+        // Covers editor names like Thompson-preview-bild / thompson_temp that do not use shop_* yet.
+        private void DisableUnnamedCarouselPreviewSprites(Transform carouselRoot)
+        {
+            if (carouselRoot == null)
+            {
+                return;
+            }
+
+            SpriteRenderer[] spriteRenderers = carouselRoot.GetComponentsInChildren<SpriteRenderer>(true);
+            for (int i = 0; i < spriteRenderers.Length; i++)
+            {
+                SpriteRenderer spriteRenderer = spriteRenderers[i];
+                if (spriteRenderer == null ||
+                    IsShopTextButtonSprite(spriteRenderer) ||
+                    IsShopPreviewSprite(spriteRenderer))
+                {
+                    continue;
+                }
+
+                spriteRenderer.enabled = false;
             }
         }
 
@@ -1341,8 +1385,22 @@ namespace iStick2War_V2
 
         private static bool IsShopPreviewObjectName(string objectName)
         {
-            return !string.IsNullOrWhiteSpace(objectName) &&
-                   objectName.StartsWith("shop_", System.StringComparison.OrdinalIgnoreCase);
+            if (string.IsNullOrWhiteSpace(objectName))
+            {
+                return false;
+            }
+
+            if (objectName.StartsWith("shop_", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (objectName.Contains("preview", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return objectName.Equals("thompson_temp", System.StringComparison.OrdinalIgnoreCase);
         }
 
         private static void EnsurePreviewUnderCarouselRoot(Transform previewTransform, Transform carouselRoot)
@@ -1598,12 +1656,12 @@ namespace iStick2War_V2
                 case ShopOfferKind_V2.HealthPack:
                     return _waveManager.IsHeroHealthFull()
                         ? "HP full"
-                        : $"Cost: {_waveManager.GetOfferEffectiveCost(offer)}";
+                        : ShopMoneyFormat_V2.FormatCost(_waveManager.GetOfferEffectiveCost(offer));
 
                 case ShopOfferKind_V2.BunkerRepair:
                     return _waveManager.IsBunkerFullHealth()
                         ? "Bunker full"
-                        : $"Cost: {offer.Cost}";
+                        : ShopMoneyFormat_V2.FormatCost(_waveManager.GetOfferEffectiveCost(offer));
 
                 case ShopOfferKind_V2.BunkerMaxUpgrade:
                     if (_waveManager.IsBunkerMaxAtCap())
@@ -1611,7 +1669,7 @@ namespace iStick2War_V2
                         return "Bunker max cap";
                     }
 
-                    return $"Cost: {_waveManager.GetOfferEffectiveCost(offer)} (+max HP)";
+                    return $"{ShopMoneyFormat_V2.FormatCost(_waveManager.GetOfferEffectiveCost(offer))} (+max HP)";
 
                 case ShopOfferKind_V2.WeaponUnlock:
                     if (_waveManager.IsWeaponOwned(offer.Weapon))
@@ -1625,8 +1683,8 @@ namespace iStick2War_V2
                             ? "Role: Control"
                             : "";
                     return string.IsNullOrEmpty(role)
-                        ? $"Cost: {offer.Cost}"
-                        : $"Cost: {offer.Cost} ({role})";
+                        ? ShopMoneyFormat_V2.FormatCost(offer.Cost)
+                        : $"{ShopMoneyFormat_V2.FormatCost(offer.Cost)} ({role})";
 
                 case ShopOfferKind_V2.AmmoRefill:
                     if (offer.Weapon == null)
@@ -1641,10 +1699,10 @@ namespace iStick2War_V2
 
                     return _waveManager.IsWeaponAmmoFull(offer.Weapon)
                         ? "Ammo full"
-                        : $"Cost: {offer.Cost}";
+                        : ShopMoneyFormat_V2.FormatCost(offer.Cost);
 
                 default:
-                    return $"Cost: {offer.Cost}";
+                    return ShopMoneyFormat_V2.FormatCost(offer.Cost);
             }
         }
 
@@ -1870,7 +1928,7 @@ namespace iStick2War_V2
 
             List<TMP_Text> matches = new List<TMP_Text>();
             CollectShopStatTmpMatches(normalizedTarget, matches, matchTextContent: false, slot);
-            TMP_Text best = PickBestShopStatTmp(matches);
+            TMP_Text best = PickBestShopStatTmp(matches, normalizedTarget);
             if (best != null)
             {
                 return best;
@@ -1883,7 +1941,53 @@ namespace iStick2War_V2
 
             matches.Clear();
             CollectShopStatTmpMatches(normalizedTarget, matches, matchTextContent: true, slot);
-            return PickBestShopStatTmp(matches);
+            return PickBestShopStatTmp(matches, normalizedTarget);
+        }
+
+        private void SuppressUnboundDuplicateShopStatTmps()
+        {
+            Transform statsRoot = ResolveShopStatsContainerRoot();
+            if (statsRoot == null)
+            {
+                return;
+            }
+
+            TMP_Text[] texts = statsRoot.GetComponentsInChildren<TMP_Text>(true);
+            for (int i = 0; i < texts.Length; i++)
+            {
+                TMP_Text text = texts[i];
+                if (text == null ||
+                    _statTmpBindingUsed.Contains(text) ||
+                    !IsShopStatObjectName(text.gameObject.name))
+                {
+                    continue;
+                }
+
+                text.gameObject.SetActive(false);
+            }
+        }
+
+        private Transform ResolveShopStatsContainerRoot()
+        {
+            GameObject panel = FindShopObjectByName("panel_shop_stats");
+            if (panel != null)
+            {
+                return panel.transform;
+            }
+
+            panel = FindShopObjectByName("ShopStatsContainer");
+            return panel != null ? panel.transform : null;
+        }
+
+        private static bool IsShopStatObjectName(string objectName)
+        {
+            if (string.IsNullOrWhiteSpace(objectName))
+            {
+                return false;
+            }
+
+            string normalized = NormalizeShopUiName(objectName);
+            return normalized.StartsWith("txt_shop_stat", System.StringComparison.Ordinal);
         }
 
         private void CollectShopStatTmpMatches(
@@ -1970,7 +2074,8 @@ namespace iStick2War_V2
             }
 
             if (matchTextContent &&
-                NormalizeShopUiName(text.text).Equals(normalizedTarget, System.StringComparison.Ordinal))
+                NormalizeShopUiName(text.text).Equals(normalizedTarget, System.StringComparison.Ordinal) &&
+                MatchesStatObjectIdentity(text, normalizedTarget))
             {
                 matches.Add(text);
             }
@@ -2003,10 +2108,32 @@ namespace iStick2War_V2
             }
 
             if (matchTextContent &&
-                NormalizeShopUiName(text.text).Equals(normalizedTarget, System.StringComparison.Ordinal))
+                NormalizeShopUiName(text.text).Equals(normalizedTarget, System.StringComparison.Ordinal) &&
+                MatchesStatObjectIdentity(text, normalizedTarget))
             {
                 matches.Add(text);
             }
+        }
+
+        private static bool MatchesStatObjectIdentity(TMP_Text text, string normalizedTarget)
+        {
+            if (text == null || string.IsNullOrEmpty(normalizedTarget))
+            {
+                return false;
+            }
+
+            string normalizedObjectName = NormalizeShopUiName(text.gameObject.name);
+            if (normalizedObjectName.Equals(normalizedTarget, System.StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            if (HasAncestorWithNormalizedName(text.transform, normalizedTarget))
+            {
+                return true;
+            }
+
+            return MatchesArmorPenLabelFuzzy(normalizedTarget, normalizedObjectName);
         }
 
         private static bool MatchesArmorPenLabelFuzzy(string normalizedTarget, string normalizedCandidateName)
@@ -2099,7 +2226,7 @@ namespace iStick2War_V2
             return false;
         }
 
-        private TMP_Text PickBestShopStatTmp(List<TMP_Text> matches)
+        private TMP_Text PickBestShopStatTmp(List<TMP_Text> matches, string normalizedTarget)
         {
             if (matches == null || matches.Count == 0)
             {
@@ -2117,17 +2244,7 @@ namespace iStick2War_V2
                     continue;
                 }
 
-                int score = 0;
-                if (candidate.gameObject.activeInHierarchy)
-                {
-                    score += 8;
-                }
-
-                if (preferredRoot != null && candidate.transform.IsChildOf(preferredRoot))
-                {
-                    score += 16;
-                }
-
+                int score = ScoreShopStatTmpCandidate(candidate, normalizedTarget, preferredRoot);
                 if (score > bestScore)
                 {
                     bestScore = score;
@@ -2136,6 +2253,67 @@ namespace iStick2War_V2
             }
 
             return best;
+        }
+
+        private static int ScoreShopStatTmpCandidate(TMP_Text candidate, string normalizedTarget, Transform preferredRoot)
+        {
+            int score = 0;
+            if (candidate.gameObject.activeInHierarchy)
+            {
+                score += 8;
+            }
+
+            if (preferredRoot != null && candidate.transform.IsChildOf(preferredRoot))
+            {
+                score += 16;
+            }
+
+            string normalizedObjectName = NormalizeShopUiName(candidate.gameObject.name);
+            if (!string.IsNullOrEmpty(normalizedTarget) &&
+                normalizedObjectName.Equals(normalizedTarget, System.StringComparison.Ordinal))
+            {
+                score += 200;
+            }
+            else if (!string.IsNullOrEmpty(normalizedTarget) &&
+                     MatchesArmorPenLabelFuzzy(normalizedTarget, normalizedObjectName))
+            {
+                score += 180;
+            }
+            else if (HasAncestorWithNormalizedName(candidate.transform, normalizedTarget))
+            {
+                score += 150;
+            }
+
+            if (candidate.rectTransform != null)
+            {
+                Vector2 size = candidate.rectTransform.sizeDelta;
+                if (size.x > 4f || size.y > 4f)
+                {
+                    score += 24;
+                }
+
+                if (Mathf.Abs(candidate.rectTransform.anchoredPosition.x) > 0.5f ||
+                    Mathf.Abs(candidate.rectTransform.anchoredPosition.y) > 0.5f)
+                {
+                    score += 12;
+                }
+            }
+
+            string normalizedText = NormalizeShopUiName(candidate.text);
+            if (!string.IsNullOrEmpty(normalizedTarget) &&
+                normalizedText.Equals(normalizedTarget, System.StringComparison.Ordinal))
+            {
+                score += 6;
+            }
+            else if (!string.IsNullOrEmpty(normalizedTarget) &&
+                     !string.IsNullOrEmpty(normalizedText) &&
+                     !normalizedText.Equals(normalizedTarget, System.StringComparison.Ordinal) &&
+                     normalizedText.Contains("txt_shop_stat", System.StringComparison.Ordinal))
+            {
+                score -= 80;
+            }
+
+            return score;
         }
 
         private static TMP_Text GetTmpOnTransform(Transform transformNode)
@@ -2234,10 +2412,19 @@ namespace iStick2War_V2
             for (int i = 0; i < spriteRenderers.Length; i++)
             {
                 SpriteRenderer spriteRenderer = spriteRenderers[i];
-                if (spriteRenderer == null ||
-                    IsShopPreviewSprite(spriteRenderer) ||
-                    IsShopTextButtonSprite(spriteRenderer))
+                if (spriteRenderer == null || IsShopTextButtonSprite(spriteRenderer))
                 {
+                    continue;
+                }
+
+                if (IsShopPreviewSprite(spriteRenderer))
+                {
+                    spriteRenderer.enabled = visible;
+                    if (!visible)
+                    {
+                        spriteRenderer.gameObject.SetActive(false);
+                    }
+
                     continue;
                 }
 

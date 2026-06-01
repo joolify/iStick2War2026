@@ -97,7 +97,10 @@ namespace iStick2War_V2
             ResolveRow(_ammo, findLabelText, findValueText, findLabelNearValue);
 
             _costText = findLabelText("txt_shop_cost");
-            _statsPanelRoot = findObject != null ? findObject("panel_shop_stats") : null;
+            if (findObject != null)
+            {
+                _statsPanelRoot = findObject("panel_shop_stats") ?? findObject("ShopStatsContainer");
+            }
 
             _bindingsResolved = true;
         }
@@ -124,7 +127,7 @@ namespace iStick2War_V2
 
             SetStatsPanelVisible(true);
             int cost = waveManager.GetOfferEffectiveCost(offer);
-            SetPlainText(_costText, $"Cost: {cost}");
+            SetPlainText(_costText, ShopMoneyFormat_V2.FormatCost(cost));
 
             switch (offer.Kind)
             {
