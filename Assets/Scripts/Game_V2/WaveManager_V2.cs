@@ -1885,6 +1885,14 @@ namespace iStick2War_V2
                 {
                     _topBarCurrentAmmoText.text = "Ammo: ∞/∞";
                 }
+                else if (_hero.CurrentWeaponType == WeaponType.Bazooka)
+                {
+                    int loaded = _hero.GetCurrentWeaponAmmo();
+                    int totalCapacity =
+                        _hero.GetCurrentWeaponMaxAmmo() + _hero.GetCurrentWeaponMaxReserveAmmo();
+                    _topBarCurrentAmmoText.text =
+                        $"Ammo: {loaded}/{totalCapacity}";
+                }
                 else
                 {
                     bool isColt45 = _hero.CurrentWeaponType == WeaponType.Colt45;

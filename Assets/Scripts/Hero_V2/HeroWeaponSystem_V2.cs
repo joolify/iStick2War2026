@@ -499,7 +499,8 @@ namespace iStick2War_V2
 
         public bool TryRefillMagazineForWeapon(HeroWeaponDefinition_V2 definition)
         {
-            if (definition == null || isDisabled || _model.isDead)
+            // Shop ammo purchases and test-range setup must work while combat gate has disabled shooting (Shop phase).
+            if (definition == null || _model.isDead)
             {
                 return false;
             }

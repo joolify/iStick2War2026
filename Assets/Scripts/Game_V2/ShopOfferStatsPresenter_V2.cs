@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using iStick2War;
 using TMPro;
 using UnityEngine;
 
@@ -202,11 +203,18 @@ namespace iStick2War_V2
 
             if (showAmmoRow)
             {
+                int totalCapacity = weapon.MaxAmmo + weapon.MaxReserveAmmo;
+                string ammoValue = weapon.WeaponType == WeaponType.Bazooka
+                    ? $"{weapon.MaxAmmo} / {totalCapacity}"
+                    : $"{weapon.MaxAmmo} / {weapon.MaxReserveAmmo}";
+                float ammoTierSample = weapon.WeaponType == WeaponType.Bazooka
+                    ? totalCapacity
+                    : weapon.MaxReserveAmmo;
                 ShowWeaponRow(
                     _ammo,
                     "Ammo",
-                    $"{weapon.MaxAmmo} / {weapon.MaxReserveAmmo}",
-                    _tierResolver.GetAmmoReserveTier(weapon.MaxReserveAmmo));
+                    ammoValue,
+                    _tierResolver.GetAmmoReserveTier(ammoTierSample));
             }
         }
 
