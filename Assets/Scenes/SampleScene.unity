@@ -4569,6 +4569,7 @@ GameObject:
   m_Component:
   - component: {fileID: 636748124}
   - component: {fileID: 636748123}
+  - component: {fileID: 636748125}
   m_Layer: 0
   m_Name: _GM
   m_TagString: Untagged
@@ -4608,6 +4609,44 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &636748125
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 636748122}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 784cc44473131bd47b6d63340c330226, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::iStick2War_V2.AudioManager_V2
+  _bombPlaneLoop: {fileID: 8300000, guid: 58c0aa2a08d98f64ebd261b8c98f9216, type: 3}
+  _droneLoop: {fileID: 8300000, guid: c67a76fa57941e44c8164ecd86e90eab, type: 3}
+  _helicopterLoop: {fileID: 8300000, guid: 906240591b29af14aaeff6521b796184, type: 3}
+  _grenadeExplosion: {fileID: 8300000, guid: 43ccbc0ca635fee40be8252d062956fc, type: 3}
+  _missileExplosion: {fileID: 8300000, guid: b7d498ae2653ce04996c2e829626eabc, type: 3}
+  _bulletHitDirt: {fileID: 8300000, guid: d4241d0b357544b4eb862d48da1c826c, type: 3}
+  _bulletHitFlesh: {fileID: 8300000, guid: 0664cac1ff75004468b7e98c7a08ed91, type: 3}
+  _bulletHitMetal: {fileID: 8300000, guid: f8c912be751237444a23087b180a9cf1, type: 3}
+  _clickMenu: {fileID: 8300000, guid: a11722a39d8009841a9e6d9661dc481a, type: 3}
+  _failure: {fileID: 8300000, guid: 2f5ea588907330a47b02f7cbf21fd20c, type: 3}
+  _levelDone: {fileID: 8300000, guid: bbe615a5dc4bd6e4fb6aedc40babf6a9, type: 3}
+  _purchaseSuccess: {fileID: 8300000, guid: bd0e154cb1f8f144ba890787d97fe239, type: 3}
+  _settingsSuccess: {fileID: 8300000, guid: b32859e4e50178440af6b9fcd2cb652b, type: 3}
+  _bossMusic: {fileID: 8300000, guid: 8ecf7f6662bceb742976c13769fcc0ae, type: 3}
+  _gameMusic: {fileID: 8300000, guid: 264c41d790e4bad46893f3a8ac6dac39, type: 3}
+  _menuMusic: {fileID: 8300000, guid: 5b96567ca67129143bab689e6d3d4a58, type: 3}
+  _bazookaShot: {fileID: 8300000, guid: 9b0509c354e5d3a46be164b3398eb80e, type: 3}
+  _flamethrowerShot: {fileID: 8300000, guid: 19d0df48b3c66f140b0fd1956dd339b8, type: 3}
+  _machineGunShot: {fileID: 8300000, guid: 8945cab69a5038b4484ee315bb20d40e, type: 3}
+  _pistolShot: {fileID: 8300000, guid: f62e7c04742f9ea49899a2aeca737bc9, type: 3}
+  _reloadGun: {fileID: 8300000, guid: 77d11656f97ded348b7ae7b06c1330cc, type: 3}
+  _reloadMachineGun: {fileID: 8300000, guid: d9b62846eb36d6e4bbc2f7731e8a9c21, type: 3}
+  _teslaShot: {fileID: 8300000, guid: 3bfafa65306cb0141bcec0da043cc09c, type: 3}
+  _sfxVolume: 0.9
+  _musicVolume: 0.55
+  _worldLoopVolume: 0.22
 --- !u!1 &638875883
 GameObject:
   m_ObjectHideFlags: 0

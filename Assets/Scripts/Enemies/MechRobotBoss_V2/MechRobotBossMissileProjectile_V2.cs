@@ -265,6 +265,7 @@ namespace iStick2War_V2
             }
 
             _didHit = true;
+            AudioManager_V2.PlayMissileExplosion();
             HitStop_V2.Request(HitStopKind_V2.LargeExplosion);
             SpawnExplosionEffect();
             Destroy(gameObject);

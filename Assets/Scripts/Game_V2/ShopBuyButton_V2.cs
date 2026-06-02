@@ -29,6 +29,7 @@ namespace iStick2War_V2
 
         private void OnMouseDown()
         {
+            AudioManager_V2.PlayMenuClick();
             if (_shopPanel == null)
             {
                 if (_debugLogs)

@@ -275,6 +275,11 @@ namespace iStick2War_V2
             }
 
             _hasExploded = true;
+            bool shouldPlayExplosionSound = impactCollider != null;
+            if (shouldPlayExplosionSound)
+            {
+                AudioManager_V2.PlayMissileExplosion();
+            }
             if (_logExplosionDetonation)
             {
                 LogDetonationCommitted(impactCollider, detonationVia);

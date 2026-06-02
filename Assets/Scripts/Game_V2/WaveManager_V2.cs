@@ -282,6 +282,7 @@ namespace iStick2War_V2
         // Call from MainMenu_V2 after Play: shows Wave N for _topBarWaveTextVisibleSeconds, then fades out.
         public void NotifyGameStartedFromMainMenu()
         {
+            AudioManager_V2.SetGameplayMusic();
             BeginTopBarWaveTextIntro();
         }
 
@@ -435,6 +436,7 @@ namespace iStick2War_V2
 
         private void Start()
         {
+            AudioManager_V2.EnsureInstance();
             ResolveCameraFollowReferenceIfNeeded();
             ResolveTopBarReferencesIfNeeded();
             CacheTopBarWaveTextBaseColorIfNeeded();
@@ -942,6 +944,7 @@ namespace iStick2War_V2
             }
 
             ApplyBetweenWavePressureReset();
+            AudioManager_V2.PlayWaveComplete();
 
             int reward = _hasScalingForActiveWave
                 ? _scalingForActiveWave.EffectiveWaveRewardCurrency
@@ -1009,6 +1012,15 @@ namespace iStick2War_V2
             if (TryOpenShopDirectlyFromWave(wave))
             {
                 return;
+            }
+
+            if (wave.MechRobotBossCount > 0)
+            {
+                AudioManager_V2.SetBossMusic();
+            }
+            else
+            {
+                AudioManager_V2.SetGameplayMusic();
             }
 
             SetState(WaveLoopState_V2.InWave);
@@ -1150,6 +1162,7 @@ namespace iStick2War_V2
 
         private void EnterGameOverState()
         {
+            AudioManager_V2.PlayFailure();
             SetState(WaveLoopState_V2.GameOver);
             if (_enemySpawner != null)
             {
@@ -1374,6 +1387,7 @@ namespace iStick2War_V2
             WaveRunTelemetry_V2.RecordSyntheticTelemetryError(
                 "GameError",
                 _lastGameErrorReason + "\n--- diagnostics (pre StopWave / pre state listeners) ---\n" + diagnostics);
+            AudioManager_V2.PlayFailure();
 
             SetState(WaveLoopState_V2.GameError);
             if (_enemySpawner != null)

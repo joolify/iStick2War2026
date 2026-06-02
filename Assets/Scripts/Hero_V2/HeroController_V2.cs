@@ -89,6 +89,7 @@ namespace iStick2War_V2
             _isShootLoopActive = false;
             _outOfAmmoLatched = false;
             _view.StopShoot();
+            AudioManager_V2.StopContinuousWeaponShot(WeaponType.None);
 
             HeroState currentState = _stateMachine.CurrentState;
             if (currentState == HeroState.Shooting || currentState == HeroState.Reloading)
@@ -201,6 +202,8 @@ namespace iStick2War_V2
                 _isShootLoopActive = false;
                 if (_weaponSystem.StartReload())
                 {
+                    AudioManager_V2.StopContinuousWeaponShot(_model.currentWeaponType);
+                    AudioManager_V2.PlayWeaponReload(_model.currentWeaponType);
                     _outOfAmmoLatched = false;
                     _view.StopShoot();
                     _view.PlayReload();
@@ -230,6 +233,7 @@ namespace iStick2War_V2
             if (!_input.IsShootingHeld && _isShootLoopActive)
             {
                 _isShootLoopActive = false;
+                AudioManager_V2.StopContinuousWeaponShot(_model.currentWeaponType);
                 _stateMachine.ChangeState(HeroState.Idle);
                 _view.StopShoot();
             }
@@ -259,6 +263,7 @@ namespace iStick2War_V2
 
             _isShootLoopActive = false;
             _outOfAmmoLatched = false;
+            AudioManager_V2.StopContinuousWeaponShot(WeaponType.None);
             _view.StopShoot();
             _view.RefreshWeaponVisualsForCurrentState();
         }
@@ -365,6 +370,7 @@ namespace iStick2War_V2
                     if (!_input.IsShootingHeld)
                     {
                         _isShootLoopActive = false;
+                        AudioManager_V2.StopContinuousWeaponShot(_model.currentWeaponType);
                         _stateMachine.ChangeState(HeroState.Idle);
                     }
                     break;
@@ -431,8 +437,9 @@ namespace iStick2War_V2
                     PlayHeroMuzzleFlash(aimPos, direction);
                 }
 
-                if (didShootProjectile)
+                if (didShootProjectile && ShouldPlayShotAudioNow(_model.currentWeaponType))
                 {
+                    AudioManager_V2.PlayWeaponShot(_model.currentWeaponType);
                     _view?.PlayVisualRecoil(_model.currentWeaponType, direction);
                 }
                 return;
@@ -440,9 +447,14 @@ namespace iStick2War_V2
 
             if (_weaponSystem.Shoot(shotContext, out var shotResult))
             {
+                if (ShouldPlayShotAudioNow(_model.currentWeaponType))
+                {
+                    AudioManager_V2.PlayWeaponShot(_model.currentWeaponType);
+                }
                 if (shotResult.DidHit)
                 {
                     BulletImpactVfx_V2.PlayIfSurfaceHit(shotResult.Hit, direction);
+                    AudioManager_V2.PlayImpactForCollider(shotResult.Hit.collider);
                 }
                 else
                 {
@@ -512,6 +524,17 @@ namespace iStick2War_V2
                 default:
                     return true;
             }
+        }
+
+        private bool ShouldPlayShotAudioNow(WeaponType weaponType)
+        {
+            // Continuous weapon audio should only run while fire input is actively held.
+            if (weaponType == WeaponType.Tesla || weaponType == WeaponType.Flamethrower)
+            {
+                return _input.IsShootingHeld;
+            }
+
+            return true;
         }
 
         private static bool TryGetMainCameraEdgePoint(Vector2 origin, Vector2 direction, out Vector2 edgePoint)

@@ -74,10 +74,13 @@ namespace iStick2War_V2
 
         private void Awake()
         {
+            AudioManager_V2.EnsureInstance();
             if (_pauseTimeWhileMenuOpen)
             {
                 Time.timeScale = 0f;
             }
+
+            AudioManager_V2.SetMenuMusic();
         }
 
         private void Start()
@@ -212,6 +215,7 @@ namespace iStick2War_V2
                 return;
             }
 
+            AudioManager_V2.PlayMenuClick();
             _gameStarted = true;
 
             if (_settingsPanel != null)
@@ -250,6 +254,7 @@ namespace iStick2War_V2
         // Called from UI Button or MainMenuNavButton_V2 (world Collider2D).
         public void HandleSettingsToggle()
         {
+            AudioManager_V2.PlayMenuClick();
             if (_settingsPanel == null)
             {
                 if (!_loggedMissingSettingsPanel)
@@ -263,6 +268,7 @@ namespace iStick2War_V2
             }
 
             _settingsPanel.SetActive(!_settingsPanel.activeSelf);
+            AudioManager_V2.PlaySettingsSuccess();
         }
 
         private void HideMainMenuRoots()
@@ -294,6 +300,7 @@ namespace iStick2War_V2
         {
             _gameStarted = false;
             gameObject.SetActive(true);
+            AudioManager_V2.SetMenuMusic();
 
             bool anyConfigured = false;
             for (int i = 0; i < _hideOnPlay.Length; i++)

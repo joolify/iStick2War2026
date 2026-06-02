@@ -55,6 +55,7 @@ namespace iStick2War_V2
 
         private void OnMouseDown()
         {
+            AudioManager_V2.PlayMenuClick();
             WaveManager_V2 waveManager = Object.FindAnyObjectByType<WaveManager_V2>();
             if (waveManager != null)
             {

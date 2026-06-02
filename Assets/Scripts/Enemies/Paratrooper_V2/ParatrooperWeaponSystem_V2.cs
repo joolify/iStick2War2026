@@ -696,6 +696,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
                 didApplyDamage = true;
                 damageHit = firstBunkerAlongRay;
                 BulletImpactVfx_V2.PlayIfSurfaceHit(damageHit, direction);
+                AudioManager_V2.PlayImpactForCollider(damageHit.collider);
             }
         }
 
@@ -734,6 +735,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
                     didApplyDamage = true;
                     damageHit = h;
                     BulletImpactVfx_V2.PlayIfSurfaceHit(damageHit, direction);
+                    AudioManager_V2.PlayImpactForCollider(damageHit.collider);
                     break;
                 }
 
@@ -758,6 +760,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
                     heroRoot.ReceiveDamage(_baseDamage, incomingShotWorldDirection: direction);
                     didApplyDamage = true;
                     damageHit = h;
+                    AudioManager_V2.PlayImpactForCollider(h.collider);
                     break;
                 }
 
@@ -798,6 +801,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 
                     didApplyDamage = true;
                     damageHit = h;
+                    AudioManager_V2.PlayImpactForCollider(h.collider);
                     break;
                 }
             }

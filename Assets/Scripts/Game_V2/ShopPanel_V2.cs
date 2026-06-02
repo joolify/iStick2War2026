@@ -650,6 +650,14 @@ namespace iStick2War_V2
             }
 
             bool ok = _waveManager.TryPurchaseOffer(offer);
+            if (ok)
+            {
+                AudioManager_V2.PlayPurchaseSuccess();
+            }
+            else
+            {
+                AudioManager_V2.PlayFailure();
+            }
 
             if (_debugShopNavigationLogs)
             {
@@ -673,6 +681,7 @@ namespace iStick2War_V2
 
         public void OnStartNextWaveClicked()
         {
+            AudioManager_V2.PlayMenuClick();
             _waveManager?.StartNextWaveFromShop();
         }
 
