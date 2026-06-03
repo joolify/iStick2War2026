@@ -949,6 +949,11 @@ public class Paratrooper : MonoBehaviour
                 }
             }
 
+        if (to == StickmanBodyState.GlideDie && _model != null)
+        {
+            _model.pendingAirborneDeathLandImpactClip = true;
+        }
+
         if (to == StickmanBodyState.Land && from == StickmanBodyState.GlideDie)
         {
             _model.pendingDieAfterLandAnim = true;
@@ -1137,6 +1142,13 @@ public class Paratrooper : MonoBehaviour
         if (_clampDeathFallToGround)
         {
             ClampFeetAboveGroundDuringDeathFall();
+        }
+
+        if (_stateMachine != null &&
+            _stateMachine.CurrentState == StickmanBodyState.GlideDie &&
+            IsGrounded())
+        {
+            TryGlideDieToLandWhenProbeGrounded();
         }
     }
 
@@ -1568,6 +1580,11 @@ public class Paratrooper : MonoBehaviour
     private void TryGlideDieToLandWhenProbeGrounded()
     {
         if (_stateMachine == null || _stateMachine.CurrentState != StickmanBodyState.GlideDie)
+        {
+            return;
+        }
+
+        if (!IsGrounded())
         {
             return;
         }

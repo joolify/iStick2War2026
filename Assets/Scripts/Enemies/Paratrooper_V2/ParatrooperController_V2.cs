@@ -169,6 +169,7 @@ public class ParatrooperController_V2 : MonoBehaviour
                 if (_model != null && _model.pendingDieAfterLandAnim)
                 {
                     _model.pendingDieAfterLandAnim = false;
+                    _model.pendingAirborneDeathLandImpactClip = false;
                     _stateMachine.ChangeState(StickmanBodyState.Die);
                 }
                 else if (_debugGrenadeOnlyMode)

@@ -249,23 +249,21 @@ namespace iStick2War_V2
                 adjustedDirection = ApplyMinigunSpread(direction);
             }
 
+            float viewReachFraction = 1f;
             if (_model.currentWeaponType == WeaponType.Flamethrower)
             {
                 debugRay = false;
-                float reachFraction = flamethrowerViewReachFraction >= 0f
+                viewReachFraction = flamethrowerViewReachFraction >= 0f
                     ? Mathf.Clamp01(flamethrowerViewReachFraction)
                     : HeroCombatCameraReach_V2.DefaultFlamethrowerViewReachFraction;
-                if (HeroCombatCameraReach_V2.TryGetReachPoint(
-                        Camera.main,
-                        origin,
-                        adjustedDirection,
-                        reachFraction,
-                        out _,
-                        out float flamethrowerReach))
-                {
-                    range = flamethrowerReach;
-                }
             }
+
+            range = HeroCombatCameraReach_V2.ClampShotRangeToCombatView(
+                Camera.main,
+                origin,
+                adjustedDirection,
+                range,
+                viewReachFraction);
 
             return new HeroShotContext_V2
             {

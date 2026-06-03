@@ -549,7 +549,9 @@ public class ParatrooperView_V2 : MonoBehaviour
         bool loop = false;
         bool isDeathState = state == StickmanBodyState.Die || state == StickmanBodyState.GlideDie;
         bool landAfterAirborneDeath =
-            state == StickmanBodyState.Land && _lastStateBeforeChange == StickmanBodyState.GlideDie;
+            state == StickmanBodyState.Land &&
+            (_lastStateBeforeChange == StickmanBodyState.GlideDie ||
+             (_model != null && _model.pendingAirborneDeathLandImpactClip));
 
         if (!isDeathState && !landAfterAirborneDeath && !_suppressParachuteVisualsForGroundSpawn)
         {
@@ -587,6 +589,7 @@ public class ParatrooperView_V2 : MonoBehaviour
                 if (_model != null && _model.suppressDieAnimationFromAirborneImpact)
                 {
                     _model.suppressDieAnimationFromAirborneImpact = false;
+                    _model.pendingAirborneDeathLandImpactClip = false;
                     LogAnimation("[ParatrooperView_V2] Die skipped (airborne impact already on Land).");
                     return;
                 }
@@ -797,8 +800,8 @@ public class ParatrooperView_V2 : MonoBehaviour
         {
             _deathAnimationLocked = true;
             ForceApplyAnimationFirstFrame(nextAnimation);
-            _suppressParachuteVisuals = true;
-            HideParachuteVisualsForGroundDeath();
+            // E/land_fall_down_back* keys parachute slot + parachuteBone; do not use ground-death parachute hide here.
+            RestoreParachuteSlotVisibilityForAirborneDeathLand();
             TryDropMp40OnGroundDeath();
             _skeletonAnimation.LateUpdate();
             if (trackEntry != null && _controller != null)
@@ -828,26 +831,17 @@ public class ParatrooperView_V2 : MonoBehaviour
         LogActiveTracks($"after SetAnimation ({state})");
     }
 
-    /// <summary>Full-body land on track 0; after GlideDie death, random fall-down-back impact instead of <c>E_land</c>.</summary>
+    // Full-body land on track 0; after GlideDie death, random E/land_fall_down_back* impact (not E/land).
     private void ResolveLandClip(bool afterGlideDieDeath, out Spine.Animation anim, out int landTrackIndex)
     {
         if (afterGlideDieDeath)
         {
-            anim = ResolveRandomGroundFallDownBackAnimation();
+            anim = ResolveRandomAirborneDeathLandImpactAnimation();
             landTrackIndex = 0;
-            if (anim == null && _landAnim != null && _landAnim.Animation != null)
-            {
-                anim = _landAnim.Animation;
-            }
-
             if (anim == null)
             {
-                if (_landAnim != null)
-                {
-                    Debug.LogError(
-                        "[ParatrooperView_V2] Airborne death impact: no ground-death or land animation resolved. Falling back to glide.");
-                }
-
+                Debug.LogError(
+                    "[ParatrooperView_V2] Airborne death impact: no E/land_fall_down_back* animation resolved. Falling back to glide.");
                 anim = _glideAnim != null ? _glideAnim.Animation : null;
                 landTrackIndex = 1;
             }
@@ -1053,6 +1047,33 @@ public class ParatrooperView_V2 : MonoBehaviour
     private Spine.Animation ResolveFallDownSpineAnimation()
     {
         return ResolveRandomGroundFallDownBackAnimation();
+    }
+
+    // GlideDie -> Land: pick one of E/land_fall_down_back / back2 / back3 only.
+    private Spine.Animation ResolveRandomAirborneDeathLandImpactAnimation()
+    {
+        var options = new List<Spine.Animation>(3);
+        TryAddReferenceAssetFallDownBackOption(_landFallDownBackAnim, nameof(_landFallDownBackAnim), options);
+        TryAddReferenceAssetFallDownBackOption(_landFallDownBack2Anim, nameof(_landFallDownBack2Anim), options);
+        TryAddReferenceAssetFallDownBackOption(_landFallDownBack3Anim, nameof(_landFallDownBack3Anim), options);
+
+        if (options.Count == 0)
+        {
+            TryAddSkeletonFallDownBackOption("E/land_fall_down_back", options);
+            TryAddSkeletonFallDownBackOption("E/land_fall_down_back2", options);
+            TryAddSkeletonFallDownBackOption("E/land_fall_down_back3", options);
+        }
+
+        if (options.Count == 0)
+        {
+            Debug.LogWarning(
+                "[ParatrooperView_V2] No E/land_fall_down_back* animation found for airborne death land impact.");
+            return null;
+        }
+
+        Spine.Animation selected = options[Random.Range(0, options.Count)];
+        LogAnimation($"[ParatrooperView_V2] Selected airborne death land impact: {selected.Name}");
+        return selected;
     }
 
     // Ground death on foot: random E/fall_down_back* (falls back to assigned land_fall_down_back* refs / skeleton names).
@@ -1285,6 +1306,37 @@ public class ParatrooperView_V2 : MonoBehaviour
                 Debug.Log($"[ParatrooperView_V2] Ground death: cleared parachute attachments on {hiddenCount} slot(s).");
                 _groundDeathParachuteLogPrinted = true;
             }
+        }
+    }
+
+    // Undo ground-death parachute hide (slot alpha) so land_fall_down_back* can drive parachute attachments.
+    private void RestoreParachuteSlotVisibilityForAirborneDeathLand()
+    {
+        if (_skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
+        {
+            return;
+        }
+
+        var slots = _skeletonAnimation.Skeleton.Slots;
+        if (slots == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < slots.Count; i++)
+        {
+            var slot = slots.Items[i];
+            if (slot == null || slot.Data == null)
+            {
+                continue;
+            }
+
+            if (!ContainsParachuteKeyword(slot.Data.Name))
+            {
+                continue;
+            }
+
+            slot.A = 1f;
         }
     }
 

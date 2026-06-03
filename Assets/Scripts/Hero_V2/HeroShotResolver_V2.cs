@@ -105,15 +105,24 @@ namespace iStick2War_V2
                 return default;
             }
 
+            RaycastHit2D bestHit = default;
+            float bestDistance = float.PositiveInfinity;
             for (int i = 0; i < hits.Length; i++)
             {
-                if (IsValidHitForContext(hits[i], context))
+                RaycastHit2D candidate = hits[i];
+                if (!IsValidHitForContext(candidate, context))
                 {
-                    return hits[i];
+                    continue;
+                }
+
+                if (candidate.distance < bestDistance)
+                {
+                    bestDistance = candidate.distance;
+                    bestHit = candidate;
                 }
             }
 
-            return default;
+            return bestHit;
         }
 
         private static bool IsValidHitForContext(RaycastHit2D hit, HeroShotContext_V2 context)
@@ -132,18 +141,47 @@ namespace iStick2War_V2
 
             // Any hero hitscan weapon should pass through already-dead paratrooper hitboxes.
             ParatrooperBodyPart_V2 bodyPart = hit.collider.GetComponent<ParatrooperBodyPart_V2>();
-            if (bodyPart != null && !bodyPart.IsLivingCharacterForTargeting())
+            if (bodyPart != null)
             {
-                return false;
+                if (!bodyPart.IsLivingCharacterForTargeting())
+                {
+                    return false;
+                }
+
+                if (!IsEnemyDamageTargetVisibleInCombatView(hit.collider))
+                {
+                    return false;
+                }
             }
 
             MechRobotBossBodyPart_V2 mechPart = hit.collider.GetComponent<MechRobotBossBodyPart_V2>();
-            if (mechPart != null && !mechPart.IsLivingCharacterForTargeting())
+            if (mechPart != null)
+            {
+                if (!mechPart.IsLivingCharacterForTargeting())
+                {
+                    return false;
+                }
+
+                if (!IsEnemyDamageTargetVisibleInCombatView(hit.collider))
+                {
+                    return false;
+                }
+            }
+
+            AircraftHealth_V2 aircraft =
+                hit.collider.GetComponent<AircraftHealth_V2>() ??
+                hit.collider.GetComponentInParent<AircraftHealth_V2>();
+            if (aircraft != null && !IsEnemyDamageTargetVisibleInCombatView(hit.collider))
             {
                 return false;
             }
 
             return true;
+        }
+
+        private static bool IsEnemyDamageTargetVisibleInCombatView(Collider2D collider)
+        {
+            return HeroCombatCameraReach_V2.IsDamageTargetVisibleInCombatView(Camera.main, collider);
         }
 
         private static bool IsHeroIgnoredSurfaceCollider(Collider2D collider)

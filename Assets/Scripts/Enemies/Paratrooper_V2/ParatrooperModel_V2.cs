@@ -71,6 +71,9 @@ public class ParatrooperModel_V2 : MonoBehaviour
 
     /// <summary>Skip a second ground-death clip: impact already ran on <see cref="StickmanBodyState.Land"/> after <see cref="StickmanBodyState.GlideDie"/>.</summary>
     public bool suppressDieAnimationFromAirborneImpact;
+
+    // Set when entering GlideDie; cleared after the airborne land impact clip (E/land_fall_down_back*).
+    public bool pendingAirborneDeathLandImpactClip;
     public bool isBurning;
     public float burnDieAtTime;
     public bool burnFromAirborneFlamethrower;
@@ -100,6 +103,7 @@ public class ParatrooperModel_V2 : MonoBehaviour
         ApplyDamageProfile();
         pendingDieAfterLandAnim = false;
         suppressDieAnimationFromAirborneImpact = false;
+        pendingAirborneDeathLandImpactClip = false;
         heroDeathStandDownActive = false;
         pendingDieAfterElectrocuteAnim = false;
         lastUnscaledTimeReceivedHeroTeslaHit = -9999f;
