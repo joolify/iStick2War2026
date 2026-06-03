@@ -442,15 +442,34 @@ namespace iStick2War_V2
 
             if (autoEquip)
             {
-                bool switched = _inventory.SetActiveByType(definition.WeaponType);
-                if (switched)
-                {
-                    _isReloading = false;
-                    ApplyActiveWeaponToModel();
-                }
+                EquipWeaponFromShop(definition);
             }
 
             return added;
+        }
+
+        // Shop purchases run while combat gate has disabled shooting; still sync inventory + HeroModel_V2.
+        public bool EquipWeaponFromShop(HeroWeaponDefinition_V2 definition)
+        {
+            if (definition == null || _model.isDead)
+            {
+                return false;
+            }
+
+            if (!_inventory.ContainsWeaponType(definition.WeaponType))
+            {
+                return false;
+            }
+
+            _inventory.SetActiveByType(definition.WeaponType);
+            _isReloading = false;
+            if (_model.currentWeaponType != WeaponType.Minigun && definition.WeaponType != WeaponType.Minigun)
+            {
+                _minigunHeat01 = 0f;
+            }
+
+            ApplyActiveWeaponToModel();
+            return true;
         }
 
         public bool HasWeaponUnlocked(HeroWeaponDefinition_V2 definition)
@@ -482,6 +501,30 @@ namespace iStick2War_V2
             return state.Definition != null &&
                    state.CurrentAmmo >= state.Definition.MaxAmmo &&
                    state.CurrentReserveAmmo >= state.Definition.MaxReserveAmmo;
+        }
+
+        public bool TryGetWeaponAmmoCounts(
+            HeroWeaponDefinition_V2 definition,
+            out int currentMagazine,
+            out int maxMagazine,
+            out int currentReserve,
+            out int maxReserve)
+        {
+            currentMagazine = 0;
+            maxMagazine = 0;
+            currentReserve = 0;
+            maxReserve = 0;
+            if (definition == null || !_inventory.TryGetWeaponState(definition, out HeroWeaponRuntimeState_V2 state) ||
+                state.Definition == null)
+            {
+                return false;
+            }
+
+            currentMagazine = state.CurrentAmmo;
+            currentReserve = state.CurrentReserveAmmo;
+            maxMagazine = state.Definition.MaxAmmo;
+            maxReserve = state.Definition.MaxReserveAmmo;
+            return true;
         }
 
         /// <summary>Fills mag + reserve for an unlocked weapon type (used by automation / weapon test range).</summary>

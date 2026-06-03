@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using iStick2War;
 using TMPro;
 using UnityEngine;
@@ -72,7 +73,10 @@ namespace iStick2War_V2
             "txt_shop_stat_ammo_value");
 
         private TMP_Text _costText;
+        private TMP_Text _warningText;
+        private Color _warningTextColor = new Color(0.9f, 0.2f, 0.2f, 1f);
         private GameObject _statsPanelRoot;
+        private IReadOnlyList<ShopOfferConfig_V2> _configuredOffers;
         private bool _bindingsResolved;
 
         public void ResolveBindings(
@@ -98,6 +102,15 @@ namespace iStick2War_V2
             ResolveRow(_ammo, findLabelText, findValueText, findLabelNearValue);
 
             _costText = findLabelText("txt_shop_cost");
+            _warningText = FindText(
+                findLabelText,
+                "txt_shop_stat_warningText_label",
+                new[]
+                {
+                    "txt_shop_stat_warning_text_label",
+                    "txt_shop_stat_warning_text",
+                    "txt_shop_stat_warning",
+                });
             if (findObject != null)
             {
                 _statsPanelRoot = findObject("panel_shop_stats") ?? findObject("ShopStatsContainer");
@@ -106,8 +119,26 @@ namespace iStick2War_V2
             _bindingsResolved = true;
         }
 
+        public void SetWarningText(TMP_Text warningText, Color color)
+        {
+            if (warningText != null)
+            {
+                _warningText = warningText;
+            }
+
+            _warningTextColor = color;
+            ApplyWarningTextColor();
+        }
+
+        public void SetWarningTextColor(Color color)
+        {
+            _warningTextColor = color;
+            ApplyWarningTextColor();
+        }
+
         public void RebuildBaselines(IReadOnlyList<ShopOfferConfig_V2> offers, WaveManager_V2 waveManager)
         {
+            _configuredOffers = offers;
             _tierResolver.RebuildFromOffers(offers, waveManager);
         }
 
@@ -123,6 +154,7 @@ namespace iStick2War_V2
             if (offer == null || waveManager == null)
             {
                 SetStatsPanelVisible(false);
+                RefreshRunWarnings(waveManager, null);
                 return;
             }
 
@@ -152,6 +184,49 @@ namespace iStick2War_V2
                     RefreshBunkerRepairStats(offer, waveManager);
                     break;
             }
+
+            RefreshRunWarnings(waveManager, offer);
+        }
+
+        public void RefreshRunWarnings(WaveManager_V2 waveManager, ShopOfferConfig_V2 selectedOffer)
+        {
+            if (!_bindingsResolved || _warningText == null)
+            {
+                return;
+            }
+
+            string warningText = BuildRunWarningText(waveManager, selectedOffer);
+            if (string.IsNullOrEmpty(warningText))
+            {
+                SetPlainText(_warningText, string.Empty);
+                _warningText.gameObject.SetActive(false);
+                return;
+            }
+
+            _warningText.gameObject.SetActive(true);
+            ApplyWarningTextColor();
+            SetPlainText(_warningText, warningText);
+        }
+
+        // TMP multiplies Vertex Color by material Face Color; black Face makes any vertex color look black.
+        private void ApplyWarningTextColor()
+        {
+            if (_warningText == null)
+            {
+                return;
+            }
+
+            _warningText.color = _warningTextColor;
+            Material material = _warningText.fontMaterial;
+            if (material == null)
+            {
+                return;
+            }
+
+            if (material.HasProperty(ShaderUtilities.ID_FaceColor))
+            {
+                material.SetColor(ShaderUtilities.ID_FaceColor, Color.white);
+            }
         }
 
         public void HideAll()
@@ -159,6 +234,122 @@ namespace iStick2War_V2
             HideAllRows();
             SetStatsPanelVisible(false);
             SetPlainText(_costText, string.Empty);
+            RefreshRunWarnings(null, null);
+        }
+
+        private string BuildRunWarningText(WaveManager_V2 waveManager, ShopOfferConfig_V2 selectedOffer)
+        {
+            if (waveManager == null || selectedOffer == null)
+            {
+                return string.Empty;
+            }
+
+            var lines = new List<string>(3);
+            Hero_V2 hero = waveManager.Hero;
+
+            switch (selectedOffer.Kind)
+            {
+                case ShopOfferKind_V2.HealthPack:
+                    if (hero != null && !waveManager.IsHeroHealthFull())
+                    {
+                        lines.Add(
+                            $"Warning: Hero HP below max ({hero.GetCurrentHealth()}/{hero.GetMaxHealth()})");
+                    }
+
+                    break;
+
+                case ShopOfferKind_V2.BunkerRepair:
+                case ShopOfferKind_V2.BunkerMaxUpgrade:
+                    if (!waveManager.IsBunkerFullHealth())
+                    {
+                        lines.Add(
+                            $"Warning: Bunker HP below max ({waveManager.BunkerHealth}/{waveManager.BunkerMaxHealth})");
+                    }
+
+                    break;
+
+                case ShopOfferKind_V2.WeaponUnlock:
+                case ShopOfferKind_V2.AmmoRefill:
+                    TryAddWeaponAmmoWarningForOffer(waveManager, selectedOffer, lines);
+                    break;
+            }
+
+            if (lines.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            var builder = new StringBuilder();
+            for (int i = 0; i < lines.Count; i++)
+            {
+                if (i > 0)
+                {
+                    builder.AppendLine();
+                }
+
+                builder.Append(lines[i]);
+            }
+
+            return builder.ToString();
+        }
+
+        private static void TryAddWeaponAmmoWarningForOffer(
+            WaveManager_V2 waveManager,
+            ShopOfferConfig_V2 offer,
+            List<string> lines)
+        {
+            if (waveManager == null || offer == null || lines == null || offer.Weapon == null)
+            {
+                return;
+            }
+
+            if (AutoHero_V2.WeaponTestLockShowsInfiniteAmmoOnTopBar)
+            {
+                return;
+            }
+
+            Hero_V2 hero = waveManager.Hero;
+            if (hero == null || !waveManager.IsWeaponOwned(offer.Weapon) || waveManager.IsWeaponAmmoFull(offer.Weapon))
+            {
+                return;
+            }
+
+            if (!hero.TryGetOwnedWeaponAmmo(
+                    offer.Weapon,
+                    out int mag,
+                    out int maxMag,
+                    out int reserve,
+                    out int maxReserve))
+            {
+                return;
+            }
+
+            HeroWeaponDefinition_V2 weapon = offer.Weapon;
+            string weaponName = string.IsNullOrWhiteSpace(weapon.DisplayName)
+                ? weapon.WeaponType.ToString()
+                : weapon.DisplayName;
+            string summary = FormatWeaponAmmoSummary(weapon.WeaponType, mag, maxMag, reserve, maxReserve);
+            lines.Add($"Warning: Low ammo ({weaponName} {summary})");
+        }
+
+        private static string FormatWeaponAmmoSummary(
+            WeaponType weaponType,
+            int mag,
+            int maxMag,
+            int reserve,
+            int maxReserve)
+        {
+            if (weaponType == WeaponType.Bazooka)
+            {
+                return $"{mag}/{maxMag + maxReserve}";
+            }
+
+            if (weaponType == WeaponType.Colt45)
+            {
+                return $"{mag}/{maxMag} mag";
+            }
+
+            return $"{mag + reserve}/{maxMag + maxReserve}";
         }
 
         private void RefreshWeaponStats(HeroWeaponDefinition_V2 weapon, bool showAmmoRow)

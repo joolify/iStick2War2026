@@ -1237,10 +1237,29 @@ namespace iStick2War_V2
             }
 
             HeroState current = _stateMachine.CurrentState;
-            if (current == HeroState.Idle || current == HeroState.Shooting)
+            switch (current)
             {
-                PlayLoop(GetIdleAnimationForCurrentWeapon());
-                PlayAimLoop();
+                case HeroState.Idle:
+                case HeroState.Shooting:
+                    PlayLoop(GetIdleAnimationForCurrentWeapon());
+                    PlayAimLoop();
+                    break;
+                case HeroState.Moving:
+                    PlayLoop(GetRunAnimationForCurrentWeapon());
+                    PlayAimLoop();
+                    break;
+                case HeroState.Jumping:
+                    AnimationReferenceAsset jumpAnim = GetJumpAnimationForCurrentWeapon();
+                    if (jumpAnim != null)
+                    {
+                        PlayLoop(jumpAnim);
+                    }
+                    else
+                    {
+                        PlayLoop(GetRunAnimationForCurrentWeapon());
+                    }
+
+                    break;
             }
         }
 

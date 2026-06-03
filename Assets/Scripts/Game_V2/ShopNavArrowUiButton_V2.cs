@@ -127,8 +127,18 @@ namespace iStick2War_V2
         internal void ForwardLabelPointerDown()
         {
             ShowPressedVisual();
-            HandleClick();
+            // Canvas label + parent Button both receive the same click; only the Button listener should advance.
+            if (!ShouldDeferCarouselClickToUiButton())
+            {
+                HandleClick();
+            }
+
             ShowPressedVisual();
+        }
+
+        private bool ShouldDeferCarouselClickToUiButton()
+        {
+            return _usesUiClickPath && _button != null && _listenerRegistered;
         }
 
         internal void ForwardLabelPointerUp()
@@ -178,7 +188,9 @@ namespace iStick2War_V2
                 return;
             }
 
-            if (Input.GetMouseButtonDown(0) && TryHandleWorldPointerDown())
+            if (Input.GetMouseButtonDown(0) &&
+                !IsPointerOverUiRaycastTarget() &&
+                TryHandleWorldPointerDown())
             {
                 _isWorldPointerDown = true;
                 ShowPressedVisual();
@@ -339,6 +351,12 @@ namespace iStick2War_V2
                     SetLayerRecursively(child.gameObject, layer);
                 }
             }
+        }
+
+        private static bool IsPointerOverUiRaycastTarget()
+        {
+            EventSystem eventSystem = EventSystem.current;
+            return eventSystem != null && eventSystem.IsPointerOverGameObject();
         }
 
         private bool TryHandleWorldPointerDown()

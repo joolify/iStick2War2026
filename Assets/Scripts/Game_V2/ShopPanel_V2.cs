@@ -122,6 +122,9 @@ namespace iStick2War_V2
         [SerializeField] private int _shopPreviewSortingOrder = 220;
         [Tooltip("Local position under Items where weapon previews are shown (matches shop_teslaGun slot).")]
         [SerializeField] private Vector3 _previewDisplayLocalPosition = new Vector3(0.79f, 2.71f, 0f);
+        [Header("Shop stat warnings")]
+        [Tooltip("Color for txt_shop_stat_warningText_label at runtime (Face on that TMP material is forced to white).")]
+        [SerializeField] private Color _shopWarningTextColor = new Color(0.9f, 0.2f, 0.2f, 1f);
 
         private WaveManager_V2 _waveManager;
         private bool _hasCachedVisualRootTransform;
@@ -141,6 +144,7 @@ namespace iStick2War_V2
         private readonly Dictionary<int, GameObject> _runtimeInstantiatedPreviewsBySourceId = new Dictionary<int, GameObject>();
         private bool _didEnsureShopNavButtons;
         private bool _didBuildPreviewCatalog;
+        private int _shopOfferCountWhenCatalogBuilt = -1;
         private bool _shopIsVisible;
         private readonly ShopOfferStatsPresenter_V2 _offerStatsPresenter = new ShopOfferStatsPresenter_V2();
         private bool _didResolveOfferStats;
@@ -163,7 +167,7 @@ namespace iStick2War_V2
             MaybeDetachFromScaledParent();
             CacheVisualRootTransform();
             _resolvedCarouselPreviewRoot = null;
-            _didBuildPreviewCatalog = false;
+            InvalidatePreviewCatalog();
             EnsureLooseShopPreviewReparentedOnce();
             EnsureShopNavButtonsReady();
             ResolveOfferStatsIfNeeded();
@@ -269,6 +273,7 @@ namespace iStick2War_V2
                 ShopNavArrow_V2.ArrowDirection.Next);
 
             RefitShopNavButtonHitTargets();
+            DisableLegacyWorldCarouselArrows();
 
             if (_debugShopNavigationLogs)
             {
@@ -396,7 +401,28 @@ namespace iStick2War_V2
             }
 
             nav.Configure(this, direction);
+            DisableLegacyCarouselArrowOn(namedRoot);
             return nav;
+        }
+
+        private static void DisableLegacyCarouselArrowOn(GameObject root)
+        {
+            if (root == null)
+            {
+                return;
+            }
+
+            ShopNavArrow_V2 legacyArrow = root.GetComponent<ShopNavArrow_V2>();
+            if (legacyArrow != null)
+            {
+                legacyArrow.enabled = false;
+            }
+        }
+
+        private void DisableLegacyWorldCarouselArrows()
+        {
+            DisableLegacyCarouselArrowOn(FindShopObjectByName("btn_shop_arrow_left"));
+            DisableLegacyCarouselArrowOn(FindShopObjectByName("btn_shop_arrow_right"));
         }
 
         private void RefitShopNavButtonHitTargets()
@@ -709,11 +735,7 @@ namespace iStick2War_V2
             SetText(_selectedOfferItemText, offer.DisplayName);
 
             Transform carouselRoot = ResolveCarouselPreviewObjectsRoot();
-            if (!_didBuildPreviewCatalog)
-            {
-                EnsureCarouselPreviewCatalogReady(carouselRoot);
-                _didBuildPreviewCatalog = true;
-            }
+            EnsurePreviewCatalogReady(carouselRoot);
 
             if (!_shopIsVisible)
             {
@@ -752,6 +774,24 @@ namespace iStick2War_V2
                 FindShopStatValueTmpForBinding,
                 FindShopObjectByName,
                 FindShopStatLabelNearValue);
+            TMP_Text warningText = FindShopTmpByObjectName(
+                "txt_shop_stat_warningText_label",
+                allowTextContentFallback: true,
+                slot: ShopStatTmpBindingSlot.Any);
+            if (warningText == null)
+            {
+                warningText = FindShopTmpByObjectName(
+                    "txt_shop_stat_warning_text",
+                    allowTextContentFallback: true,
+                    slot: ShopStatTmpBindingSlot.Any);
+            }
+
+            if (warningText != null)
+            {
+                _statTmpBindingUsed.Add(warningText);
+                _offerStatsPresenter.SetWarningText(warningText, _shopWarningTextColor);
+            }
+
             SuppressUnboundDuplicateShopStatTmps();
             _didResolveOfferStats = true;
 
@@ -1050,6 +1090,26 @@ namespace iStick2War_V2
             return false;
         }
 
+        private void InvalidatePreviewCatalog()
+        {
+            _didBuildPreviewCatalog = false;
+            _shopOfferCountWhenCatalogBuilt = -1;
+            _resolvedPreviewByOfferIndex.Clear();
+        }
+
+        private void EnsurePreviewCatalogReady(Transform carouselRoot)
+        {
+            int offerCount = _shopOffers != null ? _shopOffers.Count : 0;
+            if (_didBuildPreviewCatalog && _shopOfferCountWhenCatalogBuilt == offerCount)
+            {
+                return;
+            }
+
+            EnsureCarouselPreviewCatalogReady(carouselRoot);
+            _didBuildPreviewCatalog = true;
+            _shopOfferCountWhenCatalogBuilt = offerCount;
+        }
+
         private void EnsureCarouselPreviewCatalogReady(Transform carouselRoot)
         {
             if (carouselRoot == null || _shopOffers == null)
@@ -1063,23 +1123,52 @@ namespace iStick2War_V2
             for (int i = 0; i < _shopOffers.Count; i++)
             {
                 ShopOfferConfig_V2 offer = _shopOffers[i];
-                GameObject resolved = ResolveOrCreatePreviewInstance(offer.PreviewObject, carouselRoot);
-                if (resolved == null && offer.PreviewObject != null)
-                {
-                    resolved = FindPreviewUnderCarousel(carouselRoot, ResolvePreviewObjectName(offer.PreviewObject));
-                }
+                GameObject resolved = ResolvePreviewForOffer(i, offer, carouselRoot);
 
                 if (resolved != null)
                 {
                     _resolvedPreviewByOfferIndex[i] = resolved;
                 }
-                else if (_debugShopPanelLogs)
+                else if (_debugShopPanelLogs && offer.PreviewObject != null)
                 {
                     Debug.LogWarning(
                         $"[ShopPanel_V2] No preview resolved for offer[{i}] '{offer.DisplayName}' " +
                         $"(previewRef='{DescribeGameObject(offer.PreviewObject)}').");
                 }
             }
+        }
+
+        private GameObject ResolvePreviewForOffer(int offerIndex, ShopOfferConfig_V2 offer, Transform carouselRoot)
+        {
+            if (offer == null || offer.PreviewObject == null || carouselRoot == null)
+            {
+                return null;
+            }
+
+            if (offerIndex >= 0 &&
+                _resolvedPreviewByOfferIndex.TryGetValue(offerIndex, out GameObject cached) &&
+                cached != null)
+            {
+                return cached;
+            }
+
+            string previewName = ResolvePreviewObjectName(offer.PreviewObject);
+            GameObject sceneMatch = FindPreviewUnderCarousel(carouselRoot, previewName);
+            if (sceneMatch == null)
+            {
+                sceneMatch = FindLoadedScenePreviewByName(previewName);
+                if (sceneMatch != null)
+                {
+                    EnsurePreviewUnderCarouselRoot(sceneMatch.transform, carouselRoot);
+                }
+            }
+
+            if (sceneMatch != null)
+            {
+                return sceneMatch;
+            }
+
+            return ResolveOrCreatePreviewInstance(offer.PreviewObject, carouselRoot);
         }
 
         private void ApplySelectedOfferPreviewVisibility(Transform carouselRoot, ShopOfferConfig_V2 selectedOffer)
@@ -1091,12 +1180,8 @@ namespace iStick2War_V2
 
             EnsureActiveHierarchy(carouselRoot.gameObject);
 
+            GameObject selectedPreview = ResolvePreviewForOffer(_offerIndex, selectedOffer, carouselRoot);
             string selectedPreviewName = ResolvePreviewObjectName(selectedOffer.PreviewObject);
-            GameObject selectedPreview = FindPreviewUnderCarousel(carouselRoot, selectedPreviewName);
-            if (selectedPreview == null && selectedOffer.PreviewObject != null)
-            {
-                selectedPreview = ResolveOrCreatePreviewInstance(selectedOffer.PreviewObject, carouselRoot);
-            }
 
             HideAllShopPreviewsUnder(carouselRoot);
 
@@ -1361,6 +1446,15 @@ namespace iStick2War_V2
 
             string previewName = ResolvePreviewObjectName(previewRef);
             GameObject sceneMatch = FindPreviewChildByName(carouselRoot, previewName);
+            if (sceneMatch == null)
+            {
+                sceneMatch = FindLoadedScenePreviewByName(previewName);
+                if (sceneMatch != null)
+                {
+                    EnsurePreviewUnderCarouselRoot(sceneMatch.transform, carouselRoot);
+                }
+            }
+
             if (sceneMatch != null)
             {
                 return sceneMatch;
@@ -1443,6 +1537,35 @@ namespace iStick2War_V2
                     candidate.gameObject.name.Equals(objectName, System.StringComparison.OrdinalIgnoreCase))
                 {
                     return candidate.gameObject;
+                }
+            }
+
+            return null;
+        }
+
+        private static GameObject FindLoadedScenePreviewByName(string previewName)
+        {
+            if (string.IsNullOrWhiteSpace(previewName))
+            {
+                return null;
+            }
+
+            Transform[] transforms = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include);
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                Transform candidate = transforms[i];
+                if (candidate == null ||
+                    !IsShopPreviewObjectName(candidate.name) ||
+                    IsShopNavButtonObjectName(candidate.name) ||
+                    !candidate.name.Equals(previewName, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                GameObject sceneObject = candidate.gameObject;
+                if (IsLoadedSceneObject(sceneObject))
+                {
+                    return sceneObject;
                 }
             }
 
@@ -1996,6 +2119,11 @@ namespace iStick2War_V2
             }
 
             string normalized = NormalizeShopUiName(objectName);
+            if (normalized.Contains("warning", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
             return normalized.StartsWith("txt_shop_stat", System.StringComparison.Ordinal);
         }
 
@@ -2428,6 +2556,11 @@ namespace iStick2War_V2
 
                 if (IsShopPreviewSprite(spriteRenderer))
                 {
+                    if (visible)
+                    {
+                        spriteRenderer.gameObject.SetActive(true);
+                    }
+
                     spriteRenderer.enabled = visible;
                     if (!visible)
                     {

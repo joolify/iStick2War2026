@@ -12,6 +12,7 @@ namespace iStick2War_V2.Editor
     public static class AudioManagerClipDefaultsEditor_V2
     {
         private const string DefaultsAssetPath = "Assets/Resources/iStick2War/AudioManagerClipDefaults_V2.asset";
+        private static bool _playModeRefreshScheduled;
 
         static AudioManagerClipDefaultsEditor_V2()
         {
@@ -20,10 +21,18 @@ namespace iStick2War_V2.Editor
 
         private static void OnPlayModeStateChanged(PlayModeStateChange change)
         {
-            if (change == PlayModeStateChange.ExitingEditMode)
+            // Defer past play-mode transition so open Inspector ListViews are not left with a stale SerializedObject.
+            if (change != PlayModeStateChange.ExitingEditMode || _playModeRefreshScheduled)
             {
-                RefreshDefaultsAsset(silent: true);
+                return;
             }
+
+            _playModeRefreshScheduled = true;
+            EditorApplication.delayCall += () =>
+            {
+                _playModeRefreshScheduled = false;
+                RefreshDefaultsAsset(silent: true);
+            };
         }
 
         [MenuItem("iStick2War/Audio/Refresh Audio Clip Defaults Asset")]
@@ -74,8 +83,11 @@ namespace iStick2War_V2.Editor
             defaults.teslaShot = LoadClip("Weapons/teslaGun.mp3");
 
             EditorUtility.SetDirty(defaults);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
+            AssetDatabase.SaveAssetIfDirty(defaults);
+            if (!silent)
+            {
+                AssetDatabase.Refresh();
+            }
 
             if (!silent)
             {

@@ -51,7 +51,7 @@ namespace iStick2War_V2
         [SerializeField] private int _bunkerMaxIncrease;
         [Tooltip("Only used for WeaponUnlock / AmmoRefill. Ignored for bunker and health offers.")]
         [SerializeField] private HeroWeaponDefinition_V2 _weapon;
-        [Tooltip("Optional shop preview. Only the selected offer's object is shown. Not used for bunker/health unless you assign one.")]
+        [Tooltip("Optional shop preview (scene instance under Items/Weapons, or shop_* prefab). Shown when this offer is selected.")]
         [SerializeField] private GameObject _previewObject;
 
         public string DisplayName

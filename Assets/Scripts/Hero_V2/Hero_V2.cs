@@ -253,6 +253,7 @@ namespace iStick2War_V2
             if (allowCombat)
             {
                 _weaponSystem.Enable();
+                RefreshEquippedWeaponVisuals();
                 return;
             }
 
@@ -392,7 +393,30 @@ namespace iStick2War_V2
                 return false;
             }
 
-            return _weaponSystem.UnlockWeapon(definition, autoEquip);
+            bool added = _weaponSystem.UnlockWeapon(definition, autoEquip);
+            if (autoEquip)
+            {
+                RefreshEquippedWeaponVisuals();
+            }
+
+            return added;
+        }
+
+        // Equip a shop-purchased weapon while the combat gate is off (inventory + Spine refresh).
+        public void ApplyShopPurchasedWeapon(HeroWeaponDefinition_V2 definition)
+        {
+            if (_weaponSystem == null || definition == null)
+            {
+                return;
+            }
+
+            _weaponSystem.EquipWeaponFromShop(definition);
+            RefreshEquippedWeaponVisuals();
+        }
+
+        public void RefreshEquippedWeaponVisuals()
+        {
+            _view?.RefreshWeaponVisualsForCurrentState();
         }
 
         public bool HasWeaponUnlocked(HeroWeaponDefinition_V2 definition)
@@ -408,6 +432,27 @@ namespace iStick2War_V2
         public bool IsWeaponMagazineFull(HeroWeaponDefinition_V2 definition)
         {
             return _weaponSystem == null || definition == null || _weaponSystem.IsMagazineFullForWeapon(definition);
+        }
+
+        public bool TryGetOwnedWeaponAmmo(
+            HeroWeaponDefinition_V2 definition,
+            out int currentMagazine,
+            out int maxMagazine,
+            out int currentReserve,
+            out int maxReserve)
+        {
+            currentMagazine = 0;
+            maxMagazine = 0;
+            currentReserve = 0;
+            maxReserve = 0;
+            return _weaponSystem != null &&
+                   definition != null &&
+                   _weaponSystem.TryGetWeaponAmmoCounts(
+                       definition,
+                       out currentMagazine,
+                       out maxMagazine,
+                       out currentReserve,
+                       out maxReserve);
         }
 
         public bool IsHealthFull()

@@ -231,6 +231,7 @@ namespace iStick2War_V2
         private string _lastGameErrorReason = "";
         private float _extraPrepareDelaySecondsForNextWave;
         private float _continueEnemyPressureMultiplierRuntime = 1f;
+        private HeroWeaponDefinition_V2 _lastShopPurchasedWeapon;
         private static float s_restartRunPermanentDamageBonus01;
 
         public event Action<WaveLoopState_V2> OnStateChanged;
@@ -652,6 +653,7 @@ namespace iStick2War_V2
                         return false;
                     }
 
+                    RememberShopPurchasedWeapon(offer.Weapon);
                     Log($"Weapon unlocked: {offer.Weapon.DisplayName} for {weaponCost}.");
                     WaveRunTelemetry_V2.NotifyShopPurchase("WeaponUnlock", weaponCost);
                     EmitMetaChanged();
@@ -686,6 +688,7 @@ namespace iStick2War_V2
                         return false;
                     }
 
+                    RememberShopPurchasedWeapon(offer.Weapon);
                     Log($"Ammo refilled: {offer.Weapon.DisplayName} for {ammoCost}.");
                     WaveRunTelemetry_V2.NotifyShopPurchase("AmmoRefill", ammoCost);
                     EmitMetaChanged();
@@ -811,6 +814,8 @@ namespace iStick2War_V2
             {
                 return;
             }
+
+            ApplyLastShopPurchasedWeaponBeforeWave();
 
             if (_shopPanel != null)
             {
@@ -1694,6 +1699,27 @@ namespace iStick2War_V2
 
             int idx = Mathf.Clamp(_waveIndex, 0, _waves.Count - 1);
             return _waves[idx];
+        }
+
+        private void RememberShopPurchasedWeapon(HeroWeaponDefinition_V2 definition)
+        {
+            if (definition == null || _hero == null)
+            {
+                return;
+            }
+
+            _lastShopPurchasedWeapon = definition;
+            _hero.ApplyShopPurchasedWeapon(definition);
+        }
+
+        private void ApplyLastShopPurchasedWeaponBeforeWave()
+        {
+            if (_hero == null || _lastShopPurchasedWeapon == null)
+            {
+                return;
+            }
+
+            _hero.ApplyShopPurchasedWeapon(_lastShopPurchasedWeapon);
         }
 
         private bool TrySpend(int amount)
