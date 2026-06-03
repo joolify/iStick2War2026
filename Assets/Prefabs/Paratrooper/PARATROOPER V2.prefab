@@ -547,7 +547,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8ba2e7bcc9de16d49a2186e5abfd2d0e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ParatrooperDeathHandler_V2
-  _useRagdoll: 1
+  _useRagdoll: 0
   _ragdollVelocityInheritanceMultiplier: 1
   _ragdollRadialImpulseMultiplier: 0
   _ragdollRandomTorqueImpulseMultiplier: 0.35

@@ -9,7 +9,7 @@ namespace iStick2War_V2
  * ParatrooperDeathHandler_V2 (Death lifecycle + despawn)
  *
  * PURPOSE:
- * Runs the death routine: optional ragdoll/gibs vs Spine death via ParatrooperView_V2, timed delays
+ * Runs the death routine: Spine death clips via ParatrooperView_V2 / state machine, timed delays
  * for ground vs airborne impact, then returns the instance to SimplePrefabPool_V2. Exposes events
  * such as OnDeathStarted for external listeners.
  *
@@ -17,7 +17,7 @@ namespace iStick2War_V2
  * RESPONSIBILITIES
  *
  * - Die() / ForceDespawnImmediately entry points
- * - Coroutine-driven sequencing when GlideDie must wait for ground contact before ragdoll
+ * - Coroutine-driven sequencing when GlideDie must wait for ground impact clip before despawn
  *
  * ---------------------------------------------------------
  * ❌ MUST NOT
@@ -32,9 +32,9 @@ namespace iStick2War_V2
  */
     public class ParatrooperDeathHandler_V2 : MonoBehaviour
     {
-        [Header("Ragdoll")]
-        [Tooltip("If enabled, convert the Paratrooper death into physics pieces (gibs) instead of playing Spine death visuals.")]
-        [SerializeField] private bool _useRagdoll = true;
+        [Header("Ragdoll (legacy)")]
+        [Tooltip("Deprecated: keep off. Death uses Spine land_fall_down_back* clips from ParatrooperView_V2.")]
+        [SerializeField] private bool _useRagdoll = false;
 
         [Tooltip("How much of the Paratrooper root velocity is inherited by each body-part rigidbody.")]
         [SerializeField] private float _ragdollVelocityInheritanceMultiplier = 1f;
@@ -128,11 +128,14 @@ namespace iStick2War_V2
         IEnumerator DeathRoutine()
         {
             bool startedAirborneDeath = _stateMachine != null && _stateMachine.CurrentState == StickmanBodyState.GlideDie;
-            bool shouldDelayRagdollUntilImpact = _useRagdoll && startedAirborneDeath;
 
-            if (!shouldDelayRagdollUntilImpact)
+            if (_useRagdoll)
             {
-                PlayRagdollOrSpineDeath();
+                bool shouldDelayRagdollUntilImpact = startedAirborneDeath;
+                if (!shouldDelayRagdollUntilImpact)
+                {
+                    PlayRagdollDeathIfEnabled();
+                }
             }
 
             if (startedAirborneDeath)
@@ -146,16 +149,20 @@ namespace iStick2War_V2
                     yield return null;
                 }
 
-                // StateMachine has left GlideDie (typically Land/Die): now convert to physics pieces.
-                if (shouldDelayRagdollUntilImpact)
+                if (_useRagdoll)
                 {
-                    PlayRagdollOrSpineDeath();
+                    PlayRagdollDeathIfEnabled();
                 }
 
                 yield return new WaitForSeconds(Mathf.Max(0.05f, _airborneImpactDespawnDelaySeconds));
             }
             else
             {
+                if (_useRagdoll)
+                {
+                    PlayRagdollDeathIfEnabled();
+                }
+
                 yield return new WaitForSeconds(Mathf.Max(0.05f, _groundDeathDespawnDelaySeconds));
             }
 
@@ -163,47 +170,36 @@ namespace iStick2War_V2
             Cleanup();
         }
 
-        /// <summary>
-        /// Plays the appropriate death animation or activates ragdoll physics.
-        /// </summary>
-        private void PlayRagdollOrSpineDeath()
+        // Legacy ragdoll scatter; Spine land_fall_down_back* is driven by ParatrooperView_V2 when _useRagdoll is off.
+        private void PlayRagdollDeathIfEnabled()
         {
-            if (_useRagdoll)
+            if (!_useRagdoll || _view == null)
             {
-                if (_view != null)
-                {
-                    Vector2 inheritedVel = _rootRigidbody2D != null ? _rootRigidbody2D.linearVelocity : Vector2.zero;
-                    float inheritedAngVel = _rootRigidbody2D != null ? _rootRigidbody2D.angularVelocity : 0f;
-
-                    Vector2 origin = _view.transform.position;
-                    // Spawn visible physics pieces (severed-part prefabs) so the paratrooper
-                    // doesn't "disappear" due to hitbox-only renderer absence.
-                    _view.RagdollScatterUsingSeveredPartPrefabs(
-                        explosionOrigin: origin,
-                        inheritedLinearVelocity: inheritedVel * _ragdollVelocityInheritanceMultiplier,
-                        inheritedAngularVelocity: inheritedAngVel,
-                        radialImpulseMultiplier: _ragdollRadialImpulseMultiplier,
-                        randomTorqueImpulseMultiplier: _ragdollRandomTorqueImpulseMultiplier,
-                        positionJitterRadius: 0.03f);
-                }
-
-                // Stop root physics so the remaining (severed/exploded) pieces fully drive the look.
-                if (_rootRigidbody2D != null)
-                {
-                    _rootRigidbody2D.linearVelocity = Vector2.zero;
-                    _rootRigidbody2D.angularVelocity = 0f;
-                    _rootRigidbody2D.simulated = false;
-                }
-
-                if (_rootCollider2D != null)
-                {
-                    _rootCollider2D.enabled = false;
-                }
                 return;
             }
 
-            // Spine death visuals are handled by ParatrooperView_V2 via state-machine events.
-            // Leaving this empty keeps the default "play animation" behavior.
+            Vector2 inheritedVel = _rootRigidbody2D != null ? _rootRigidbody2D.linearVelocity : Vector2.zero;
+            float inheritedAngVel = _rootRigidbody2D != null ? _rootRigidbody2D.angularVelocity : 0f;
+            Vector2 origin = _view.transform.position;
+            _view.RagdollScatterUsingSeveredPartPrefabs(
+                explosionOrigin: origin,
+                inheritedLinearVelocity: inheritedVel * _ragdollVelocityInheritanceMultiplier,
+                inheritedAngularVelocity: inheritedAngVel,
+                radialImpulseMultiplier: _ragdollRadialImpulseMultiplier,
+                randomTorqueImpulseMultiplier: _ragdollRandomTorqueImpulseMultiplier,
+                positionJitterRadius: 0.03f);
+
+            if (_rootRigidbody2D != null)
+            {
+                _rootRigidbody2D.linearVelocity = Vector2.zero;
+                _rootRigidbody2D.angularVelocity = 0f;
+                _rootRigidbody2D.simulated = false;
+            }
+
+            if (_rootCollider2D != null)
+            {
+                _rootCollider2D.enabled = false;
+            }
         }
 
         /// <summary>

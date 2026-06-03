@@ -506,18 +506,32 @@ public class ParatrooperView_V2 : MonoBehaviour
                 trackIndex = 0;
                 break;
             case StickmanBodyState.GlideDie:
-                // Safety for edge case: if death state came from a ground-combat state,
-                // prefer one of the land-fall death animations instead of glide death.
+                // Ground combat: play land_fall_down_back* immediately. Airborne: keep glide pose until
+                // Land plays a random land_fall_down_back* impact (no ragdoll / no E_glide_death).
                 bool cameFromGroundCombat =
                     _lastStateBeforeChange == StickmanBodyState.Shoot ||
                     _lastStateBeforeChange == StickmanBodyState.Land ||
                     _lastStateBeforeChange == StickmanBodyState.Idle ||
                     _lastStateBeforeChange == StickmanBodyState.Run;
-                nextAnimation = (_model != null && _model.isBurning && _model.burnFromAirborneFlamethrower)
-                    ? GetBurnGlideDeathAnimation()
-                    : (cameFromGroundCombat ? GetRandomGroundDeathAnimation() : _glideDeathAnim);
-                loop = false;
-                trackIndex = 0;
+                if (_model != null && _model.isBurning && _model.burnFromAirborneFlamethrower)
+                {
+                    nextAnimation = GetBurnGlideDeathAnimation();
+                    loop = false;
+                    trackIndex = 0;
+                }
+                else if (cameFromGroundCombat)
+                {
+                    nextAnimation = GetRandomGroundDeathAnimation();
+                    loop = false;
+                    trackIndex = 0;
+                }
+                else
+                {
+                    nextAnimation = _glideAnim;
+                    loop = true;
+                    trackIndex = 1;
+                }
+
                 break;
             case StickmanBodyState.Land:
                 ResolveLandClip(landAfterAirborneDeath, out nextAnimation, out trackIndex);
