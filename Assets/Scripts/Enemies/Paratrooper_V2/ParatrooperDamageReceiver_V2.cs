@@ -235,6 +235,12 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
             if (!_deathStateSent)
             {
                 _deathStateSent = true;
+                bool useAirborneDeath = _paratrooper != null && _paratrooper.ShouldUseAirborneDeathFlow();
+                if (!shouldExplode && !useAirborneDeath)
+                {
+                    ResolveView()?.TryDropMp40OnGroundDeath();
+                }
+
                 if (shouldExplode)
                 {
                     float force = Mathf.Max(2f, info.ExplosionForce);
@@ -242,13 +248,11 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
                     // Must match non-explosive lethal path: going Deploy/Glide → Die makes HandleStateChanged try
                     // Die → GlideDie, but the machine is already in Die and blocks that transition, so
                     // ParatrooperDeathHandler_V2.Die() never runs and wave tracking never clears.
-                    bool useAirborneDeath = _paratrooper != null && _paratrooper.ShouldUseAirborneDeathFlow();
                     _stateMachine.ChangeState(
                         useAirborneDeath ? StickmanBodyState.GlideDie : StickmanBodyState.Die);
                 }
                 else
                 {
-                    bool useAirborneDeath = _paratrooper != null && _paratrooper.ShouldUseAirborneDeathFlow();
                     _stateMachine.ChangeState(useAirborneDeath ? StickmanBodyState.GlideDie : StickmanBodyState.Die);
                 }
             }
@@ -300,6 +304,15 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
         if (totalDealt > 0.001f)
         {
             OnDamagePresentation?.Invoke(info, totalDealt);
+        }
+
+        if (totalDealt > 0.001f &&
+            info.BodyPart == BodyPartType.Head &&
+            !info.IsExplosive &&
+            info.SourceWeapon != WeaponType.Tesla &&
+            info.SourceWeapon != WeaponType.Flamethrower)
+        {
+            ResolveView()?.TryDropHelmetLoot(info.HitPoint);
         }
 
         if (_debugDamagePathLogs)
@@ -375,6 +388,11 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
         if (_model.IsDead())
         {
             _deathStateSent = true;
+            if (!airborneBurnDeath)
+            {
+                ResolveView()?.TryDropMp40OnGroundDeath();
+            }
+
             _stateMachine.ChangeState(
                 airborneBurnDeath ? StickmanBodyState.GlideDie : StickmanBodyState.Die);
         }
@@ -422,6 +440,16 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
         _severedParts.Add(part);
         OnBodyPartSevered?.Invoke(part, info.HitPoint, Mathf.Max(0.2f, finalDamage / 22f));
         return true;
+    }
+
+    private ParatrooperView_V2 ResolveView()
+    {
+        if (_paratrooper == null)
+        {
+            return GetComponentInChildren<ParatrooperView_V2>(true);
+        }
+
+        return _paratrooper.GetComponentInChildren<ParatrooperView_V2>(true);
     }
 
     private void LogDamagePath(

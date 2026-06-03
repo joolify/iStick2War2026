@@ -949,11 +949,12 @@ public class Paratrooper : MonoBehaviour
                 }
             }
 
-            if (to == StickmanBodyState.Land && from == StickmanBodyState.GlideDie)
-            {
-                _model.pendingDieAfterLandAnim = true;
-                _model.suppressDieAnimationFromAirborneImpact = true;
-            }
+        if (to == StickmanBodyState.Land && from == StickmanBodyState.GlideDie)
+        {
+            _model.pendingDieAfterLandAnim = true;
+            _model.suppressDieAnimationFromAirborneImpact = true;
+            _view?.TryDropMp40OnGroundDeath();
+        }
         }
 
         // Safety: if death is requested while still in the air, force airborne death state first.

@@ -162,9 +162,28 @@ public class ParatrooperView_V2 : MonoBehaviour
     [Header("Helmet")]
     [SerializeField] private string _helmetSlotName = "helmet";
     [SerializeField] private string _helmetAttachmentName = "naziHelmet";
+    [Header("Ground loot drops")]
+    [SerializeField] private GameObject _mp40DropPrefab;
+    [SerializeField] private GameObject _naziHelmetDropPrefab;
+    [SerializeField] private string _gunDropBoneName = "gunBone";
+    [SerializeField] private string _headDropBoneName = "head";
+    [SerializeField] private string _gunSlotName = "gunSlot";
+    [SerializeField] private float _groundLootDropForce = 4.5f;
+    [SerializeField] private float _groundLootDropTorque = 120f;
+    [SerializeField] private float _groundLootLifetime = 30f;
+    [SerializeField] private string _lootSortingLayerName = "Paratrooper";
+    [SerializeField] private int _lootSortingOrder = 120;
+    // Physics layer for dropped props; keep off Enemy so living units do not shove loot around.
+    [SerializeField] private string _lootPhysicsLayerName = "EnemyLoot";
+    [SerializeField] private LayerMask _lootRigidbodyExcludeLayers;
+    [SerializeField] private bool _debugLootDropLogs = false;
     private ParatrooperDamageReceiver_V2 _damageReceiver;
     private GameObject _activeBurnFireVfx;
+    private bool _mp40LootDropped;
+    private bool _helmetLootDropped;
     private const string DefaultBurnFirePrefabPath = "Assets/Prefabs/Paratrooper/Paratrooper_Fire Variant.prefab";
+    private const string DefaultMp40DropPrefabPath = "Assets/Prefabs/Paratrooper/mp40.prefab";
+    private const string DefaultNaziHelmetDropPrefabPath = "Assets/Prefabs/Paratrooper/naziHelmet.prefab";
     private readonly HashSet<BodyPartType> _alreadySeveredParts = new HashSet<BodyPartType>();
     // Stable variant selections so we can re-apply hiding/showing in LateUpdate without flicker.
     private string _torsoShootChoice;
@@ -188,6 +207,7 @@ public class ParatrooperView_V2 : MonoBehaviour
         _controller = controller;
 
         EnsureDamagePresentationSubscribed(damageReceiver);
+        EnsureLootPrefabsResolved();
 
         _stateMachine.OnStateChanged += HandleStateChanged;
         ResolveAimBones();
@@ -239,6 +259,14 @@ public class ParatrooperView_V2 : MonoBehaviour
 
     private void HandleDamagePresentation(DamageInfo info, float finalDamage)
     {
+        if (info.BodyPart == BodyPartType.Head &&
+            !info.IsExplosive &&
+            info.SourceWeapon != WeaponType.Tesla &&
+            info.SourceWeapon != WeaponType.Flamethrower)
+        {
+            TryDropHelmetLoot(info.HitPoint);
+        }
+
         if (_bloodHitPrefab == null)
         {
             return;
@@ -349,6 +377,9 @@ public class ParatrooperView_V2 : MonoBehaviour
         _groundDeathParachuteLogPrinted = false;
         _lastStateBeforeChange = StickmanBodyState.Idle;
         _alreadySeveredParts.Clear();
+        _mp40LootDropped = false;
+        _helmetLootDropped = false;
+        EnsureLootPrefabsResolved();
 
         if (_skeletonAnimation == null)
         {
@@ -445,6 +476,7 @@ public class ParatrooperView_V2 : MonoBehaviour
         if (bodyPart == BodyPartType.Head)
         {
             ApplyHelmetAttachment();
+            TryDropHelmetLoot(hitPoint);
         }
         SpawnSeveredPartVisual(entry, bone, hitPoint, severity);
     }
@@ -750,6 +782,7 @@ public class ParatrooperView_V2 : MonoBehaviour
             {
                 _suppressParachuteVisuals = true;
                 HideParachuteVisualsForGroundDeath();
+                TryDropMp40OnGroundDeath();
                 _skeletonAnimation.LateUpdate();
             }
         }
@@ -759,6 +792,7 @@ public class ParatrooperView_V2 : MonoBehaviour
             ForceApplyAnimationFirstFrame(nextAnimation);
             _suppressParachuteVisuals = true;
             HideParachuteVisualsForGroundDeath();
+            TryDropMp40OnGroundDeath();
             _skeletonAnimation.LateUpdate();
             if (trackEntry != null && _controller != null)
             {
@@ -792,8 +826,7 @@ public class ParatrooperView_V2 : MonoBehaviour
     {
         if (afterGlideDieDeath)
         {
-            AnimationReferenceAsset impactRef = GetRandomGroundDeathAnimation();
-            anim = impactRef != null ? impactRef.Animation : null;
+            anim = ResolveRandomGroundFallDownBackAnimation();
             landTrackIndex = 0;
             if (anim == null && _landAnim != null && _landAnim.Animation != null)
             {
@@ -1012,47 +1045,73 @@ public class ParatrooperView_V2 : MonoBehaviour
 
     private Spine.Animation ResolveFallDownSpineAnimation()
     {
-        if (_fallDownAnim != null && _fallDownAnim.Animation != null)
-        {
-            return _fallDownAnim.Animation;
-        }
-
-        Spine.Animation skeletonFallDown = FindSkeletonAnimation("E/fall_down");
-        if (skeletonFallDown != null)
-        {
-            return skeletonFallDown;
-        }
-
-        Debug.LogWarning("[ParatrooperView_V2] E/fall_down missing; falling back to ground death clip.");
-        AnimationReferenceAsset fallback = GetRandomGroundDeathAnimation();
-        return fallback != null ? fallback.Animation : null;
+        return ResolveRandomGroundFallDownBackAnimation();
     }
 
-    private AnimationReferenceAsset GetRandomGroundDeathAnimation()
+    // Ground death on foot: random E/fall_down_back* (falls back to assigned land_fall_down_back* refs / skeleton names).
+    private Spine.Animation ResolveRandomGroundFallDownBackAnimation()
     {
-        var options = new List<AnimationReferenceAsset>(3);
-        TryAddGroundDeathOption(_landFallDownBackAnim, nameof(_landFallDownBackAnim), options);
-        TryAddGroundDeathOption(_landFallDownBack2Anim, nameof(_landFallDownBack2Anim), options);
-        TryAddGroundDeathOption(_landFallDownBack3Anim, nameof(_landFallDownBack3Anim), options);
+        var options = new List<Spine.Animation>(6);
+        TryAddSkeletonFallDownBackOption("E/fall_down_back", options);
+        TryAddSkeletonFallDownBackOption("E/fall_down_back2", options);
+        TryAddSkeletonFallDownBackOption("E/fall_down_back3", options);
 
         if (options.Count == 0)
         {
-            Debug.LogWarning("[ParatrooperView_V2] No ground death animation assigned. Falling back to glide death.");
-            return _glideDeathAnim;
+            TryAddReferenceAssetFallDownBackOption(_landFallDownBackAnim, nameof(_landFallDownBackAnim), options);
+            TryAddReferenceAssetFallDownBackOption(_landFallDownBack2Anim, nameof(_landFallDownBack2Anim), options);
+            TryAddReferenceAssetFallDownBackOption(_landFallDownBack3Anim, nameof(_landFallDownBack3Anim), options);
         }
 
-        int randomIndex = Random.Range(0, options.Count);
-        var selected = options[randomIndex];
-        LogAnimation($"[ParatrooperView_V2] Selected ground death animation: {selected.name}");
+        if (options.Count == 0)
+        {
+            TryAddSkeletonFallDownBackOption("E/land_fall_down_back", options);
+            TryAddSkeletonFallDownBackOption("E/land_fall_down_back2", options);
+            TryAddSkeletonFallDownBackOption("E/land_fall_down_back3", options);
+        }
+
+        if (options.Count == 0)
+        {
+            Debug.LogWarning(
+                "[ParatrooperView_V2] No E/fall_down_back* animation found. Falling back to glide death.");
+            return _glideDeathAnim != null ? _glideDeathAnim.Animation : null;
+        }
+
+        Spine.Animation selected = options[Random.Range(0, options.Count)];
+        LogAnimation($"[ParatrooperView_V2] Selected ground fall_down_back animation: {selected.Name}");
         return selected;
     }
 
-    private void TryAddGroundDeathOption(
+    private void TryAddSkeletonFallDownBackOption(string animationName, List<Spine.Animation> options)
+    {
+        if (string.IsNullOrWhiteSpace(animationName) || options == null)
+        {
+            return;
+        }
+
+        Spine.Animation animation = FindSkeletonAnimation(animationName);
+        if (animation == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < options.Count; i++)
+        {
+            if (options[i] == animation)
+            {
+                return;
+            }
+        }
+
+        options.Add(animation);
+    }
+
+    private void TryAddReferenceAssetFallDownBackOption(
         AnimationReferenceAsset candidate,
         string slotName,
-        List<AnimationReferenceAsset> options)
+        List<Spine.Animation> options)
     {
-        if (candidate == null)
+        if (candidate == null || candidate.Animation == null || options == null)
         {
             return;
         }
@@ -1064,11 +1123,37 @@ public class ParatrooperView_V2 : MonoBehaviour
         {
             Debug.LogWarning(
                 $"[ParatrooperView_V2] {slotName} points to glide death ({candidate.name}). " +
-                "It will be ignored for ground death randomization.");
+                "It will be ignored for ground fall_down_back randomization.");
             return;
         }
 
-        options.Add(candidate);
+        TryAddSkeletonFallDownBackOption(candidate.Animation.Name, options);
+    }
+
+    private AnimationReferenceAsset GetRandomGroundDeathAnimation()
+    {
+        Spine.Animation animation = ResolveRandomGroundFallDownBackAnimation();
+        if (animation == null)
+        {
+            return _glideDeathAnim;
+        }
+
+        if (_landFallDownBackAnim != null && _landFallDownBackAnim.Animation == animation)
+        {
+            return _landFallDownBackAnim;
+        }
+
+        if (_landFallDownBack2Anim != null && _landFallDownBack2Anim.Animation == animation)
+        {
+            return _landFallDownBack2Anim;
+        }
+
+        if (_landFallDownBack3Anim != null && _landFallDownBack3Anim.Animation == animation)
+        {
+            return _landFallDownBack3Anim;
+        }
+
+        return _landFallDownBackAnim;
     }
 
     /// <summary>
@@ -1276,7 +1361,9 @@ public class ParatrooperView_V2 : MonoBehaviour
 
         _cachedBurnDeathAnimation = FindAnimationByCandidates("fire_run_death", "E/fire_run_death", "E_fire_run_death");
 
-        return _cachedBurnDeathAnimation != null ? _cachedBurnDeathAnimation : GetRandomGroundDeathAnimation();
+        return _cachedBurnDeathAnimation != null
+            ? _cachedBurnDeathAnimation
+            : ResolveRandomGroundFallDownBackAnimation();
     }
 
     private Spine.Animation GetBurnGlideAnimation()
@@ -2030,15 +2117,365 @@ public class ParatrooperView_V2 : MonoBehaviour
         StopBurnVfx();
     }
 
-#if UNITY_EDITOR
-    private void OnValidate()
+    // Ground death: spawn mp40.prefab with physics (once per life).
+    public void TryDropMp40OnGroundDeath()
     {
-        if (_burnFirePrefab != null)
+        if (_mp40LootDropped || _isExploded)
         {
             return;
         }
 
-        _burnFirePrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(DefaultBurnFirePrefabPath);
+        EnsureLootPrefabsResolved();
+        if (!TryResolveLootDropPrefab(ref _mp40DropPrefab, DefaultMp40DropPrefabPath))
+        {
+            LogLootDropFailure("mp40", DefaultMp40DropPrefabPath);
+            return;
+        }
+
+        _mp40LootDropped = true;
+        HideGunSlotAttachment();
+        GameObject drop = SpawnPhysicsLootDrop(
+            _mp40DropPrefab,
+            _gunDropBoneName,
+            transform.position,
+            useHitPointAsFallback: false);
+        if (_debugLootDropLogs && drop != null)
+        {
+            Debug.Log($"[ParatrooperView_V2] Loot drop spawned mp40 at {drop.transform.position}.");
+        }
+    }
+
+    // Head hit or sever: spawn naziHelmet.prefab with physics (once per life).
+    public void TryDropHelmetLoot(Vector2 hitPoint)
+    {
+        if (_helmetLootDropped || _isExploded)
+        {
+            return;
+        }
+
+        EnsureLootPrefabsResolved();
+        if (!TryResolveLootDropPrefab(ref _naziHelmetDropPrefab, DefaultNaziHelmetDropPrefabPath))
+        {
+            LogLootDropFailure("naziHelmet", DefaultNaziHelmetDropPrefabPath);
+            return;
+        }
+
+        _helmetLootDropped = true;
+        ApplyHelmetAttachment();
+        GameObject drop = SpawnPhysicsLootDrop(
+            _naziHelmetDropPrefab,
+            _headDropBoneName,
+            hitPoint,
+            useHitPointAsFallback: true);
+        if (_debugLootDropLogs && drop != null)
+        {
+            Debug.Log($"[ParatrooperView_V2] Loot drop spawned naziHelmet at {drop.transform.position}.");
+        }
+    }
+
+    private void HideGunSlotAttachment()
+    {
+        if (_skeletonAnimation == null || _skeletonAnimation.Skeleton == null ||
+            string.IsNullOrWhiteSpace(_gunSlotName))
+        {
+            return;
+        }
+
+        _skeletonAnimation.Skeleton.SetAttachment(_gunSlotName, null);
+    }
+
+    private GameObject SpawnPhysicsLootDrop(
+        GameObject prefab,
+        string boneName,
+        Vector2 fallbackPosition,
+        bool useHitPointAsFallback)
+    {
+        if (prefab == null)
+        {
+            return null;
+        }
+
+        Vector3 spawnPos;
+        if (TryGetBoneWorldPosition(boneName, out Vector3 boneWorld))
+        {
+            spawnPos = boneWorld;
+        }
+        else if (useHitPointAsFallback)
+        {
+            spawnPos = fallbackPosition;
+        }
+        else
+        {
+            spawnPos = transform.position;
+        }
+
+        spawnPos.z = _gibWorldZ;
+
+        Vector2 launchDir = UnityEngine.Random.insideUnitCircle;
+        if (launchDir.sqrMagnitude < 0.0001f)
+        {
+            launchDir = Vector2.up;
+        }
+        launchDir.Normalize();
+        launchDir.y = Mathf.Max(0.12f, launchDir.y);
+
+        float angle = Mathf.Atan2(launchDir.y, launchDir.x) * Mathf.Rad2Deg + UnityEngine.Random.Range(-18f, 18f);
+        GameObject drop = Instantiate(prefab, spawnPos, Quaternion.Euler(0f, 0f, angle));
+        if (drop.transform.localScale.sqrMagnitude <= 0.000001f)
+        {
+            drop.transform.localScale = Vector3.one;
+        }
+
+        ApplyLootDropSpriteFlip(drop);
+        ConfigureLootDropVisual(drop);
+
+        Rigidbody2D rb = drop.GetComponent<Rigidbody2D>();
+        if (rb == null)
+        {
+            rb = drop.AddComponent<Rigidbody2D>();
+        }
+
+        rb.bodyType = RigidbodyType2D.Dynamic;
+        rb.simulated = true;
+        rb.gravityScale = 1f;
+        rb.linearDamping = 0.24f;
+        rb.angularDamping = 0.14f;
+        rb.freezeRotation = false;
+
+        Rigidbody2D rootRb = GetComponentInParent<Rigidbody2D>();
+        if (rootRb != null)
+        {
+            rb.linearVelocity = rootRb.linearVelocity;
+        }
+
+        rb.AddForce(launchDir * _groundLootDropForce, ForceMode2D.Impulse);
+        rb.AddTorque(UnityEngine.Random.Range(-_groundLootDropTorque, _groundLootDropTorque), ForceMode2D.Impulse);
+        ApplyLootRigidbodyCollisionRules(rb, drop);
+
+        if (_groundLootLifetime > 0.01f)
+        {
+            Destroy(drop, _groundLootLifetime);
+        }
+
+        return drop;
+    }
+
+    private void ConfigureLootDropVisual(GameObject drop)
+    {
+        if (drop == null)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_lootPhysicsLayerName))
+        {
+            int physicsLayer = LayerMask.NameToLayer(_lootPhysicsLayerName);
+            if (physicsLayer >= 0)
+            {
+                SetLayerRecursively(drop, physicsLayer);
+            }
+        }
+
+        ActivateHierarchy(drop.transform);
+        EnsureNonZeroScale(drop.transform);
+
+        int sortingLayerId = SortingLayer.NameToID(_lootSortingLayerName);
+        if (sortingLayerId == 0 && _lootSortingLayerName != "Default")
+        {
+            sortingLayerId = SortingLayer.NameToID("Paratrooper");
+        }
+
+        SpriteRenderer[] sprites = drop.GetComponentsInChildren<SpriteRenderer>(true);
+        for (int i = 0; i < sprites.Length; i++)
+        {
+            SpriteRenderer sr = sprites[i];
+            if (sr == null)
+            {
+                continue;
+            }
+
+            sr.enabled = true;
+            sr.sortingLayerID = sortingLayerId;
+            sr.sortingOrder = _lootSortingOrder;
+            Color c = sr.color;
+            c.a = 1f;
+            sr.color = c;
+        }
+    }
+
+    private void ApplyLootRigidbodyCollisionRules(Rigidbody2D rb, GameObject drop)
+    {
+        if (rb == null || drop == null)
+        {
+            return;
+        }
+
+        LayerMask excludeLayers = _lootRigidbodyExcludeLayers;
+        if (excludeLayers.value == 0)
+        {
+            excludeLayers = BuildDefaultLootRigidbodyExcludeLayers();
+        }
+
+        rb.excludeLayers = excludeLayers;
+
+        // Extra safety for the dying unit: loot often spawns overlapping its hitboxes.
+        Paratrooper source = GetComponentInParent<Paratrooper>();
+        if (source != null)
+        {
+            IgnoreCollisionsBetween(drop, source.gameObject);
+        }
+    }
+
+    private static LayerMask BuildDefaultLootRigidbodyExcludeLayers()
+    {
+        int mask = 0;
+        AddLayerToMask(ref mask, "Enemy");
+        AddLayerToMask(ref mask, "EnemyBodyPart");
+        AddLayerToMask(ref mask, "EnemyDead");
+        AddLayerToMask(ref mask, "Aircraft");
+        AddLayerToMask(ref mask, "MechRobot");
+        return mask;
+    }
+
+    private static void AddLayerToMask(ref int mask, string layerName)
+    {
+        int layer = LayerMask.NameToLayer(layerName);
+        if (layer >= 0)
+        {
+            mask |= 1 << layer;
+        }
+    }
+
+    private static void IgnoreCollisionsBetween(GameObject a, GameObject b)
+    {
+        if (a == null || b == null)
+        {
+            return;
+        }
+
+        Collider2D[] colsA = a.GetComponentsInChildren<Collider2D>(true);
+        Collider2D[] colsB = b.GetComponentsInChildren<Collider2D>(true);
+        for (int i = 0; i < colsA.Length; i++)
+        {
+            Collider2D colA = colsA[i];
+            if (colA == null)
+            {
+                continue;
+            }
+
+            for (int j = 0; j < colsB.Length; j++)
+            {
+                Collider2D colB = colsB[j];
+                if (colB == null)
+                {
+                    continue;
+                }
+
+                Physics2D.IgnoreCollision(colA, colB, true);
+            }
+        }
+    }
+
+    private void EnsureLootPrefabsResolved()
+    {
+#if UNITY_EDITOR
+        if (_mp40DropPrefab == null)
+        {
+            _mp40DropPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(DefaultMp40DropPrefabPath);
+        }
+
+        if (_naziHelmetDropPrefab == null)
+        {
+            _naziHelmetDropPrefab =
+                UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(DefaultNaziHelmetDropPrefabPath);
+        }
+#endif
+    }
+
+    private void LogLootDropFailure(string label, string assetPath)
+    {
+        Debug.LogWarning(
+            $"[ParatrooperView_V2] Loot drop skipped ({label}): prefab missing. " +
+            $"Assign on PARATROOPER V2 or add asset at '{assetPath}'.");
+    }
+
+    private bool TryGetBoneWorldPosition(string boneName, out Vector3 worldPosition)
+    {
+        worldPosition = default;
+        if (_skeletonAnimation == null || _skeletonAnimation.Skeleton == null ||
+            string.IsNullOrWhiteSpace(boneName))
+        {
+            return false;
+        }
+
+        Bone bone = _skeletonAnimation.Skeleton.FindBone(boneName);
+        if (bone == null)
+        {
+            return false;
+        }
+
+        worldPosition = _skeletonAnimation.transform.TransformPoint(new Vector3(bone.WorldX, bone.WorldY, 0f));
+        return true;
+    }
+
+    private void ApplyLootDropSpriteFlip(GameObject drop)
+    {
+        SpriteRenderer sprite = drop.GetComponent<SpriteRenderer>();
+        if (sprite == null)
+        {
+            return;
+        }
+
+        bool facingLeft = false;
+        if (_skeletonAnimation != null && _skeletonAnimation.Skeleton != null)
+        {
+            facingLeft = _skeletonAnimation.Skeleton.ScaleX < 0f;
+        }
+        else
+        {
+            Transform root = transform;
+            while (root.parent != null)
+            {
+                root = root.parent;
+            }
+
+            facingLeft = root.localScale.x < 0f;
+        }
+
+        sprite.flipX = facingLeft;
+    }
+
+    private bool TryResolveLootDropPrefab(ref GameObject field, string defaultAssetPath)
+    {
+        if (field != null)
+        {
+            return true;
+        }
+
+#if UNITY_EDITOR
+        field = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(defaultAssetPath);
+#endif
+        return field != null;
+    }
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        if (_burnFirePrefab == null)
+        {
+            _burnFirePrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(DefaultBurnFirePrefabPath);
+        }
+
+        if (_mp40DropPrefab == null)
+        {
+            _mp40DropPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(DefaultMp40DropPrefabPath);
+        }
+
+        if (_naziHelmetDropPrefab == null)
+        {
+            _naziHelmetDropPrefab =
+                UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(DefaultNaziHelmetDropPrefabPath);
+        }
     }
 #endif
 

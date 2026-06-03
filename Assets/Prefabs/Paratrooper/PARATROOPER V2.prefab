@@ -2582,6 +2582,23 @@ MonoBehaviour:
   _bloodHitPrefab: {fileID: 100000, guid: 5ea5b0532c1004e4aba8a7f9fbe4d4b0, type: 3}
   _bloodHitReferenceDamage: 28
   _bloodHitTowardShooterMeters: 0.022
+  _helmetSlotName: helmet
+  _helmetAttachmentName: naziHelmet
+  _mp40DropPrefab: {fileID: 100000, guid: c9c2d9903b7561044bf70cce2e25b89c, type: 3}
+  _naziHelmetDropPrefab: {fileID: 100000, guid: 68f52d2847e6c8e4b8864be84e88f850, type: 3}
+  _gunDropBoneName: gunBone
+  _headDropBoneName: head
+  _gunSlotName: gunSlot
+  _groundLootDropForce: 4.5
+  _groundLootDropTorque: 120
+  _groundLootLifetime: 30
+  _lootSortingLayerName: Paratrooper
+  _lootSortingOrder: 120
+  _lootPhysicsLayerName: EnemyLoot
+  _lootRigidbodyExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  _debugLootDropLogs: 0
 --- !u!114 &357004263934065529
 MonoBehaviour:
   m_ObjectHideFlags: 0
