@@ -538,6 +538,25 @@ namespace iStick2War_V2
             return TryRefillMagazineForWeapon(state.Definition);
         }
 
+        // Life retry / shop refill: top up every owned weapon to max mag + reserve; sync active weapon to HeroModel_V2.
+        public void RefillAllWeaponsToMax()
+        {
+            _isReloading = false;
+            for (int i = 0; i < _inventory.WeaponCount; i++)
+            {
+                HeroWeaponRuntimeState_V2 state = _inventory.GetWeaponStateAtIndex(i);
+                if (state == null || state.Definition == null)
+                {
+                    continue;
+                }
+
+                state.CurrentAmmo = state.Definition.MaxAmmo;
+                state.CurrentReserveAmmo = state.Definition.MaxReserveAmmo;
+            }
+
+            ApplyActiveWeaponToModel();
+        }
+
         public bool TryRefillMagazineForWeapon(HeroWeaponDefinition_V2 definition)
         {
             // Shop ammo purchases and test-range setup must work while combat gate has disabled shooting (Shop phase).

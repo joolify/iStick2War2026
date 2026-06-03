@@ -192,7 +192,19 @@ namespace iStick2War_V2
             return true;
         }
 
-        /// <summary>First inventory slot (loadout order) that still has magazine or reserve rounds.</summary>
+        public int WeaponCount => _weapons.Count;
+
+        public HeroWeaponRuntimeState_V2 GetWeaponStateAtIndex(int zeroBasedIndex)
+        {
+            if (zeroBasedIndex < 0 || zeroBasedIndex >= _weapons.Count)
+            {
+                return null;
+            }
+
+            return _weapons[zeroBasedIndex];
+        }
+
+        // First inventory slot (loadout order) that still has magazine or reserve rounds.
         public bool TryGetFirstWeaponIndexWithAmmo(out int index)
         {
             for (int i = 0; i < _weapons.Count; i++)

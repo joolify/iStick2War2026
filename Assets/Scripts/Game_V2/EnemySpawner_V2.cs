@@ -518,6 +518,45 @@ namespace iStick2War_V2
             StartCoroutine(RunTrackedAirThreatRoutine(routine));
         }
 
+        // Life retry / wave restart: stop spawner, despawn living enemies, and clear airborne ordnance.
+        public void ClearActiveWaveCombatForLifeRetry(string reason = null)
+        {
+            StopWave();
+            DespawnAllLivingInfantryForLifeRetry(reason);
+            CombatProjectileCleanup_V2.DespawnAllActiveProjectiles();
+        }
+
+        private void DespawnAllLivingInfantryForLifeRetry(string reason)
+        {
+            ParatrooperDeathHandler_V2[] paratroopers = UnityEngine.Object.FindObjectsByType<ParatrooperDeathHandler_V2>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            for (int i = 0; i < paratroopers.Length; i++)
+            {
+                ParatrooperDeathHandler_V2 handler = paratroopers[i];
+                if (handler == null)
+                {
+                    continue;
+                }
+
+                handler.ForceDespawnImmediately(reason);
+            }
+
+            MechRobotBossDeathHandler_V2[] mechBosses = UnityEngine.Object.FindObjectsByType<MechRobotBossDeathHandler_V2>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            for (int i = 0; i < mechBosses.Length; i++)
+            {
+                MechRobotBossDeathHandler_V2 handler = mechBosses[i];
+                if (handler == null)
+                {
+                    continue;
+                }
+
+                handler.ForceDespawnImmediately(reason);
+            }
+        }
+
         public void StopWave()
         {
             _isWaveActive = false;

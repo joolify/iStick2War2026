@@ -835,6 +835,32 @@ namespace iStick2War_V2
             HandleDeath();
         }
 
+        public void ResetPresentationAfterRevive()
+        {
+            if (_skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
+            {
+                return;
+            }
+
+            _skeletonAnimation.enabled = true;
+            SkeletonRenderer renderer = _skeletonAnimation.GetComponent<SkeletonRenderer>();
+            if (renderer != null)
+            {
+                renderer.enabled = true;
+            }
+
+            _skeletonAnimation.Skeleton.SetToSetupPose();
+            if (_skeletonAnimation.AnimationState != null)
+            {
+                _skeletonAnimation.AnimationState.ClearTracks();
+            }
+
+            PlayLoop(GetIdleAnimationForCurrentWeapon());
+            _skeletonAnimation.Update(0f);
+            _skeletonAnimation.LateUpdate();
+            ApplyHelmetAttachment();
+        }
+
         internal void PlayShoot()
         {
             AnimationReferenceAsset shootAnim = GetShootAnimationForCurrentWeapon();

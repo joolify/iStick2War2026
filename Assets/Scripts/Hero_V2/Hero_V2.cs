@@ -500,6 +500,21 @@ namespace iStick2War_V2
             return true;
         }
 
+        // Run life retry: full HP, full ammo on all weapons, and clear death presentation before the wave restarts.
+        public bool TryReviveForLifeRetry()
+        {
+            if (!TryReviveWithHealthFraction(1f))
+            {
+                return false;
+            }
+
+            _weaponSystem?.RefillAllWeaponsToMax();
+            _view?.ResetPresentationAfterRevive();
+            _controller?.SetCombatPaused(true);
+            RefreshEquippedWeaponVisuals();
+            return true;
+        }
+
         public int GetCurrentHealth()
         {
             return _model != null ? _model.currentHealth : 0;

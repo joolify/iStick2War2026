@@ -62,8 +62,8 @@ namespace iStick2War_V2
  * PURPOSE:
  * Owns the high-level gameplay loop: Prepare → InWave → Shop, plus GameOver, GameWon, and GameError.
  * Tracks currency, bunker and hero meta, applies wave configs (with optional WaveBalanceConfig_V2 scaling),
- * drives EnemySpawner_V2 for the active wave, coordinates shop UI, top bar, death-continue tiers, and
- * telemetry-friendly events.
+ * drives EnemySpawner_V2 for the active wave, coordinates shop UI, top bar, death-continue tiers, run lives,
+ * and telemetry-friendly events.
  *
  * ---------------------------------------------------------
  * KEY DEPENDENCIES
@@ -199,6 +199,12 @@ namespace iStick2War_V2
         [Tooltip("Clutch save revives hero with this HP fraction and restarts current wave quickly.")]
         [SerializeField] [Range(0.1f, 1f)] private float _clutchReviveHealthFraction = 0.6f;
         [SerializeField] [Range(0f, 0.5f)] private float _restartRunPermanentDamageBonusStep = 0.05f;
+        [Header("Run lives")]
+        [SerializeField] private int _maxLivesPerRun = 3;
+        [Tooltip("Prepare delay after losing a life (shows Life lost, then restarts the same wave).")]
+        [SerializeField] private float _lifeLostPrepareDurationSeconds = 2.5f;
+        [SerializeField] private HeartLifeBar_V2 _heartLifeBar;
+        [SerializeField] private GameOverContinueUi_V2 _gameOverContinueUi;
 
         [Header("Debug")]
         [SerializeField] private bool _debugWaveLogs = false;
@@ -233,8 +239,11 @@ namespace iStick2War_V2
         private float _continueEnemyPressureMultiplierRuntime = 1f;
         private HeroWeaponDefinition_V2 _lastShopPurchasedWeapon;
         private static float s_restartRunPermanentDamageBonus01;
+        private int _livesRemaining;
+        private GameOverContinueUi_V2 _resolvedGameOverContinueUi;
 
         public event Action<WaveLoopState_V2> OnStateChanged;
+        public event Action<int, int> OnLivesChanged;
         public event Action<int, int, int> OnMetaChanged;
 
         // Raised when ApplyBunkerDamage applies a positive amount (enemy fire, etc.).
@@ -260,6 +269,8 @@ namespace iStick2War_V2
         public int CheckpointContinueCost => Mathf.Max(0, _checkpointContinueCost);
         public int ClutchSaveCost => Mathf.Max(0, _clutchSaveCost);
         public float RestartRunPermanentDamageBonus01 => s_restartRunPermanentDamageBonus01;
+        public int LivesRemaining => _livesRemaining;
+        public int MaxLivesPerRun => Mathf.Max(1, _maxLivesPerRun);
 
         // Last scaling snapshot for the wave that entered WaveLoopState_V2.InWave (still valid in Shop until the next wave starts).
         public bool TryGetScalingSnapshotForTelemetry(out WaveRunScalingSnapshot snapshot)
@@ -290,13 +301,18 @@ namespace iStick2War_V2
         // Shows the top-bar wave label (hold + fade) using CurrentWaveNumber.
         private void BeginTopBarWaveTextIntro()
         {
+            BeginTopBarStatusIntro($"Wave {CurrentWaveNumber}", _topBarWaveTextVisibleSeconds);
+        }
+
+        private void BeginTopBarStatusIntro(string message, float holdSeconds)
+        {
             if (_topBarWaveTextRoutine != null)
             {
                 StopCoroutine(_topBarWaveTextRoutine);
                 _topBarWaveTextRoutine = null;
             }
 
-            _topBarWaveTextRoutine = StartCoroutine(TopBarWaveTextIntroRoutine());
+            _topBarWaveTextRoutine = StartCoroutine(TopBarStatusTextIntroRoutine(message, holdSeconds));
         }
 
         // Enemy fire etc. — reduces current bunker HP and refreshes UI.
@@ -438,6 +454,9 @@ namespace iStick2War_V2
         private void Start()
         {
             AudioManager_V2.EnsureInstance();
+            ResetRunLivesForNewRun();
+            EnsureHeartLifeBar();
+            EnsureGameOverContinueUi();
             ResolveCameraFollowReferenceIfNeeded();
             ResolveTopBarReferencesIfNeeded();
             CacheTopBarWaveTextBaseColorIfNeeded();
@@ -467,7 +486,7 @@ namespace iStick2War_V2
                 _hero != null &&
                 _hero.IsDead())
             {
-                EnterGameOverState();
+                HandleHeroDeathWhileInRun();
                 return;
             }
 
@@ -755,8 +774,108 @@ namespace iStick2War_V2
             s_restartRunPermanentDamageBonus01 =
                 Mathf.Clamp01(s_restartRunPermanentDamageBonus01 + Mathf.Max(0f, _restartRunPermanentDamageBonusStep));
             Time.timeScale = 1f;
+            // Full scene reload resets wave index, economy defaults, bunker, and run lives.
             Scene active = SceneManager.GetActiveScene();
             SceneManager.LoadScene(active.path.Length > 0 ? active.path : active.name);
+        }
+
+        private void HandleHeroDeathWhileInRun()
+        {
+            if (_livesRemaining > 0)
+            {
+                TryConsumeLifeAndRetryCurrentWave();
+                return;
+            }
+
+            EnterGameOverState();
+        }
+
+        private void TryConsumeLifeAndRetryCurrentWave()
+        {
+            _livesRemaining = Mathf.Max(0, _livesRemaining - 1);
+            EmitLivesChanged();
+
+            if (_enemySpawner != null)
+            {
+                _enemySpawner.ClearActiveWaveCombatForLifeRetry("Hero life retry");
+            }
+            else
+            {
+                CombatProjectileCleanup_V2.DespawnAllActiveProjectiles();
+            }
+
+            if (_hero == null || !_hero.TryReviveForLifeRetry())
+            {
+                Log("Life retry failed (hero revive). Falling back to Game Over.");
+                EnterGameOverState();
+                return;
+            }
+
+            SetHeroDeathGameOverUiVisible(false);
+            SetGameErrorUiVisible(false);
+            SetGameWonUiVisible(false);
+            SetCameraFollowEnabled(true);
+            _continueEnemyPressureMultiplierRuntime = 1f;
+            EnterPreparingStateAfterLifeLost();
+            EmitMetaChanged();
+            Log($"Life lost. livesRemaining={_livesRemaining}, retry wave={CurrentWaveNumber}.");
+        }
+
+        private void ResetRunLivesForNewRun()
+        {
+            _livesRemaining = MaxLivesPerRun;
+            EmitLivesChanged();
+        }
+
+        private void EmitLivesChanged()
+        {
+            OnLivesChanged?.Invoke(_livesRemaining, MaxLivesPerRun);
+        }
+
+        private void EnsureHeartLifeBar()
+        {
+            if (_heartLifeBar == null)
+            {
+                _heartLifeBar = FindAnyObjectByType<HeartLifeBar_V2>(FindObjectsInactive.Include);
+            }
+
+            if (_heartLifeBar != null)
+            {
+                _heartLifeBar.Initialize(this, MaxLivesPerRun);
+                return;
+            }
+
+            if (_debugWaveLogs)
+            {
+                Debug.LogWarning(
+                    "[WaveManager_V2] HeartLifeBar_V2 not found. Add HeartLifeBar_V2 to your HeartLifeBar object in the scene.");
+            }
+        }
+
+        private void EnsureGameOverContinueUi()
+        {
+            if (_gameOverContinueUi == null)
+            {
+                _gameOverContinueUi = GetComponent<GameOverContinueUi_V2>();
+            }
+
+            if (_gameOverContinueUi == null)
+            {
+                _gameOverContinueUi = gameObject.AddComponent<GameOverContinueUi_V2>();
+            }
+
+            _resolvedGameOverContinueUi = _gameOverContinueUi;
+        }
+
+        private void RefreshGameOverContinuePrompt()
+        {
+            _resolvedGameOverContinueUi?.RefreshPromptFromWaveManager();
+            if (_heroDeathTopBarContinue != null &&
+                (_resolvedGameOverContinueUi == null || _heroDeathTopBarContinue.text == "Continue"))
+            {
+                _heroDeathTopBarContinue.text =
+                    $"Checkpoint {CheckpointContinueCost} [1]  |  Clutch {ClutchSaveCost} [2]  |  Restart run [R]";
+            }
         }
 
         public bool TryCheckpointContinue()
@@ -981,6 +1100,16 @@ namespace iStick2War_V2
             _enemiesKilledThisWave = 0;
         }
 
+        private void EnterPreparingStateAfterLifeLost()
+        {
+            SetState(WaveLoopState_V2.Preparing);
+            float prepare = Mathf.Max(0.1f, _lifeLostPrepareDurationSeconds);
+            _extraPrepareDelaySecondsForNextWave = 0f;
+            _stateEndTime = Time.time + prepare;
+            _enemiesKilledThisWave = 0;
+            BeginTopBarStatusIntro("Life lost", prepare);
+        }
+
         private void ApplyBetweenWavePressureReset()
         {
             if (!_enableBetweenWavePressureReset)
@@ -1195,6 +1324,7 @@ namespace iStick2War_V2
                 }
 
                 _gameOverUi?.Show();
+                RefreshGameOverContinuePrompt();
             }
             else
             {
@@ -2043,7 +2173,7 @@ namespace iStick2War_V2
             }
         }
 
-        private IEnumerator TopBarWaveTextIntroRoutine()
+        private IEnumerator TopBarStatusTextIntroRoutine(string message, float holdSeconds)
         {
             ResolveTopBarReferencesIfNeeded();
             if (_topBarWaveText == null)
@@ -2055,12 +2185,12 @@ namespace iStick2War_V2
             EnsureTopbarBranchActiveForWaveLabel();
             CacheTopBarWaveTextBaseColorIfNeeded();
             _topBarWaveText.gameObject.SetActive(true);
-            _topBarWaveText.text = $"Wave {CurrentWaveNumber}";
+            _topBarWaveText.text = message;
             Color c = _topBarWaveTextBaseColor;
             c.a = 1f;
             _topBarWaveText.color = c;
 
-            float hold = Mathf.Max(0f, _topBarWaveTextVisibleSeconds);
+            float hold = Mathf.Max(0f, holdSeconds);
             if (hold > 0f)
             {
                 yield return new WaitForSecondsRealtime(hold);
