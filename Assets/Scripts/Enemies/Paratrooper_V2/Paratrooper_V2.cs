@@ -953,7 +953,7 @@ public class Paratrooper : MonoBehaviour
         {
             _model.pendingDieAfterLandAnim = true;
             _model.suppressDieAnimationFromAirborneImpact = true;
-            _view?.TryDropMp40OnGroundDeath();
+            // mp40 drops from ParatrooperView_V2 land-after-airborne-death clip (after skeleton pose is applied).
         }
         }
 

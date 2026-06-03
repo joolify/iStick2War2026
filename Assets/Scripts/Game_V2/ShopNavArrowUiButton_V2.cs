@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -44,6 +45,7 @@ namespace iStick2War_V2
         private bool _visualPairResolved;
         private bool _usesUiClickPath;
         private bool _isWorldPointerDown;
+        private int _lastHandledClickFrame = -1;
 
         private void Awake()
         {
@@ -116,6 +118,12 @@ namespace iStick2War_V2
         {
             _usesUiClickPath = HasRaycastableGraphic();
             EnsureWorldSpaceHitTargetIfNeeded();
+            TMP_Text label = FindAssociatedShopLabel();
+            if (label != null)
+            {
+                label.raycastTarget = true;
+                ExpandLabelRaycastToRect(label);
+            }
         }
 
         internal void ResetToNormalVisual()
@@ -189,7 +197,7 @@ namespace iStick2War_V2
             }
 
             if (Input.GetMouseButtonDown(0) &&
-                !IsPointerOverUiRaycastTarget() &&
+                !IsPointerOverForeignUiRaycastTarget() &&
                 TryHandleWorldPointerDown())
             {
                 _isWorldPointerDown = true;
@@ -239,6 +247,12 @@ namespace iStick2War_V2
 
         private void HandleClick()
         {
+            if (_lastHandledClickFrame == Time.frameCount)
+            {
+                return;
+            }
+
+            _lastHandledClickFrame = Time.frameCount;
             AudioManager_V2.PlayMenuClick();
             if (_shopPanel == null)
             {
@@ -353,10 +367,53 @@ namespace iStick2War_V2
             }
         }
 
-        private static bool IsPointerOverUiRaycastTarget()
+        private bool IsPointerOverForeignUiRaycastTarget()
         {
             EventSystem eventSystem = EventSystem.current;
-            return eventSystem != null && eventSystem.IsPointerOverGameObject();
+            if (eventSystem == null)
+            {
+                return false;
+            }
+
+            PointerEventData pointerData = new PointerEventData(eventSystem)
+            {
+                position = Input.mousePosition,
+            };
+
+            List<RaycastResult> results = new List<RaycastResult>();
+            eventSystem.RaycastAll(pointerData, results);
+            for (int i = 0; i < results.Count; i++)
+            {
+                GameObject hitObject = results[i].gameObject;
+                if (hitObject == null || IsDecorativeShopButtonLabel(hitObject))
+                {
+                    continue;
+                }
+
+                if (hitObject.GetComponentInParent<ShopNavArrowLabelForwarder_V2>() != null)
+                {
+                    continue;
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool TryGetWorldPointerPoint(out Vector2 worldPoint)
+        {
+            worldPoint = default;
+            Camera camera = Camera.main;
+            if (camera == null)
+            {
+                return false;
+            }
+
+            Vector3 screenPoint = Input.mousePosition;
+            screenPoint.z = Mathf.Abs(transform.position.z - camera.transform.position.z);
+            worldPoint = camera.ScreenToWorldPoint(screenPoint);
+            return true;
         }
 
         private bool TryHandleWorldPointerDown()
@@ -372,15 +429,11 @@ namespace iStick2War_V2
                 return false;
             }
 
-            Camera camera = Camera.main;
-            if (camera == null)
+            if (!TryGetWorldPointerPoint(out Vector2 worldPoint))
             {
                 return false;
             }
 
-            Vector3 screenPoint = Input.mousePosition;
-            screenPoint.z = 0f;
-            Vector2 worldPoint = camera.ScreenToWorldPoint(screenPoint);
             return hitCollider.OverlapPoint(worldPoint);
         }
 
@@ -394,6 +447,7 @@ namespace iStick2War_V2
 
             // Label must receive UI raycasts so clicks on text forward to the nav button.
             label.raycastTarget = true;
+            ExpandLabelRaycastToRect(label);
 
             Graphic[] graphics = label.GetComponentsInChildren<Graphic>(true);
             for (int i = 0; i < graphics.Length; i++)
@@ -432,8 +486,8 @@ namespace iStick2War_V2
 
         private TMP_Text FindAssociatedShopLabel()
         {
-            string labelName = ResolveAssociatedShopLabelName();
-            if (string.IsNullOrEmpty(labelName))
+            string[] labelNames = ResolveAssociatedShopLabelNames();
+            if (labelNames == null || labelNames.Length == 0)
             {
                 return null;
             }
@@ -443,47 +497,76 @@ namespace iStick2War_V2
             if (parent != null)
             {
                 TMP_Text[] localTexts = parent.GetComponentsInChildren<TMP_Text>(true);
-                for (int i = 0; i < localTexts.Length; i++)
+                for (int nameIndex = 0; nameIndex < labelNames.Length; nameIndex++)
                 {
-                    TMP_Text localText = localTexts[i];
-                    if (localText != null &&
-                        localText.gameObject.name.Equals(labelName, System.StringComparison.OrdinalIgnoreCase))
+                    string labelName = labelNames[nameIndex];
+                    for (int i = 0; i < localTexts.Length; i++)
                     {
-                        return localText;
+                        TMP_Text localText = localTexts[i];
+                        if (localText != null &&
+                            localText.gameObject.name.Equals(labelName, System.StringComparison.OrdinalIgnoreCase))
+                        {
+                            return localText;
+                        }
                     }
                 }
             }
 
             TMP_Text[] allTexts = UnityEngine.Object.FindObjectsByType<TMP_Text>(FindObjectsInactive.Include);
-            for (int i = 0; i < allTexts.Length; i++)
+            for (int nameIndex = 0; nameIndex < labelNames.Length; nameIndex++)
             {
-                TMP_Text text = allTexts[i];
-                if (text != null &&
-                    text.gameObject.name.Equals(labelName, System.StringComparison.OrdinalIgnoreCase))
+                string labelName = labelNames[nameIndex];
+                for (int i = 0; i < allTexts.Length; i++)
                 {
-                    return text;
+                    TMP_Text text = allTexts[i];
+                    if (text != null &&
+                        text.gameObject.name.Equals(labelName, System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        return text;
+                    }
                 }
             }
 
             return null;
         }
 
-        private string ResolveAssociatedShopLabelName()
+        private string[] ResolveAssociatedShopLabelNames()
         {
             switch (_behavior)
             {
                 case ShopTextButtonBehavior.CarouselPrevious:
-                    return "txt_shop_previous";
+                    return CarouselPreviousLabelNames;
                 case ShopTextButtonBehavior.CarouselNext:
-                    return "txt_shop_next";
+                    return CarouselNextLabelNames;
                 case ShopTextButtonBehavior.Buy:
-                    return "txt_shop_buy";
+                    return BuyLabelNames;
                 case ShopTextButtonBehavior.StartNextWave:
-                    return "txt_shop_startGame";
+                    return StartGameLabelNames;
                 default:
                     return null;
             }
         }
+
+        private static readonly string[] CarouselPreviousLabelNames =
+        {
+            "txt_shop_previous",
+            "txt_shop_prev",
+        };
+
+        private static readonly string[] CarouselNextLabelNames =
+        {
+            "txt_shop_next",
+        };
+
+        private static readonly string[] BuyLabelNames =
+        {
+            "txt_shop_buy",
+        };
+
+        private static readonly string[] StartGameLabelNames =
+        {
+            "txt_shop_startGame",
+        };
 
         private void FitBoxColliderToVisuals(BoxCollider2D boxCollider)
         {
@@ -492,74 +575,83 @@ namespace iStick2War_V2
                 return;
             }
 
-            bool hasBounds = false;
-            Bounds combined = default;
+            SpriteRenderer spriteRenderer = ResolveButtonSpriteRenderer();
+            if (spriteRenderer == null)
+            {
+                return;
+            }
 
-            SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();
+            FitBoxColliderToSpriteBounds(boxCollider, spriteRenderer);
+        }
+
+        private SpriteRenderer ResolveButtonSpriteRenderer()
+        {
+            GameObject normalRoot = _normalVisual != null ? _normalVisual : gameObject;
+            SpriteRenderer spriteRenderer = normalRoot.GetComponent<SpriteRenderer>();
+            if (spriteRenderer == null)
+            {
+                spriteRenderer = normalRoot.GetComponentInChildren<SpriteRenderer>(true);
+            }
+
+            if (spriteRenderer == null)
+            {
+                spriteRenderer = GetComponent<SpriteRenderer>();
+            }
+
             if (spriteRenderer == null)
             {
                 spriteRenderer = GetComponentInChildren<SpriteRenderer>(true);
             }
 
-            if (spriteRenderer != null)
-            {
-                EncapsulateBounds(ref combined, ref hasBounds, spriteRenderer.bounds);
-            }
+            return spriteRenderer;
+        }
 
-            TMP_Text label = FindAssociatedShopLabel();
-            if (label != null)
-            {
-                EncapsulateRectTransformBounds(label.rectTransform, ref combined, ref hasBounds);
-            }
-
-            if (!hasBounds)
+        private void FitBoxColliderToSpriteBounds(BoxCollider2D boxCollider, SpriteRenderer spriteRenderer)
+        {
+            if (boxCollider == null || spriteRenderer == null)
             {
                 return;
             }
 
-            Vector3 localCenter = transform.InverseTransformPoint(combined.center);
-            Vector3 localSize = transform.InverseTransformVector(combined.size);
+            if (ReferenceEquals(spriteRenderer.transform, transform) && spriteRenderer.sprite != null)
+            {
+                boxCollider.size = spriteRenderer.sprite.bounds.size;
+                boxCollider.offset = spriteRenderer.sprite.bounds.center;
+                return;
+            }
+
+            Bounds bounds = spriteRenderer.bounds;
+            Vector3 localCenter = transform.InverseTransformPoint(bounds.center);
+            Vector3 localSize = transform.InverseTransformVector(bounds.size);
             boxCollider.offset = localCenter;
             boxCollider.size = new Vector2(Mathf.Abs(localSize.x), Mathf.Abs(localSize.y));
         }
 
-        private static void EncapsulateBounds(ref Bounds combined, ref bool hasBounds, Bounds next)
+        // TMP mesh raycasts only cover glyph bounds; pad to the full RectTransform so upper label area forwards clicks.
+        private static void ExpandLabelRaycastToRect(TMP_Text label)
         {
-            if (!hasBounds)
-            {
-                combined = next;
-                hasBounds = true;
-                return;
-            }
-
-            combined.Encapsulate(next.min);
-            combined.Encapsulate(next.max);
-        }
-
-        private static void EncapsulateRectTransformBounds(
-            RectTransform rectTransform,
-            ref Bounds combined,
-            ref bool hasBounds)
-        {
-            if (rectTransform == null)
+            if (label == null)
             {
                 return;
             }
 
-            Vector3[] corners = new Vector3[4];
-            rectTransform.GetWorldCorners(corners);
-            for (int i = 0; i < corners.Length; i++)
+            label.ForceMeshUpdate();
+            Rect rect = label.rectTransform.rect;
+            Bounds textBounds = label.textBounds;
+            if (rect.width <= 0.01f || rect.height <= 0.01f)
             {
-                if (!hasBounds)
-                {
-                    combined = new Bounds(corners[i], Vector3.zero);
-                    hasBounds = true;
-                }
-                else
-                {
-                    combined.Encapsulate(corners[i]);
-                }
+                return;
             }
+
+            float padLeft = textBounds.min.x - rect.xMin;
+            float padBottom = textBounds.min.y - rect.yMin;
+            float padRight = rect.xMax - textBounds.max.x;
+            float padTop = rect.yMax - textBounds.max.y;
+            label.raycastPadding = new Vector4(
+                Mathf.Max(0f, padLeft),
+                Mathf.Max(0f, padBottom),
+                Mathf.Max(0f, padRight),
+                Mathf.Max(0f, padTop));
         }
 
         private bool HasRaycastableGraphic()
@@ -588,6 +680,7 @@ namespace iStick2War_V2
 
             string name = target.name;
             return name.Equals("txt_shop_previous", System.StringComparison.OrdinalIgnoreCase) ||
+                   name.Equals("txt_shop_prev", System.StringComparison.OrdinalIgnoreCase) ||
                    name.Equals("txt_shop_next", System.StringComparison.OrdinalIgnoreCase) ||
                    name.Equals("txt_shop_buy", System.StringComparison.OrdinalIgnoreCase) ||
                    name.Equals("txt_shop_startGame", System.StringComparison.OrdinalIgnoreCase);

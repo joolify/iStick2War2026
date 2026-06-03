@@ -2627,6 +2627,7 @@ namespace iStick2War_V2
                 "txt_shop_buy",
                 "txt_shop_startGame",
                 "txt_shop_previous",
+                "txt_shop_prev",
                 "txt_shop_next",
                 "txt_shop_item",
             };

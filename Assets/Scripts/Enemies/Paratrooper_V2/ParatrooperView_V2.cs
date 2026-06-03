@@ -170,12 +170,16 @@ public class ParatrooperView_V2 : MonoBehaviour
     [SerializeField] private string _gunSlotName = "gunSlot";
     [SerializeField] private float _groundLootDropForce = 4.5f;
     [SerializeField] private float _groundLootDropTorque = 120f;
+    // Vertical offset when snapping mp40 onto Ground / LandingPoint so overlap separation does not pop it upward.
+    [SerializeField] private float _groundLootSpawnClearance = 0.05f;
     [SerializeField] private float _groundLootLifetime = 30f;
     [SerializeField] private string _lootSortingLayerName = "Paratrooper";
     [SerializeField] private int _lootSortingOrder = 120;
     // Physics layer for dropped props; keep off Enemy so living units do not shove loot around.
     [SerializeField] private string _lootPhysicsLayerName = "EnemyLoot";
     [SerializeField] private LayerMask _lootRigidbodyExcludeLayers;
+    // When zero, loot only collides with Ground / LandingPoint (never mp40 vs naziHelmet or paratroopers).
+    [SerializeField] private LayerMask _lootRigidbodyIncludeLayers;
     [SerializeField] private bool _debugLootDropLogs = false;
     private ParatrooperDamageReceiver_V2 _damageReceiver;
     private GameObject _activeBurnFireVfx;
@@ -184,6 +188,9 @@ public class ParatrooperView_V2 : MonoBehaviour
     private const string DefaultBurnFirePrefabPath = "Assets/Prefabs/Paratrooper/Paratrooper_Fire Variant.prefab";
     private const string DefaultMp40DropPrefabPath = "Assets/Prefabs/Paratrooper/mp40.prefab";
     private const string DefaultNaziHelmetDropPrefabPath = "Assets/Prefabs/Paratrooper/naziHelmet.prefab";
+    private static PhysicsMaterial2D s_lootNoBounceMaterial;
+    private static bool s_lootLayerCollisionsConfigured;
+
     private readonly HashSet<BodyPartType> _alreadySeveredParts = new HashSet<BodyPartType>();
     // Stable variant selections so we can re-apply hiding/showing in LateUpdate without flicker.
     private string _torsoShootChoice;
@@ -2138,7 +2145,8 @@ public class ParatrooperView_V2 : MonoBehaviour
             _mp40DropPrefab,
             _gunDropBoneName,
             transform.position,
-            useHitPointAsFallback: false);
+            useHitPointAsFallback: false,
+            gentleGroundPlacement: true);
         if (_debugLootDropLogs && drop != null)
         {
             Debug.Log($"[ParatrooperView_V2] Loot drop spawned mp40 at {drop.transform.position}.");
@@ -2188,7 +2196,8 @@ public class ParatrooperView_V2 : MonoBehaviour
         GameObject prefab,
         string boneName,
         Vector2 fallbackPosition,
-        bool useHitPointAsFallback)
+        bool useHitPointAsFallback,
+        bool gentleGroundPlacement = false)
     {
         if (prefab == null)
         {
@@ -2211,15 +2220,29 @@ public class ParatrooperView_V2 : MonoBehaviour
 
         spawnPos.z = _gibWorldZ;
 
-        Vector2 launchDir = UnityEngine.Random.insideUnitCircle;
-        if (launchDir.sqrMagnitude < 0.0001f)
+        if (gentleGroundPlacement)
         {
-            launchDir = Vector2.up;
+            TrySnapLootSpawnToGround(ref spawnPos);
         }
-        launchDir.Normalize();
-        launchDir.y = Mathf.Max(0.12f, launchDir.y);
 
-        float angle = Mathf.Atan2(launchDir.y, launchDir.x) * Mathf.Rad2Deg + UnityEngine.Random.Range(-18f, 18f);
+        float angle;
+        if (gentleGroundPlacement)
+        {
+            angle = UnityEngine.Random.Range(-28f, 28f);
+        }
+        else
+        {
+            Vector2 launchDir = UnityEngine.Random.insideUnitCircle;
+            if (launchDir.sqrMagnitude < 0.0001f)
+            {
+                launchDir = Vector2.up;
+            }
+
+            launchDir.Normalize();
+            launchDir.y = Mathf.Max(0.12f, launchDir.y);
+            angle = Mathf.Atan2(launchDir.y, launchDir.x) * Mathf.Rad2Deg + UnityEngine.Random.Range(-18f, 18f);
+        }
+
         GameObject drop = Instantiate(prefab, spawnPos, Quaternion.Euler(0f, 0f, angle));
         if (drop.transform.localScale.sqrMagnitude <= 0.000001f)
         {
@@ -2238,19 +2261,42 @@ public class ParatrooperView_V2 : MonoBehaviour
         rb.bodyType = RigidbodyType2D.Dynamic;
         rb.simulated = true;
         rb.gravityScale = 1f;
-        rb.linearDamping = 0.24f;
-        rb.angularDamping = 0.14f;
+        rb.linearDamping = 0.45f;
+        rb.angularDamping = 0.35f;
         rb.freezeRotation = false;
 
-        Rigidbody2D rootRb = GetComponentInParent<Rigidbody2D>();
-        if (rootRb != null)
+        if (gentleGroundPlacement)
         {
-            rb.linearVelocity = rootRb.linearVelocity;
+            rb.linearVelocity = Vector2.zero;
+            rb.angularVelocity = 0f;
+        }
+        else
+        {
+            Rigidbody2D rootRb = GetComponentInParent<Rigidbody2D>();
+            if (rootRb != null)
+            {
+                rb.linearVelocity = rootRb.linearVelocity;
+            }
+
+            Vector2 launchDir = UnityEngine.Random.insideUnitCircle;
+            if (launchDir.sqrMagnitude < 0.0001f)
+            {
+                launchDir = Vector2.up;
+            }
+
+            launchDir.Normalize();
+            launchDir.y = Mathf.Max(0.12f, launchDir.y);
+            rb.AddForce(launchDir * _groundLootDropForce, ForceMode2D.Impulse);
+            rb.AddTorque(UnityEngine.Random.Range(-_groundLootDropTorque, _groundLootDropTorque), ForceMode2D.Impulse);
         }
 
-        rb.AddForce(launchDir * _groundLootDropForce, ForceMode2D.Impulse);
-        rb.AddTorque(UnityEngine.Random.Range(-_groundLootDropTorque, _groundLootDropTorque), ForceMode2D.Impulse);
-        ApplyLootRigidbodyCollisionRules(rb, drop);
+        ApplyLootRigidbodyCollisionRules(rb, drop, gentleGroundPlacement);
+
+        if (gentleGroundPlacement)
+        {
+            rb.position = new Vector2(spawnPos.x, spawnPos.y);
+            Physics2D.SyncTransforms();
+        }
 
         if (_groundLootLifetime > 0.01f)
         {
@@ -2303,12 +2349,25 @@ public class ParatrooperView_V2 : MonoBehaviour
         }
     }
 
-    private void ApplyLootRigidbodyCollisionRules(Rigidbody2D rb, GameObject drop)
+    private void ApplyLootRigidbodyCollisionRules(
+        Rigidbody2D rb,
+        GameObject drop,
+        bool gentleGroundPlacement = false)
     {
         if (rb == null || drop == null)
         {
             return;
         }
+
+        EnsureLootLayerCollisionsConfigured();
+
+        LayerMask includeLayers = _lootRigidbodyIncludeLayers;
+        if (includeLayers.value == 0)
+        {
+            includeLayers = BuildDefaultLootRigidbodyIncludeLayers();
+        }
+
+        rb.includeLayers = includeLayers;
 
         LayerMask excludeLayers = _lootRigidbodyExcludeLayers;
         if (excludeLayers.value == 0)
@@ -2317,6 +2376,19 @@ public class ParatrooperView_V2 : MonoBehaviour
         }
 
         rb.excludeLayers = excludeLayers;
+        rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+        ApplyLootColliderPhysicsMaterial(drop);
+
+        EnemyLootSettle_V2 settle = drop.GetComponent<EnemyLootSettle_V2>();
+        if (settle == null)
+        {
+            settle = drop.AddComponent<EnemyLootSettle_V2>();
+        }
+
+        if (gentleGroundPlacement)
+        {
+            settle.ConfigureGentleGroundPlacement();
+        }
 
         // Extra safety for the dying unit: loot often spawns overlapping its hitboxes.
         Paratrooper source = GetComponentInParent<Paratrooper>();
@@ -2326,15 +2398,115 @@ public class ParatrooperView_V2 : MonoBehaviour
         }
     }
 
+    private bool TrySnapLootSpawnToGround(ref Vector3 spawnPos)
+    {
+        int groundMask = LayerMask.GetMask("Ground", "LandingPoint");
+        if (groundMask == 0)
+        {
+            return false;
+        }
+
+        Vector2 origin = new Vector2(spawnPos.x, spawnPos.y + 0.35f);
+        RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.down, 1.75f, groundMask);
+        if (hit.collider == null)
+        {
+            return false;
+        }
+
+        spawnPos.x = hit.point.x;
+        spawnPos.y = hit.point.y + _groundLootSpawnClearance;
+        spawnPos.z = _gibWorldZ;
+        return true;
+    }
+
+    private static LayerMask BuildDefaultLootRigidbodyIncludeLayers()
+    {
+        int mask = LayerMask.GetMask("Ground", "LandingPoint");
+        if (mask != 0)
+        {
+            return mask;
+        }
+
+        mask = 0;
+        AddLayerToMask(ref mask, "Ground");
+        AddLayerToMask(ref mask, "LandingPoint");
+        return mask;
+    }
+
     private static LayerMask BuildDefaultLootRigidbodyExcludeLayers()
     {
         int mask = 0;
         AddLayerToMask(ref mask, "Enemy");
         AddLayerToMask(ref mask, "EnemyBodyPart");
         AddLayerToMask(ref mask, "EnemyDead");
+        AddLayerToMask(ref mask, "EnemyLoot");
         AddLayerToMask(ref mask, "Aircraft");
         AddLayerToMask(ref mask, "MechRobot");
         return mask;
+    }
+
+    private static void EnsureLootLayerCollisionsConfigured()
+    {
+        if (s_lootLayerCollisionsConfigured)
+        {
+            return;
+        }
+
+        int lootLayer = LayerMask.NameToLayer("EnemyLoot");
+        if (lootLayer < 0)
+        {
+            return;
+        }
+
+        IgnoreLayerPair(lootLayer, "Enemy");
+        IgnoreLayerPair(lootLayer, "EnemyBodyPart");
+        IgnoreLayerPair(lootLayer, "EnemyDead");
+        IgnoreLayerPair(lootLayer, "EnemyLoot");
+        IgnoreLayerPair(lootLayer, "Aircraft");
+        IgnoreLayerPair(lootLayer, "MechRobot");
+        s_lootLayerCollisionsConfigured = true;
+    }
+
+    private static void IgnoreLayerPair(int lootLayer, string otherLayerName)
+    {
+        int otherLayer = LayerMask.NameToLayer(otherLayerName);
+        if (otherLayer >= 0)
+        {
+            Physics2D.IgnoreLayerCollision(lootLayer, otherLayer, true);
+        }
+    }
+
+    private static PhysicsMaterial2D ResolveLootNoBounceMaterial()
+    {
+        if (s_lootNoBounceMaterial == null)
+        {
+            s_lootNoBounceMaterial = new PhysicsMaterial2D("EnemyLootNoBounce")
+            {
+                bounciness = 0f,
+                friction = 0.85f,
+            };
+        }
+
+        return s_lootNoBounceMaterial;
+    }
+
+    private static void ApplyLootColliderPhysicsMaterial(GameObject drop)
+    {
+        if (drop == null)
+        {
+            return;
+        }
+
+        PhysicsMaterial2D material = ResolveLootNoBounceMaterial();
+        Collider2D[] colliders = drop.GetComponentsInChildren<Collider2D>(true);
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            Collider2D collider = colliders[i];
+            if (collider != null)
+            {
+                collider.sharedMaterial = material;
+            }
+        }
     }
 
     private static void AddLayerToMask(ref int mask, string layerName)

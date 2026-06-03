@@ -236,11 +236,6 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
             {
                 _deathStateSent = true;
                 bool useAirborneDeath = _paratrooper != null && _paratrooper.ShouldUseAirborneDeathFlow();
-                if (!shouldExplode && !useAirborneDeath)
-                {
-                    ResolveView()?.TryDropMp40OnGroundDeath();
-                }
-
                 if (shouldExplode)
                 {
                     float force = Mathf.Max(2f, info.ExplosionForce);
@@ -388,11 +383,6 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
         if (_model.IsDead())
         {
             _deathStateSent = true;
-            if (!airborneBurnDeath)
-            {
-                ResolveView()?.TryDropMp40OnGroundDeath();
-            }
-
             _stateMachine.ChangeState(
                 airborneBurnDeath ? StickmanBodyState.GlideDie : StickmanBodyState.Die);
         }
