@@ -110,6 +110,7 @@ public class ParatrooperView_V2 : MonoBehaviour
     public AnimationReferenceAsset _landAnim;
     public AnimationReferenceAsset _grenadeAnim;
     public AnimationReferenceAsset _glideDeathAnim;
+    public AnimationReferenceAsset _fallDownAnim;
     public AnimationReferenceAsset _landFallDownBackAnim;
     public AnimationReferenceAsset _landFallDownBack2Anim;
     public AnimationReferenceAsset _landFallDownBack3Anim;
@@ -158,6 +159,9 @@ public class ParatrooperView_V2 : MonoBehaviour
     [SerializeField] private float _bloodHitReferenceDamage = 28f;
     [Tooltip("Move splat opposite bullet travel (toward hero) to correct Spine vs hitbox depth.")]
     [SerializeField] private float _bloodHitTowardShooterMeters = 0.022f;
+    [Header("Helmet")]
+    [SerializeField] private string _helmetSlotName = "helmet";
+    [SerializeField] private string _helmetAttachmentName = "naziHelmet";
     private ParatrooperDamageReceiver_V2 _damageReceiver;
     private GameObject _activeBurnFireVfx;
     private const string DefaultBurnFirePrefabPath = "Assets/Prefabs/Paratrooper/Paratrooper_Fire Variant.prefab";
@@ -187,6 +191,33 @@ public class ParatrooperView_V2 : MonoBehaviour
 
         _stateMachine.OnStateChanged += HandleStateChanged;
         ResolveAimBones();
+        ApplyHelmetAttachment();
+    }
+
+    private void ApplyHelmetAttachment()
+    {
+        if (_skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_helmetSlotName))
+        {
+            return;
+        }
+
+        if (_alreadySeveredParts.Contains(BodyPartType.Head))
+        {
+            _skeletonAnimation.Skeleton.SetAttachment(_helmetSlotName, null);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_helmetAttachmentName))
+        {
+            return;
+        }
+
+        _skeletonAnimation.Skeleton.SetAttachment(_helmetSlotName, _helmetAttachmentName);
     }
 
     /// <summary>
@@ -268,6 +299,7 @@ public class ParatrooperView_V2 : MonoBehaviour
         _skeletonAnimation.AnimationState.Update(0f);
         _skeletonAnimation.AnimationState.Apply(_skeletonAnimation.Skeleton);
         _skeletonAnimation.LateUpdate();
+        ApplyHelmetAttachment();
     }
 
     private void OnDestroy()
@@ -339,6 +371,7 @@ public class ParatrooperView_V2 : MonoBehaviour
             _skeletonAnimation.Update(0f);
             _skeletonAnimation.LateUpdate();
             ClearTeslaElectrocuteSkeletonSlot();
+            ApplyHelmetAttachment();
 
             SkeletonRenderer renderer = _skeletonAnimation.GetComponent<SkeletonRenderer>();
             if (renderer != null)
@@ -409,6 +442,10 @@ public class ParatrooperView_V2 : MonoBehaviour
         _alreadySeveredParts.Add(bodyPart);
         HideSeveredSlots(entry);
         UpdateSkinPlaceholdersAfterSever(bodyPart);
+        if (bodyPart == BodyPartType.Head)
+        {
+            ApplyHelmetAttachment();
+        }
         SpawnSeveredPartVisual(entry, bone, hitPoint, severity);
     }
 
@@ -439,6 +476,10 @@ public class ParatrooperView_V2 : MonoBehaviour
         if (!_glideAnim.name.Equals("E_glide")) Debug.LogError(nameof(_glideAnim) + " has wrong animation");
         if (!_landAnim.name.Equals("E_land")) Debug.LogError(nameof(_landAnim) + " has wrong animation");
         if (!_glideDeathAnim.name.Equals("E_glide_death")) Debug.LogError(nameof(_glideDeathAnim) + " has wrong animation");
+        if (_fallDownAnim != null && !_fallDownAnim.name.Equals("E_fall_down"))
+        {
+            Debug.LogError(nameof(_fallDownAnim) + " has wrong animation");
+        }
         if (_idleMP40Anim != null && !_idleMP40Anim.name.Equals("E_mp40_idle"))
         {
             Debug.LogError(nameof(_idleMP40Anim) + " has wrong animation");
@@ -513,37 +554,23 @@ public class ParatrooperView_V2 : MonoBehaviour
 
                 nextAnimation = (_model != null && _model.isBurning)
                     ? GetBurnDeathAnimation()
-                    : GetRandomGroundDeathAnimation();
+                    : ResolveFallDownSpineAnimation();
                 loop = false;
                 trackIndex = 0;
                 break;
             case StickmanBodyState.GlideDie:
-                // Ground combat: play land_fall_down_back* immediately. Airborne: keep glide pose until
-                // Land plays a random land_fall_down_back* impact (no ragdoll / no E_glide_death).
-                bool cameFromGroundCombat =
-                    _lastStateBeforeChange == StickmanBodyState.Shoot ||
-                    _lastStateBeforeChange == StickmanBodyState.Land ||
-                    _lastStateBeforeChange == StickmanBodyState.Idle ||
-                    _lastStateBeforeChange == StickmanBodyState.Run;
                 if (_model != null && _model.isBurning && _model.burnFromAirborneFlamethrower)
                 {
                     nextAnimation = GetBurnGlideDeathAnimation();
                     loop = false;
                     trackIndex = 0;
-                }
-                else if (cameFromGroundCombat)
-                {
-                    nextAnimation = GetRandomGroundDeathAnimation();
-                    loop = false;
-                    trackIndex = 0;
-                }
-                else
-                {
-                    nextAnimation = _glideAnim;
-                    loop = true;
-                    trackIndex = 1;
+                    break;
                 }
 
+                // Airborne death: E/glide_death first, then glide fall loop until Land plays land_fall_down_back*.
+                nextAnimation = ResolveGlideDeathSpineAnimation();
+                loop = false;
+                trackIndex = 0;
                 break;
             case StickmanBodyState.Land:
                 ResolveLandClip(landAfterAirborneDeath, out nextAnimation, out trackIndex);
@@ -687,6 +714,12 @@ public class ParatrooperView_V2 : MonoBehaviour
                 // Grenade / ground-run may leave stale pose data; always restart the loop from t=0 when resuming fire.
                 trackEntry.TrackTime = 0f;
             }
+            else if (state == StickmanBodyState.GlideDie &&
+                     !(_model != null && _model.isBurning && _model.burnFromAirborneFlamethrower))
+            {
+                trackEntry.Complete -= OnGlideDeathClipComplete;
+                trackEntry.Complete += OnGlideDeathClipComplete;
+            }
 
             if ((state == StickmanBodyState.Electrocuted || state == StickmanBodyState.GlideElectrocuted) &&
                 _model != null &&
@@ -797,6 +830,37 @@ public class ParatrooperView_V2 : MonoBehaviour
 
         anim = _glideAnim;
         landTrackIndex = 1;
+    }
+
+    // After the one-shot glide_death clip, loop glide until the corpse hits ground (Land -> land_fall_down_back*).
+    private void OnGlideDeathClipComplete(TrackEntry trackEntry)
+    {
+        if (trackEntry != null)
+        {
+            trackEntry.Complete -= OnGlideDeathClipComplete;
+        }
+
+        if (_stateMachine == null || _stateMachine.CurrentState != StickmanBodyState.GlideDie)
+        {
+            return;
+        }
+
+        if (_model != null && _model.isBurning && _model.burnFromAirborneFlamethrower)
+        {
+            return;
+        }
+
+        if (_skeletonAnimation == null || _skeletonAnimation.AnimationState == null || _glideAnim == null ||
+            _glideAnim.Animation == null)
+        {
+            return;
+        }
+
+        TrackEntry glideLoop = _skeletonAnimation.AnimationState.SetAnimation(1, _glideAnim.Animation, true);
+        if (glideLoop != null)
+        {
+            glideLoop.MixDuration = 0f;
+        }
     }
 
     /// <summary>When the impact clip has no land-finished Spine event, forward <see cref="AnimationEventType.LandFinished"/>.</summary>
@@ -927,6 +991,41 @@ public class ParatrooperView_V2 : MonoBehaviour
         }
 
         return _glideAnim != null ? _glideAnim.Animation : null;
+    }
+
+    private Spine.Animation ResolveGlideDeathSpineAnimation()
+    {
+        if (_glideDeathAnim != null && _glideDeathAnim.Animation != null)
+        {
+            return _glideDeathAnim.Animation;
+        }
+
+        Spine.Animation skeletonGlideDeath = FindSkeletonAnimation("E/glide_death");
+        if (skeletonGlideDeath != null)
+        {
+            return skeletonGlideDeath;
+        }
+
+        Debug.LogWarning("[ParatrooperView_V2] E/glide_death missing; falling back to glide loop.");
+        return _glideAnim != null ? _glideAnim.Animation : null;
+    }
+
+    private Spine.Animation ResolveFallDownSpineAnimation()
+    {
+        if (_fallDownAnim != null && _fallDownAnim.Animation != null)
+        {
+            return _fallDownAnim.Animation;
+        }
+
+        Spine.Animation skeletonFallDown = FindSkeletonAnimation("E/fall_down");
+        if (skeletonFallDown != null)
+        {
+            return skeletonFallDown;
+        }
+
+        Debug.LogWarning("[ParatrooperView_V2] E/fall_down missing; falling back to ground death clip.");
+        AnimationReferenceAsset fallback = GetRandomGroundDeathAnimation();
+        return fallback != null ? fallback.Animation : null;
     }
 
     private AnimationReferenceAsset GetRandomGroundDeathAnimation()

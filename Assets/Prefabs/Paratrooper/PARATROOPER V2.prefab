@@ -2401,6 +2401,7 @@ MonoBehaviour:
   _landAnim: {fileID: 11400000, guid: 2552f857adc14e34cb2c3c1f795e8bdd, type: 2}
   _grenadeAnim: {fileID: 11400000, guid: b2e9506e3f9db9049801d5019a02927a, type: 2}
   _glideDeathAnim: {fileID: 11400000, guid: 18a1461724624e24a8ce5f5856dda76e, type: 2}
+  _fallDownAnim: {fileID: 11400000, guid: afd7800c375df5f498df3fecff069940, type: 2}
   _landFallDownBackAnim: {fileID: 11400000, guid: 60b80e1da8a4f15449b9935da44a70d4, type: 2}
   _landFallDownBack2Anim: {fileID: 11400000, guid: f0dcdae40f9ca6e46ae57a281c51aa5f, type: 2}
   _landFallDownBack3Anim: {fileID: 11400000, guid: 71a254a9373ecf541beea850bacb8b26, type: 2}

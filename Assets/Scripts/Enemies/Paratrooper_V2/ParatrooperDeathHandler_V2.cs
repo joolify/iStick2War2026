@@ -127,7 +127,8 @@ namespace iStick2War_V2
 
         IEnumerator DeathRoutine()
         {
-            bool startedAirborneDeath = _stateMachine != null && _stateMachine.CurrentState == StickmanBodyState.GlideDie;
+            bool startedAirborneDeath = _stateMachine != null &&
+                                        _stateMachine.CurrentState == StickmanBodyState.GlideDie;
 
             if (_useRagdoll)
             {

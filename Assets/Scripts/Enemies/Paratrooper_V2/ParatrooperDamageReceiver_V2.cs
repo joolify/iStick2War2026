@@ -54,6 +54,8 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
     [SerializeField] private float _flamethrowerAirborneBurnDeathDelaySeconds = 1.3f;
     [Header("Body part severing")]
     [SerializeField] private bool _enableBodyPartSevering = true;
+    // Any successful sever (hero bullet hit) finishes the unit immediately after sever VFX.
+    [SerializeField] private bool _dieOnBodyPartSever = true;
     [SerializeField] private float _minFinalDamageToSever = 18f;
     [SerializeField] private bool _allowTorsoSever = false;
     [SerializeField] private bool _allowHeadSever = true;
@@ -165,6 +167,12 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
         float remainingHealth = _model.ApplyDamage(finalDamage);
         bool isDead = _model.IsDead();
         bool severedPart = TrySeverBodyPart(info, finalDamage, isDead);
+
+        if (_dieOnBodyPartSever && severedPart && !isDead)
+        {
+            remainingHealth = _model.ApplyDamage(_model.health + 1f);
+            isDead = _model.IsDead();
+        }
 
         if (shouldExplode && !isDead)
         {

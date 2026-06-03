@@ -209,6 +209,10 @@ namespace iStick2War_V2
         [SerializeField] private Vector2 _heroBloodWorldOffset = new Vector2(0f, 0.35f);
         [SerializeField] private float _heroBloodReferenceDamage = 14f;
 
+        [Header("Helmet")]
+        [SerializeField] private string _helmetSlotName = "helmet";
+        [SerializeField] private string _helmetAttachmentName = "heroHelmet";
+
         private Vector3 _recoilOffsetLocal;
         private float _recoilAngleLocalZ;
         private Vector3 _recoilBaseLocalPosition;
@@ -247,6 +251,7 @@ namespace iStick2War_V2
 
             _isInitialized = true;
             StopFlamethrowerVfxIfActive();
+            ApplyHelmetAttachment();
 
             if (_debugViewLogs)
             {
@@ -299,6 +304,22 @@ namespace iStick2War_V2
             EnsureTeslaLightningBoltInstance();
             StopFlamethrowerVfxIfActive();
             StopTeslaLightningVfxIfActive();
+            ApplyHelmetAttachment();
+        }
+
+        private void ApplyHelmetAttachment()
+        {
+            if (_skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_helmetSlotName) || string.IsNullOrWhiteSpace(_helmetAttachmentName))
+            {
+                return;
+            }
+
+            _skeletonAnimation.Skeleton.SetAttachment(_helmetSlotName, _helmetAttachmentName);
         }
 
         void Update()
