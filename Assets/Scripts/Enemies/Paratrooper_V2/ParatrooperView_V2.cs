@@ -99,6 +99,9 @@ public class ParatrooperView_V2 : MonoBehaviour
 
     [SpineBone(dataField: "_skeletonAnimation")] public string aimPointBoneName = "mp40-aim";
     [SpineBone(dataField: "_skeletonAnimation")] public string crossHairBoneName = "crosshair";
+    // mp40_idle still keys aim-weapon-ik on; mix must be forced off after hero death stand-down.
+    private const string WeaponAimIkConstraintName = "aim-weapon-ik";
+    private const string TorsoAimIkConstraintName = "aim-torso-ik";
 
     [Header("Animations")]
     public AnimationReferenceAsset _deployAnim;
@@ -111,6 +114,7 @@ public class ParatrooperView_V2 : MonoBehaviour
     public AnimationReferenceAsset _landFallDownBack2Anim;
     public AnimationReferenceAsset _landFallDownBack3Anim;
 
+    public AnimationReferenceAsset _idleMP40Anim;
     public AnimationReferenceAsset _shootingMP40Anim;
     [Tooltip("Ground electrocute (e.g. Hero Tesla).")]
     public AnimationReferenceAsset electrocutedAnim;
@@ -435,7 +439,15 @@ public class ParatrooperView_V2 : MonoBehaviour
         if (!_glideAnim.name.Equals("E_glide")) Debug.LogError(nameof(_glideAnim) + " has wrong animation");
         if (!_landAnim.name.Equals("E_land")) Debug.LogError(nameof(_landAnim) + " has wrong animation");
         if (!_glideDeathAnim.name.Equals("E_glide_death")) Debug.LogError(nameof(_glideDeathAnim) + " has wrong animation");
-        if (!_shootingMP40Anim.name.Equals("E_mp40_shoot")) Debug.LogError(nameof(_shootingMP40Anim) + " has wrong animation");
+        if (_idleMP40Anim != null && !_idleMP40Anim.name.Equals("E_mp40_idle"))
+        {
+            Debug.LogError(nameof(_idleMP40Anim) + " has wrong animation");
+        }
+
+        if (_shootingMP40Anim != null && !_shootingMP40Anim.name.Equals("E_mp40_shoot"))
+        {
+            Debug.LogError(nameof(_shootingMP40Anim) + " has wrong animation");
+        }
         if (_landFallDownBackAnim == null) Debug.LogError(nameof(_landFallDownBackAnim) + " is missing.");
         if (_landFallDownBack2Anim == null) Debug.LogError(nameof(_landFallDownBack2Anim) + " is missing.");
         if (_landFallDownBack3Anim == null) Debug.LogError(nameof(_landFallDownBack3Anim) + " is missing.");
@@ -538,8 +550,14 @@ public class ParatrooperView_V2 : MonoBehaviour
                 loop = false;
                 break;
             case StickmanBodyState.Idle:
+                nextAnimation = ResolveMp40IdleSpineAnimation();
+                loop = true;
+                trackIndex = 1;
+                break;
             case StickmanBodyState.Shoot:
-                nextAnimation = _shootingMP40Anim != null ? _shootingMP40Anim : _glideAnim;
+                nextAnimation = _shootingMP40Anim != null
+                    ? _shootingMP40Anim.Animation
+                    : ResolveMp40IdleSpineAnimation();
                 loop = true;
                 trackIndex = 1;
                 break;
@@ -828,6 +846,89 @@ public class ParatrooperView_V2 : MonoBehaviour
         receiver.CompletePendingElectrocuteDeath();
     }
 
+    // Force mp40_idle on track 1 (used when hero dies; also when already Idle so clip refreshes).
+    public void ApplyHeroDeathMp40IdlePose()
+    {
+        if (_skeletonAnimation == null || _isExploded || _deathAnimationLocked)
+        {
+            return;
+        }
+
+        Spine.Animation idleAnim = ResolveMp40IdleSpineAnimation();
+        if (idleAnim == null)
+        {
+            return;
+        }
+
+        ParatrooperWeaponSystem_V2 weaponSystem = GetComponentInParent<ParatrooperWeaponSystem_V2>();
+        weaponSystem?.ResetCombatAimForHeroDeathStandDown();
+
+        _skeletonAnimation.Skeleton.SetBonesToSetupPose();
+        _skeletonAnimation.AnimationState.ClearTrack(0);
+        _skeletonAnimation.AnimationState.ClearTrack(1);
+        TrackEntry entry = _skeletonAnimation.AnimationState.SetAnimation(1, idleAnim, true);
+        if (entry != null)
+        {
+            entry.MixDuration = 0f;
+            entry.TrackTime = 0f;
+        }
+
+        ClearTeslaElectrocuteSkeletonSlot();
+        _skeletonAnimation.AnimationState.Update(0f);
+        _skeletonAnimation.AnimationState.Apply(_skeletonAnimation.Skeleton);
+        SuppressWeaponAimIkForHeroDeathStandDown();
+        _skeletonAnimation.LateUpdate();
+    }
+
+    // E/mp40_idle enables aim-weapon-ik; stale crosshair (fallen hero) otherwise pulls the MP40 straight down.
+    private void SuppressWeaponAimIkForHeroDeathStandDown()
+    {
+        if (_skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
+        {
+            return;
+        }
+
+        IkConstraint weaponIk = _skeletonAnimation.Skeleton.FindIkConstraint(WeaponAimIkConstraintName);
+        if (weaponIk != null)
+        {
+            weaponIk.Mix = 0f;
+        }
+
+        IkConstraint torsoIk = _skeletonAnimation.Skeleton.FindIkConstraint(TorsoAimIkConstraintName);
+        if (torsoIk != null)
+        {
+            torsoIk.Mix = 0f;
+        }
+
+        ResolveAimBones();
+        if (_crossHairBone != null)
+        {
+            _crossHairBone.SetToSetupPose();
+        }
+    }
+
+    private Spine.Animation ResolveMp40IdleSpineAnimation()
+    {
+        if (_idleMP40Anim != null && _idleMP40Anim.Animation != null)
+        {
+            return _idleMP40Anim.Animation;
+        }
+
+        Spine.Animation skeletonIdle = FindSkeletonAnimation("E/mp40_idle");
+        if (skeletonIdle != null)
+        {
+            return skeletonIdle;
+        }
+
+        if (_shootingMP40Anim != null && _shootingMP40Anim.Animation != null)
+        {
+            Debug.LogWarning("[ParatrooperView_V2] E/mp40_idle missing; falling back to shoot clip for Idle.");
+            return _shootingMP40Anim.Animation;
+        }
+
+        return _glideAnim != null ? _glideAnim.Animation : null;
+    }
+
     private AnimationReferenceAsset GetRandomGroundDeathAnimation()
     {
         var options = new List<AnimationReferenceAsset>(3);
@@ -1002,6 +1103,11 @@ public class ParatrooperView_V2 : MonoBehaviour
         {
             StopBurnVfx();
             return;
+        }
+
+        if (_model != null && _model.heroDeathStandDownActive)
+        {
+            SuppressWeaponAimIkForHeroDeathStandDown();
         }
 
         SyncBurnVfx();

@@ -879,6 +879,52 @@ public class Paratrooper : MonoBehaviour
         }
     }
 
+    /// <summary>When the hero dies, living ground troops stop firing and play E/mp40_idle.</summary>
+    public static void StandDownAllLivingForHeroDeath()
+    {
+        Paratrooper[] troopers = FindObjectsByType<Paratrooper>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        for (int i = 0; i < troopers.Length; i++)
+        {
+            Paratrooper trooper = troopers[i];
+            if (trooper != null && trooper.isActiveAndEnabled)
+            {
+                trooper.StandDownForHeroDeath();
+            }
+        }
+    }
+
+    /// <summary>Stop combat and switch to Idle / mp40_idle (skips dead and airborne parachute states).</summary>
+    public void StandDownForHeroDeath()
+    {
+        if (_stateMachine == null || _model == null)
+        {
+            return;
+        }
+
+        StickmanBodyState state = _stateMachine.CurrentState;
+        if (state == StickmanBodyState.Die || state == StickmanBodyState.GlideDie)
+        {
+            return;
+        }
+
+        if (state == StickmanBodyState.Deploy ||
+            state == StickmanBodyState.Glide ||
+            state == StickmanBodyState.GlideElectrocuted)
+        {
+            return;
+        }
+
+        _controller?.CancelCombatForHeroDeath();
+        _model.heroDeathStandDownActive = true;
+
+        if (_stateMachine.CurrentState != StickmanBodyState.Idle)
+        {
+            _stateMachine.ChangeState(StickmanBodyState.Idle);
+        }
+
+        _view?.ApplyHeroDeathMp40IdlePose();
+    }
+
     /*
      * Controller → ChangeState()
      *             ↓

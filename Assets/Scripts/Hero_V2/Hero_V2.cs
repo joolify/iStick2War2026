@@ -266,6 +266,7 @@ namespace iStick2War_V2
 
         private void OnGameOver()
         {
+            Paratrooper.StandDownAllLivingForHeroDeath();
             if (_debugLifecycleLogs)
             {
                 Debug.Log("GAME OVER");

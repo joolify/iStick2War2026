@@ -60,6 +60,9 @@ public class ParatrooperModel_V2 : MonoBehaviour
 
     public StickmanBodyState currentState;
 
+    /// <summary>When true, ground troops hold mp40_idle and never re-enter Shoot/Grenade (hero died).</summary>
+    public bool heroDeathStandDownActive;
+
     /// <summary>
     /// When true, LandFinished (Spine event) should go to Die instead of Shoot — used after GlideDie reaches Ground
     /// and plays the land clip before ground death.
@@ -97,6 +100,7 @@ public class ParatrooperModel_V2 : MonoBehaviour
         ApplyDamageProfile();
         pendingDieAfterLandAnim = false;
         suppressDieAnimationFromAirborneImpact = false;
+        heroDeathStandDownActive = false;
         pendingDieAfterElectrocuteAnim = false;
         lastUnscaledTimeReceivedHeroTeslaHit = -9999f;
         hasResumeStateAfterTeslaElectrocute = false;

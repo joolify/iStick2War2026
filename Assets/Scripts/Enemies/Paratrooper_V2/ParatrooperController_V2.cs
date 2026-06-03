@@ -130,8 +130,22 @@ public class ParatrooperController_V2 : MonoBehaviour
         _lastDebugCombatLogUnscaledTime = float.NegativeInfinity;
     }
 
+    // Stops grenade/shoot timers when the hero dies so ground troops can hold mp40_idle.
+    internal void CancelCombatForHeroDeath()
+    {
+        _isShootWindowOpen = false;
+        _forcedShootFallbackAtTime = -1f;
+        _forcedGrenadeAttemptAtTime = -1f;
+        _grenadeStateEnterUnscaledTime = -1f;
+    }
+
     public void OnAnimationEvent(AnimationEventType eventName)
     {
+        if (_model != null && _model.heroDeathStandDownActive)
+        {
+            return;
+        }
+
         if (_debugParatrooperCombatLogs &&
             eventName != AnimationEventType.ShootStarted &&
             eventName != AnimationEventType.ShootFinished)
@@ -272,12 +286,22 @@ public class ParatrooperController_V2 : MonoBehaviour
 
     public void OnLanded()
     {
+        if (_model != null && _model.heroDeathStandDownActive)
+        {
+            return;
+        }
+
         _stateMachine.ChangeState(StickmanBodyState.Shoot);
     }
 
     internal void Tick(float deltaTime)
     {
         if (_stateMachine == null || _weaponSystem == null)
+        {
+            return;
+        }
+
+        if (_model != null && _model.heroDeathStandDownActive)
         {
             return;
         }

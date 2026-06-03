@@ -1180,6 +1180,11 @@ namespace iStick2War_V2
             SetCameraFollowEnabled(false);
 
             bool heroDeath = _hero != null && _hero.IsDead();
+            if (heroDeath)
+            {
+                Paratrooper.StandDownAllLivingForHeroDeath();
+            }
+
             ResolveHeroDeathGameOverUiIfNeeded();
             if (heroDeath)
             {

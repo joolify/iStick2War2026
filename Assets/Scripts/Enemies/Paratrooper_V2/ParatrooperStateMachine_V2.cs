@@ -85,6 +85,13 @@ public class ParatrooperStateMachine_V2 : MonoBehaviour
         if (from == StickmanBodyState.Die)
             return false;
 
+        if (_model != null &&
+            _model.heroDeathStandDownActive &&
+            (to == StickmanBodyState.Shoot || to == StickmanBodyState.Grenade))
+        {
+            return false;
+        }
+
         return true;
     }
 

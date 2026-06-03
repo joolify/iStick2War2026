@@ -151,6 +151,55 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         _baseDamage = Mathf.Max(1, Mathf.RoundToInt(_baseDamage * multiplier));
     }
 
+    private void LateUpdate()
+    {
+        if (_model == null || _model.heroDeathStandDownActive)
+        {
+            return;
+        }
+
+        if (_model.currentState != iStick2War.StickmanBodyState.Shoot)
+        {
+            return;
+        }
+
+        if (_skeletonAnimation == null || _crossHairBone == null)
+        {
+            return;
+        }
+
+        if (IsHeroDeadForCombat())
+        {
+            return;
+        }
+
+        SyncCrosshairToHeroCombatPoint();
+    }
+
+    // Stop tracking the hero and restore the Spine IK target to setup pose (hero death stand-down).
+    public void ResetCombatAimForHeroDeathStandDown()
+    {
+        ResolveAimBones();
+        if (_crossHairBone != null)
+        {
+            _crossHairBone.SetToSetupPose();
+        }
+    }
+
+    private void SyncCrosshairToHeroCombatPoint()
+    {
+        if (_skeletonAnimation == null || _crossHairBone == null)
+        {
+            return;
+        }
+
+        Vector2 worldTarget = GetHeroCombatAimWorldPoint();
+        Vector3 skeletonSpacePoint = _skeletonAnimation.transform.InverseTransformPoint(worldTarget);
+        skeletonSpacePoint.x *= _skeletonAnimation.Skeleton.ScaleX;
+        skeletonSpacePoint.y *= _skeletonAnimation.Skeleton.ScaleY;
+        _crossHairBone.SetLocalPosition(skeletonSpacePoint);
+    }
+
     public void Initialize(ParatrooperModel_V2 model)
     {
         _model = model;
@@ -244,6 +293,11 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             return false;
         }
 
+        if (IsHeroDeadForCombat())
+        {
+            return false;
+        }
+
         if (_model == null)
             return false;
 
@@ -262,6 +316,11 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         if (_debugDisableMp40Shooting)
         {
             return "debug MP40 disabled";
+        }
+
+        if (IsHeroDeadForCombat())
+        {
+            return "hero dead";
         }
 
         if (IsCombatStunned())
@@ -305,6 +364,11 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         if (_model == null)
         {
             return "model missing";
+        }
+
+        if (IsHeroDeadForCombat())
+        {
+            return "hero dead";
         }
 
         if (IsCombatStunned())
@@ -1441,6 +1505,29 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 
             _firePoint = transform;
         }
+    }
+
+    private bool IsHeroDeadForCombat()
+    {
+        if (_heroModel == null)
+        {
+            if (_heroRoot == null)
+            {
+                _heroRoot = FindAnyObjectByType<Hero_V2>();
+            }
+
+            if (_heroRoot != null)
+            {
+                _heroModel = _heroRoot.GetComponent<HeroModel_V2>();
+            }
+
+            if (_heroModel == null)
+            {
+                _heroModel = FindAnyObjectByType<HeroModel_V2>();
+            }
+        }
+
+        return _heroModel != null && _heroModel.isDead;
     }
 
     private void CacheHeroCollider()
