@@ -250,7 +250,9 @@ MonoBehaviour:
   flamethrowerAimBoneName: flamegun-aim
   _cam: {fileID: 0}
   _fallbackWeaponDefinition: {fileID: 11400000, guid: 6558c37908f5c664f915fa7c826ae5c7, type: 2}
-  _landFallDownBackAnim: {fileID: 11400000, guid: 60b80e1da8a4f15449b9935da44a70d4, type: 2}
+  _fallDownBackAnim: {fileID: 11400000, guid: a48a90279dfa4b7d92b270c3e85d28d9, type: 2}
+  _fallDownBack2Anim: {fileID: 11400000, guid: 1812069e54eb4faabc5773d6607ad108, type: 2}
+  _fallDownBack3Anim: {fileID: 11400000, guid: ec36a121904347e08c25534d463523c5, type: 2}
   aimFlamethrowerAnim: {fileID: 11400000, guid: 22dcca0157d2a194c8a5be86f7a16958, type: 2}
   grenadeFlamethrowerAnim: {fileID: 11400000, guid: e16b910b6b209404e831b6c7fe368637, type: 2}
   idleFlamethrowerAnim: {fileID: 11400000, guid: 58c15f7aad20305489cef6fa637e6862, type: 2}

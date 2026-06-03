@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Reflection;
 using Spine;
 using Spine.Unity;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.Rendering;
 using iStick2War;
 
@@ -90,7 +92,10 @@ namespace iStick2War_V2
 
         [Header("Animations")]
         [SerializeField] private HeroWeaponDefinition_V2 _fallbackWeaponDefinition;
-        public AnimationReferenceAsset _landFallDownBackAnim;
+        [FormerlySerializedAs("_landFallDownBackAnim")]
+        [SerializeField] private AnimationReferenceAsset _fallDownBackAnim;
+        [SerializeField] private AnimationReferenceAsset _fallDownBack2Anim;
+        [SerializeField] private AnimationReferenceAsset _fallDownBack3Anim;
         [Header("Flamethrower animation override (optional)")]
         public AnimationReferenceAsset aimFlamethrowerAnim;
         public AnimationReferenceAsset grenadeFlamethrowerAnim;
@@ -610,17 +615,43 @@ namespace iStick2War_V2
 
             _skeletonAnimation.AnimationState.ClearTrack(1);
 
-            if (_landFallDownBackAnim != null)
+            AnimationReferenceAsset deathAnim = GetRandomFallDownBackDeathAnimation();
+            if (deathAnim != null)
             {
-                _skeletonAnimation.AnimationState.SetAnimation(0, _landFallDownBackAnim, false);
+                _skeletonAnimation.AnimationState.SetAnimation(0, deathAnim, false);
                 return;
             }
 
-            // Fallback so Hero does not snap to an unrelated loop if death clip is not assigned yet.
+            // Fallback so Hero does not snap to an unrelated loop if death clips are not assigned yet.
             AnimationReferenceAsset fallbackIdle = GetFallbackAnimationSet().Idle;
             if (fallbackIdle != null)
             {
                 _skeletonAnimation.AnimationState.SetAnimation(0, fallbackIdle, true);
+            }
+        }
+
+        private AnimationReferenceAsset GetRandomFallDownBackDeathAnimation()
+        {
+            var options = new List<AnimationReferenceAsset>(3);
+            TryAddDeathFallOption(_fallDownBackAnim, options);
+            TryAddDeathFallOption(_fallDownBack2Anim, options);
+            TryAddDeathFallOption(_fallDownBack3Anim, options);
+
+            if (options.Count == 0)
+            {
+                return null;
+            }
+
+            return options[UnityEngine.Random.Range(0, options.Count)];
+        }
+
+        private static void TryAddDeathFallOption(
+            AnimationReferenceAsset candidate,
+            List<AnimationReferenceAsset> options)
+        {
+            if (candidate != null)
+            {
+                options.Add(candidate);
             }
         }
 
