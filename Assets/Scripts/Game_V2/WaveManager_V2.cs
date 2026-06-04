@@ -856,13 +856,15 @@ namespace iStick2War_V2
                 return false;
             }
 
+            BeginTopBarWaveTextIntro();
+            EnterInWaveState();
+
             if (_hero != null)
             {
                 _hero.ResumeCombatAfterLifeRetry();
+                _hero.RefreshWaveLoopCombatGate();
             }
 
-            BeginTopBarWaveTextIntro();
-            EnterInWaveState();
             EmitMetaChanged();
             Log($"LifeOver continue -> wave {CurrentWaveNumber}.");
             return true;
@@ -1164,6 +1166,7 @@ namespace iStick2War_V2
             _enemiesKilledThisWave = 0;
             ResolveLifeOverUiIfNeeded();
             SetLifeOverUiVisible(true);
+            EnsureLifeOverContinueClickTargets();
             if (_debugWaveLogs)
             {
                 if (_lifeOverRoot == null)
@@ -2009,6 +2012,53 @@ namespace iStick2War_V2
                 {
                     text.gameObject.SetActive(true);
                 }
+            }
+        }
+
+        private static void EnsureLifeOverContinueClickTargets()
+        {
+            GameObject chromeRoot = FindLifeOverChromeRoot();
+            if (chromeRoot == null)
+            {
+                return;
+            }
+
+            string[] clickNames =
+            {
+                "TextBTN_MediumStartNewGame",
+                "ShopPanel V2 background",
+            };
+
+            for (int n = 0; n < clickNames.Length; n++)
+            {
+                Transform target = FindNamedChildRecursive(chromeRoot.transform, clickNames[n]);
+                if (target == null)
+                {
+                    continue;
+                }
+
+                EnsureLifeOverContinueButtonOnTarget(target.gameObject);
+            }
+
+            EnsureLifeOverContinueButtonOnTarget(chromeRoot);
+        }
+
+        private static void EnsureLifeOverContinueButtonOnTarget(GameObject target)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            if (target.GetComponent<LifeOverContinueButton_V2>() == null)
+            {
+                target.AddComponent<LifeOverContinueButton_V2>();
+            }
+
+            if (target.GetComponent<Collider2D>() == null)
+            {
+                BoxCollider2D box = target.AddComponent<BoxCollider2D>();
+                box.isTrigger = false;
             }
         }
 

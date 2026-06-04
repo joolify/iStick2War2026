@@ -255,7 +255,9 @@ namespace iStick2War_V2
             bool allowCombat = state == WaveLoopState_V2.InWave && !IsDead();
             if (allowCombat)
             {
+                _movementSystem?.Enable();
                 _weaponSystem.Enable();
+                _controller.SetCombatPaused(false);
                 RefreshEquippedWeaponVisuals();
                 return;
             }
@@ -263,6 +265,7 @@ namespace iStick2War_V2
             _controller.SetCombatPaused(true);
             if (!IsDead())
             {
+                _movementSystem?.Disable();
                 _weaponSystem.Disable();
             }
         }
@@ -521,7 +524,29 @@ namespace iStick2War_V2
         // LifeOver UI dismissed — resume combat for the same wave retry.
         public void ResumeCombatAfterLifeRetry()
         {
+            if (IsDead())
+            {
+                return;
+            }
+
+            _deathHandler?.ResetAfterRevive();
+            _movementSystem?.Enable();
+            _weaponSystem?.Enable();
             _controller?.SetCombatPaused(false);
+            RefreshEquippedWeaponVisuals();
+        }
+
+        public void RefreshWaveLoopCombatGate()
+        {
+            if (_cachedWaveManager == null)
+            {
+                _cachedWaveManager = FindAnyObjectByType<WaveManager_V2>();
+            }
+
+            if (_cachedWaveManager != null)
+            {
+                ApplyWaveLoopCombatGate(_cachedWaveManager.State);
+            }
         }
 
         public int GetCurrentHealth()

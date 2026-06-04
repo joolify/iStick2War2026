@@ -47,5 +47,6 @@ namespace iStick2War_V2
         public AudioClip reloadGun;
         public AudioClip reloadMachineGun;
         public AudioClip teslaShot;
+        public AudioClip outOfAmmo;
     }
 }

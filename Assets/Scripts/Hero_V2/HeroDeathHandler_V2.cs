@@ -111,7 +111,8 @@ namespace iStick2War_V2
             hasHandledDeath = false;
             _movementSystem.Enable();
             _weaponSystem.Enable();
-            _stateMachine.ChangeState(HeroState.Idle);
+            // Dead is sticky in ChangeState; ForceState is required after life retry / revive.
+            _stateMachine.ForceState(HeroState.Idle);
         }
     }
 }

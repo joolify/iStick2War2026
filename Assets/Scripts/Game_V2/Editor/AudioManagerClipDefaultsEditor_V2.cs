@@ -81,6 +81,7 @@ namespace iStick2War_V2.Editor
             defaults.reloadGun = LoadClip("Weapons/reloadGun.mp3");
             defaults.reloadMachineGun = LoadClip("Weapons/reloadMachineGun.mp3");
             defaults.teslaShot = LoadClip("Weapons/teslaGun.mp3");
+            defaults.outOfAmmo = LoadClip("Weapons/outOfAmmo.mp3");
 
             EditorUtility.SetDirty(defaults);
             AssetDatabase.SaveAssetIfDirty(defaults);

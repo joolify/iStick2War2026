@@ -49,6 +49,7 @@ namespace iStick2War_V2
         [SerializeField] private AudioClip _reloadGun;
         [SerializeField] private AudioClip _reloadMachineGun;
         [SerializeField] private AudioClip _teslaShot;
+        [SerializeField] private AudioClip _outOfAmmo;
 
         [Header("Mix")]
         [SerializeField, Range(0f, 1f)] private float _sfxVolume = 0.9f;
@@ -170,6 +171,13 @@ namespace iStick2War_V2
             audio.EnsureClipsLoaded();
             AudioClip clip = weaponType == WeaponType.Thompson ? audio._reloadMachineGun : audio._reloadGun;
             audio.PlayOneShot(clip);
+        }
+
+        public static void PlayOutOfAmmo()
+        {
+            AudioManager_V2 audio = EnsureInstance();
+            audio.EnsureClipsLoaded();
+            audio.PlayOneShot(audio._outOfAmmo);
         }
 
         public static void PlayImpactForCollider(Collider2D collider)
@@ -357,6 +365,7 @@ namespace iStick2War_V2
             _reloadGun ??= d.reloadGun;
             _reloadMachineGun ??= d.reloadMachineGun;
             _teslaShot ??= d.teslaShot;
+            _outOfAmmo ??= d.outOfAmmo;
         }
 
 #if UNITY_EDITOR
@@ -385,6 +394,7 @@ namespace iStick2War_V2
             _reloadGun ??= LoadEditorClip("Weapons/reloadGun.mp3");
             _reloadMachineGun ??= LoadEditorClip("Weapons/reloadMachineGun.mp3");
             _teslaShot ??= LoadEditorClip("Weapons/teslaGun.mp3");
+            _outOfAmmo ??= LoadEditorClip("Weapons/outOfAmmo.mp3");
         }
 
         private static AudioClip LoadEditorClip(string primaryRelativePath, string alternateRelativePath = null)

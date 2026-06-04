@@ -51,6 +51,7 @@ namespace iStick2War_V2
         private static readonly bool DebugCombatLogs = false;
         private bool _isShootLoopActive;
         private bool _outOfAmmoLatched;
+        private float _nextOutOfAmmoFeedbackAt;
         private float _nextFlamethrowerDebugLogAt;
 
         public HeroController_V2(
@@ -81,21 +82,39 @@ namespace iStick2War_V2
 
         internal void SetCombatPaused(bool paused)
         {
-            if (!paused)
+            _isShootLoopActive = false;
+            _outOfAmmoLatched = false;
+            _nextOutOfAmmoFeedbackAt = 0f;
+            _view.StopShoot();
+            AudioManager_V2.StopContinuousWeaponShot(WeaponType.None);
+
+            if (paused)
+            {
+                HeroState currentState = _stateMachine.CurrentState;
+                if (currentState == HeroState.Shooting || currentState == HeroState.Reloading)
+                {
+                    _stateMachine.ChangeState(HeroState.Idle);
+                }
+
+                return;
+            }
+
+            if (_model.isDead)
             {
                 return;
             }
 
-            _isShootLoopActive = false;
-            _outOfAmmoLatched = false;
-            _view.StopShoot();
-            AudioManager_V2.StopContinuousWeaponShot(WeaponType.None);
+            ExitDeadStateIfAlive();
+        }
 
-            HeroState currentState = _stateMachine.CurrentState;
-            if (currentState == HeroState.Shooting || currentState == HeroState.Reloading)
+        private void ExitDeadStateIfAlive()
+        {
+            if (_model.isDead || _stateMachine.CurrentState != HeroState.Dead)
             {
-                _stateMachine.ChangeState(HeroState.Idle);
+                return;
             }
+
+            _stateMachine.ForceState(HeroState.Idle);
         }
 
         // -------------------------
@@ -119,6 +138,9 @@ namespace iStick2War_V2
         // -------------------------
         private void HandleStateTransitions()
         {
+            // Life retry clears model.isDead before the state machine can leave Dead via ChangeState.
+            ExitDeadStateIfAlive();
+
             // Death override (highest priority)
             if (_model.isDead)
             {
@@ -195,6 +217,7 @@ namespace iStick2War_V2
             if (_outOfAmmoLatched && _model.currentAmmo > 0)
             {
                 _outOfAmmoLatched = false;
+                _nextOutOfAmmoFeedbackAt = 0f;
             }
 
             if (_model.isReloadPressed && _weaponSystem.CanReload())
@@ -216,18 +239,31 @@ namespace iStick2War_V2
             if (!_input.IsShootingHeld && _outOfAmmoLatched)
             {
                 _outOfAmmoLatched = false;
+                _nextOutOfAmmoFeedbackAt = 0f;
             }
 
-            if (_input.IsShootingHeld && !_isShootLoopActive && _model.currentAmmo > 0 && !_outOfAmmoLatched)
+            if (_input.IsShootingHeld && _model.currentAmmo <= 0)
+            {
+                if (!_outOfAmmoLatched)
+                {
+                    _outOfAmmoLatched = true;
+                }
+
+                TryDryFireOutOfAmmoFeedback();
+
+                if (_isShootLoopActive)
+                {
+                    _isShootLoopActive = false;
+                    AudioManager_V2.StopContinuousWeaponShot(_model.currentWeaponType);
+                    _stateMachine.ChangeState(HeroState.Idle);
+                    _view.StopShoot();
+                }
+            }
+            else if (_input.IsShootingHeld && !_isShootLoopActive && _model.currentAmmo > 0 && !_outOfAmmoLatched)
             {
                 _isShootLoopActive = true;
                 _stateMachine.ChangeState(HeroState.Shooting);
                 _view.PlayShoot();
-            }
-            else if (_input.IsShootingHeld && !_isShootLoopActive && _model.currentAmmo <= 0 && !_outOfAmmoLatched)
-            {
-                _outOfAmmoLatched = true;
-                _view.PlayOutOfAmmo();
             }
 
             if (!_input.IsShootingHeld && _isShootLoopActive)
@@ -263,6 +299,7 @@ namespace iStick2War_V2
 
             _isShootLoopActive = false;
             _outOfAmmoLatched = false;
+            _nextOutOfAmmoFeedbackAt = 0f;
             AudioManager_V2.StopContinuousWeaponShot(WeaponType.None);
             _view.StopShoot();
             _view.RefreshWeaponVisualsForCurrentState();
@@ -356,10 +393,14 @@ namespace iStick2War_V2
                     {
                         LogCombat("[HeroController_V2] ShootStarted cancelled: out of ammo.");
                         _isShootLoopActive = false;
-                        _outOfAmmoLatched = true;
                         _stateMachine.ChangeState(HeroState.Idle);
                         _view.StopShoot();
-                        _view.PlayOutOfAmmo();
+                        if (!_outOfAmmoLatched)
+                        {
+                            _outOfAmmoLatched = true;
+                        }
+
+                        TryDryFireOutOfAmmoFeedback();
                         return;
                     }
 
@@ -400,6 +441,23 @@ namespace iStick2War_V2
             }
 
             return false;
+        }
+
+        private float GetOutOfAmmoFeedbackIntervalSeconds()
+        {
+            return Mathf.Max(0.08f, _model.fireRate);
+        }
+
+        private void TryDryFireOutOfAmmoFeedback()
+        {
+            if (Time.time < _nextOutOfAmmoFeedbackAt)
+            {
+                return;
+            }
+
+            _nextOutOfAmmoFeedbackAt = Time.time + GetOutOfAmmoFeedbackIntervalSeconds();
+            AudioManager_V2.PlayOutOfAmmo();
+            _view.PlayOutOfAmmo();
         }
 
         private void TryShootNow()

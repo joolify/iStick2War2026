@@ -35,3 +35,4 @@ MonoBehaviour:
   reloadGun: {fileID: 8300000, guid: 77d11656f97ded348b7ae7b06c1330cc, type: 3}
   reloadMachineGun: {fileID: 8300000, guid: d9b62846eb36d6e4bbc2f7731e8a9c21, type: 3}
   teslaShot: {fileID: 8300000, guid: 3bfafa65306cb0141bcec0da043cc09c, type: 3}
+  outOfAmmo: {fileID: 8300000, guid: 30c74caa7d5277d40a4c5e814ad81952, type: 3}
