@@ -146,6 +146,12 @@ namespace iStick2War_V2
         private bool _didBuildPreviewCatalog;
         private int _shopOfferCountWhenCatalogBuilt = -1;
         private bool _shopIsVisible;
+        public bool IsShopVisible => _shopIsVisible;
+        private bool _lifeOverCanvasIsDetached;
+        private Transform _lifeOverCanvasParentBeforeDetach;
+        private Vector3 _lifeOverCanvasLocalPositionBeforeDetach;
+        private Quaternion _lifeOverCanvasLocalRotationBeforeDetach;
+        private Vector3 _lifeOverCanvasLocalScaleBeforeDetach;
         private readonly ShopOfferStatsPresenter_V2 _offerStatsPresenter = new ShopOfferStatsPresenter_V2();
         private bool _didResolveOfferStats;
         private bool _didRebuildOfferStatBaselines;
@@ -188,6 +194,11 @@ namespace iStick2War_V2
 
         public void Show()
         {
+            if (_waveManager != null)
+            {
+                _waveManager.EnsureLifeOverUiHidden();
+            }
+
             _shopIsVisible = true;
             gameObject.SetActive(true);
             _offerIndex = 0;
@@ -214,6 +225,97 @@ namespace iStick2War_V2
             DetachFromCameraIfNeeded();
             SetVisualComponentsVisible(false);
             gameObject.SetActive(false);
+        }
+
+        // Hides LifeOver-canvas and life-over labels even when that canvas is excluded from shop show/hide.
+        public void SuppressLifeOverUiElements()
+        {
+            Transform lifeOver = FindLifeOverCanvasTransform();
+            if (lifeOver != null)
+            {
+                lifeOver.gameObject.SetActive(false);
+            }
+
+            string[] objectNames =
+            {
+                "txt_lifeOver_info",
+                "txt_lifeOver_startNewGame",
+                "txt_shop_info",
+                "txt_shop_startNewGame",
+                "TextBTN_MediumStartNewGame",
+                "TextBTN_MediumStartGame",
+            };
+
+            Transform[] transforms = GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                Transform candidate = transforms[i];
+                if (candidate == null)
+                {
+                    continue;
+                }
+
+                for (int n = 0; n < objectNames.Length; n++)
+                {
+                    if (candidate.gameObject.name.Equals(objectNames[n], System.StringComparison.Ordinal))
+                    {
+                        candidate.gameObject.SetActive(false);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Activates LifeOver-canvas for display. Detach only when the canvas lives under ShopPanel (not under LifeOver V2).
+        public GameObject PrepareLifeOverCanvasForDisplay()
+        {
+            Transform lifeOver = FindLifeOverCanvasTransform();
+            if (lifeOver == null)
+            {
+                return null;
+            }
+
+            bool underLifeOverChrome =
+                lifeOver.parent != null &&
+                lifeOver.parent.gameObject.name.IndexOf("LifeOver V2", System.StringComparison.OrdinalIgnoreCase) >= 0;
+
+            if (!underLifeOverChrome && !_lifeOverCanvasIsDetached)
+            {
+                _lifeOverCanvasParentBeforeDetach = lifeOver.parent;
+                _lifeOverCanvasLocalPositionBeforeDetach = lifeOver.localPosition;
+                _lifeOverCanvasLocalRotationBeforeDetach = lifeOver.localRotation;
+                _lifeOverCanvasLocalScaleBeforeDetach = lifeOver.localScale;
+
+                Transform anchor = transform.parent != null ? transform.parent : transform;
+                lifeOver.SetParent(anchor, false);
+                _lifeOverCanvasIsDetached = true;
+            }
+
+            lifeOver.gameObject.SetActive(true);
+            return lifeOver.gameObject;
+        }
+
+        // Back-compat alias for older call sites.
+        public GameObject DetachLifeOverCanvasForDisplay() => PrepareLifeOverCanvasForDisplay();
+
+        public void RestoreLifeOverCanvasAfterDisplay()
+        {
+            if (!_lifeOverCanvasIsDetached)
+            {
+                return;
+            }
+
+            Transform lifeOver = FindLifeOverCanvasTransform();
+            if (lifeOver != null && _lifeOverCanvasParentBeforeDetach != null)
+            {
+                lifeOver.SetParent(_lifeOverCanvasParentBeforeDetach, false);
+                lifeOver.localPosition = _lifeOverCanvasLocalPositionBeforeDetach;
+                lifeOver.localRotation = _lifeOverCanvasLocalRotationBeforeDetach;
+                lifeOver.localScale = _lifeOverCanvasLocalScaleBeforeDetach;
+            }
+
+            _lifeOverCanvasIsDetached = false;
+            _lifeOverCanvasParentBeforeDetach = null;
         }
 
         public void Refresh()
@@ -2652,7 +2754,7 @@ namespace iStick2War_V2
                     }
 
                     Canvas canvas = text.GetComponentInParent<Canvas>(true);
-                    if (canvas != null)
+                    if (canvas != null && !IsLifeOverShopCanvas(canvas))
                     {
                         unique.Add(canvas);
                     }
@@ -2674,9 +2776,53 @@ namespace iStick2War_V2
             }
         }
 
-        private static void SetShopCanvasHierarchyVisible(Canvas canvas, bool visible)
+        private Transform FindLifeOverCanvasTransform()
+        {
+            const string canvasName = "LifeOver-canvas";
+            Transform[] underShop = transform.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < underShop.Length; i++)
+            {
+                Transform candidate = underShop[i];
+                if (candidate != null &&
+                    candidate.gameObject.name.Equals(canvasName, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return candidate;
+                }
+            }
+
+            GameObject[] roots = UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects();
+            for (int r = 0; r < roots.Length; r++)
+            {
+                Transform[] inRoot = roots[r].GetComponentsInChildren<Transform>(true);
+                for (int i = 0; i < inRoot.Length; i++)
+                {
+                    Transform candidate = inRoot[i];
+                    if (candidate != null &&
+                        candidate.gameObject.name.Equals(canvasName, System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        return candidate;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static bool IsLifeOverShopCanvas(Canvas canvas)
         {
             if (canvas == null)
+            {
+                return false;
+            }
+
+            string name = canvas.gameObject.name;
+            return name.Equals("LifeOver-canvas", System.StringComparison.OrdinalIgnoreCase) ||
+                   name.IndexOf("LifeOver", System.StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static void SetShopCanvasHierarchyVisible(Canvas canvas, bool visible)
+        {
+            if (canvas == null || IsLifeOverShopCanvas(canvas))
             {
                 return;
             }

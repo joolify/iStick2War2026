@@ -944,48 +944,23 @@ namespace iStick2War_V2
                         break;
                     }
 
-                    Hero_V2 heroRoot = h.collider.GetComponentInParent<Hero_V2>();
-                    if (heroRoot != null)
+                    if (HeroCombatHitRelay_V2.TryApplyRaycastWeaponHit(
+                            h,
+                            damage,
+                            direction,
+                            waveManager,
+                            _heroRoot,
+                            debugLogs: false,
+                            out bool heroDamageApplied))
                     {
-                        if (waveManager != null && waveManager.IsHeroInsideBunker(heroRoot))
+                        if (heroDamageApplied)
                         {
-                            continue;
+                            didApplyDamage = true;
+                            damageHit = h;
+                            break;
                         }
 
-                        heroRoot.ReceiveDamage(damage, incomingShotWorldDirection: direction);
-                        didApplyDamage = true;
-                        damageHit = h;
-                        break;
-                    }
-
-                    HeroModel_V2 heroModelHit = h.collider.GetComponentInParent<HeroModel_V2>();
-                    if (heroModelHit != null)
-                    {
-                        Hero_V2 heroForZone = heroModelHit.GetComponentInParent<Hero_V2>();
-                        if (heroForZone == null)
-                        {
-                            heroForZone = _heroRoot;
-                        }
-
-                        bool heroProtected = waveManager != null &&
-                            (heroForZone != null ? waveManager.IsHeroInsideBunker(heroForZone) : waveManager.IsHeroInsideBunker());
-                        if (heroProtected)
-                        {
-                            continue;
-                        }
-
-                        if (heroForZone != null)
-                        {
-                            heroForZone.ReceiveDamage(damage, incomingShotWorldDirection: direction);
-                        }
-                        else
-                        {
-                            heroModelHit.TakeDamage(damage);
-                        }
-
-                        didApplyDamage = true;
-                        damageHit = h;
-                        break;
+                        continue;
                     }
                 }
             }

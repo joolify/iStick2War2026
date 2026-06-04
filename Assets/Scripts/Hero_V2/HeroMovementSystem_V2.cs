@@ -66,7 +66,9 @@ namespace iStick2War_V2
         private HeroModel_V2 _model;
         private readonly Transform _transform;
         private readonly Rigidbody2D _rigidbody2D;
-        private readonly Collider2D _collider2D;
+        private readonly Collider2D _legacyRootCollider2D;
+        private readonly Collider2D[] _attachedColliderScratch = new Collider2D[32];
+        private bool _warnedMissingGroundProbeCollider;
 
         private Vector2 velocity;
         private bool isDisabled;
@@ -90,7 +92,7 @@ namespace iStick2War_V2
             _model = model;
             _transform = model.transform;
             _rigidbody2D = model.GetComponent<Rigidbody2D>();
-            _collider2D = model.GetComponent<Collider2D>();
+            _legacyRootCollider2D = model.GetComponent<Collider2D>();
             _groundPhysicsLayer = LayerMask.NameToLayer("Ground");
             _groundRaycastMask = _groundPhysicsLayer >= 0 ? 1 << _groundPhysicsLayer : Physics2D.DefaultRaycastLayers;
         }
@@ -252,14 +254,21 @@ namespace iStick2War_V2
 
         private void RefreshGroundedState()
         {
-            if (_collider2D == null)
+            if (!TryGetGroundProbeBounds(out Bounds bounds))
             {
-                Debug.LogWarning("[HeroMovementSystem_V2] RefreshGroundedState: Collider2D missing.");
+                if (!_warnedMissingGroundProbeCollider)
+                {
+                    _warnedMissingGroundProbeCollider = true;
+                    Debug.LogWarning(
+                        "[HeroMovementSystem_V2] No enabled solid collider for ground probe. " +
+                        "Keep root BoxCollider2D enabled or use Spine body-part hitboxes attached to the hero Rigidbody2D.");
+                }
+
+                isGrounded = false;
                 return;
             }
 
-            Bounds bounds = _collider2D.bounds;
-            float halfWidth = bounds.extents.x * 0.9f;
+            float halfWidth = Mathf.Max(0.05f, bounds.extents.x * 0.9f);
             float rayStartY = bounds.min.y + 0.02f;
 
             Vector2 centerOrigin = new Vector2(bounds.center.x, rayStartY);
@@ -300,13 +309,70 @@ namespace iStick2War_V2
             LogMovement($"[HeroMovementSystem_V2] GroundCheck => grounded={isGrounded}, left={leftGrounded}({leftName}), center={centerGrounded}({centerName}), right={rightGrounded}({rightName}), grace={_jumpGracePeriodTimer:0.000}, vy={velocity.y:0.000}");
         }
 
+        private bool TryGetGroundProbeBounds(out Bounds bounds)
+        {
+            bounds = default;
+            bool haveBounds = false;
+            float minX = float.PositiveInfinity;
+            float maxX = float.NegativeInfinity;
+            float minY = float.PositiveInfinity;
+            float maxY = float.NegativeInfinity;
+
+            if (_rigidbody2D != null)
+            {
+                int written = _rigidbody2D.GetAttachedColliders(_attachedColliderScratch);
+                for (int i = 0; i < written; i++)
+                {
+                    Collider2D c = _attachedColliderScratch[i];
+                    if (c == null || !c.enabled || c.isTrigger)
+                    {
+                        continue;
+                    }
+
+                    Bounds b = c.bounds;
+                    minX = Mathf.Min(minX, b.min.x);
+                    maxX = Mathf.Max(maxX, b.max.x);
+                    minY = Mathf.Min(minY, b.min.y);
+                    maxY = Mathf.Max(maxY, b.max.y);
+                    haveBounds = true;
+                }
+            }
+
+            if (!haveBounds && _legacyRootCollider2D != null && _legacyRootCollider2D.enabled)
+            {
+                bounds = _legacyRootCollider2D.bounds;
+                return true;
+            }
+
+            if (!haveBounds)
+            {
+                return false;
+            }
+
+            Vector3 center = new Vector3((minX + maxX) * 0.5f, (minY + maxY) * 0.5f, 0f);
+            Vector3 size = new Vector3(Mathf.Max(0.01f, maxX - minX), Mathf.Max(0.01f, maxY - minY), 0.01f);
+            bounds = new Bounds(center, size);
+            return true;
+        }
+
+        private bool IsHeroOwnCollider(Collider2D hitCollider)
+        {
+            if (hitCollider == null)
+            {
+                return false;
+            }
+
+            Transform hitTransform = hitCollider.transform;
+            return hitTransform == _transform || hitTransform.IsChildOf(_transform);
+        }
+
         private RaycastHit2D GetFirstValidGroundHit(Vector2 origin)
         {
             RaycastHit2D[] hits = Physics2D.RaycastAll(origin, Vector2.down, GroundCheckDistance, _groundRaycastMask);
             for (int i = 0; i < hits.Length; i++)
             {
                 Collider2D hitCollider = hits[i].collider;
-                if (hitCollider == null || hitCollider == _collider2D || hitCollider.isTrigger)
+                if (hitCollider == null || hitCollider.isTrigger || IsHeroOwnCollider(hitCollider))
                 {
                     continue;
                 }

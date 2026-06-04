@@ -30,6 +30,7 @@ namespace iStick2War_V2
         Preparing,
         InWave,
         Shop,
+        LifeOver,
         GameOver,
         GameWon,
         GameError
@@ -201,8 +202,18 @@ namespace iStick2War_V2
         [SerializeField] [Range(0f, 0.5f)] private float _restartRunPermanentDamageBonusStep = 0.05f;
         [Header("Run lives")]
         [SerializeField] private int _maxLivesPerRun = 3;
-        [Tooltip("Prepare delay after losing a life (shows Life lost, then restarts the same wave).")]
-        [SerializeField] private float _lifeLostPrepareDurationSeconds = 2.5f;
+        [Tooltip("LifeOver UI root, e.g. LifeOver-canvas (preferred) or LifeOver V2.")]
+        [SerializeField] private GameObject _lifeOverRoot;
+        [Tooltip("Life lost message, e.g. txt_lifeOver_info on LifeOver-canvas.")]
+        [SerializeField] private TMP_Text _lifeOverInfoText;
+        [Tooltip("Start label on LifeOver, e.g. txt_lifeOver_startNewGame on LifeOver-canvas.")]
+        [SerializeField] private TMP_Text _lifeOverStartNewGameText;
+        [Tooltip("Continue control, e.g. TextBTN_MediumStartNewGame (LifeOverContinueButton_V2).")]
+        [SerializeField] private GameObject _lifeOverStartNewGameButton;
+        [SerializeField] private string _lifeOverInfoMessage =
+            "You died. Press \"Start Game\" to try the wave again";
+        [Tooltip("Optional top-bar hold while LifeOver is visible.")]
+        [SerializeField] private float _lifeLostTopBarHoldSeconds = 2.5f;
         [SerializeField] private HeartLifeBar_V2 _heartLifeBar;
         [SerializeField] private GameOverContinueUi_V2 _gameOverContinueUi;
 
@@ -241,6 +252,7 @@ namespace iStick2War_V2
         private static float s_restartRunPermanentDamageBonus01;
         private int _livesRemaining;
         private GameOverContinueUi_V2 _resolvedGameOverContinueUi;
+        private Canvas _shopCanvasActivatedForLifeOver;
 
         public event Action<WaveLoopState_V2> OnStateChanged;
         public event Action<int, int> OnLivesChanged;
@@ -294,8 +306,14 @@ namespace iStick2War_V2
         // Call from MainMenu_V2 after Play: shows Wave N for _topBarWaveTextVisibleSeconds, then fades out.
         public void NotifyGameStartedFromMainMenu()
         {
+            HideLifeOverUiCompletely();
             AudioManager_V2.SetGameplayMusic();
             BeginTopBarWaveTextIntro();
+        }
+
+        public void EnsureLifeOverUiHidden()
+        {
+            HideLifeOverUiCompletely();
         }
 
         // Shows the top-bar wave label (hold + fade) using CurrentWaveNumber.
@@ -467,6 +485,7 @@ namespace iStick2War_V2
             SetGameWonUiVisible(false);
             ResolveGameErrorUiIfNeeded();
             SetGameErrorUiVisible(false);
+            HideLifeOverUiCompletely();
             if (_shopPanel != null)
             {
                 _shopPanel.Initialize(this);
@@ -483,6 +502,7 @@ namespace iStick2War_V2
             if (_state != WaveLoopState_V2.GameOver &&
                 _state != WaveLoopState_V2.GameWon &&
                 _state != WaveLoopState_V2.GameError &&
+                _state != WaveLoopState_V2.LifeOver &&
                 _hero != null &&
                 _hero.IsDead())
             {
@@ -492,6 +512,8 @@ namespace iStick2War_V2
 
             switch (_state)
             {
+                case WaveLoopState_V2.LifeOver:
+                    break;
                 case WaveLoopState_V2.Preparing:
                     if (Time.time >= _stateEndTime)
                     {
@@ -816,9 +838,34 @@ namespace iStick2War_V2
             SetGameWonUiVisible(false);
             SetCameraFollowEnabled(true);
             _continueEnemyPressureMultiplierRuntime = 1f;
-            EnterPreparingStateAfterLifeLost();
+            EnterLifeOverState();
             EmitMetaChanged();
-            Log($"Life lost. livesRemaining={_livesRemaining}, retry wave={CurrentWaveNumber}.");
+            Log($"Life lost. livesRemaining={_livesRemaining}, retry wave={CurrentWaveNumber} (awaiting LifeOver continue).");
+        }
+
+        // Called from LifeOverContinueButton_V2 (e.g. TextBTN_MediumStartNewGame). Restarts the same wave index.
+        public bool TryContinueAfterLifeLost()
+        {
+            if (_state != WaveLoopState_V2.LifeOver)
+            {
+                if (_debugWaveLogs)
+                {
+                    Log($"TryContinueAfterLifeLost ignored (state={_state}).");
+                }
+
+                return false;
+            }
+
+            if (_hero != null)
+            {
+                _hero.ResumeCombatAfterLifeRetry();
+            }
+
+            BeginTopBarWaveTextIntro();
+            EnterInWaveState();
+            EmitMetaChanged();
+            Log($"LifeOver continue -> wave {CurrentWaveNumber}.");
+            return true;
         }
 
         private void ResetRunLivesForNewRun()
@@ -1074,6 +1121,7 @@ namespace iStick2War_V2
                 ? _scalingForActiveWave.EffectiveWaveRewardCurrency
                 : wave.WaveRewardCurrency;
             _currency += reward;
+            HideLifeOverUiCompletely();
             SetState(WaveLoopState_V2.Shop);
             SetCameraFollowEnabled(false);
             if (_shopPanel != null)
@@ -1087,6 +1135,7 @@ namespace iStick2War_V2
 
         private void EnterPreparingState()
         {
+            HideLifeOverUiCompletely();
             SetState(WaveLoopState_V2.Preparing);
             WaveConfig_V2 wave = GetCurrentWaveConfig();
             float prepare = 0f;
@@ -1100,14 +1149,45 @@ namespace iStick2War_V2
             _enemiesKilledThisWave = 0;
         }
 
-        private void EnterPreparingStateAfterLifeLost()
+        private void EnterLifeOverState()
         {
-            SetState(WaveLoopState_V2.Preparing);
-            float prepare = Mathf.Max(0.1f, _lifeLostPrepareDurationSeconds);
-            _extraPrepareDelaySecondsForNextWave = 0f;
-            _stateEndTime = Time.time + prepare;
+            InvalidateLifeOverUiCache();
+            LifeOverUiFactory_V2.EnsureLabelsExist(_lifeOverInfoMessage, _debugWaveLogs);
+
+            if (_shopPanel != null)
+            {
+                _shopPanel.PrepareLifeOverCanvasForDisplay();
+                _shopPanel.Hide();
+            }
+
+            SetState(WaveLoopState_V2.LifeOver);
             _enemiesKilledThisWave = 0;
-            BeginTopBarStatusIntro("Life lost", prepare);
+            ResolveLifeOverUiIfNeeded();
+            SetLifeOverUiVisible(true);
+            if (_debugWaveLogs)
+            {
+                if (_lifeOverRoot == null)
+                {
+                    Debug.LogWarning(
+                        "[WaveManager_V2] LifeOver UI root not found (expected LifeOver V2). Assign Life Over Root on WaveManager.");
+                }
+
+                if (_lifeOverInfoText == null)
+                {
+                    Debug.LogWarning("[WaveManager_V2] txt_lifeOver_info not found under LifeOver UI root.");
+                }
+
+                if (_lifeOverStartNewGameText == null)
+                {
+                    Debug.LogWarning("[WaveManager_V2] txt_lifeOver_startNewGame not found under LifeOver UI root.");
+                }
+            }
+
+            float hold = Mathf.Max(0f, _lifeLostTopBarHoldSeconds);
+            if (hold > 0f)
+            {
+                BeginTopBarStatusIntro("Life lost", hold);
+            }
         }
 
         private void ApplyBetweenWavePressureReset()
@@ -1136,6 +1216,7 @@ namespace iStick2War_V2
 
         private void EnterInWaveState()
         {
+            HideLifeOverUiCompletely();
             WaveConfig_V2 wave = GetCurrentWaveConfig();
             if (wave == null)
             {
@@ -1296,6 +1377,7 @@ namespace iStick2War_V2
 
         private void EnterGameOverState()
         {
+            SetLifeOverUiVisible(false);
             AudioManager_V2.PlayFailure();
             SetState(WaveLoopState_V2.GameOver);
             if (_enemySpawner != null)
@@ -1629,8 +1711,729 @@ namespace iStick2War_V2
             return null;
         }
 
+        private void InvalidateLifeOverUiCache()
+        {
+            _lifeOverInfoText = null;
+            _lifeOverStartNewGameText = null;
+            _lifeOverStartNewGameButton = null;
+        }
+
+        private void ResolveLifeOverUiIfNeeded()
+        {
+            if (_lifeOverRoot == null)
+            {
+                _lifeOverRoot = ResolveLifeOverUiRoot();
+            }
+
+            Transform lifeOverScope = _lifeOverRoot != null ? _lifeOverRoot.transform : null;
+
+            if (_lifeOverInfoText == null)
+            {
+                _lifeOverInfoText = FindLifeOverTmpByNames(
+                    lifeOverScope,
+                    "txt_lifeOver_info",
+                    "txt_shop_info");
+            }
+
+            if (_lifeOverStartNewGameText == null)
+            {
+                _lifeOverStartNewGameText = FindLifeOverTmpByNames(
+                    lifeOverScope,
+                    "txt_lifeOver_startNewGame",
+                    "txt_shop_startNewGame",
+                    "txt_shop_startGame");
+            }
+
+            if (_lifeOverStartNewGameButton == null)
+            {
+                _lifeOverStartNewGameButton = FindLifeOverGameObjectByNames(
+                    lifeOverScope,
+                    "TextBTN_MediumStartNewGame",
+                    "TextBTN_MediumStartGame");
+            }
+        }
+
+        private TMP_Text FindLifeOverTmpByNames(Transform scope, params string[] exactNames)
+        {
+            for (int i = 0; i < exactNames.Length; i++)
+            {
+                TMP_Text text = FindLifeOverTmp(scope, exactNames[i]);
+                if (text != null)
+                {
+                    return text;
+                }
+            }
+
+            return null;
+        }
+
+        private GameObject FindLifeOverGameObjectByNames(Transform scope, params string[] exactNames)
+        {
+            for (int i = 0; i < exactNames.Length; i++)
+            {
+                GameObject go = FindGameObjectUnderTransform(scope, exactNames[i]);
+                if (go != null)
+                {
+                    return go;
+                }
+            }
+
+            GameObject[] objects = FindObjectsByType<GameObject>(FindObjectsInactive.Include);
+            for (int i = 0; i < objects.Length; i++)
+            {
+                GameObject go = objects[i];
+                if (go == null)
+                {
+                    continue;
+                }
+
+                for (int n = 0; n < exactNames.Length; n++)
+                {
+                    if (!go.name.Equals(exactNames[n], StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    if (HasLifeOverAncestor(go.transform))
+                    {
+                        return go;
+                    }
+
+                    break;
+                }
+            }
+
+            return null;
+        }
+
+        private TMP_Text FindLifeOverTmp(Transform scope, string exactName)
+        {
+            TMP_Text underScope = FindTmpUnderTransform(scope, exactName);
+            if (underScope != null)
+            {
+                return underScope;
+            }
+
+            return FindTmpWithLifeOverAncestor(exactName);
+        }
+
+        private static TMP_Text FindTmpWithLifeOverAncestor(string exactName)
+        {
+            if (string.IsNullOrEmpty(exactName))
+            {
+                return null;
+            }
+
+            TMP_Text[] texts = FindObjectsByType<TMP_Text>(FindObjectsInactive.Include);
+            for (int i = 0; i < texts.Length; i++)
+            {
+                TMP_Text text = texts[i];
+                if (text == null || !text.gameObject.name.Equals(exactName, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if (HasLifeOverAncestor(text.transform))
+                {
+                    return text;
+                }
+            }
+
+            return null;
+        }
+
+        private static bool HasLifeOverAncestor(Transform node)
+        {
+            Transform walk = node;
+            while (walk != null)
+            {
+                string name = walk.gameObject.name;
+                if (name.IndexOf("LifeOver", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return true;
+                }
+
+                walk = walk.parent;
+            }
+
+            return false;
+        }
+
+        private static GameObject ResolveLifeOverUiRoot()
+        {
+            string[] rootNames =
+            {
+                "LifeOver V2",
+                "LifeOver-canvas",
+                "LifeOver",
+            };
+
+            for (int i = 0; i < rootNames.Length; i++)
+            {
+                GameObject root = FindGameObjectInLoadedScenes(rootNames[i]);
+                if (root != null)
+                {
+                    return root;
+                }
+            }
+
+            return null;
+        }
+
+        private static TMP_Text FindTmpUnderTransform(Transform scope, string exactName)
+        {
+            if (scope == null || string.IsNullOrEmpty(exactName))
+            {
+                return null;
+            }
+
+            TMP_Text[] texts = scope.GetComponentsInChildren<TMP_Text>(true);
+            for (int i = 0; i < texts.Length; i++)
+            {
+                TMP_Text text = texts[i];
+                if (text != null && text.gameObject.name.Equals(exactName, StringComparison.Ordinal))
+                {
+                    return text;
+                }
+            }
+
+            return null;
+        }
+
+        private static GameObject FindGameObjectUnderTransform(Transform scope, string exactName)
+        {
+            if (scope == null || string.IsNullOrEmpty(exactName))
+            {
+                return null;
+            }
+
+            Transform[] transforms = scope.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                Transform t = transforms[i];
+                if (t != null && t.gameObject.name.Equals(exactName, StringComparison.Ordinal))
+                {
+                    return t.gameObject;
+                }
+            }
+
+            return null;
+        }
+
+        private void SetLifeOverUiVisible(bool visible)
+        {
+            if (!visible)
+            {
+                HideLifeOverUiCompletely();
+                return;
+            }
+
+            ResolveLifeOverUiIfNeeded();
+            EnsureLifeOverUiRootsVisible();
+            ActivateLifeOverTextHierarchy();
+
+            PrepareLifeOverTmp(_lifeOverInfoText, _lifeOverInfoMessage);
+            PrepareLifeOverTmp(_lifeOverStartNewGameText, "Start Game");
+
+            if (_lifeOverStartNewGameButton != null)
+            {
+                EnsureLifeOverControlVisible(_lifeOverStartNewGameButton);
+            }
+        }
+
+        private void EnsureLifeOverUiRootsVisible()
+        {
+            GameObject chromeRoot = FindLifeOverChromeRoot();
+            if (chromeRoot != null)
+            {
+                SetUiRootHierarchyVisible(chromeRoot, true);
+            }
+
+            GameObject textCanvas = ResolveLifeOverTextCanvasRoot();
+            if (textCanvas != null)
+            {
+                SetUiRootHierarchyVisible(textCanvas, true);
+            }
+
+            if (_lifeOverRoot != null &&
+                (chromeRoot == null || _lifeOverRoot != chromeRoot))
+            {
+                SetUiRootHierarchyVisible(_lifeOverRoot, true);
+            }
+        }
+
+        private void ActivateLifeOverTextHierarchy()
+        {
+            Transform chrome = FindLifeOverChromeRoot()?.transform;
+            if (chrome == null)
+            {
+                return;
+            }
+
+            if (!chrome.gameObject.activeSelf)
+            {
+                chrome.gameObject.SetActive(true);
+            }
+
+            Transform canvas = FindNamedChildRecursive(chrome, "LifeOver-canvas");
+            if (canvas == null)
+            {
+                return;
+            }
+
+            if (!canvas.gameObject.activeSelf)
+            {
+                canvas.gameObject.SetActive(true);
+            }
+
+            Canvas canvasComponent = canvas.GetComponent<Canvas>();
+            if (canvasComponent != null)
+            {
+                canvasComponent.enabled = true;
+            }
+
+            LifeOverUiFactory_V2.ApplyVisibleCanvasLayout(canvas.gameObject);
+            DeactivateDuplicateLifeOverCanvases(canvas);
+
+            TMP_Text[] texts = canvas.GetComponentsInChildren<TMP_Text>(true);
+            for (int i = 0; i < texts.Length; i++)
+            {
+                TMP_Text text = texts[i];
+                if (text == null)
+                {
+                    continue;
+                }
+
+                text.enabled = true;
+                if (!text.gameObject.activeSelf)
+                {
+                    text.gameObject.SetActive(true);
+                }
+            }
+        }
+
+        private static GameObject FindLifeOverChromeRoot()
+        {
+            return FindGameObjectInLoadedScenes("LifeOver V2");
+        }
+
+        private static void DeactivateDuplicateLifeOverCanvases(Transform activeCanvas)
+        {
+            GameObject[] objects = FindObjectsByType<GameObject>(FindObjectsInactive.Include);
+            for (int i = 0; i < objects.Length; i++)
+            {
+                GameObject go = objects[i];
+                if (go == null ||
+                    activeCanvas != null && go.transform == activeCanvas ||
+                    !go.name.Equals("LifeOver-canvas", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                go.SetActive(false);
+            }
+        }
+
+        private static Transform FindNamedChildRecursive(Transform root, string exactName)
+        {
+            if (root == null || string.IsNullOrEmpty(exactName))
+            {
+                return null;
+            }
+
+            if (root.gameObject.name.Equals(exactName, StringComparison.OrdinalIgnoreCase))
+            {
+                return root;
+            }
+
+            for (int i = 0; i < root.childCount; i++)
+            {
+                Transform found = FindNamedChildRecursive(root.GetChild(i), exactName);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+
+            return null;
+        }
+
+        private static GameObject ResolveLifeOverTextCanvasRoot()
+        {
+            Transform chrome = FindLifeOverChromeRoot()?.transform;
+            Transform underChrome = chrome != null ? FindNamedChildRecursive(chrome, "LifeOver-canvas") : null;
+            if (underChrome != null)
+            {
+                return underChrome.gameObject;
+            }
+
+            return FindGameObjectInLoadedScenes("LifeOver-canvas");
+        }
+
+        private void HideLifeOverUiCompletely()
+        {
+            ResolveLifeOverUiIfNeeded();
+
+            SetLifeOverLeafActive(_lifeOverInfoText, false);
+            SetLifeOverLeafActive(_lifeOverStartNewGameText, false);
+
+            if (_lifeOverStartNewGameButton != null)
+            {
+                _lifeOverStartNewGameButton.SetActive(false);
+            }
+
+            HideLifeOverNamedObjectsInScene();
+
+            if (_shopPanel != null)
+            {
+                _shopPanel.RestoreLifeOverCanvasAfterDisplay();
+            }
+
+            GameObject chromeRoot = FindLifeOverChromeRoot();
+            if (chromeRoot != null)
+            {
+                chromeRoot.SetActive(false);
+            }
+            else if (_lifeOverRoot != null)
+            {
+                _lifeOverRoot.SetActive(false);
+            }
+            else
+            {
+                GameObject root = ResolveLifeOverUiRoot();
+                if (root != null)
+                {
+                    root.SetActive(false);
+                }
+            }
+
+            RestoreShopCanvasActivatedForLifeOverIfNeeded();
+        }
+
+        private void HideLifeOverNamedObjectsInScene()
+        {
+            string[] names =
+            {
+                "txt_lifeOver_info",
+                "txt_lifeOver_startNewGame",
+                "txt_shop_info",
+                "txt_shop_startNewGame",
+                "TextBTN_MediumStartNewGame",
+            };
+
+            TMP_Text[] allTexts = FindObjectsByType<TMP_Text>(FindObjectsInactive.Include);
+            for (int t = 0; t < allTexts.Length; t++)
+            {
+                TMP_Text text = allTexts[t];
+                if (text == null)
+                {
+                    continue;
+                }
+
+                string objectName = text.gameObject.name;
+                for (int n = 0; n < names.Length; n++)
+                {
+                    if (!objectName.Equals(names[n], StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    if ((objectName.Equals("txt_lifeOver_info", StringComparison.Ordinal) ||
+                         objectName.Equals("txt_shop_info", StringComparison.Ordinal)) &&
+                        !string.IsNullOrEmpty(_lifeOverInfoMessage) &&
+                        !text.text.Equals(_lifeOverInfoMessage, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    bool lifeOverOnlyName =
+                        objectName.Equals("txt_lifeOver_startNewGame", StringComparison.Ordinal) ||
+                        objectName.Equals("txt_shop_startNewGame", StringComparison.Ordinal);
+
+                    if (!lifeOverOnlyName && !IsLifeOverUiTransform(text.transform))
+                    {
+                        continue;
+                    }
+
+                    text.gameObject.SetActive(false);
+                    text.enabled = false;
+                    break;
+                }
+            }
+
+            HideLifeOverNamedControlsInScene();
+
+            if (_lifeOverRoot != null)
+            {
+                TMP_Text[] underRoot = _lifeOverRoot.GetComponentsInChildren<TMP_Text>(true);
+                for (int i = 0; i < underRoot.Length; i++)
+                {
+                    if (underRoot[i] != null)
+                    {
+                        underRoot[i].gameObject.SetActive(false);
+                    }
+                }
+            }
+        }
+
+        private static void HideLifeOverNamedControlsInScene()
+        {
+            string[] names =
+            {
+                "TextBTN_MediumStartNewGame",
+                "TextBTN_MediumStartGame",
+            };
+
+            GameObject[] objects = FindObjectsByType<GameObject>(FindObjectsInactive.Include);
+            for (int i = 0; i < objects.Length; i++)
+            {
+                GameObject go = objects[i];
+                if (go == null)
+                {
+                    continue;
+                }
+
+                for (int n = 0; n < names.Length; n++)
+                {
+                    if (go.name.Equals(names[n], StringComparison.Ordinal))
+                    {
+                        go.SetActive(false);
+                        break;
+                    }
+                }
+            }
+        }
+
+        private bool IsLifeOverUiTransform(Transform node)
+        {
+            if (node == null)
+            {
+                return false;
+            }
+
+            if (HasLifeOverAncestor(node))
+            {
+                return true;
+            }
+
+            if (_lifeOverRoot != null && node.IsChildOf(_lifeOverRoot.transform))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static void SetLifeOverLeafActive(TMP_Text text, bool active)
+        {
+            if (text == null)
+            {
+                return;
+            }
+
+            text.enabled = active;
+            text.gameObject.SetActive(active);
+        }
+
+        private void PrepareLifeOverTmp(TMP_Text text, string messageOrNull)
+        {
+            if (text == null)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(messageOrNull))
+            {
+                text.text = messageOrNull;
+            }
+
+            EnsureLifeOverTextVisible(text);
+
+            Color color = text.color;
+            color.a = 1f;
+            text.color = color;
+            text.ForceMeshUpdate();
+        }
+
+        private void EnsureLifeOverTextVisible(TMP_Text text)
+        {
+            if (text == null)
+            {
+                return;
+            }
+
+            Canvas canvas = text.GetComponentInParent<Canvas>(true);
+            if (canvas != null)
+            {
+                if (IsLifeOverCanvas(canvas))
+                {
+                    canvas.gameObject.SetActive(true);
+                    canvas.enabled = true;
+                }
+                else
+                {
+                    TrackShopCanvasActivatedForLifeOver(canvas);
+                    canvas.gameObject.SetActive(true);
+                    canvas.enabled = true;
+                }
+
+                EnsureUiLeafHierarchyActiveUpTo(text.gameObject, canvas.transform);
+            }
+            else
+            {
+                EnsureUiLeafHierarchyActiveUpTo(text.gameObject, null);
+            }
+
+            text.enabled = true;
+            text.gameObject.SetActive(true);
+        }
+
+        private void EnsureLifeOverControlVisible(GameObject control)
+        {
+            if (control == null)
+            {
+                return;
+            }
+
+            Transform stopAt = FindLifeOverChromeRootTransform(control.transform);
+            if (stopAt != null)
+            {
+                SetUiRootHierarchyVisible(stopAt.gameObject, true);
+            }
+
+            EnsureUiLeafHierarchyActiveUpTo(control, stopAt);
+            control.SetActive(true);
+        }
+
+        private static Transform FindLifeOverChromeRootTransform(Transform node)
+        {
+            Transform walk = node;
+            while (walk != null)
+            {
+                if (walk.gameObject.name.Equals("LifeOver V2", StringComparison.OrdinalIgnoreCase))
+                {
+                    return walk;
+                }
+
+                walk = walk.parent;
+            }
+
+            return null;
+        }
+
+        private void TrackShopCanvasActivatedForLifeOver(Canvas canvas)
+        {
+            if (canvas == null || IsLifeOverCanvas(canvas))
+            {
+                return;
+            }
+
+            if (!canvas.gameObject.activeSelf)
+            {
+                canvas.gameObject.SetActive(true);
+                canvas.enabled = true;
+                _shopCanvasActivatedForLifeOver = canvas;
+            }
+        }
+
+        private static bool IsLifeOverCanvas(Canvas canvas)
+        {
+            if (canvas == null)
+            {
+                return false;
+            }
+
+            string name = canvas.gameObject.name;
+            return name.Equals("LifeOver-canvas", StringComparison.OrdinalIgnoreCase) ||
+                   name.IndexOf("LifeOver", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private void RestoreShopCanvasActivatedForLifeOverIfNeeded()
+        {
+            if (_shopCanvasActivatedForLifeOver == null)
+            {
+                return;
+            }
+
+            if (_shopPanel != null && _shopPanel.IsShopVisible)
+            {
+                _shopCanvasActivatedForLifeOver = null;
+                return;
+            }
+
+            Canvas canvas = _shopCanvasActivatedForLifeOver;
+            _shopCanvasActivatedForLifeOver = null;
+            if (canvas == null)
+            {
+                return;
+            }
+
+            canvas.enabled = false;
+            canvas.gameObject.SetActive(false);
+        }
+
+        private static void EnsureUiLeafHierarchyActiveUpTo(GameObject leaf, Transform stopAtInclusive)
+        {
+            if (leaf == null)
+            {
+                return;
+            }
+
+            Transform walk = leaf.transform;
+            while (walk != null)
+            {
+                if (!walk.gameObject.activeSelf)
+                {
+                    walk.gameObject.SetActive(true);
+                }
+
+                Canvas canvas = walk.GetComponent<Canvas>();
+                if (canvas != null)
+                {
+                    canvas.enabled = true;
+                }
+
+                if (stopAtInclusive != null && walk == stopAtInclusive)
+                {
+                    break;
+                }
+
+                walk = walk.parent;
+            }
+        }
+
+        private static void SetUiRootHierarchyVisible(GameObject root, bool visible)
+        {
+            if (root == null)
+            {
+                return;
+            }
+
+            root.SetActive(visible);
+            if (!visible)
+            {
+                return;
+            }
+
+            Canvas[] canvases = root.GetComponentsInChildren<Canvas>(true);
+            for (int i = 0; i < canvases.Length; i++)
+            {
+                Canvas canvas = canvases[i];
+                if (canvas != null)
+                {
+                    canvas.enabled = true;
+                }
+            }
+        }
+
+
         private void SetHeroDeathGameOverUiVisible(bool visible)
         {
+            if (_lifeOverRoot != null && visible && _state != WaveLoopState_V2.LifeOver)
+            {
+                _lifeOverRoot.SetActive(false);
+            }
+
             if (_heroDeathGameOverRoot != null)
             {
                 _heroDeathGameOverRoot.SetActive(visible);

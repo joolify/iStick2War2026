@@ -94,6 +94,9 @@ TagManager:
   - name: MechRobot
     uniqueID: 1096925253
     locked: 0
+  - name: LifeOver
+    uniqueID: 1862622779
+    locked: 0
   m_RenderingLayers:
   - Default
   - Light Layer 1

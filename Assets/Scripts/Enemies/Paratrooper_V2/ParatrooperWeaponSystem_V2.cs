@@ -803,70 +803,24 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
                     break;
                 }
 
-                Hero_V2 heroRoot = h.collider.GetComponentInParent<Hero_V2>();
-                if (heroRoot != null)
+                if (HeroCombatHitRelay_V2.TryApplyRaycastWeaponHit(
+                        h,
+                        _baseDamage,
+                        direction,
+                        waveManager,
+                        _heroRoot,
+                        _debugCombatLogs,
+                        out bool heroDamageApplied))
                 {
-                    if (waveManager != null && waveManager.IsHeroInsideBunker(heroRoot))
+                    if (heroDamageApplied)
                     {
-                        if (_debugCombatLogs)
-                        {
-                            Debug.Log("[ParatrooperWeaponSystem_V2] Hero inside bunker — skipping HP damage, ray continues.");
-                        }
-
-                        continue;
+                        didApplyDamage = true;
+                        damageHit = h;
+                        AudioManager_V2.PlayImpactForCollider(h.collider);
+                        break;
                     }
 
-                    if (_debugCombatLogs)
-                    {
-                        Debug.Log($"[ParatrooperWeaponSystem_V2] Hit Hero_V2 for {_baseDamage} damage.");
-                    }
-
-                    heroRoot.ReceiveDamage(_baseDamage, incomingShotWorldDirection: direction);
-                    didApplyDamage = true;
-                    damageHit = h;
-                    AudioManager_V2.PlayImpactForCollider(h.collider);
-                    break;
-                }
-
-                HeroModel_V2 heroModelHit = h.collider.GetComponentInParent<HeroModel_V2>();
-                if (heroModelHit != null)
-                {
-                    Hero_V2 heroForZone = heroModelHit.GetComponentInParent<Hero_V2>();
-                    if (heroForZone == null)
-                    {
-                        heroForZone = _heroRoot;
-                    }
-
-                    bool heroProtected = waveManager != null &&
-                        (heroForZone != null ? waveManager.IsHeroInsideBunker(heroForZone) : waveManager.IsHeroInsideBunker());
-                    if (heroProtected)
-                    {
-                        if (_debugCombatLogs)
-                        {
-                            Debug.Log("[ParatrooperWeaponSystem_V2] Hero model hit ignored (bunker protection active).");
-                        }
-
-                        continue;
-                    }
-
-                    if (_debugCombatLogs)
-                    {
-                        Debug.Log($"[ParatrooperWeaponSystem_V2] Hit HeroModel_V2 for {_baseDamage} damage.");
-                    }
-
-                    if (heroForZone != null)
-                    {
-                        heroForZone.ReceiveDamage(_baseDamage, incomingShotWorldDirection: direction);
-                    }
-                    else
-                    {
-                        heroModelHit.TakeDamage(_baseDamage);
-                    }
-
-                    didApplyDamage = true;
-                    damageHit = h;
-                    AudioManager_V2.PlayImpactForCollider(h.collider);
-                    break;
+                    continue;
                 }
             }
         }
@@ -1532,6 +1486,16 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 
     private void CacheHeroCollider()
     {
+        if (_heroRoot != null)
+        {
+            Collider2D preferred = HeroBodyPart_V2.ResolvePrimaryCombatCollider(_heroRoot);
+            if (preferred != null)
+            {
+                _cachedHeroCollider = preferred;
+                return;
+            }
+        }
+
         if (_cachedHeroCollider != null)
         {
             return;

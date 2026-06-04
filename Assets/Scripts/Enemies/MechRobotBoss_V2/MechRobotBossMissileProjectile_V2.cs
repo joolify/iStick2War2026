@@ -214,39 +214,17 @@ namespace iStick2War_V2
                 return false;
             }
 
-            Hero_V2 heroRoot = collider.GetComponentInParent<Hero_V2>();
-            if (heroRoot != null)
+            if (HeroCombatHitRelay_V2.TryApplyColliderWeaponHit(
+                    collider,
+                    collider.bounds.center,
+                    _damage,
+                    hitDir,
+                    waveManager,
+                    heroRootFallback: null,
+                    debugLogs: _debugLogs,
+                    out bool heroDamageApplied))
             {
-                if (waveManager != null && waveManager.IsHeroInsideBunker(heroRoot))
-                {
-                    return false;
-                }
-
-                heroRoot.ReceiveDamage(_damage, incomingShotWorldDirection: hitDir);
-                return true;
-            }
-
-            HeroModel_V2 heroModelHit = collider.GetComponentInParent<HeroModel_V2>();
-            if (heroModelHit != null)
-            {
-                Hero_V2 heroForZone = heroModelHit.GetComponentInParent<Hero_V2>();
-                bool heroProtected = waveManager != null &&
-                    (heroForZone != null ? waveManager.IsHeroInsideBunker(heroForZone) : waveManager.IsHeroInsideBunker());
-                if (heroProtected)
-                {
-                    return false;
-                }
-
-                if (heroForZone != null)
-                {
-                    heroForZone.ReceiveDamage(_damage, incomingShotWorldDirection: hitDir);
-                }
-                else
-                {
-                    heroModelHit.TakeDamage(_damage);
-                }
-
-                return true;
+                return heroDamageApplied;
             }
 
             if (_debugLogs)

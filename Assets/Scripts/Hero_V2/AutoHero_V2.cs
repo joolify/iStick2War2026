@@ -594,7 +594,7 @@ namespace iStick2War_V2
                 return;
             }
 
-            if (state == WaveLoopState_V2.Preparing)
+            if (state == WaveLoopState_V2.LifeOver || state == WaveLoopState_V2.Preparing)
             {
                 _shopExitScheduledThisVisit = false;
                 _view.SetAutoAimWorldOverride(null);

@@ -42,6 +42,7 @@ namespace iStick2War_V2
  * HeroDamageReceiver_V2   = Incoming damage validation + events
  * HeroDeathHandler_V2     = Death flow + handoff to view / game over hooks
  * HeroSpineEventForwarder_V2 = Spine → controller animation events
+ * HeroBodyPart_V2          = Spine bounding-box hitboxes (HERO BodyParts_V2)
  * AutoHero_V2              = Optional bot (TickBeforeHeroFrame before hero Tick)
  *
  * ---------------------------------------------------------
@@ -119,6 +120,8 @@ namespace iStick2War_V2
                 Debug.Log("HERE AWAKE");
             }
             BindComponents();
+            HeroBodyPartsFactory_V2.EnsureBodyPartsOnHero(this);
+            HeroBodyPartsFactory_V2.RepairBodyPartPhysics(this);
             ApplyHeroRigidbodyBunkerContactExclusion();
             CreateSystems();
             InitSystems();
@@ -513,6 +516,12 @@ namespace iStick2War_V2
             _controller?.SetCombatPaused(true);
             RefreshEquippedWeaponVisuals();
             return true;
+        }
+
+        // LifeOver UI dismissed — resume combat for the same wave retry.
+        public void ResumeCombatAfterLifeRetry()
+        {
+            _controller?.SetCombatPaused(false);
         }
 
         public int GetCurrentHealth()
