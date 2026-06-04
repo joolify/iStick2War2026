@@ -115,7 +115,7 @@ namespace iStick2War_V2
             if (isDisabled) return false;
             if (_model.isDead) return false;
             if (_isReloading) return false;
-            if (!HeroWeaponAmmoRules_V2.HasInfiniteAmmo(_model.currentWeaponType) && _model.currentAmmo <= 0)
+            if (_model.currentAmmo <= 0)
             {
                 return false;
             }
@@ -292,7 +292,7 @@ namespace iStick2War_V2
                 return false;
             }
 
-            if (HeroWeaponAmmoRules_V2.HasInfiniteAmmo(_model.currentWeaponType))
+            if (HeroWeaponAmmoRules_V2.HasInfiniteReserveAmmo(_model.currentWeaponType))
             {
                 return true;
             }
@@ -549,7 +549,7 @@ namespace iStick2War_V2
             }
 
             return state.Definition != null &&
-                   (HeroWeaponAmmoRules_V2.HasInfiniteAmmo(state.Definition.WeaponType) ||
+                   (HeroWeaponAmmoRules_V2.HasInfiniteReserveAmmo(state.Definition.WeaponType) ||
                     state.CurrentAmmo > 0 ||
                     state.CurrentReserveAmmo > 0);
         }
@@ -790,7 +790,8 @@ namespace iStick2War_V2
                 _inventory.SetActiveBySlot(0);
             }
 
-            ApplyActiveWeaponToModel();
+            // Initial loadout uses StartingMagazineAmmo=0 on assets; fill mags like shop unlock does.
+            RefillAllWeaponsToMax();
         }
 
         private void ApplyActiveWeaponToModel()
@@ -815,11 +816,6 @@ namespace iStick2War_V2
 
         private void ConsumeAmmo(int amount)
         {
-            if (HeroWeaponAmmoRules_V2.HasInfiniteAmmo(_model.currentWeaponType))
-            {
-                return;
-            }
-
             HeroWeaponRuntimeState_V2 active = _inventory.ActiveWeapon;
             if (active != null)
             {
@@ -834,7 +830,7 @@ namespace iStick2War_V2
             HeroWeaponRuntimeState_V2 active = _inventory.ActiveWeapon;
             if (active != null && active.Definition != null)
             {
-                if (HeroWeaponAmmoRules_V2.HasInfiniteAmmo(active.Definition.WeaponType))
+                if (HeroWeaponAmmoRules_V2.HasInfiniteReserveAmmo(active.Definition.WeaponType))
                 {
                     active.CurrentAmmo = active.Definition.MaxAmmo;
                     active.CurrentReserveAmmo = active.Definition.MaxReserveAmmo;

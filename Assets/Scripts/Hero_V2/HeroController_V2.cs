@@ -244,8 +244,7 @@ namespace iStick2War_V2
 
             if (_input.IsShootingHeld &&
                 _model.currentAmmo <= 0 &&
-                !_weaponSystem.IsReloading() &&
-                !HeroWeaponAmmoRules_V2.HasInfiniteAmmo(_model.currentWeaponType))
+                !_weaponSystem.IsReloading())
             {
                 if (!_outOfAmmoLatched)
                 {
@@ -468,8 +467,7 @@ namespace iStick2War_V2
             if (_model.currentAmmo <= 0)
             {
                 if (_input.IsShootingHeld &&
-                    !_weaponSystem.IsReloading() &&
-                    !HeroWeaponAmmoRules_V2.HasInfiniteAmmo(_model.currentWeaponType))
+                    !_weaponSystem.IsReloading())
                 {
                     TryDryFireOutOfAmmoFeedback();
                 }

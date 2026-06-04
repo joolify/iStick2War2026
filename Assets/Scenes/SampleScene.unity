@@ -11191,7 +11191,7 @@ PrefabInstance:
       objectReference: {fileID: 796613714}
     - target: {fileID: 3453683051127376714, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: _lockedTestWeaponType
-      value: 12
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3453683051127376714, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: _shootVisibilityCamera
@@ -11203,6 +11203,10 @@ PrefabInstance:
       objectReference: {fileID: 11400000, guid: c7a91f2e4b3d4e5f8061728394a5b0c1, type: 2}
     - target: {fileID: 3453683051127376714, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
       propertyPath: _lockToSingleWeaponForTesting
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3453683051127376714, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}
+      propertyPath: _applyHeroHpOverrideForTesting
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6086305474392381760, guid: c3f2c2eb0aaa4dc459151e82e38ef2cf, type: 3}

@@ -340,7 +340,7 @@ namespace iStick2War_V2
             int reserve,
             int maxReserve)
         {
-            if (HeroWeaponAmmoRules_V2.HasInfiniteAmmo(weaponType))
+            if (HeroWeaponAmmoRules_V2.HasInfiniteReserveAmmo(weaponType))
             {
                 return $"{mag}/{maxMag} (∞)";
             }

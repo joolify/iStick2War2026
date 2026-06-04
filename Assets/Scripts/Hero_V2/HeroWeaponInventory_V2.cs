@@ -5,7 +5,9 @@ namespace iStick2War_V2
 {
     internal static class HeroWeaponAmmoRules_V2
     {
-        public static bool HasInfiniteAmmo(WeaponType weaponType) => weaponType == WeaponType.Colt45;
+        // Colt45: magazine rounds are consumed; reserve is unlimited for reload + UI (∞).
+        public static bool HasInfiniteReserveAmmo(WeaponType weaponType) =>
+            weaponType == WeaponType.Colt45;
     }
 
     /*
@@ -23,16 +25,8 @@ namespace iStick2War_V2
         public HeroWeaponRuntimeState_V2(HeroWeaponDefinition_V2 definition)
         {
             Definition = definition;
-            if (definition != null && HeroWeaponAmmoRules_V2.HasInfiniteAmmo(definition.WeaponType))
-            {
-                CurrentAmmo = definition.MaxAmmo;
-                CurrentReserveAmmo = definition.MaxReserveAmmo;
-            }
-            else
-            {
-                CurrentAmmo = definition.StartingMagazineAmmo;
-                CurrentReserveAmmo = definition.StartingReserveAmmo;
-            }
+            CurrentAmmo = definition.StartingMagazineAmmo;
+            CurrentReserveAmmo = definition.StartingReserveAmmo;
         }
 
         public HeroWeaponDefinition_V2 Definition { get; }
@@ -225,7 +219,7 @@ namespace iStick2War_V2
                 HeroWeaponRuntimeState_V2 w = _weapons[i];
                 if (w != null &&
                     w.Definition != null &&
-                    (HeroWeaponAmmoRules_V2.HasInfiniteAmmo(w.Definition.WeaponType) ||
+                    (HeroWeaponAmmoRules_V2.HasInfiniteReserveAmmo(w.Definition.WeaponType) ||
                      w.CurrentAmmo > 0 ||
                      w.CurrentReserveAmmo > 0))
                 {

@@ -2956,8 +2956,9 @@ namespace iStick2War_V2
                 }
                 else
                 {
-                    bool isColt45 = _hero.CurrentWeaponType == WeaponType.Colt45;
-                    string reserveText = isColt45
+                    bool infiniteReserve =
+                        HeroWeaponAmmoRules_V2.HasInfiniteReserveAmmo(_hero.CurrentWeaponType);
+                    string reserveText = infiniteReserve
                         ? "∞"
                         : _hero.GetCurrentWeaponReserveAmmo().ToString(CultureInfo.InvariantCulture);
                     _topBarCurrentAmmoText.text =
