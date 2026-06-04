@@ -165,7 +165,10 @@ namespace iStick2War_V2
             switch (offer.Kind)
             {
                 case ShopOfferKind_V2.WeaponUnlock:
-                    RefreshWeaponStats(offer.Weapon, showAmmoRow: false);
+                    bool owned = offer.Weapon != null &&
+                                 waveManager != null &&
+                                 waveManager.IsWeaponOwned(offer.Weapon);
+                    RefreshWeaponStats(offer.Weapon, showAmmoRow: owned);
                     break;
 
                 case ShopOfferKind_V2.AmmoRefill:

@@ -78,6 +78,9 @@ namespace iStick2War_V2.Editor
             defaults.flamethrowerShot = LoadClip("Weapons/flamethrower.wav");
             defaults.machineGunShot = LoadClip("Weapons/machineGun.wav");
             defaults.pistolShot = LoadClip("Weapons/pistol.wav");
+            defaults.shotgunShot = LoadClip("Weapons/shotgun.mp3");
+            defaults.shotgunShot ??= LoadClip("Weapons/shotGun.wav");
+            defaults.shotgunShot ??= LoadClip("Weapons/pistol.wav");
             defaults.reloadGun = LoadClip("Weapons/reloadGun.mp3");
             defaults.reloadMachineGun = LoadClip("Weapons/reloadMachineGun.mp3");
             defaults.teslaShot = LoadClip("Weapons/teslaGun.mp3");

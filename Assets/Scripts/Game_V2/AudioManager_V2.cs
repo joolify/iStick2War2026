@@ -46,6 +46,7 @@ namespace iStick2War_V2
         [SerializeField] private AudioClip _flamethrowerShot;
         [SerializeField] private AudioClip _machineGunShot;
         [SerializeField] private AudioClip _pistolShot;
+        [SerializeField] private AudioClip _shotgunShot;
         [SerializeField] private AudioClip _reloadGun;
         [SerializeField] private AudioClip _reloadMachineGun;
         [SerializeField] private AudioClip _teslaShot;
@@ -69,8 +70,8 @@ namespace iStick2War_V2
         private bool _warnedNoBossMusic;
         private bool _warnedNoSfxSource;
         private bool _warnedNoMusicSource;
+        private bool _warnedNoOutOfAmmoClip;
         private bool _loggedStartupState;
-        private bool _clipsLoadAttempted;
         private static AudioManagerClipDefaults_V2 s_cachedClipDefaults;
         private float _nextMissileExplosionAllowedAt;
         private WeaponType _activeContinuousWeapon = WeaponType.None;
@@ -142,6 +143,7 @@ namespace iStick2War_V2
             AudioClip clip = weaponType switch
             {
                 WeaponType.Colt45 => audio._pistolShot,
+                WeaponType.Ithaca => audio._shotgunShot != null ? audio._shotgunShot : audio._pistolShot,
                 WeaponType.Thompson => audio._machineGunShot,
                 WeaponType.Bazooka => audio._bazookaShot,
                 WeaponType.Tesla => audio._teslaShot,
@@ -169,7 +171,9 @@ namespace iStick2War_V2
         {
             AudioManager_V2 audio = EnsureInstance();
             audio.EnsureClipsLoaded();
-            AudioClip clip = weaponType == WeaponType.Thompson ? audio._reloadMachineGun : audio._reloadGun;
+            AudioClip clip = weaponType == WeaponType.Thompson || weaponType == WeaponType.Ithaca
+                ? audio._reloadMachineGun
+                : audio._reloadGun;
             audio.PlayOneShot(clip);
         }
 
@@ -177,7 +181,19 @@ namespace iStick2War_V2
         {
             AudioManager_V2 audio = EnsureInstance();
             audio.EnsureClipsLoaded();
-            audio.PlayOneShot(audio._outOfAmmo);
+            AudioClip clip = audio._outOfAmmo != null ? audio._outOfAmmo : audio._failure;
+            if (clip == null)
+            {
+                if (!audio._warnedNoOutOfAmmoClip)
+                {
+                    audio._warnedNoOutOfAmmoClip = true;
+                    Debug.LogWarning("[AudioManager_V2] outOfAmmo clip is not assigned (no failure fallback).");
+                }
+
+                return;
+            }
+
+            audio.PlayOneShot(clip);
         }
 
         public static void PlayImpactForCollider(Collider2D collider)
@@ -312,12 +328,6 @@ namespace iStick2War_V2
 
         private void LoadDefaultClipsIfMissing()
         {
-            if (_clipsLoadAttempted && HasCoreClipsAssigned())
-            {
-                return;
-            }
-
-            _clipsLoadAttempted = true;
             TryApplyDefaultsFromResources();
 #if UNITY_EDITOR
             TryApplyDefaultsFromEditorAssetDatabase();
@@ -362,6 +372,7 @@ namespace iStick2War_V2
             _flamethrowerShot ??= d.flamethrowerShot;
             _machineGunShot ??= d.machineGunShot;
             _pistolShot ??= d.pistolShot;
+            _shotgunShot ??= d.shotgunShot;
             _reloadGun ??= d.reloadGun;
             _reloadMachineGun ??= d.reloadMachineGun;
             _teslaShot ??= d.teslaShot;
@@ -391,6 +402,9 @@ namespace iStick2War_V2
             _flamethrowerShot ??= LoadEditorClip("Weapons/flamethrower.wav");
             _machineGunShot ??= LoadEditorClip("Weapons/machineGun.wav");
             _pistolShot ??= LoadEditorClip("Weapons/pistol.wav");
+            _shotgunShot ??= LoadEditorClip("Weapons/shotgun.mp3");
+            _shotgunShot ??= LoadEditorClip("Weapons/shotGun.wav");
+            _shotgunShot ??= LoadEditorClip("Weapons/pistol.wav");
             _reloadGun ??= LoadEditorClip("Weapons/reloadGun.mp3");
             _reloadMachineGun ??= LoadEditorClip("Weapons/reloadMachineGun.mp3");
             _teslaShot ??= LoadEditorClip("Weapons/teslaGun.mp3");
@@ -633,6 +647,11 @@ namespace iStick2War_V2
             if (_clickMenu == null)
             {
                 Debug.LogWarning("[AudioManager_V2] clickMenu clip is not assigned.");
+            }
+
+            if (_outOfAmmo == null)
+            {
+                Debug.LogWarning("[AudioManager_V2] outOfAmmo clip is not assigned.");
             }
         }
 

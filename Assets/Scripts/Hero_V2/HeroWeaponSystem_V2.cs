@@ -4,6 +4,23 @@ using iStick2War;
 
 namespace iStick2War_V2
 {
+    // Per-pellet data for Ithaca shotgun VFX (line trails) after the latest Shoot().
+    public readonly struct IthacaPelletVisualSnapshot_V2
+    {
+        public readonly Vector2 Direction;
+        public readonly Vector2 FinalPos;
+        public readonly bool DidHit;
+        public readonly RaycastHit2D Hit;
+
+        public IthacaPelletVisualSnapshot_V2(Vector2 direction, Vector2 finalPos, bool didHit, RaycastHit2D hit)
+        {
+            Direction = direction;
+            FinalPos = finalPos;
+            DidHit = didHit;
+            Hit = hit;
+        }
+    }
+
     /*
  * HeroWeaponSystem_V2 (Combat Rules, Not Presentation)
  *
@@ -59,12 +76,24 @@ namespace iStick2War_V2
         private const float MinigunOverheatBlockThreshold = 1f;
         private const float MinigunOverheatRecoverThreshold = 0.35f;
         private const float MinigunMaxSpreadDegreesAtFullHeat = 7f;
+        public const int IthacaPelletCount = 5;
+        private const float IthacaPelletSpreadDegrees = 14f;
+        private const float IthacaFarDamageMultiplier = 0.25f;
+        // At or above this distance falloff multiplier, Ithaca triggers paratrooper explosive gib (bazooka-style).
+        public const float IthacaExplosiveGibMinDistanceMultiplier = 0.85f;
+        private readonly IthacaPelletVisualSnapshot_V2[] _ithacaPelletSnapshots =
+            new IthacaPelletVisualSnapshot_V2[IthacaPelletCount];
 
         /// <summary>weaponType, isProjectile, rayHit (meaningless when isProjectile).</summary>
         public event System.Action<WeaponType, bool, bool> OnCommittedAttack;
 
         public event System.Action<WeaponType> OnReloadCompleted;
         private readonly HeroShotResolver_V2 _shotResolver = new HeroShotResolver_V2();
+
+        public IthacaPelletVisualSnapshot_V2 GetIthacaPelletVisual(int index)
+        {
+            return _ithacaPelletSnapshots[Mathf.Clamp(index, 0, IthacaPelletCount - 1)];
+        }
 
         public HeroWeaponSystem_V2(
             HeroModel_V2 model,
@@ -86,7 +115,10 @@ namespace iStick2War_V2
             if (isDisabled) return false;
             if (_model.isDead) return false;
             if (_isReloading) return false;
-            if (_model.currentAmmo <= 0) return false;
+            if (!HeroWeaponAmmoRules_V2.HasInfiniteAmmo(_model.currentWeaponType) && _model.currentAmmo <= 0)
+            {
+                return false;
+            }
             if (_model.currentWeaponType == WeaponType.Minigun &&
                 _minigunHeat01 >= MinigunOverheatBlockThreshold)
             {
@@ -130,7 +162,9 @@ namespace iStick2War_V2
             ConsumeAmmo(1);
             AccumulateMinigunHeatFromShot();
 
-            shotResult = _shotResolver.ResolveShot(shotContext);
+            shotResult = shotContext.WeaponType == WeaponType.Ithaca
+                ? ResolveIthacaPelletShot(shotContext)
+                : _shotResolver.ResolveShot(shotContext);
             OnCommittedAttack?.Invoke(_model.currentWeaponType, false, shotResult.DidHit);
             AddWorldShakeForCommittedHitscanShot(_model.currentWeaponType);
             LogWeapon($"[HeroWeaponSystem_V2] Shoot OK. didHit={shotResult.DidHit}, finalPos={shotResult.FinalPos}, ammoLeft={_model.currentAmmo}");
@@ -147,7 +181,101 @@ namespace iStick2War_V2
                 case WeaponType.Thompson:
                     WorldShake_V2.AddImpulse(WorldShakeImpulseKind_V2.ThompsonShot);
                     break;
+                case WeaponType.Ithaca:
+                    WorldShake_V2.AddImpulse(WorldShakeImpulseKind_V2.ThompsonShot);
+                    break;
             }
+        }
+
+        private HeroShotResult_V2 ResolveIthacaPelletShot(HeroShotContext_V2 context)
+        {
+            HeroShotResult_V2 combined = default;
+            bool anyHit = false;
+            float closestDistance = float.PositiveInfinity;
+            float pelletDamageShare = 1f / IthacaPelletCount;
+            float pelletBaseDamage = context.BaseDamage * pelletDamageShare;
+            float pelletAircraftDamage = context.AircraftDamage * pelletDamageShare;
+            int centerPelletIndex = IthacaPelletCount / 2;
+
+            for (int pelletIndex = 0; pelletIndex < IthacaPelletCount; pelletIndex++)
+            {
+                float spread = Random.Range(-IthacaPelletSpreadDegrees, IthacaPelletSpreadDegrees);
+                Vector2 pelletDirection = RotateDirection2D(context.Direction, spread);
+                HeroShotContext_V2 pelletContext = context;
+                pelletContext.Direction = pelletDirection;
+                pelletContext.BaseDamage = pelletBaseDamage;
+                pelletContext.AircraftDamage = pelletAircraftDamage;
+
+                HeroShotResult_V2 pelletResult = _shotResolver.ResolveShot(pelletContext);
+                _ithacaPelletSnapshots[pelletIndex] = new IthacaPelletVisualSnapshot_V2(
+                    pelletDirection,
+                    pelletResult.FinalPos,
+                    pelletResult.DidHit,
+                    pelletResult.Hit);
+
+                if (!pelletResult.DidHit)
+                {
+                    continue;
+                }
+
+                anyHit = true;
+                float distance = pelletResult.Hit.distance;
+                if (distance < closestDistance)
+                {
+                    closestDistance = distance;
+                    combined = pelletResult;
+                }
+            }
+
+            if (!anyHit)
+            {
+                IthacaPelletVisualSnapshot_V2 centerPellet = _ithacaPelletSnapshots[centerPelletIndex];
+                combined = new HeroShotResult_V2
+                {
+                    DidHit = false,
+                    FinalPos = centerPellet.FinalPos,
+                    Hit = default
+                };
+            }
+
+            combined.DidHit = anyHit;
+            return combined;
+        }
+
+        // Full pellet damage at point-blank; IthacaFarDamageMultiplier at weapon max range (quadratic falloff).
+        public static float GetIthacaPelletDamageMultiplierByDistance(float hitDistance, float weaponRange)
+        {
+            float normalized = Mathf.Clamp01(hitDistance / Mathf.Max(0.5f, weaponRange));
+            float falloffT = normalized * normalized;
+            return Mathf.Lerp(1f, IthacaFarDamageMultiplier, falloffT);
+        }
+
+        public static bool ShouldIthacaCauseExplosiveGib(float hitDistance, float weaponRange)
+        {
+            return GetIthacaPelletDamageMultiplierByDistance(hitDistance, weaponRange) >=
+                   IthacaExplosiveGibMinDistanceMultiplier;
+        }
+
+        public static float GetIthacaExplosionForceForHit(float hitDistance, float weaponRange)
+        {
+            float closeness = GetIthacaPelletDamageMultiplierByDistance(hitDistance, weaponRange);
+            return Mathf.Lerp(3.5f, 9f, closeness);
+        }
+
+        private static Vector2 RotateDirection2D(Vector2 direction, float degrees)
+        {
+            if (direction.sqrMagnitude <= 0.0001f)
+            {
+                return Vector2.right;
+            }
+
+            float radians = degrees * Mathf.Deg2Rad;
+            float cos = Mathf.Cos(radians);
+            float sin = Mathf.Sin(radians);
+            Vector2 normalized = direction.normalized;
+            return new Vector2(
+                normalized.x * cos - normalized.y * sin,
+                normalized.x * sin + normalized.y * cos);
         }
 
         // -------------------------
@@ -159,8 +287,20 @@ namespace iStick2War_V2
             if (isDisabled) return false;
             if (_model.isDead) return false;
             if (_isReloading) return false;
-            if (_model.currentAmmo == _model.maxAmmo) return false;
-            if (_model.currentReserveAmmo <= 0) return false;
+            if (_model.currentAmmo == _model.maxAmmo)
+            {
+                return false;
+            }
+
+            if (HeroWeaponAmmoRules_V2.HasInfiniteAmmo(_model.currentWeaponType))
+            {
+                return true;
+            }
+
+            if (_model.currentReserveAmmo <= 0)
+            {
+                return false;
+            }
 
             return true;
         }
@@ -408,7 +548,10 @@ namespace iStick2War_V2
                 return false;
             }
 
-            return state.CurrentAmmo > 0 || state.CurrentReserveAmmo > 0;
+            return state.Definition != null &&
+                   (HeroWeaponAmmoRules_V2.HasInfiniteAmmo(state.Definition.WeaponType) ||
+                    state.CurrentAmmo > 0 ||
+                    state.CurrentReserveAmmo > 0);
         }
 
         /// <summary>Switches to the first unlocked weapon that still has ammo (loadout order).</summary>
@@ -644,6 +787,11 @@ namespace iStick2War_V2
 
         private void ConsumeAmmo(int amount)
         {
+            if (HeroWeaponAmmoRules_V2.HasInfiniteAmmo(_model.currentWeaponType))
+            {
+                return;
+            }
+
             HeroWeaponRuntimeState_V2 active = _inventory.ActiveWeapon;
             if (active != null)
             {
@@ -658,10 +806,8 @@ namespace iStick2War_V2
             HeroWeaponRuntimeState_V2 active = _inventory.ActiveWeapon;
             if (active != null && active.Definition != null)
             {
-                bool isColt45 = active.Definition.WeaponType == WeaponType.Colt45;
-                if (isColt45)
+                if (HeroWeaponAmmoRules_V2.HasInfiniteAmmo(active.Definition.WeaponType))
                 {
-                    // Colt45 keeps reload behavior (magazine refill) but has infinite reserve for baseline survivability.
                     active.CurrentAmmo = active.Definition.MaxAmmo;
                     active.CurrentReserveAmmo = active.Definition.MaxReserveAmmo;
                     _model.SetAmmoState(active.CurrentAmmo, active.CurrentReserveAmmo);

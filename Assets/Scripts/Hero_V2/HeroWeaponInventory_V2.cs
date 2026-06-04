@@ -3,6 +3,11 @@ using iStick2War;
 
 namespace iStick2War_V2
 {
+    internal static class HeroWeaponAmmoRules_V2
+    {
+        public static bool HasInfiniteAmmo(WeaponType weaponType) => weaponType == WeaponType.Colt45;
+    }
+
     /*
  * HeroWeaponRuntimeState_V2 (Per-weapon runtime ammo bag)
  *
@@ -18,8 +23,16 @@ namespace iStick2War_V2
         public HeroWeaponRuntimeState_V2(HeroWeaponDefinition_V2 definition)
         {
             Definition = definition;
-            CurrentAmmo = definition.MaxAmmo;
-            CurrentReserveAmmo = definition.StartingReserveAmmo;
+            if (definition != null && HeroWeaponAmmoRules_V2.HasInfiniteAmmo(definition.WeaponType))
+            {
+                CurrentAmmo = definition.MaxAmmo;
+                CurrentReserveAmmo = definition.MaxReserveAmmo;
+            }
+            else
+            {
+                CurrentAmmo = definition.StartingMagazineAmmo;
+                CurrentReserveAmmo = definition.StartingReserveAmmo;
+            }
         }
 
         public HeroWeaponDefinition_V2 Definition { get; }
@@ -210,7 +223,11 @@ namespace iStick2War_V2
             for (int i = 0; i < _weapons.Count; i++)
             {
                 HeroWeaponRuntimeState_V2 w = _weapons[i];
-                if (w != null && (w.CurrentAmmo > 0 || w.CurrentReserveAmmo > 0))
+                if (w != null &&
+                    w.Definition != null &&
+                    (HeroWeaponAmmoRules_V2.HasInfiniteAmmo(w.Definition.WeaponType) ||
+                     w.CurrentAmmo > 0 ||
+                     w.CurrentReserveAmmo > 0))
                 {
                     index = i;
                     return true;

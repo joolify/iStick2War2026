@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eae1b068af140bb4b8118d27aca56663, type: 3}
+  m_Name: Ithaca_Def
+  m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.Hero_V2.HeroWeaponDefinition_V2
+  _weaponType: 5
+  _displayName: Shotgun
+  _maxAmmo: 6
+  _fireRate: 0.75
+  _reloadDuration: 1.1
+  _baseDamage: 117
+  _damageVsAircraft: 97.5
+  _range: 50
+  _maxReserveAmmo: 30
+  _startingMagazineAmmo: 0
+  _startingReserveAmmo: 0
+  _debugDrawShotRay: 0
+  _useProjectile: 0
+  _projectilePrefab: {fileID: 0}
+  _projectileSpeed: 14
+  _projectileLifetime: 5
+  _idleAnimation: {fileID: 11400000, guid: 0362c887dc5662e48af3f72083ae438e, type: 2}
+  _aimAnimation: {fileID: 11400000, guid: cc7dcb2d8b35785448d9103bdcf59c19, type: 2}
+  _shootAnimation: {fileID: 11400000, guid: 8cdf596980218844f92c309cfed07e21, type: 2}
+  _runAnimation: {fileID: 11400000, guid: bf086bc0e32b6a440bf6539891ae2f90, type: 2}
+  _jumpAnimation: {fileID: 11400000, guid: 6f0ccd206ae4f324981031f02b0f1980, type: 2}
+  _reloadAnimation: {fileID: 11400000, guid: 329ad89d248022143b47110263eee9ce, type: 2}
+  _dryFireAnimation: {fileID: 0}

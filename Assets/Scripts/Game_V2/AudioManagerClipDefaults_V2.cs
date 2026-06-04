@@ -44,6 +44,7 @@ namespace iStick2War_V2
         public AudioClip flamethrowerShot;
         public AudioClip machineGunShot;
         public AudioClip pistolShot;
+        public AudioClip shotgunShot;
         public AudioClip reloadGun;
         public AudioClip reloadMachineGun;
         public AudioClip teslaShot;

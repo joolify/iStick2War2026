@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using iStick2War;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
@@ -137,6 +138,7 @@ namespace iStick2War_V2
         private int _originalSiblingIndex;
         private bool _isParentedToCamera;
         private int _offerIndex;
+        private readonly List<ShopOfferConfig_V2> _visibleShopOffers = new List<ShopOfferConfig_V2>();
         private readonly List<Canvas> _resolvedShopUiCanvases = new List<Canvas>();
         private bool _didResolveShopUiCanvases;
         private bool _didReparentLooseShopPreview;
@@ -157,9 +159,114 @@ namespace iStick2War_V2
         private bool _didRebuildOfferStatBaselines;
         private readonly HashSet<TMP_Text> _statTmpBindingUsed = new HashSet<TMP_Text>();
 
-        // Carousel rows configured in the Inspector (read-only for bots / tools).
-        public IReadOnlyList<ShopOfferConfig_V2> ConfiguredShopOffers =>
-            _shopOffers != null ? _shopOffers : global::System.Array.Empty<ShopOfferConfig_V2>();
+        // Carousel rows shown in shop (excludes legacy AmmoRefill-only rows; ammo is bought on the weapon row).
+        public IReadOnlyList<ShopOfferConfig_V2> ConfiguredShopOffers => _visibleShopOffers;
+
+        public bool TryGetWeaponRowOffer(HeroWeaponDefinition_V2 weapon, out ShopOfferConfig_V2 weaponRow)
+        {
+            weaponRow = null;
+            if (weapon == null)
+            {
+                return false;
+            }
+
+            RebuildVisibleShopOffersIfNeeded();
+            for (int i = 0; i < _visibleShopOffers.Count; i++)
+            {
+                ShopOfferConfig_V2 row = _visibleShopOffers[i];
+                if (row != null &&
+                    row.Kind == ShopOfferKind_V2.WeaponUnlock &&
+                    row.Weapon == weapon)
+                {
+                    weaponRow = row;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public int ResolveAmmoRefillCostForWeaponRow(ShopOfferConfig_V2 weaponRowOffer)
+        {
+            if (weaponRowOffer == null)
+            {
+                return 0;
+            }
+
+            if (weaponRowOffer.AmmoRefillCost > 0)
+            {
+                return weaponRowOffer.AmmoRefillCost;
+            }
+
+            if (weaponRowOffer.Weapon != null &&
+                TryGetLegacyAmmoRowCost(weaponRowOffer.Weapon, out int legacyCost))
+            {
+                return legacyCost;
+            }
+
+            return 29;
+        }
+
+        private bool TryGetLegacyAmmoRowCost(HeroWeaponDefinition_V2 weapon, out int cost)
+        {
+            cost = 0;
+            if (weapon == null || _shopOffers == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < _shopOffers.Count; i++)
+            {
+                ShopOfferConfig_V2 row = _shopOffers[i];
+                if (row != null &&
+                    row.Kind == ShopOfferKind_V2.AmmoRefill &&
+                    row.Weapon == weapon)
+                {
+                    cost = row.Cost;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void RebuildVisibleShopOffersIfNeeded()
+        {
+            _visibleShopOffers.Clear();
+            if (_shopOffers == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _shopOffers.Count; i++)
+            {
+                ShopOfferConfig_V2 row = _shopOffers[i];
+                if (row != null &&
+                    row.Kind != ShopOfferKind_V2.AmmoRefill &&
+                    !IsShopExcludedWeaponRow(row))
+                {
+                    _visibleShopOffers.Add(row);
+                }
+            }
+        }
+
+        private static bool IsShopExcludedWeaponRow(ShopOfferConfig_V2 row)
+        {
+            return row.Kind == ShopOfferKind_V2.WeaponUnlock &&
+                   row.Weapon != null &&
+                   row.Weapon.WeaponType == WeaponType.Colt45;
+        }
+
+        private ShopOfferConfig_V2 GetSelectedOffer()
+        {
+            if (_visibleShopOffers.Count == 0)
+            {
+                return null;
+            }
+
+            _offerIndex = Mathf.Clamp(_offerIndex, 0, _visibleShopOffers.Count - 1);
+            return _visibleShopOffers[_offerIndex];
+        }
 
         public void Initialize(WaveManager_V2 waveManager)
         {
@@ -172,6 +279,7 @@ namespace iStick2War_V2
 
             MaybeDetachFromScaledParent();
             CacheVisualRootTransform();
+            RebuildVisibleShopOffersIfNeeded();
             _resolvedCarouselPreviewRoot = null;
             InvalidatePreviewCatalog();
             EnsureLooseShopPreviewReparentedOnce();
@@ -202,6 +310,7 @@ namespace iStick2War_V2
             _shopIsVisible = true;
             gameObject.SetActive(true);
             _offerIndex = 0;
+            RebuildVisibleShopOffersIfNeeded();
             RestoreVisualRootTransformIfNeeded();
             AttachToCameraIfNeeded();
             SetVisualComponentsVisible(true);
@@ -212,7 +321,7 @@ namespace iStick2War_V2
             Refresh();
             ApplySelectedOfferPreviewVisibility(
                 ResolveCarouselPreviewObjectsRoot(),
-                _shopOffers != null && _shopOffers.Count > 0 ? _shopOffers[_offerIndex] : null);
+                GetSelectedOffer());
         }
 
         public void Hide()
@@ -709,7 +818,8 @@ namespace iStick2War_V2
         // Wire left arrow (e.g. btn_shop_arrow_left OnClick).
         public void OnShopArrowPreviousClicked()
         {
-            if (_shopOffers == null || _shopOffers.Count == 0)
+            RebuildVisibleShopOffersIfNeeded();
+            if (_visibleShopOffers.Count == 0)
             {
                 if (_debugShopNavigationLogs)
                 {
@@ -720,12 +830,12 @@ namespace iStick2War_V2
             }
 
             int before = _offerIndex;
-            _offerIndex = (_offerIndex - 1 + _shopOffers.Count) % _shopOffers.Count;
+            _offerIndex = (_offerIndex - 1 + _visibleShopOffers.Count) % _visibleShopOffers.Count;
             if (_debugShopNavigationLogs)
             {
                 Debug.Log(
-                    $"[ShopPanel_V2] Shop arrow PREVIOUS: index {before} -> {_offerIndex} / {_shopOffers.Count} " +
-                    $"(current='{_shopOffers[_offerIndex].DisplayName}')");
+                    $"[ShopPanel_V2] Shop arrow PREVIOUS: index {before} -> {_offerIndex} / {_visibleShopOffers.Count} " +
+                    $"(current='{_visibleShopOffers[_offerIndex].DisplayName}')");
             }
 
             RefreshOfferSelection();
@@ -734,7 +844,8 @@ namespace iStick2War_V2
         // Wire right arrow (e.g. btn_shop_arrow_right OnClick).
         public void OnShopArrowNextClicked()
         {
-            if (_shopOffers == null || _shopOffers.Count == 0)
+            RebuildVisibleShopOffersIfNeeded();
+            if (_visibleShopOffers.Count == 0)
             {
                 if (_debugShopNavigationLogs)
                 {
@@ -745,12 +856,12 @@ namespace iStick2War_V2
             }
 
             int before = _offerIndex;
-            _offerIndex = (_offerIndex + 1) % _shopOffers.Count;
+            _offerIndex = (_offerIndex + 1) % _visibleShopOffers.Count;
             if (_debugShopNavigationLogs)
             {
                 Debug.Log(
-                    $"[ShopPanel_V2] Shop arrow NEXT: index {before} -> {_offerIndex} / {_shopOffers.Count} " +
-                    $"(current='{_shopOffers[_offerIndex].DisplayName}')");
+                    $"[ShopPanel_V2] Shop arrow NEXT: index {before} -> {_offerIndex} / {_visibleShopOffers.Count} " +
+                    $"(current='{_visibleShopOffers[_offerIndex].DisplayName}')");
             }
 
             RefreshOfferSelection();
@@ -759,7 +870,8 @@ namespace iStick2War_V2
         // Wire main BUY button to purchase the currently selected carousel offer.
         public void OnPurchaseSelectedOfferClicked()
         {
-            if (_waveManager == null || _shopOffers == null || _shopOffers.Count == 0)
+            RebuildVisibleShopOffersIfNeeded();
+            if (_waveManager == null || _visibleShopOffers.Count == 0)
             {
                 if (_debugShopNavigationLogs)
                 {
@@ -769,8 +881,7 @@ namespace iStick2War_V2
                 return;
             }
 
-            _offerIndex = Mathf.Clamp(_offerIndex, 0, _shopOffers.Count - 1);
-            ShopOfferConfig_V2 offer = _shopOffers[_offerIndex];
+            ShopOfferConfig_V2 offer = GetSelectedOffer();
             if (_debugShopNavigationLogs)
             {
                 Debug.Log(
@@ -823,14 +934,14 @@ namespace iStick2War_V2
         {
             ResolveSelectedOfferItemTextIfNeeded();
 
-            if (_waveManager == null || _shopOffers == null || _shopOffers.Count == 0)
+            RebuildVisibleShopOffersIfNeeded();
+            if (_waveManager == null || _visibleShopOffers.Count == 0)
             {
                 SetText(_selectedOfferItemText, string.Empty);
                 return;
             }
 
-            _offerIndex = Mathf.Clamp(_offerIndex, 0, _shopOffers.Count - 1);
-            ShopOfferConfig_V2 offer = _shopOffers[_offerIndex];
+            ShopOfferConfig_V2 offer = GetSelectedOffer();
 
             SetText(_offerTitleText, offer.DisplayName);
             SetText(_offerSubtitleText, BuildOfferSubtitle(offer));
@@ -910,7 +1021,7 @@ namespace iStick2War_V2
                 return;
             }
 
-            _offerStatsPresenter.RebuildBaselines(_shopOffers, _waveManager);
+            _offerStatsPresenter.RebuildBaselines(_visibleShopOffers, _waveManager);
             _didRebuildOfferStatBaselines = true;
         }
 
@@ -1201,7 +1312,8 @@ namespace iStick2War_V2
 
         private void EnsurePreviewCatalogReady(Transform carouselRoot)
         {
-            int offerCount = _shopOffers != null ? _shopOffers.Count : 0;
+            RebuildVisibleShopOffersIfNeeded();
+            int offerCount = _visibleShopOffers.Count;
             if (_didBuildPreviewCatalog && _shopOfferCountWhenCatalogBuilt == offerCount)
             {
                 return;
@@ -1214,7 +1326,7 @@ namespace iStick2War_V2
 
         private void EnsureCarouselPreviewCatalogReady(Transform carouselRoot)
         {
-            if (carouselRoot == null || _shopOffers == null)
+            if (carouselRoot == null || _visibleShopOffers.Count == 0)
             {
                 return;
             }
@@ -1222,9 +1334,9 @@ namespace iStick2War_V2
             ReparentLooseShopPreviewsUnderCarousel(carouselRoot);
             _resolvedPreviewByOfferIndex.Clear();
 
-            for (int i = 0; i < _shopOffers.Count; i++)
+            for (int i = 0; i < _visibleShopOffers.Count; i++)
             {
-                ShopOfferConfig_V2 offer = _shopOffers[i];
+                ShopOfferConfig_V2 offer = _visibleShopOffers[i];
                 GameObject resolved = ResolvePreviewForOffer(i, offer, carouselRoot);
 
                 if (resolved != null)
@@ -1906,9 +2018,19 @@ namespace iStick2War_V2
                     return $"{ShopMoneyFormat_V2.FormatCost(_waveManager.GetOfferEffectiveCost(offer))} (+max HP)";
 
                 case ShopOfferKind_V2.WeaponUnlock:
+                    if (offer.Weapon == null)
+                    {
+                        return string.Empty;
+                    }
+
                     if (_waveManager.IsWeaponOwned(offer.Weapon))
                     {
-                        return "Owned";
+                        if (_waveManager.IsWeaponAmmoFull(offer.Weapon))
+                        {
+                            return "Ammo full";
+                        }
+
+                        return $"Ammo {ShopMoneyFormat_V2.FormatCost(_waveManager.GetOfferEffectiveCost(offer))}";
                     }
 
                     string role = offer.Weapon != null && offer.Weapon.WeaponType == iStick2War.WeaponType.Minigun
@@ -1948,11 +2070,7 @@ namespace iStick2War_V2
             }
 
             int effectiveCost = _waveManager.GetOfferEffectiveCost(offer);
-            bool canAfford = offer.Kind == ShopOfferKind_V2.BunkerRepair ||
-                             offer.Kind == ShopOfferKind_V2.WeaponUnlock ||
-                             offer.Kind == ShopOfferKind_V2.AmmoRefill
-                ? _waveManager.CanAfford(offer.Cost)
-                : _waveManager.CanAfford(effectiveCost);
+            bool canAfford = _waveManager.CanAfford(effectiveCost);
             switch (offer.Kind)
             {
                 case ShopOfferKind_V2.HealthPack:
@@ -1987,25 +2105,12 @@ namespace iStick2War_V2
 
                     if (_waveManager.IsWeaponOwned(offer.Weapon))
                     {
-                        return "OWNED";
-                    }
+                        if (_waveManager.IsWeaponAmmoFull(offer.Weapon))
+                        {
+                            return "FULL";
+                        }
 
-                    return canAfford ? _buyButtonDefaultLabel : "NO CASH";
-
-                case ShopOfferKind_V2.AmmoRefill:
-                    if (offer.Weapon == null)
-                    {
-                        return "-";
-                    }
-
-                    if (!_waveManager.IsWeaponOwned(offer.Weapon))
-                    {
-                        return "LOCKED";
-                    }
-
-                    if (_waveManager.IsWeaponAmmoFull(offer.Weapon))
-                    {
-                        return "FULL";
+                        return canAfford ? _buyButtonDefaultLabel : "NO CASH";
                     }
 
                     return canAfford ? _buyButtonDefaultLabel : "NO CASH";

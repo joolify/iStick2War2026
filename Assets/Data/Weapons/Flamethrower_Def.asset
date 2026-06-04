@@ -21,7 +21,8 @@ MonoBehaviour:
   _damageVsAircraft: 10
   _range: 55
   _maxReserveAmmo: 120
-  _startingReserveAmmo: 120
+  _startingMagazineAmmo: 0
+  _startingReserveAmmo: 0
   _debugDrawShotRay: 1
   _useProjectile: 0
   _projectilePrefab: {fileID: 0}

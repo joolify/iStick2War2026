@@ -457,7 +457,7 @@ namespace iStick2War_V2
                 up = _colt45RecoilUp;
                 angle = _colt45RecoilAngleZ;
             }
-            else if (weaponType == WeaponType.Thompson)
+            else if (weaponType == WeaponType.Thompson || weaponType == WeaponType.Ithaca)
             {
                 back = _thompsonRecoilBack;
                 up = _thompsonRecoilUp;
@@ -1150,7 +1150,9 @@ namespace iStick2War_V2
 
         private static bool ShouldEjectShellCasingForWeapon(WeaponType weaponType)
         {
-            return weaponType == WeaponType.Colt45 || weaponType == WeaponType.Thompson;
+            return weaponType == WeaponType.Colt45
+                || weaponType == WeaponType.Thompson
+                || weaponType == WeaponType.Ithaca;
         }
 
         [ContextMenu("Test Shell Casing Right")]

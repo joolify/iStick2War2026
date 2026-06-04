@@ -242,7 +242,10 @@ namespace iStick2War_V2
                 _nextOutOfAmmoFeedbackAt = 0f;
             }
 
-            if (_input.IsShootingHeld && _model.currentAmmo <= 0)
+            if (_input.IsShootingHeld &&
+                _model.currentAmmo <= 0 &&
+                !_weaponSystem.IsReloading() &&
+                !HeroWeaponAmmoRules_V2.HasInfiniteAmmo(_model.currentWeaponType))
             {
                 if (!_outOfAmmoLatched)
                 {
@@ -464,6 +467,13 @@ namespace iStick2War_V2
         {
             if (_model.currentAmmo <= 0)
             {
+                if (_input.IsShootingHeld &&
+                    !_weaponSystem.IsReloading() &&
+                    !HeroWeaponAmmoRules_V2.HasInfiniteAmmo(_model.currentWeaponType))
+                {
+                    TryDryFireOutOfAmmoFeedback();
+                }
+
                 return;
             }
 
@@ -509,7 +519,11 @@ namespace iStick2War_V2
                 {
                     AudioManager_V2.PlayWeaponShot(_model.currentWeaponType);
                 }
-                if (shotResult.DidHit)
+                if (_model.currentWeaponType == WeaponType.Ithaca)
+                {
+                    PlayIthacaPelletImpacts(aimPos, shotContext.Range);
+                }
+                else if (shotResult.DidHit)
                 {
                     BulletImpactVfx_V2.PlayIfSurfaceHit(shotResult.Hit, direction);
                     AudioManager_V2.PlayImpactForCollider(shotResult.Hit.collider);
@@ -524,18 +538,25 @@ namespace iStick2War_V2
                         alignToHitNormalOverride: false);
                 }
 
-                Vector2 shotVisualEnd = shotResult.FinalPos;
-                if (!shotResult.DidHit &&
-                    TryGetMainCameraEdgePoint(aimPos, direction, out Vector2 cameraEdgePoint))
-                {
-                    shotVisualEnd = cameraEdgePoint;
-                }
-
                 bool usedTeslaBolt = _model.currentWeaponType == WeaponType.Tesla &&
-                    _view.TryPlayTeslaLightningForShot(aimPos, shotVisualEnd);
+                    _view.TryPlayTeslaLightningForShot(aimPos, shotResult.FinalPos);
                 if (!usedTeslaBolt && !isFlamethrower)
                 {
-                    _view.PlayShotTrail(aimPos, shotVisualEnd);
+                    if (_model.currentWeaponType == WeaponType.Ithaca)
+                    {
+                        PlayIthacaPelletShotTrails(aimPos);
+                    }
+                    else
+                    {
+                        Vector2 shotVisualEnd = shotResult.FinalPos;
+                        if (!shotResult.DidHit &&
+                            TryGetMainCameraEdgePoint(aimPos, direction, out Vector2 cameraEdgePoint))
+                        {
+                            shotVisualEnd = cameraEdgePoint;
+                        }
+
+                        _view.PlayShotTrail(aimPos, shotVisualEnd);
+                    }
                 }
 
                 if (ShouldPlayMuzzleFlashForWeapon(_model.currentWeaponType))
@@ -555,6 +576,51 @@ namespace iStick2War_V2
                         $"[HeroController_V2] Flamethrower debug: shot committed. didHit={shotResult.DidHit}, " +
                         $"hitCollider={hitName}, aimPos={aimPos}, dir={direction}, ammo={_model.currentAmmo}");
                 }
+            }
+        }
+
+        private void PlayIthacaPelletShotTrails(Vector2 aimPos)
+        {
+            for (int pelletIndex = 0; pelletIndex < HeroWeaponSystem_V2.IthacaPelletCount; pelletIndex++)
+            {
+                IthacaPelletVisualSnapshot_V2 pellet = _weaponSystem.GetIthacaPelletVisual(pelletIndex);
+                Vector2 trailEnd = pellet.FinalPos;
+                if (!pellet.DidHit &&
+                    TryGetMainCameraEdgePoint(aimPos, pellet.Direction, out Vector2 cameraEdgePoint))
+                {
+                    trailEnd = cameraEdgePoint;
+                }
+
+                _view.PlayShotTrail(aimPos, trailEnd);
+            }
+        }
+
+        private void PlayIthacaPelletImpacts(Vector2 aimPos, float range)
+        {
+            bool anyPelletHit = false;
+            for (int pelletIndex = 0; pelletIndex < HeroWeaponSystem_V2.IthacaPelletCount; pelletIndex++)
+            {
+                IthacaPelletVisualSnapshot_V2 pellet = _weaponSystem.GetIthacaPelletVisual(pelletIndex);
+                if (!pellet.DidHit)
+                {
+                    continue;
+                }
+
+                anyPelletHit = true;
+                BulletImpactVfx_V2.PlayIfSurfaceHit(pellet.Hit, pellet.Direction);
+                AudioManager_V2.PlayImpactForCollider(pellet.Hit.collider);
+            }
+
+            if (!anyPelletHit)
+            {
+                IthacaPelletVisualSnapshot_V2 centerPellet =
+                    _weaponSystem.GetIthacaPelletVisual(HeroWeaponSystem_V2.IthacaPelletCount / 2);
+                BulletImpactVfx_V2.PlayFirstSurfaceHitAlongRay(
+                    aimPos,
+                    centerPellet.Direction,
+                    Mathf.Max(0.1f, range),
+                    includeBunker: false,
+                    alignToHitNormalOverride: false);
             }
         }
 

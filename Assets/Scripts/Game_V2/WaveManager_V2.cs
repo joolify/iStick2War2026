@@ -678,7 +678,7 @@ namespace iStick2War_V2
 
                     if (_hero.HasWeaponUnlocked(offer.Weapon))
                     {
-                        return false;
+                        return TryPurchaseAmmoOnWeaponRow(offer);
                     }
 
                     int weaponCost = Mathf.Max(0, offer.Cost);
@@ -695,45 +695,22 @@ namespace iStick2War_V2
                     }
 
                     RememberShopPurchasedWeapon(offer.Weapon);
-                    Log($"Weapon unlocked: {offer.Weapon.DisplayName} for {weaponCost}.");
+                    Log($"Weapon unlocked: {offer.Weapon.DisplayName} for {weaponCost} (buy ammo on this row).");
                     WaveRunTelemetry_V2.NotifyShopPurchase("WeaponUnlock", weaponCost);
                     EmitMetaChanged();
                     return true;
 
                 case ShopOfferKind_V2.AmmoRefill:
-                    if (_hero == null || offer.Weapon == null)
+                    // Legacy rows: redirect to the weapon row for the same weapon if it exists.
+                    if (offer.Weapon != null &&
+                        _shopPanel != null &&
+                        _shopPanel.TryGetWeaponRowOffer(offer.Weapon, out ShopOfferConfig_V2 weaponRow) &&
+                        weaponRow != null)
                     {
-                        return false;
+                        return TryPurchaseAmmoOnWeaponRow(weaponRow);
                     }
 
-                    if (!_hero.HasWeaponUnlocked(offer.Weapon))
-                    {
-                        return false;
-                    }
-
-                    if (_hero.IsWeaponMagazineFull(offer.Weapon))
-                    {
-                        return false;
-                    }
-
-                    int ammoCost = Mathf.Max(0, offer.Cost);
-                    if (!TrySpend(ammoCost))
-                    {
-                        return false;
-                    }
-
-                    bool refilled = _hero.TryRefillWeaponMagazine(offer.Weapon);
-                    if (!refilled)
-                    {
-                        _currency += ammoCost;
-                        return false;
-                    }
-
-                    RememberShopPurchasedWeapon(offer.Weapon);
-                    Log($"Ammo refilled: {offer.Weapon.DisplayName} for {ammoCost}.");
-                    WaveRunTelemetry_V2.NotifyShopPurchase("AmmoRefill", ammoCost);
-                    EmitMetaChanged();
-                    return true;
+                    return TryPurchaseAmmoOnWeaponRow(offer);
 
                 default:
                     return false;
@@ -748,6 +725,59 @@ namespace iStick2War_V2
         public bool IsWeaponAmmoFull(HeroWeaponDefinition_V2 definition)
         {
             return definition != null && _hero != null && _hero.IsWeaponMagazineFull(definition);
+        }
+
+        private bool TryPurchaseAmmoOnWeaponRow(ShopOfferConfig_V2 weaponRowOffer)
+        {
+            if (_hero == null || weaponRowOffer == null || weaponRowOffer.Weapon == null)
+            {
+                return false;
+            }
+
+            HeroWeaponDefinition_V2 weapon = weaponRowOffer.Weapon;
+            if (!_hero.HasWeaponUnlocked(weapon))
+            {
+                return false;
+            }
+
+            if (_hero.IsWeaponMagazineFull(weapon))
+            {
+                return false;
+            }
+
+            int ammoCost = ResolveAmmoRefillCostForWeaponRow(weaponRowOffer);
+            if (!TrySpend(ammoCost))
+            {
+                return false;
+            }
+
+            bool refilled = _hero.TryRefillWeaponMagazine(weapon);
+            if (!refilled)
+            {
+                _currency += ammoCost;
+                return false;
+            }
+
+            RememberShopPurchasedWeapon(weapon);
+            Log($"Ammo refilled: {weapon.DisplayName} for {ammoCost} (weapon row).");
+            WaveRunTelemetry_V2.NotifyShopPurchase("AmmoRefill", ammoCost);
+            EmitMetaChanged();
+            return true;
+        }
+
+        private int ResolveAmmoRefillCostForWeaponRow(ShopOfferConfig_V2 weaponRowOffer)
+        {
+            if (weaponRowOffer == null)
+            {
+                return 0;
+            }
+
+            if (_shopPanel != null)
+            {
+                return _shopPanel.ResolveAmmoRefillCostForWeaponRow(weaponRowOffer);
+            }
+
+            return weaponRowOffer.AmmoRefillCost > 0 ? weaponRowOffer.AmmoRefillCost : Mathf.Max(0, weaponRowOffer.Cost);
         }
 
         public bool IsBunkerFullHealth()
@@ -1045,6 +1075,23 @@ namespace iStick2War_V2
                     int basis = offer.Cost > 0 ? offer.Cost : _bunkerRepairCost;
                     return GetScaledPurchaseCost(Mathf.Max(0, basis), _bunkerRepairsThisRun);
                 }
+                case ShopOfferKind_V2.WeaponUnlock:
+                    if (offer.Weapon != null && IsWeaponOwned(offer.Weapon))
+                    {
+                        return ResolveAmmoRefillCostForWeaponRow(offer);
+                    }
+
+                    return Mathf.Max(0, offer.Cost);
+                case ShopOfferKind_V2.AmmoRefill:
+                    if (offer.Weapon != null &&
+                        _shopPanel != null &&
+                        _shopPanel.TryGetWeaponRowOffer(offer.Weapon, out ShopOfferConfig_V2 weaponRow) &&
+                        weaponRow != null)
+                    {
+                        return ResolveAmmoRefillCostForWeaponRow(weaponRow);
+                    }
+
+                    return ResolveAmmoRefillCostForWeaponRow(offer);
                 default:
                     return Mathf.Max(0, offer.Cost);
             }

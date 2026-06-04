@@ -209,14 +209,31 @@ namespace iStick2War_V2
                 ? context.Direction.normalized
                 : Vector2.right;
 
+            float baseDamage = context.BaseDamage;
+            float aircraftDamage = context.AircraftDamage > 0f ? context.AircraftDamage : context.BaseDamage;
+            if (context.WeaponType == WeaponType.Ithaca)
+            {
+                float distanceMultiplier = HeroWeaponSystem_V2.GetIthacaPelletDamageMultiplierByDistance(
+                    hit.distance,
+                    context.Range);
+                baseDamage *= distanceMultiplier;
+                aircraftDamage *= distanceMultiplier;
+            }
+
             ParatrooperBodyPart_V2 bodyPart = hit.collider.GetComponent<ParatrooperBodyPart_V2>();
             if (bodyPart != null)
             {
+                bool ithacaCloseRangeGib = context.WeaponType == WeaponType.Ithaca &&
+                    HeroWeaponSystem_V2.ShouldIthacaCauseExplosiveGib(hit.distance, context.Range);
                 var damageInfo = new DamageInfo
                 {
-                    BaseDamage = context.BaseDamage,
+                    BaseDamage = baseDamage,
                     HitPoint = hit.point,
                     ShotDirection = shotDirection,
+                    IsExplosive = ithacaCloseRangeGib,
+                    ExplosionForce = ithacaCloseRangeGib
+                        ? HeroWeaponSystem_V2.GetIthacaExplosionForceForHit(hit.distance, context.Range)
+                        : 0f,
                     SourceWeapon = context.WeaponType,
                 };
 
@@ -243,7 +260,7 @@ namespace iStick2War_V2
             {
                 var damageInfo = new DamageInfo
                 {
-                    BaseDamage = context.BaseDamage,
+                    BaseDamage = baseDamage,
                     HitPoint = hit.point,
                     ShotDirection = shotDirection,
                     SourceWeapon = context.WeaponType,
@@ -266,8 +283,7 @@ namespace iStick2War_V2
                 hit.collider.GetComponentInParent<AircraftHealth_V2>();
             if (aircraft != null)
             {
-                float damage = context.AircraftDamage > 0f ? context.AircraftDamage : context.BaseDamage;
-                aircraft.ApplyDamage(damage);
+                aircraft.ApplyDamage(aircraftDamage);
             }
         }
 

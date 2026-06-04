@@ -1294,7 +1294,7 @@ namespace iStick2War_V2
             }
 
             if (IsLockedWeaponTestModeActive() &&
-                o.Kind is ShopOfferKind_V2.WeaponUnlock or ShopOfferKind_V2.AmmoRefill)
+                o.Kind == ShopOfferKind_V2.WeaponUnlock)
             {
                 return false;
             }
@@ -1308,11 +1308,17 @@ namespace iStick2War_V2
                 case ShopOfferKind_V2.BunkerMaxUpgrade:
                     return !wave.IsBunkerMaxAtCap();
                 case ShopOfferKind_V2.WeaponUnlock:
-                    return o.Weapon != null && !_hero.HasWeaponUnlocked(o.Weapon);
-                case ShopOfferKind_V2.AmmoRefill:
-                    return o.Weapon != null &&
-                           _hero.HasWeaponUnlocked(o.Weapon) &&
-                           !_hero.IsWeaponMagazineFull(o.Weapon);
+                    if (o.Weapon == null)
+                    {
+                        return false;
+                    }
+
+                    if (!_hero.HasWeaponUnlocked(o.Weapon))
+                    {
+                        return true;
+                    }
+
+                    return !_hero.IsWeaponMagazineFull(o.Weapon);
                 default:
                     return false;
             }
@@ -1326,6 +1332,11 @@ namespace iStick2War_V2
             switch (o.Kind)
             {
                 case ShopOfferKind_V2.WeaponUnlock:
+                    if (o.Weapon != null && _hero.HasWeaponUnlocked(o.Weapon))
+                    {
+                        goto case ShopOfferKind_V2.AmmoRefill;
+                    }
+
                     return 10_000 + Mathf.Clamp(o.Cost, 0, 5_000);
                 case ShopOfferKind_V2.AmmoRefill:
                 {

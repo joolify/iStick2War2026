@@ -51,6 +51,8 @@ namespace iStick2War_V2
         [SerializeField] private int _bunkerMaxIncrease;
         [Tooltip("Only used for WeaponUnlock / AmmoRefill. Ignored for bunker and health offers.")]
         [SerializeField] private HeroWeaponDefinition_V2 _weapon;
+        [Tooltip("Ammo refill price on this weapon row after the weapon is owned. 0 = use legacy paired AmmoRefill row cost if present.")]
+        [SerializeField] private int _ammoRefillCost = 29;
         [Tooltip("Optional shop preview (scene instance under Items/Weapons, or shop_* prefab). Shown when this offer is selected.")]
         [SerializeField] private GameObject _previewObject;
 
@@ -80,6 +82,11 @@ namespace iStick2War_V2
         public int BunkerRepairAmount => Mathf.Max(0, _bunkerRepairAmount);
         public int BunkerMaxIncrease => Mathf.Max(0, _bunkerMaxIncrease);
         public HeroWeaponDefinition_V2 Weapon => _weapon;
+        public int AmmoRefillCost => Mathf.Max(0, _ammoRefillCost);
         public GameObject PreviewObject => _previewObject;
+
+        // True when this row should not appear in the shop carousel (ammo is bought on the weapon row).
+        public bool IsLegacyAmmoOnlyRow =>
+            _kind == ShopOfferKind_V2.AmmoRefill && _weapon != null;
     }
 }

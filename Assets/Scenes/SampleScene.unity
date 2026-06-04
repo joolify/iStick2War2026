@@ -3379,9 +3379,11 @@ MonoBehaviour:
   _flamethrowerShot: {fileID: 8300000, guid: 19d0df48b3c66f140b0fd1956dd339b8, type: 3}
   _machineGunShot: {fileID: 8300000, guid: 8945cab69a5038b4484ee315bb20d40e, type: 3}
   _pistolShot: {fileID: 8300000, guid: f62e7c04742f9ea49899a2aeca737bc9, type: 3}
+  _shotgunShot: {fileID: 8300000, guid: b8d4f902e3c5a7168293b4c6d7e8f901, type: 3}
   _reloadGun: {fileID: 8300000, guid: 77d11656f97ded348b7ae7b06c1330cc, type: 3}
   _reloadMachineGun: {fileID: 8300000, guid: d9b62846eb36d6e4bbc2f7731e8a9c21, type: 3}
   _teslaShot: {fileID: 8300000, guid: 3bfafa65306cb0141bcec0da043cc09c, type: 3}
+  _outOfAmmo: {fileID: 8300000, guid: 30c74caa7d5277d40a4c5e814ad81952, type: 3}
   _sfxVolume: 0.9
   _musicVolume: 0.55
   _worldLoopVolume: 0.22
@@ -5344,11 +5346,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &851034351 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 8202727100224334902, guid: 775b90e7a08f47d4d9e4959417ca90fa, type: 3}
-  m_PrefabInstance: {fileID: 1451002811582411994}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &851034352 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8470344755262246754, guid: 775b90e7a08f47d4d9e4959417ca90fa, type: 3}
@@ -7884,6 +7881,7 @@ MonoBehaviour:
     _bunkerRepairAmount: 0
     _bunkerMaxIncrease: 0
     _weapon: {fileID: 0}
+    _ammoRefillCost: 29
     _previewObject: {fileID: 2034365242}
   - _displayName: Bunker Max Upgrade
     _kind: 4
@@ -7892,6 +7890,7 @@ MonoBehaviour:
     _bunkerRepairAmount: 0
     _bunkerMaxIncrease: 0
     _weapon: {fileID: 0}
+    _ammoRefillCost: 29
     _previewObject: {fileID: 1429252030}
   - _displayName: Thompson
     _kind: 2
@@ -7900,15 +7899,17 @@ MonoBehaviour:
     _bunkerRepairAmount: 0
     _bunkerMaxIncrease: 0
     _weapon: {fileID: 11400000, guid: 6558c37908f5c664f915fa7c826ae5c7, type: 2}
+    _ammoRefillCost: 29
     _previewObject: {fileID: 5778934538977439503}
-  - _displayName: Thompson ammo
-    _kind: 3
-    _cost: 29
+  - _displayName: Shotgun
+    _kind: 2
+    _cost: 649
     _healthAmount: 0
     _bunkerRepairAmount: 0
     _bunkerMaxIncrease: 0
-    _weapon: {fileID: 11400000, guid: 6558c37908f5c664f915fa7c826ae5c7, type: 2}
-    _previewObject: {fileID: 851034351}
+    _weapon: {fileID: 11400000, guid: f8e2a91c4b2d6e7f9a0b1c2d3e4f5a61, type: 2}
+    _ammoRefillCost: 29
+    _previewObject: {fileID: 5420907743602023193, guid: df958aac6e04da94bbb554bfaeb48046, type: 3}
   - _displayName: Bazooka
     _kind: 2
     _cost: 899
@@ -7916,15 +7917,8 @@ MonoBehaviour:
     _bunkerRepairAmount: 0
     _bunkerMaxIncrease: 0
     _weapon: {fileID: 11400000, guid: 6e1e46ecfc98a3c44b4285a36431db4b, type: 2}
+    _ammoRefillCost: 29
     _previewObject: {fileID: 6216605965611922757}
-  - _displayName: Bazooka rocket
-    _kind: 3
-    _cost: 29
-    _healthAmount: 0
-    _bunkerRepairAmount: 0
-    _bunkerMaxIncrease: 0
-    _weapon: {fileID: 11400000, guid: 6e1e46ecfc98a3c44b4285a36431db4b, type: 2}
-    _previewObject: {fileID: 3230008884262578901, guid: eea48be3f6de81644bfcbadc7b1b10ee, type: 3}
   - _displayName: Tesla gun
     _kind: 2
     _cost: 349
@@ -7932,15 +7926,8 @@ MonoBehaviour:
     _bunkerRepairAmount: 0
     _bunkerMaxIncrease: 0
     _weapon: {fileID: 11400000, guid: c7a91f2e4b3d4e5f8061728394a5b0c1, type: 2}
+    _ammoRefillCost: 29
     _previewObject: {fileID: 5205153334000988418, guid: a8feee918fd3ac24facd17fd272183f9, type: 3}
-  - _displayName: Tesla gun refill
-    _kind: 3
-    _cost: 29
-    _healthAmount: 0
-    _bunkerRepairAmount: 0
-    _bunkerMaxIncrease: 0
-    _weapon: {fileID: 11400000, guid: c7a91f2e4b3d4e5f8061728394a5b0c1, type: 2}
-    _previewObject: {fileID: 2051920572730692208, guid: f61463db4796f6048aafab2212b5348f, type: 3}
   - _displayName: Flamethrower
     _kind: 2
     _cost: 349
@@ -7948,15 +7935,8 @@ MonoBehaviour:
     _bunkerRepairAmount: 0
     _bunkerMaxIncrease: 0
     _weapon: {fileID: 11400000, guid: 53d86043cc64445fb65ff8fccfd9f16f, type: 2}
+    _ammoRefillCost: 29
     _previewObject: {fileID: 1210145704}
-  - _displayName: Flamethrower refill
-    _kind: 3
-    _cost: 29
-    _healthAmount: 0
-    _bunkerRepairAmount: 0
-    _bunkerMaxIncrease: 0
-    _weapon: {fileID: 11400000, guid: 53d86043cc64445fb65ff8fccfd9f16f, type: 2}
-    _previewObject: {fileID: 4755034225935873941}
   _offerTitleText: {fileID: 0}
   _offerSubtitleText: {fileID: 0}
   _selectedOfferItemText: {fileID: 0}
@@ -9235,18 +9215,18 @@ RectTransform:
   m_GameObject: {fileID: 1856437969}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0, y: 0, z: 0}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1822465362}
   - {fileID: 1861764409}
   m_Father: {fileID: 1173427490}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 1920, y: 1080}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0, y: 0}
 --- !u!114 &1856437971
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11624,11 +11604,6 @@ PrefabInstance:
 --- !u!4 &4755034225935873940 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 924462965261050829, guid: 3c98f444f52d30a409123c70decd69de, type: 3}
-  m_PrefabInstance: {fileID: 4755034225935873939}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &4755034225935873941 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 5768659683610046092, guid: 3c98f444f52d30a409123c70decd69de, type: 3}
   m_PrefabInstance: {fileID: 4755034225935873939}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &4853341604449672173

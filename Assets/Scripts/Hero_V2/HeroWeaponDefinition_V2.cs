@@ -47,7 +47,10 @@ namespace iStick2War_V2
         [SerializeField] private float _damageVsAircraft = -1f;
         [SerializeField] private float _range = 100f;
         [SerializeField] private int _maxReserveAmmo = 90;
-        [SerializeField] private int _startingReserveAmmo = 90;
+        [Tooltip("Rounds in magazine when the weapon enters the loadout. 0 = buy ammo in shop.")]
+        [SerializeField] private int _startingMagazineAmmo = 0;
+        [Tooltip("Reserve rounds when the weapon enters the loadout. 0 = buy ammo in shop.")]
+        [SerializeField] private int _startingReserveAmmo = 0;
         [SerializeField] private bool _debugDrawShotRay = true;
 
         [Header("Projectile (optional)")]
@@ -75,6 +78,7 @@ namespace iStick2War_V2
         public float DamageVsAircraft => _damageVsAircraft < 0f ? BaseDamage : Mathf.Max(0f, _damageVsAircraft);
         public float Range => Mathf.Max(1f, _range);
         public int MaxReserveAmmo => Mathf.Max(0, _maxReserveAmmo);
+        public int StartingMagazineAmmo => Mathf.Clamp(_startingMagazineAmmo, 0, MaxAmmo);
         public int StartingReserveAmmo => Mathf.Clamp(_startingReserveAmmo, 0, MaxReserveAmmo);
         public bool DebugDrawShotRay => _debugDrawShotRay;
         public bool UseProjectile => _useProjectile;

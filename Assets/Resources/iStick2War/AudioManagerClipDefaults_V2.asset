@@ -32,6 +32,7 @@ MonoBehaviour:
   flamethrowerShot: {fileID: 8300000, guid: 19d0df48b3c66f140b0fd1956dd339b8, type: 3}
   machineGunShot: {fileID: 8300000, guid: 8945cab69a5038b4484ee315bb20d40e, type: 3}
   pistolShot: {fileID: 8300000, guid: f62e7c04742f9ea49899a2aeca737bc9, type: 3}
+  shotgunShot: {fileID: 8300000, guid: b8d4f902e3c5a7168293b4c6d7e8f901, type: 3}
   reloadGun: {fileID: 8300000, guid: 77d11656f97ded348b7ae7b06c1330cc, type: 3}
   reloadMachineGun: {fileID: 8300000, guid: d9b62846eb36d6e4bbc2f7731e8a9c21, type: 3}
   teslaShot: {fileID: 8300000, guid: 3bfafa65306cb0141bcec0da043cc09c, type: 3}

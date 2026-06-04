@@ -514,7 +514,6 @@ namespace iStick2War_V2
                 return false;
             }
 
-            _weaponSystem?.RefillAllWeaponsToMax();
             _view?.ResetPresentationAfterRevive();
             _controller?.SetCombatPaused(true);
             RefreshEquippedWeaponVisuals();
