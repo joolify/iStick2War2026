@@ -4,9 +4,69 @@ A 2D wave-based stickman war game built in Unity, targeting **Early Access** sco
 
 This repository is the active **Unity 6** codebase (`6000.4.1f1`). Gameplay logic is organized under `Assets/Scripts/` with a consistent **V2** architecture (composition roots, state machines, Spine-driven presentation).
 
+### Project metrics (at a glance)
+
+| Metric | Value |
+|--------|--------|
+| Development time | ~3 months (focused, daily iteration) |
+| Author background | Senior C# / .NET; new to Unity game shipping |
+| V2 C# scripts (`*_V2.cs` under `Assets/Scripts/`) | 160+ |
+| Hero weapon types (distinct gameplay) | 6 (Colt45, Thompson, Ithaca, Bazooka, Tesla, Flamethrower) |
+| Enemy archetypes | 6 (paratrooper, bomb drone, kamikaze drone, helicopter, bomb plane, mech boss) |
+| Boss encounters | 1 (mech robot) |
+| Waves | 10 implemented in main scene; **15** planned for Early Access |
+| Unity version | **6000.4.1f1** |
+| AI tools | **Cursor** (in-repo implementation) + **ChatGPT** (scope, balance, review) |
+| Rendering / animation | URP 2D, Spine (spine-unity) |
+
 ---
 
 ## Case study: from .NET developer to shippable 2D game in ~3 months
+
+This document is written as a **technical project case / postmortem**, not as hype. It describes **what was built**, **how it was built**, and **what conclusions are reasonable**—including what the project does *not* prove.
+
+### Why this story is useful (beyond the game)
+
+Many portfolios say: *“I built a game in three months.”* That alone is hard to evaluate.
+
+More informative for employers, consulting clients, investors, and other developers:
+
+> An experienced **.NET developer** learned **Unity**, **Spine**, **game feel**, **wave design**, and **AI-assisted delivery**, and shipped a **playable multi-system product** in roughly three months—with explicit scope control and human ownership of architecture and playtesting.
+
+Whether iStick2War becomes a commercial hit is almost secondary. The primary artifact is evidence of **learning velocity** and a **repeatable delivery pattern** in a new domain.
+
+### Repeatable pattern
+
+```text
+Senior software developer
++
+AI assistance (Cursor + ChatGPT)
++
+Tight product scope
++
+Daily development + playtesting
+≈
+Playable product in a few months (for this product shape)
+```
+
+The same pattern applies outside games—for example SaaS tools, internal apps, coaching products, or e-commerce—when scope is bounded and a senior engineer owns product and architecture.
+
+### Who owned what
+
+AI generated a lot of code in this repo; the product still had a clear owner. Typical split:
+
+| Area | Owner |
+|------|--------|
+| Product vision | Human |
+| Scope / feature freeze | Human |
+| Architecture (V2 layers, prefab rules) | Human |
+| Playtesting & feel calls | Human |
+| Prioritization (EA vs feature creep) | Human |
+| Implementation | Human + AI (Cursor) |
+| Refactoring & cross-file fixes | AI + Human review |
+| Bug hunting & integration | AI + Human verification |
+
+**AI was a force multiplier—not a substitute for design, testing, or scope.** Without daily playtests and saying “no” to scope creep, the same tools would likely have produced a flashy demo, not a coherent game loop.
 
 ### Starting point
 
@@ -193,6 +253,14 @@ For scripted test harnesses, see `Assets/Scripts/Testing/`.
 Add your license and Steam/store links here when published. Until then, treat this repository as the private/source tree for the iStick2War product.
 
 ---
+
+### Portfolio framing
+
+If the project reaches **15 waves**, a **stable build**, **external playtest**, and **Steam release**, iStick2War is a strong portfolio case for:
+
+> How an experienced **C# / .NET developer** used AI to become productive in **Unity** quickly and deliver a **playable game with multiple cooperating systems**—wave loop, shop economy, distinct weapons, air/ground enemies, boss, audio, and UI.
+
+That narrative is often more interesting to technical audiences than the stickman theme alone.
 
 ### Summary
 
