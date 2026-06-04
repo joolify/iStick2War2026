@@ -30,7 +30,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -10.059248, y: -5.148385, z: 0}
-  m_LocalScale: {x: 0.25, y: 0.25, z: 1}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -199,3 +199,23 @@ MonoBehaviour:
   _gravityScale: 1.75
   _explosionEffectPrefab: {fileID: 4499060826324477447, guid: f73e60829c6dce94987212d502d3ae91, type: 3}
   _explosionEffectLifetime: 1.5
+  _desiredWorldWidth: 0.34
+  _useKinematicArcFlight: 1
+  _flightSortingLayerName: Bombs
+  _flightSortingOrder: 120
+  _groundStopMask:
+    serializedVersion: 2
+    m_Bits: 0
+  _bunkerStopMask:
+    serializedVersion: 2
+    m_Bits: 0
+  _groundProbeRadius: 0.08
+  _groundSurfaceOffset: 0.06
+  _groundProbeDownDistance: 12
+  _maxMoveStepDistance: 0.06
+  _groundContactGraceSeconds: 0.32
+  _minTravelBeforeGroundStop: 0.42
+  _bunkerContactGraceSeconds: 0.12
+  _minTravelBeforeBunkerStop: 0.22
+  _spawnHeightClearance: 0.28
+  _explodeOnContact: 1

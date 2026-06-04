@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 720455abb4fec904cb40fc2a64f3ae8d
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 140945
+  packageName: Smart Inspector
+  packageVersion: 3.1
+  assetPath: Assets/Smart/Inspector/Documentation.txt
+  uploadId: 447902

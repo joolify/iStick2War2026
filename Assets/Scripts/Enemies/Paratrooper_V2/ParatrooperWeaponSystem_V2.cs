@@ -32,6 +32,7 @@ namespace iStick2War_V2
  * May read SkeletonAnimation / bones for aim and event alignment; that is presentation-adjacent data,
  * not "animation playback" ownership.
  */
+[DefaultExecutionOrder(-50)]
 public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 {
     private static GameObject s_runtimeFallbackPotatomasherPrefab;
@@ -153,7 +154,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         _baseDamage = Mathf.Max(1, Mathf.RoundToInt(_baseDamage * multiplier));
     }
 
-    private void LateUpdate()
+    private void Update()
     {
         if (_model == null || _model.heroDeathStandDownActive)
         {
@@ -175,6 +176,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             return;
         }
 
+        // Before SkeletonAnimation.Update applies aim-weapon-ik (same pattern as HeroView_V2.SetCrosshair in Update).
         SyncCrosshairToCombatAimPoint();
     }
 
@@ -188,6 +190,18 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         }
     }
 
+    // Re-apply crosshair toward hero/bunker after grenade pose or stale IK (call from View on Grenade -> Shoot).
+    public void RefreshCombatAimPresentation()
+    {
+        if (_model == null || _model.heroDeathStandDownActive || IsHeroDeadForCombat())
+        {
+            return;
+        }
+
+        ResolveAimBones();
+        SyncCrosshairToCombatAimPoint();
+    }
+
     private void SyncCrosshairToCombatAimPoint()
     {
         if (_skeletonAnimation == null || _crossHairBone == null)
@@ -196,7 +210,19 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         }
 
         Vector2 worldTarget = GetCombatAimWorldPoint();
-        Vector3 skeletonSpacePoint = _skeletonAnimation.transform.InverseTransformPoint(worldTarget);
+        float skeletonZ = _skeletonAnimation.transform.position.z;
+
+        ResolveAimBones();
+        if (_aimPointBone != null)
+        {
+            float muzzleY = _skeletonAnimation.transform.TransformPoint(
+                new Vector3(_aimPointBone.WorldX, _aimPointBone.WorldY, skeletonZ)).y;
+            // Stale grenade pose can leave crosshair below the muzzle; never drive weapon IK downward.
+            worldTarget.y = Mathf.Max(worldTarget.y, muzzleY - 0.08f);
+        }
+
+        Vector3 worldAim3 = new Vector3(worldTarget.x, worldTarget.y, skeletonZ);
+        Vector3 skeletonSpacePoint = _skeletonAnimation.transform.InverseTransformPoint(worldAim3);
         skeletonSpacePoint.x *= _skeletonAnimation.Skeleton.ScaleX;
         skeletonSpacePoint.y *= _skeletonAnimation.Skeleton.ScaleY;
         _crossHairBone.SetLocalPosition(skeletonSpacePoint);
@@ -464,16 +490,26 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             return false;
         }
 
-        Vector2 origin;
-        bool usingGrenadeBone = TryGetParatrooperGrenadeThrowOriginWorld(out origin);
-        if (!usingGrenadeBone)
+        if (!TryGetGrenadeThrowOriginWorld(out Vector2 origin, out string originSource))
         {
-            Transform spawnPoint = _grenadeThrowPoint != null ? _grenadeThrowPoint : (_firePoint != null ? _firePoint : transform);
-            origin = spawnPoint.position;
+            return false;
         }
-        Vector2 target = GetCombatAimWorldPoint();
-        Vector2 throwVelocity = ComputeGrenadeLaunchVelocity(origin, target);
-        GameObject projectileGo = Instantiate(_potatomasherProjectilePrefab, origin, Quaternion.identity);
+
+        Vector2 target = GetGrenadeThrowTargetWorldPoint(origin);
+        bool fromGrenadeBone =
+            originSource.IndexOf("grenadeBone", System.StringComparison.OrdinalIgnoreCase) >= 0;
+        Vector2 throwDirection = target - origin;
+        // Only nudge forward when not spawning from grenadeBone (mp40-aim / root fallbacks sit inside the body).
+        if (!fromGrenadeBone && throwDirection.sqrMagnitude > 0.0001f)
+        {
+            origin += throwDirection.normalized * 0.42f;
+            target = GetGrenadeThrowTargetWorldPoint(origin);
+        }
+
+        Vector2 throwVelocity = ComputeGrenadeLaunchVelocity(origin, target, preferHighArc: false, useMinimumSpeedCap: false);
+        Vector3 spawnPosition = new Vector3(origin.x, origin.y, 0f);
+        GameObject projectileGo = Instantiate(_potatomasherProjectilePrefab, spawnPosition, Quaternion.identity);
+        projectileGo.SetActive(true);
         PotatomasherProjectile_V2 projectile = projectileGo.GetComponent<PotatomasherProjectile_V2>();
         if (projectile != null)
         {
@@ -494,21 +530,24 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 
         if (_debugGrenadeThrowLogs)
         {
-            string source = usingGrenadeBone
-                ? $"SpineBone '{_grenadeBoneName}'"
-                : (_grenadeThrowPoint != null ? $"Transform '{_grenadeThrowPoint.name}'" : "fallback root/firePoint");
             Debug.Log(
-                $"[ParatrooperWeaponSystem_V2] grenade_throw origin={origin} source={source} target={target} velocity={throwVelocity}");
+                $"[ParatrooperWeaponSystem_V2] grenade_throw origin={origin} source={originSource} target={target} velocity={throwVelocity}");
         }
 
         _lastGrenadeTime = Time.time;
         return true;
     }
 
-    private Vector2 ComputeGrenadeLaunchVelocity(Vector2 origin, Vector2 target)
+    private Vector2 ComputeGrenadeLaunchVelocity(
+        Vector2 origin,
+        Vector2 target,
+        bool preferHighArc,
+        bool useMinimumSpeedCap)
     {
         Vector2 toTarget = target - origin;
-        float speed = Mathf.Max(0.1f, Mathf.Max(_grenadeThrowSpeed, _minimumRuntimeGrenadeThrowSpeed));
+        float speed = useMinimumSpeedCap
+            ? Mathf.Max(0.1f, Mathf.Max(_grenadeThrowSpeed, _minimumRuntimeGrenadeThrowSpeed))
+            : Mathf.Max(0.1f, _grenadeThrowSpeed);
         if (toTarget.sqrMagnitude < 0.0001f)
         {
             return Vector2.right * speed;
@@ -516,8 +555,10 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 
         float horizontalDistance = Mathf.Abs(toTarget.x);
         bool forceBallisticForLongRange = horizontalDistance > 4f;
-        bool shouldUseBallistic = _useBallisticGrenadeAim || forceBallisticForLongRange;
-        if (shouldUseBallistic && TryGetBallisticLaunchVelocity(origin, target, speed, out Vector2 ballisticVelocity))
+        bool shouldUseBallistic =
+            horizontalDistance > 0.75f && (_useBallisticGrenadeAim || forceBallisticForLongRange);
+        if (shouldUseBallistic &&
+            TryGetBallisticLaunchVelocity(origin, target, speed, preferHighArc, out Vector2 ballisticVelocity))
         {
             return ballisticVelocity;
         }
@@ -525,7 +566,12 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         return toTarget.normalized * speed;
     }
 
-    private bool TryGetBallisticLaunchVelocity(Vector2 origin, Vector2 target, float launchSpeed, out Vector2 velocity)
+    private bool TryGetBallisticLaunchVelocity(
+        Vector2 origin,
+        Vector2 target,
+        float launchSpeed,
+        bool preferHighArc,
+        out Vector2 velocity)
     {
         velocity = default;
         float gravityScale = 1f;
@@ -577,11 +623,11 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         bool highHasEnoughHorizontal = Mathf.Abs(highVelocity.x) >= minHorizontalSpeed;
         bool lowHasEnoughHorizontal = Mathf.Abs(lowVelocity.x) >= minHorizontalSpeed;
 
-        if (_preferHighArcGrenadeThrow && highHasEnoughHorizontal)
+        if (preferHighArc && highHasEnoughHorizontal)
         {
             velocity = highVelocity;
         }
-        else if (!_preferHighArcGrenadeThrow && lowHasEnoughHorizontal)
+        else if (!preferHighArc && lowHasEnoughHorizontal)
         {
             velocity = lowVelocity;
         }
@@ -918,6 +964,35 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         }
 
         return GetHeroCombatAimWorldPoint();
+    }
+
+    // MP40 uses the outer bunker face; grenades lob toward hero / bunker interior (not the near trigger face).
+    private Vector2 GetGrenadeThrowTargetWorldPoint(Vector2 throwOrigin)
+    {
+        Vector2 target = GetHeroCombatAimWorldPoint();
+        WaveManager_V2 waveManager = FindAnyObjectByType<WaveManager_V2>();
+        if (waveManager != null && waveManager.BunkerHealth > 0)
+        {
+            Collider2D cover = ResolveActiveBunkerCoverCollider();
+            if (cover != null)
+            {
+                Bounds bounds = cover.bounds;
+                Vector2 bunkerFaceAim = new Vector2(
+                    bounds.max.x - 0.15f,
+                    Mathf.Lerp(bounds.min.y, bounds.max.y, 0.58f));
+                target = Vector2.Lerp(bunkerFaceAim, target, 0.35f);
+            }
+        }
+
+        const float minThrowDistance = 1.35f;
+        Vector2 delta = target - throwOrigin;
+        if (delta.sqrMagnitude < minThrowDistance * minThrowDistance)
+        {
+            Vector2 direction = delta.sqrMagnitude > 0.0001f ? delta.normalized : Vector2.left;
+            target = throwOrigin + direction * minThrowDistance;
+        }
+
+        return target;
     }
 
     private bool TryGetActiveBunkerCoverAimWorldPoint(out Vector2 aimPoint)
@@ -1576,8 +1651,8 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         return true;
     }
 
-    /// <summary>World position from the current Spine grenade bone pose (same frame as grenade_throw event).</summary>
-    private bool TryGetParatrooperGrenadeThrowOriginWorld(out Vector2 origin)
+    /// <summary>World position of grenadeBone when within sanity distance of the SkeletonAnimation transform.</summary>
+    private bool TryGetParatrooperGrenadeBoneWorld(out Vector2 origin)
     {
         origin = default;
 
@@ -1587,8 +1662,60 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             return false;
         }
 
+        float skeletonZ = _skeletonAnimation.transform.position.z;
         origin = _skeletonAnimation.transform.TransformPoint(
-            new Vector3(_grenadeBone.WorldX, _grenadeBone.WorldY, 0f));
+            new Vector3(_grenadeBone.WorldX, _grenadeBone.WorldY, skeletonZ));
+
+        Vector2 skeletonPivot = _skeletonAnimation.transform.position;
+        float refDistance = Vector2.Distance(origin, skeletonPivot);
+        if (refDistance > Mathf.Max(0.5f, _maxAimOriginDistanceFromRoot))
+        {
+            if (_debugAimFallbackLogs)
+            {
+                Debug.LogWarning(
+                    $"[ParatrooperWeaponSystem_V2] Grenade bone origin too far from skeleton pivot ({refDistance:0.00}). " +
+                    $"origin={origin}, skeleton={skeletonPivot}. Falling back to alternate throw origin.");
+            }
+
+            origin = default;
+            return false;
+        }
+
+        return true;
+    }
+
+    // grenadeBone first (Spine throw event timing), then optional throw point / mp40-aim fallbacks.
+    private bool TryGetGrenadeThrowOriginWorld(out Vector2 origin, out string source)
+    {
+        source = "entity root";
+        origin = transform.position;
+
+        if (TryGetParatrooperGrenadeBoneWorld(out origin))
+        {
+            source = $"SpineBone '{_grenadeBoneName}'";
+            return true;
+        }
+
+        if (_grenadeThrowPoint != null)
+        {
+            origin = _grenadeThrowPoint.position;
+            source = $"Transform '{_grenadeThrowPoint.name}'";
+            return true;
+        }
+
+        if (TryGetParatrooperMuzzleWorld(out origin))
+        {
+            source = $"SpineBone '{_aimPointBoneName}'";
+            return true;
+        }
+
+        if (_firePoint != null)
+        {
+            origin = _firePoint.position;
+            source = $"Transform '{_firePoint.name}'";
+            return true;
+        }
+
         return true;
     }
 

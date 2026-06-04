@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 7bc870735bec3444889ebeeb406b716f
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 140945
+  packageName: Smart Inspector
+  packageVersion: 3.1
+  assetPath: Assets/Smart/Inspector/ReadMe.txt
+  uploadId: 447902

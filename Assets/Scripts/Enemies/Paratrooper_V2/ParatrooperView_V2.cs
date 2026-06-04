@@ -200,6 +200,7 @@ public class ParatrooperView_V2 : MonoBehaviour
 
     private float _hidePlaceholderDebugLogWindowStartRealtime = -1f;
     private int _hidePlaceholderDebugLogsInWindow;
+    private float _mp40CombatAimResumeUntilUnscaledTime = -1f;
 
     public void Initialize(
         ParatrooperStateMachine_V2 stateMachine,
@@ -719,17 +720,29 @@ public class ParatrooperView_V2 : MonoBehaviour
             }
 
             // Land may have left a hold pose on track 0; combat states use track 1 and must not mix with it.
+            if (state == StickmanBodyState.Grenade)
+            {
+                // E/grenade on track 0 keys gunBone ~-90°; stop MP40 shoot IK on track 1 so it does not fight the throw.
+                _skeletonAnimation.AnimationState.SetEmptyAnimation(1, 0f);
+                SetWeaponAimIkMix(0f);
+            }
+
+            if (state == StickmanBodyState.Shoot &&
+                (_lastStateBeforeChange == StickmanBodyState.Run ||
+                 _lastStateBeforeChange == StickmanBodyState.Grenade))
+            {
+                // Run / grenade clips leave stale gunBone and wrist keys; shoot loop + IK need a clean base pose.
+                _skeletonAnimation.Skeleton.SetBonesToSetupPose();
+                if (_lastStateBeforeChange == StickmanBodyState.Run)
+                {
+                    _skeletonAnimation.AnimationState.ClearTracks();
+                }
+            }
+
             if (state == StickmanBodyState.Idle || state == StickmanBodyState.Shoot)
             {
                 _skeletonAnimation.AnimationState.ClearTrack(0);
-            }
-
-            if (state == StickmanBodyState.Shoot && _lastStateBeforeChange == StickmanBodyState.Run)
-            {
-                // Groundtrooper Run can key legs/body parts that the MP40 shoot loop does not key.
-                // Reset bones so the first Shoot frame does not inherit a frozen run pose.
-                _skeletonAnimation.Skeleton.SetBonesToSetupPose();
-                _skeletonAnimation.AnimationState.ClearTracks();
+                SetWeaponAimIkMix(1f);
             }
 
             if (state == StickmanBodyState.Electrocuted)
@@ -755,6 +768,10 @@ public class ParatrooperView_V2 : MonoBehaviour
             {
                 // Grenade / ground-run may leave stale pose data; always restart the loop from t=0 when resuming fire.
                 trackEntry.TrackTime = 0f;
+                if (_lastStateBeforeChange == StickmanBodyState.Grenade)
+                {
+                    FinalizeMp40AimAfterGrenadeResume();
+                }
             }
             else if (state == StickmanBodyState.GlideDie &&
                      !(_model != null && _model.isBurning && _model.burnFromAirborneFlamethrower))
@@ -981,6 +998,16 @@ public class ParatrooperView_V2 : MonoBehaviour
     // E/mp40_idle enables aim-weapon-ik; stale crosshair (fallen hero) otherwise pulls the MP40 straight down.
     private void SuppressWeaponAimIkForHeroDeathStandDown()
     {
+        SetWeaponAimIkMix(0f);
+        ResolveAimBones();
+        if (_crossHairBone != null)
+        {
+            _crossHairBone.SetToSetupPose();
+        }
+    }
+
+    private void SetWeaponAimIkMix(float mix)
+    {
         if (_skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
         {
             return;
@@ -989,20 +1016,49 @@ public class ParatrooperView_V2 : MonoBehaviour
         IkConstraint weaponIk = _skeletonAnimation.Skeleton.FindIkConstraint(WeaponAimIkConstraintName);
         if (weaponIk != null)
         {
-            weaponIk.Mix = 0f;
+            weaponIk.Mix = mix;
         }
 
         IkConstraint torsoIk = _skeletonAnimation.Skeleton.FindIkConstraint(TorsoAimIkConstraintName);
         if (torsoIk != null)
         {
-            torsoIk.Mix = 0f;
+            torsoIk.Mix = mix;
+        }
+    }
+
+    private void FinalizeMp40AimAfterGrenadeResume()
+    {
+        if (_skeletonAnimation == null)
+        {
+            return;
         }
 
-        ResolveAimBones();
-        if (_crossHairBone != null)
+        SetWeaponAimIkMix(1f);
+        ParatrooperWeaponSystem_V2 weaponSystem = GetComponentInParent<ParatrooperWeaponSystem_V2>();
+        weaponSystem?.RefreshCombatAimPresentation();
+
+        _skeletonAnimation.AnimationState.Update(0f);
+        _skeletonAnimation.AnimationState.Apply(_skeletonAnimation.Skeleton);
+        _skeletonAnimation.LateUpdate();
+
+        _mp40CombatAimResumeUntilUnscaledTime = Time.unscaledTime + 1.25f;
+    }
+
+    // Re-apply crosshair + IK for a short window after grenade (Spine may have applied aim-weapon-ik before crosshair moved).
+    private void TryRefreshMp40CombatAimAfterGrenade()
+    {
+        if (_skeletonAnimation == null ||
+            _model == null ||
+            _model.currentState != StickmanBodyState.Shoot ||
+            Time.unscaledTime > _mp40CombatAimResumeUntilUnscaledTime)
         {
-            _crossHairBone.SetToSetupPose();
+            return;
         }
+
+        ParatrooperWeaponSystem_V2 weaponSystem = GetComponentInParent<ParatrooperWeaponSystem_V2>();
+        weaponSystem?.RefreshCombatAimPresentation();
+        _skeletonAnimation.AnimationState.Apply(_skeletonAnimation.Skeleton);
+        _skeletonAnimation.LateUpdate();
     }
 
     private Spine.Animation ResolveMp40IdleSpineAnimation()
@@ -1347,6 +1403,8 @@ public class ParatrooperView_V2 : MonoBehaviour
             StopBurnVfx();
             return;
         }
+
+        TryRefreshMp40CombatAimAfterGrenade();
 
         if (_model != null && _model.heroDeathStandDownActive)
         {

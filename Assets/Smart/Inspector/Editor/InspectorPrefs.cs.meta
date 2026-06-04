@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: b8dd66e04335395498792eaf9b68cedc
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 140945
+  packageName: Smart Inspector
+  packageVersion: 3.1
+  assetPath: Assets/Smart/Inspector/Editor/InspectorPrefs.cs
+  uploadId: 447902

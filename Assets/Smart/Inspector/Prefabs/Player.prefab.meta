@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 412f75717585b464a99aade10203d672
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 140945
+  packageName: Smart Inspector
+  packageVersion: 3.1
+  assetPath: Assets/Smart/Inspector/Prefabs/Player.prefab
+  uploadId: 447902

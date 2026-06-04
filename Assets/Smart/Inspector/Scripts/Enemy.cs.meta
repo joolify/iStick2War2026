@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 47b4934f0503d9f439d001ab2bc227db
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 140945
+  packageName: Smart Inspector
+  packageVersion: 3.1
+  assetPath: Assets/Smart/Inspector/Scripts/Enemy.cs
+  uploadId: 447902
