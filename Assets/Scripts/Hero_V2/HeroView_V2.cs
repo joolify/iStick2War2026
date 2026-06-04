@@ -637,18 +637,27 @@ namespace iStick2War_V2
             _skeletonAnimation.AnimationState.ClearTrack(1);
 
             AnimationReferenceAsset deathAnim = GetRandomFallDownBackDeathAnimation();
-            if (deathAnim != null)
+            if (TrySetTrackAnimation(0, deathAnim, false))
             {
-                _skeletonAnimation.AnimationState.SetAnimation(0, deathAnim, false);
+                return;
+            }
+
+            if (TrySetTrackAnimation(0, _fallDownBackAnim, false) ||
+                TrySetTrackAnimation(0, _fallDownBack2Anim, false) ||
+                TrySetTrackAnimation(0, _fallDownBack3Anim, false))
+            {
+                return;
+            }
+
+            Spine.Animation skeletonDeath = FindFirstDeathFallAnimationOnHeroSkeleton();
+            if (skeletonDeath != null)
+            {
+                _skeletonAnimation.AnimationState.SetAnimation(0, skeletonDeath, false);
                 return;
             }
 
             // Fallback so Hero does not snap to an unrelated loop if death clips are not assigned yet.
-            AnimationReferenceAsset fallbackIdle = GetFallbackAnimationSet().Idle;
-            if (fallbackIdle != null)
-            {
-                _skeletonAnimation.AnimationState.SetAnimation(0, fallbackIdle, true);
-            }
+            TrySetTrackAnimation(0, GetFallbackAnimationSet().Idle, true);
         }
 
         private AnimationReferenceAsset GetRandomFallDownBackDeathAnimation()
@@ -666,14 +675,125 @@ namespace iStick2War_V2
             return options[UnityEngine.Random.Range(0, options.Count)];
         }
 
-        private static void TryAddDeathFallOption(
+        private void TryAddDeathFallOption(
             AnimationReferenceAsset candidate,
             List<AnimationReferenceAsset> options)
         {
-            if (candidate != null)
+            if (candidate == null || options == null)
+            {
+                return;
+            }
+
+            // Reference assets can be assigned while .Animation is null (wrong skeleton data on asset).
+            if (ResolveSpineAnimation(candidate) != null)
             {
                 options.Add(candidate);
             }
+        }
+
+        private bool TrySetTrackAnimation(int trackIndex, AnimationReferenceAsset referenceAsset, bool loop)
+        {
+            if (_skeletonAnimation == null)
+            {
+                return false;
+            }
+
+            Spine.Animation animation = ResolveSpineAnimation(referenceAsset);
+            if (animation == null)
+            {
+                return false;
+            }
+
+            _skeletonAnimation.AnimationState.SetAnimation(trackIndex, animation, loop);
+            return true;
+        }
+
+        private Spine.Animation ResolveSpineAnimation(AnimationReferenceAsset referenceAsset)
+        {
+            if (referenceAsset == null || _skeletonAnimation == null)
+            {
+                return null;
+            }
+
+            Spine.Animation resolved = referenceAsset.Animation;
+            if (resolved != null)
+            {
+                return resolved;
+            }
+
+            string clipName = GetAnimationReferenceClipName(referenceAsset);
+            if (string.IsNullOrEmpty(clipName))
+            {
+                return null;
+            }
+
+            return FindHeroSkeletonAnimation(clipName);
+        }
+
+        private static string GetAnimationReferenceClipName(AnimationReferenceAsset referenceAsset)
+        {
+            if (referenceAsset == null)
+            {
+                return null;
+            }
+
+            FieldInfo field = typeof(AnimationReferenceAsset).GetField(
+                "animationName",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            return field?.GetValue(referenceAsset) as string;
+        }
+
+        private Spine.Animation FindHeroSkeletonAnimation(string animationName)
+        {
+            if (string.IsNullOrEmpty(animationName))
+            {
+                return null;
+            }
+
+            SkeletonData data = GetHeroSkeletonData();
+            return data?.FindAnimation(animationName);
+        }
+
+        private SkeletonData GetHeroSkeletonData()
+        {
+            if (_skeletonAnimation == null)
+            {
+                return null;
+            }
+
+            SkeletonData data = _skeletonAnimation.Skeleton?.Data;
+            if (data != null)
+            {
+                return data;
+            }
+
+            return _skeletonAnimation.skeletonDataAsset != null
+                ? _skeletonAnimation.skeletonDataAsset.GetSkeletonData(false)
+                : null;
+        }
+
+        private Spine.Animation FindFirstDeathFallAnimationOnHeroSkeleton()
+        {
+            string[] candidates =
+            {
+                "H/fall_down_back",
+                "H/fall_down_back2",
+                "H/fall_down_back3",
+                "A/fall_down_back",
+                "A/fall_down_back2",
+                "A/fall_down_back3",
+            };
+
+            for (int i = 0; i < candidates.Length; i++)
+            {
+                Spine.Animation anim = FindHeroSkeletonAnimation(candidates[i]);
+                if (anim != null)
+                {
+                    return anim;
+                }
+            }
+
+            return null;
         }
 
         // -------------------------
@@ -681,17 +801,21 @@ namespace iStick2War_V2
         // -------------------------
         private void PlayLoop(AnimationReferenceAsset anim)
         {
-            if (anim == null || _skeletonAnimation == null)
-            {
-                return;
-            }
-            _skeletonAnimation.AnimationState.SetAnimation(0, anim, true);
+            TrySetTrackAnimation(0, anim, true);
         }
 
         private void PlayOneShot(AnimationReferenceAsset anim)
         {
-            _skeletonAnimation.AnimationState.SetAnimation(0, anim, false);
-            _skeletonAnimation.AnimationState.AddAnimation(0, "idle", true, 0f);
+            if (!TrySetTrackAnimation(0, anim, false))
+            {
+                return;
+            }
+
+            AnimationReferenceAsset idle = GetFallbackAnimationSet().Idle;
+            if (idle != null)
+            {
+                TrySetTrackAnimation(0, idle, true);
+            }
         }
 
         private void PlayAimLoop()
@@ -702,12 +826,7 @@ namespace iStick2War_V2
             }
 
             AnimationReferenceAsset aimAnim = GetAimAnimationForCurrentWeapon();
-            if (aimAnim == null)
-            {
-                return;
-            }
-
-            _skeletonAnimation.AnimationState.SetAnimation(1, aimAnim, true);
+            TrySetTrackAnimation(1, aimAnim, true);
         }
 
         private void SetCrosshair(Vector2 worldAimPos)

@@ -12,7 +12,8 @@ namespace iStick2War_V2
  *
  * PURPOSE:
  * Executes paratrooper attacks when the controller and Spine timing allow: hit-scan / ray logic,
- * cooldowns, Potatomasher spawn, bone-based aim origins, and damage application to the hero when shots land.
+ * cooldowns, Potatomasher spawn, bone-based aim origins. While bunker HP remains, aims at bunker_front cover
+ * and applies bunker damage before hero damage on the same ray.
  *
  * ---------------------------------------------------------
  * INPUT SOURCES
@@ -140,6 +141,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
     private int _lineSortingLayerId = -1;
     private int _shellCasingSortingLayerId = -1;
     private Collider2D _cachedHeroCollider;
+    private Collider2D _cachedBunkerCoverCollider;
 
     public void ApplyWaveDamageMultiplier(float multiplier)
     {
@@ -173,7 +175,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             return;
         }
 
-        SyncCrosshairToHeroCombatPoint();
+        SyncCrosshairToCombatAimPoint();
     }
 
     // Stop tracking the hero and restore the Spine IK target to setup pose (hero death stand-down).
@@ -186,14 +188,14 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         }
     }
 
-    private void SyncCrosshairToHeroCombatPoint()
+    private void SyncCrosshairToCombatAimPoint()
     {
         if (_skeletonAnimation == null || _crossHairBone == null)
         {
             return;
         }
 
-        Vector2 worldTarget = GetHeroCombatAimWorldPoint();
+        Vector2 worldTarget = GetCombatAimWorldPoint();
         Vector3 skeletonSpacePoint = _skeletonAnimation.transform.InverseTransformPoint(worldTarget);
         skeletonSpacePoint.x *= _skeletonAnimation.Skeleton.ScaleX;
         skeletonSpacePoint.y *= _skeletonAnimation.Skeleton.ScaleY;
@@ -469,7 +471,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             Transform spawnPoint = _grenadeThrowPoint != null ? _grenadeThrowPoint : (_firePoint != null ? _firePoint : transform);
             origin = spawnPoint.position;
         }
-        Vector2 target = GetHeroCombatAimWorldPoint();
+        Vector2 target = GetCombatAimWorldPoint();
         Vector2 throwVelocity = ComputeGrenadeLaunchVelocity(origin, target);
         GameObject projectileGo = Instantiate(_potatomasherProjectilePrefab, origin, Quaternion.identity);
         PotatomasherProjectile_V2 projectile = projectileGo.GetComponent<PotatomasherProjectile_V2>();
@@ -659,16 +661,18 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             origin = GetShotOrigin();
         }
 
-        Vector2 aimTarget = GetHeroCombatAimWorldPoint();
-        Vector2 toHero = aimTarget - origin;
-        if (toHero.sqrMagnitude < 0.0001f)
+        Vector2 aimTarget = GetCombatAimWorldPoint();
+        Vector2 toTarget = aimTarget - origin;
+        if (toTarget.sqrMagnitude < 0.0001f)
         {
             return;
         }
 
-        Vector2 direction = toHero.normalized;
+        Vector2 direction = toTarget.normalized;
         PlayMuzzleFlash(origin, direction);
         EjectShellCasing(origin, direction);
+
+        Physics2D.SyncTransforms();
 
         // Include triggers (bunker cover may use trigger colliders) and all layers so bunker is never skipped.
         bool prevHitTriggers = Physics2D.queriesHitTriggers;
@@ -735,93 +739,63 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             waveManager != null &&
             waveManager.IsHeroInsideBunker(heroRefForShelter);
 
+        if (bunkerAlive && _respectBunkerCover && !foundBunkerAlongRay)
+        {
+            TryFindFirstBunkerCoverHit(origin, direction, out firstBunkerAlongRay, out foundBunkerAlongRay);
+        }
+
         RaycastHit2D damageHit = default;
         bool didApplyDamage = false;
 
-        // From the right, the hero collider can sort before the bunker wall; if the hero is in the bunker
-        // zone, the shot should still strike cover when any bunker geometry lies on the same ray.
+        // Paratroopers pressure the bunker: any ray that hits cover damages the bunker before the hero.
         if (bunkerAlive && _respectBunkerCover && foundBunkerAlongRay)
         {
-            bool heroIsCloser =
-                foundHeroAlongRay && firstHeroAlongRay.distance < firstBunkerAlongRay.distance;
-            if (!heroIsCloser || heroSheltered)
+            if (waveManager != null)
             {
-                if (waveManager != null)
-                {
-                    waveManager.ApplyBunkerDamage(_baseDamage);
-                }
+                waveManager.ApplyBunkerDamage(_baseDamage);
+            }
 
-                if (_debugCombatLogs)
-                {
-                    Debug.Log(
-                        $"[ParatrooperWeaponSystem_V2] Bunker absorbs shot (heroCloser={heroIsCloser}, sheltered={heroSheltered}) for {_baseDamage} dmg.");
-                }
+            if (_debugCombatLogs)
+            {
+                Debug.Log($"[ParatrooperWeaponSystem_V2] Bunker cover hit for {_baseDamage} dmg.");
+            }
 
-                didApplyDamage = true;
-                damageHit = firstBunkerAlongRay;
-                BulletImpactVfx_V2.PlayIfSurfaceHit(damageHit, direction);
+            didApplyDamage = true;
+            damageHit = firstBunkerAlongRay;
+            BulletImpactVfx_V2.PlayIfSurfaceHit(damageHit, direction);
+            AudioManager_V2.PlayImpactForCollider(damageHit.collider);
+        }
+        else if (bunkerAlive && _respectBunkerCover && heroSheltered && foundHeroAlongRay)
+        {
+            if (waveManager != null)
+            {
+                waveManager.ApplyBunkerDamage(_baseDamage);
+            }
+
+            if (_debugCombatLogs)
+            {
+                Debug.Log(
+                    $"[ParatrooperWeaponSystem_V2] Bunker absorbs sheltered shot (no cover on ray) for {_baseDamage} dmg.");
+            }
+
+            didApplyDamage = true;
+            damageHit = firstHeroAlongRay;
+            BulletImpactVfx_V2.PlayIfSurfaceHit(damageHit, direction);
+            if (damageHit.collider != null)
+            {
                 AudioManager_V2.PlayImpactForCollider(damageHit.collider);
             }
         }
 
         if (!didApplyDamage)
         {
-            for (int i = 0; i < hits.Length; i++)
+            if (TryApplyFirstBunkerDamageAlongHits(hits, waveManager, direction, out damageHit))
             {
-                RaycastHit2D h = hits[i];
-                if (h.collider == null)
-                {
-                    continue;
-                }
-
-                if (_respectBunkerCover && IsBunkerCoverHit(h.collider))
-                {
-                    if (waveManager != null && waveManager.BunkerHealth <= 0)
-                    {
-                        if (_debugCombatLogs)
-                        {
-                            Debug.Log("[ParatrooperWeaponSystem_V2] Bunker cover hit ignored (bunker destroyed).");
-                        }
-
-                        continue;
-                    }
-
-                    if (waveManager != null)
-                    {
-                        waveManager.ApplyBunkerDamage(_baseDamage);
-                    }
-
-                    if (_debugCombatLogs)
-                    {
-                        Debug.Log($"[ParatrooperWeaponSystem_V2] Hit bunker cover for {_baseDamage} damage.");
-                    }
-
-                    didApplyDamage = true;
-                    damageHit = h;
-                    BulletImpactVfx_V2.PlayIfSurfaceHit(damageHit, direction);
-                    AudioManager_V2.PlayImpactForCollider(damageHit.collider);
-                    break;
-                }
-
-                if (HeroCombatHitRelay_V2.TryApplyRaycastWeaponHit(
-                        h,
-                        _baseDamage,
-                        direction,
-                        waveManager,
-                        _heroRoot,
-                        _debugCombatLogs,
-                        out bool heroDamageApplied))
-                {
-                    if (heroDamageApplied)
-                    {
-                        didApplyDamage = true;
-                        damageHit = h;
-                        AudioManager_V2.PlayImpactForCollider(h.collider);
-                        break;
-                    }
-
-                    continue;
-                }
+                didApplyDamage = true;
+            }
+            else if (TryApplyFirstHeroDamageAlongHits(hits, waveManager, direction, out damageHit))
+            {
+                didApplyDamage = true;
             }
         }
 
@@ -846,6 +820,207 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         }
 
         PlayShotLine(origin, finalPos);
+    }
+
+    private bool TryApplyFirstBunkerDamageAlongHits(
+        RaycastHit2D[] hits,
+        WaveManager_V2 waveManager,
+        Vector2 direction,
+        out RaycastHit2D damageHit)
+    {
+        damageHit = default;
+        if (hits == null || !_respectBunkerCover)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            RaycastHit2D h = hits[i];
+            if (h.collider == null || !IsBunkerCoverHit(h.collider))
+            {
+                continue;
+            }
+
+            if (waveManager != null && waveManager.BunkerHealth <= 0)
+            {
+                continue;
+            }
+
+            if (waveManager != null)
+            {
+                waveManager.ApplyBunkerDamage(_baseDamage);
+            }
+
+            if (_debugCombatLogs)
+            {
+                Debug.Log($"[ParatrooperWeaponSystem_V2] Hit bunker cover for {_baseDamage} damage.");
+            }
+
+            damageHit = h;
+            BulletImpactVfx_V2.PlayIfSurfaceHit(damageHit, direction);
+            AudioManager_V2.PlayImpactForCollider(damageHit.collider);
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool TryApplyFirstHeroDamageAlongHits(
+        RaycastHit2D[] hits,
+        WaveManager_V2 waveManager,
+        Vector2 direction,
+        out RaycastHit2D damageHit)
+    {
+        damageHit = default;
+        if (hits == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            RaycastHit2D h = hits[i];
+            if (h.collider == null)
+            {
+                continue;
+            }
+
+            if (HeroCombatHitRelay_V2.TryApplyRaycastWeaponHit(
+                    h,
+                    _baseDamage,
+                    direction,
+                    waveManager,
+                    _heroRoot,
+                    _debugCombatLogs,
+                    out bool heroDamageApplied))
+            {
+                if (heroDamageApplied)
+                {
+                    damageHit = h;
+                    AudioManager_V2.PlayImpactForCollider(h.collider);
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private Vector2 GetCombatAimWorldPoint()
+    {
+        WaveManager_V2 waveManager = FindAnyObjectByType<WaveManager_V2>();
+        if (waveManager != null &&
+            waveManager.BunkerHealth > 0 &&
+            TryGetActiveBunkerCoverAimWorldPoint(out Vector2 bunkerAim))
+        {
+            return bunkerAim;
+        }
+
+        return GetHeroCombatAimWorldPoint();
+    }
+
+    private bool TryGetActiveBunkerCoverAimWorldPoint(out Vector2 aimPoint)
+    {
+        aimPoint = default;
+        Collider2D cover = ResolveActiveBunkerCoverCollider();
+        if (cover == null)
+        {
+            return false;
+        }
+
+        Bounds bounds = cover.bounds;
+        aimPoint = new Vector2(bounds.max.x, Mathf.Lerp(bounds.min.y, bounds.max.y, 0.5f));
+        return true;
+    }
+
+    private Collider2D ResolveActiveBunkerCoverCollider()
+    {
+        _cachedBunkerCoverCollider = null;
+        BunkerHitbox_V2[] markers = FindObjectsByType<BunkerHitbox_V2>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        if (markers == null || markers.Length == 0)
+        {
+            return null;
+        }
+
+        float bestMaxX = float.NegativeInfinity;
+        for (int i = 0; i < markers.Length; i++)
+        {
+            BunkerHitbox_V2 marker = markers[i];
+            if (marker == null)
+            {
+                continue;
+            }
+
+            Collider2D col = marker.GetComponent<Collider2D>();
+            if (col == null || !col.enabled || !marker.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
+            string objectName = marker.gameObject.name;
+            bool isFront = objectName.IndexOf("bunker_front", System.StringComparison.OrdinalIgnoreCase) >= 0;
+            if (!isFront && markers.Length > 1)
+            {
+                continue;
+            }
+
+            float maxX = col.bounds.max.x;
+            if (maxX > bestMaxX)
+            {
+                bestMaxX = maxX;
+                _cachedBunkerCoverCollider = col;
+            }
+        }
+
+        return _cachedBunkerCoverCollider;
+    }
+
+    private bool TryFindFirstBunkerCoverHit(
+        Vector2 origin,
+        Vector2 direction,
+        out RaycastHit2D hit,
+        out bool found)
+    {
+        hit = default;
+        found = false;
+
+        int mask = _bunkerShotBlockMask.value != 0
+            ? _bunkerShotBlockMask.value
+            : Physics2D.DefaultRaycastLayers;
+
+        bool prevHitTriggers = Physics2D.queriesHitTriggers;
+        Physics2D.queriesHitTriggers = true;
+        RaycastHit2D[] bunkerHits;
+        try
+        {
+            bunkerHits = Physics2D.RaycastAll(origin, direction, _range, mask);
+        }
+        finally
+        {
+            Physics2D.queriesHitTriggers = prevHitTriggers;
+        }
+
+        if (bunkerHits == null || bunkerHits.Length == 0)
+        {
+            return false;
+        }
+
+        Array.Sort(bunkerHits, (a, b) => a.distance.CompareTo(b.distance));
+        for (int i = 0; i < bunkerHits.Length; i++)
+        {
+            RaycastHit2D candidate = bunkerHits[i];
+            if (candidate.collider == null || !IsBunkerCoverHit(candidate.collider))
+            {
+                continue;
+            }
+
+            hit = candidate;
+            found = true;
+            return true;
+        }
+
+        return false;
     }
 
     private static bool IsBunkerCoverHit(Collider2D collider)

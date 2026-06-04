@@ -197,5 +197,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.PotatomasherProjectile_V2
   _rigidbody2D: {fileID: 5704286506924362105}
   _gravityScale: 1.75
-  _explosionEffectPrefab: {fileID: 103486838786112517, guid: 2935c48982d1ad24a930f228ee4ce589, type: 3}
-  _explosionEffectLifetime: 1.2
+  _explosionEffectPrefab: {fileID: 4499060826324477447, guid: f73e60829c6dce94987212d502d3ae91, type: 3}
+  _explosionEffectLifetime: 1.5

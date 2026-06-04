@@ -1,4 +1,7 @@
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace iStick2War_V2
 {
@@ -14,10 +17,16 @@ namespace iStick2War_V2
 [RequireComponent(typeof(Collider2D))]
 public sealed class PotatomasherProjectile_V2 : MonoBehaviour
 {
+        // Same VFX prefab as hero bazooka rockets (HeroRocketProjectile_V2 / bazookaRocket.prefab).
+        private const string BazookaExplosionPrefabAssetPath =
+            "Assets/Prefabs/Explosions/Enemies/Paratrooper_Exp.prefab";
+
+        private static GameObject s_cachedBazookaStyleExplosionPrefab;
+
         [SerializeField] private Rigidbody2D _rigidbody2D;
         [SerializeField] private float _gravityScale = 1.75f;
         [SerializeField] private GameObject _explosionEffectPrefab;
-        [SerializeField] private float _explosionEffectLifetime = 1.2f;
+        [SerializeField] private float _explosionEffectLifetime = 1.5f;
         [Tooltip("When false, grenade ignores collisions with paratrooper colliders/body parts.")]
         [SerializeField] private bool _canExplodeOnParatrooperCollision = false;
 
@@ -53,6 +62,8 @@ public sealed class PotatomasherProjectile_V2 : MonoBehaviour
             {
                 _rigidbody2D = GetComponent<Rigidbody2D>();
             }
+
+            EnsureExplosionEffectPrefab();
         }
 
         private void Start()
@@ -132,6 +143,7 @@ public sealed class PotatomasherProjectile_V2 : MonoBehaviour
                 }
             }
 
+            EnsureExplosionEffectPrefab();
             if (_explosionEffectPrefab != null)
             {
                 GameObject fx = Instantiate(_explosionEffectPrefab, transform.position, Quaternion.identity);
@@ -139,6 +151,31 @@ public sealed class PotatomasherProjectile_V2 : MonoBehaviour
             }
 
             Destroy(gameObject);
+        }
+
+        private void EnsureExplosionEffectPrefab()
+        {
+            if (_explosionEffectPrefab != null)
+            {
+                return;
+            }
+
+            _explosionEffectPrefab = ResolveBazookaStyleExplosionPrefab();
+        }
+
+        private static GameObject ResolveBazookaStyleExplosionPrefab()
+        {
+            if (s_cachedBazookaStyleExplosionPrefab != null)
+            {
+                return s_cachedBazookaStyleExplosionPrefab;
+            }
+
+#if UNITY_EDITOR
+            s_cachedBazookaStyleExplosionPrefab =
+                AssetDatabase.LoadAssetAtPath<GameObject>(BazookaExplosionPrefabAssetPath);
+#endif
+
+            return s_cachedBazookaStyleExplosionPrefab;
         }
 
         private static bool IsParatrooperCollider(Collider2D other)
