@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace iStick2War_V2
 {
@@ -134,6 +135,18 @@ public class Paratrooper : MonoBehaviour
     private float _groundAssaultDirectionX;
     private float _groundAssaultRunSpeed;
     private float _groundAssaultStopX;
+
+    [Header("Combat Facing")]
+    [Tooltip("Must match EnemySpawner_V2 _paratrooperFacesRightWhenScaleXPositive (spawn flip convention).")]
+    [SerializeField] private bool _facesRightWhenScaleXPositive = true;
+    [Tooltip("Flip root scale X when the unit faces away from the hero (on land and while grounded in combat).")]
+    [FormerlySerializedAs("_correctFacingTowardHeroOnLand")]
+    [SerializeField] private bool _correctFacingTowardHero = true;
+    [SerializeField] private float _facingHeroXTolerance = 0.15f;
+
+    [Header("Hero Pass-Through")]
+    [Tooltip("Hero can walk/jump through this unit without being blocked by infantry hitbox colliders (shots still hit).")]
+    [SerializeField] private bool _allowHeroToWalkThrough = true;
 
     [SerializeField] private LayerMask _groundMask = 0;
     [Tooltip(
@@ -290,6 +303,8 @@ public class Paratrooper : MonoBehaviour
     private float _offscreenSinceUnscaledTime;
     private Camera _cachedMainCamera;
     private float _spawnUnscaledTime;
+    private HeroModel_V2 _cachedHeroModel;
+    private int _heroWalkThroughPlayerLayerBits;
 
     /// <summary>
     /// Spine root world position at end of <see cref="Awake"/> (before spawner flips spawn facing on root scale X).
@@ -372,6 +387,7 @@ public class Paratrooper : MonoBehaviour
         ValidateBodyPartSetup();
 
         WireSystems();
+        ApplyHeroWalkThroughPhysicsExclusion();
 
         EnsureWorldHealthBar();
 
@@ -449,6 +465,7 @@ public class Paratrooper : MonoBehaviour
             _controller?.StartGame();
         }
         CaptureSpineWorldAnchorForPostSpawnFacingReconcile();
+        ApplyHeroWalkThroughPhysicsExclusion();
     }
 
     public void BeginGroundAssault(bool fromLeft, float runSpeed, float stopX)
@@ -692,6 +709,202 @@ public class Paratrooper : MonoBehaviour
         }
 
         _pendingSpineWorldReconcileAfterSpawnFacing = false;
+    }
+
+    private static bool IsGroundedStateThatTracksHeroFacing(StickmanBodyState state)
+    {
+        return state == StickmanBodyState.Shoot ||
+               state == StickmanBodyState.Grenade ||
+               state == StickmanBodyState.Land ||
+               state == StickmanBodyState.Run ||
+               state == StickmanBodyState.Electrocuted ||
+               state == StickmanBodyState.Idle;
+    }
+
+    private void TryCorrectFacingTowardHeroDuringCombat()
+    {
+        if (_stateMachine == null || !_correctFacingTowardHero)
+        {
+            return;
+        }
+
+        if (_model != null && _model.heroDeathStandDownActive)
+        {
+            return;
+        }
+
+        if (!IsGroundedStateThatTracksHeroFacing(_stateMachine.CurrentState))
+        {
+            return;
+        }
+
+        TryCorrectFacingTowardHero();
+    }
+
+    // Infantry hitboxes use solid colliders (often per-bone Rigidbody2D). Exclude Player on every RB so the hero is not blocked.
+    private void ApplyHeroWalkThroughPhysicsExclusion()
+    {
+        if (!_allowHeroToWalkThrough)
+        {
+            return;
+        }
+
+        int playerLayer = LayerMask.NameToLayer("Player");
+        if (playerLayer < 0)
+        {
+            return;
+        }
+
+        _heroWalkThroughPlayerLayerBits = 1 << playerLayer;
+        Rigidbody2D[] rigidbodies = GetComponentsInChildren<Rigidbody2D>(true);
+        for (int i = 0; i < rigidbodies.Length; i++)
+        {
+            Rigidbody2D rb = rigidbodies[i];
+            if (rb != null)
+            {
+                rb.excludeLayers |= _heroWalkThroughPlayerLayerBits;
+            }
+        }
+
+        ApplyHeroWalkThroughIgnoreCollisionPairs();
+    }
+
+    private void ApplyHeroWalkThroughIgnoreCollisionPairs()
+    {
+        if (!_allowHeroToWalkThrough)
+        {
+            return;
+        }
+
+        Collider2D[] heroColliders = CollectHeroMovementColliders();
+        if (heroColliders == null || heroColliders.Length == 0)
+        {
+            return;
+        }
+
+        Collider2D[] selfColliders = GetComponentsInChildren<Collider2D>(true);
+        for (int i = 0; i < selfColliders.Length; i++)
+        {
+            Collider2D selfCol = selfColliders[i];
+            if (selfCol == null || !selfCol.enabled || selfCol.isTrigger)
+            {
+                continue;
+            }
+
+            for (int h = 0; h < heroColliders.Length; h++)
+            {
+                Collider2D heroCol = heroColliders[h];
+                if (heroCol == null || !heroCol.enabled || heroCol.isTrigger)
+                {
+                    continue;
+                }
+
+                Physics2D.IgnoreCollision(selfCol, heroCol, true);
+            }
+        }
+    }
+
+    private Collider2D[] CollectHeroMovementColliders()
+    {
+        if (_cachedHeroModel == null)
+        {
+            _cachedHeroModel = FindAnyObjectByType<HeroModel_V2>();
+        }
+
+        if (_cachedHeroModel == null)
+        {
+            return null;
+        }
+
+        Rigidbody2D heroRb = _cachedHeroModel.GetComponent<Rigidbody2D>();
+        if (heroRb == null)
+        {
+            return _cachedHeroModel.GetComponentsInChildren<Collider2D>(true);
+        }
+
+        var scratch = new Collider2D[32];
+        int count = heroRb.GetAttachedColliders(scratch);
+        if (count <= 0)
+        {
+            Collider2D rootCol = _cachedHeroModel.GetComponent<Collider2D>();
+            return rootCol != null ? new[] { rootCol } : null;
+        }
+
+        var result = new Collider2D[count];
+        for (int i = 0; i < count; i++)
+        {
+            result[i] = scratch[i];
+        }
+
+        return result;
+    }
+
+    // Flip toward hero when root scale X faces away (landing drift, hero passing to the other side, etc.).
+    private void TryCorrectFacingTowardHero()
+    {
+        if (!_correctFacingTowardHero)
+        {
+            return;
+        }
+
+        if (!TryGetLiveHeroWorldX(out float heroX))
+        {
+            return;
+        }
+
+        float deltaX = heroX - transform.position.x;
+        if (Mathf.Abs(deltaX) < _facingHeroXTolerance)
+        {
+            return;
+        }
+
+        bool shouldFaceRight = deltaX > 0f;
+        if (shouldFaceRight == IsVisuallyFacingRight())
+        {
+            return;
+        }
+
+        ApplyFacingRight(shouldFaceRight);
+    }
+
+    private bool TryGetLiveHeroWorldX(out float heroX)
+    {
+        heroX = 0f;
+        if (_cachedHeroModel == null)
+        {
+            _cachedHeroModel = FindAnyObjectByType<HeroModel_V2>();
+        }
+
+        if (_cachedHeroModel == null || _cachedHeroModel.isDead)
+        {
+            return false;
+        }
+
+        heroX = _cachedHeroModel.transform.position.x;
+        return true;
+    }
+
+    private bool IsVisuallyFacingRight()
+    {
+        bool positiveScaleX = transform.localScale.x >= 0f;
+        return positiveScaleX == _facesRightWhenScaleXPositive;
+    }
+
+    private void ApplyFacingRight(bool faceRight)
+    {
+        bool usePositiveScaleX = faceRight == _facesRightWhenScaleXPositive;
+        Vector3 s = transform.localScale;
+        float absX = Mathf.Abs(s.x);
+        if (absX < 1e-6f)
+        {
+            absX = 1f;
+        }
+
+        s.x = usePositiveScaleX ? absX : -absX;
+        CaptureSpineWorldAnchorForPostSpawnFacingReconcile();
+        transform.localScale = s;
+        ReconcileRootPositionAfterSpawnFacing();
+        SnapHealthBarToCurrentPosition();
     }
 
     /// <summary>
@@ -1008,6 +1221,7 @@ public class Paratrooper : MonoBehaviour
         if (to == StickmanBodyState.Land && from != StickmanBodyState.Land)
         {
             SnapRigidbodyToGroundUnderProbe();
+            TryCorrectFacingTowardHero();
         }
 
         if (to == StickmanBodyState.Electrocuted && from == StickmanBodyState.GlideElectrocuted)
@@ -1125,6 +1339,7 @@ public class Paratrooper : MonoBehaviour
         HandleOffscreenSafetyDespawn();
         ApplyGroundAssaultMovement();
         _controller.Tick(Time.deltaTime);
+        TryCorrectFacingTowardHeroDuringCombat();
         ApplyGlideAirMovement();
         HandleNearGroundLandingTransition();
 
@@ -1430,6 +1645,7 @@ public class Paratrooper : MonoBehaviour
                 _rigidbody2D.angularVelocity = 0f;
             }
 
+            TryCorrectFacingTowardHero();
             _controller?.OnLanded();
             return;
         }

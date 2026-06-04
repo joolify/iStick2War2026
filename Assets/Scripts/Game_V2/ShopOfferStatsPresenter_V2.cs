@@ -161,18 +161,16 @@ namespace iStick2War_V2
             SetStatsPanelVisible(true);
             int cost = waveManager.GetOfferEffectiveCost(offer);
             SetPlainText(_costText, ShopMoneyFormat_V2.FormatCost(cost));
+            bool weaponOwned = offer.Weapon != null && waveManager.IsWeaponOwned(offer.Weapon);
 
             switch (offer.Kind)
             {
                 case ShopOfferKind_V2.WeaponUnlock:
-                    bool owned = offer.Weapon != null &&
-                                 waveManager != null &&
-                                 waveManager.IsWeaponOwned(offer.Weapon);
-                    RefreshWeaponStats(offer.Weapon, showAmmoRow: owned);
+                    RefreshWeaponStats(offer.Weapon, waveManager, showAmmoRow: weaponOwned);
                     break;
 
                 case ShopOfferKind_V2.AmmoRefill:
-                    RefreshWeaponStats(offer.Weapon, showAmmoRow: true);
+                    RefreshWeaponStats(offer.Weapon, waveManager, showAmmoRow: weaponOwned);
                     break;
 
                 case ShopOfferKind_V2.HealthPack:
@@ -331,31 +329,89 @@ namespace iStick2War_V2
             string weaponName = string.IsNullOrWhiteSpace(weapon.DisplayName)
                 ? weapon.WeaponType.ToString()
                 : weapon.DisplayName;
-            string summary = FormatWeaponAmmoSummary(weapon.WeaponType, mag, maxMag, reserve, maxReserve);
+            string summary = FormatOwnedWeaponAmmoDisplay(weapon.WeaponType, mag, maxMag, reserve, maxReserve);
             lines.Add($"Warning: Low ammo ({weaponName} {summary})");
         }
 
-        private static string FormatWeaponAmmoSummary(
+        public static string FormatOwnedWeaponAmmoDisplay(
             WeaponType weaponType,
             int mag,
             int maxMag,
             int reserve,
             int maxReserve)
         {
+            if (HeroWeaponAmmoRules_V2.HasInfiniteAmmo(weaponType))
+            {
+                return $"{mag}/{maxMag} (∞)";
+            }
+
             if (weaponType == WeaponType.Bazooka)
             {
-                return $"{mag}/{maxMag + maxReserve}";
+                return $"{mag} mag, {reserve} rkt ({mag + reserve}/{maxMag + maxReserve})";
             }
 
-            if (weaponType == WeaponType.Colt45)
-            {
-                return $"{mag}/{maxMag} mag";
-            }
-
-            return $"{mag + reserve}/{maxMag + maxReserve}";
+            return $"{mag} mag + {reserve} rsv ({mag + reserve}/{maxMag + maxReserve})";
         }
 
-        private void RefreshWeaponStats(HeroWeaponDefinition_V2 weapon, bool showAmmoRow)
+        private static ShopStatTier_V2 GetAmmoFillTier(int currentTotal, int maxTotal)
+        {
+            if (maxTotal <= 0)
+            {
+                return ShopStatTier_V2.Bad;
+            }
+
+            float ratio = (float)currentTotal / maxTotal;
+            if (ratio >= 0.99f)
+            {
+                return ShopStatTier_V2.Good;
+            }
+
+            if (ratio >= 0.45f)
+            {
+                return ShopStatTier_V2.Normal;
+            }
+
+            return ShopStatTier_V2.Bad;
+        }
+
+        private static bool TryGetOwnedAmmoDisplay(
+            HeroWeaponDefinition_V2 weapon,
+            WaveManager_V2 waveManager,
+            out string display,
+            out ShopStatTier_V2 tier)
+        {
+            display = string.Empty;
+            tier = ShopStatTier_V2.Normal;
+            if (weapon == null || waveManager == null)
+            {
+                return false;
+            }
+
+            Hero_V2 hero = waveManager.Hero;
+            if (hero == null || !hero.TryGetOwnedWeaponAmmo(
+                    weapon,
+                    out int mag,
+                    out int maxMag,
+                    out int reserve,
+                    out int maxReserve))
+            {
+                return false;
+            }
+
+            display = FormatOwnedWeaponAmmoDisplay(weapon.WeaponType, mag, maxMag, reserve, maxReserve);
+            int currentTotal = mag + reserve;
+            int maxTotal = maxMag + maxReserve;
+            if (weapon.WeaponType == WeaponType.Bazooka)
+            {
+                currentTotal = mag + reserve;
+                maxTotal = maxMag + maxReserve;
+            }
+
+            tier = GetAmmoFillTier(currentTotal, maxTotal);
+            return true;
+        }
+
+        private void RefreshWeaponStats(HeroWeaponDefinition_V2 weapon, WaveManager_V2 waveManager, bool showAmmoRow)
         {
             if (weapon == null)
             {
@@ -395,20 +451,9 @@ namespace iStick2War_V2
                     _tierResolver.GetArmorPenTier(armorPen));
             }
 
-            if (showAmmoRow)
+            if (showAmmoRow && TryGetOwnedAmmoDisplay(weapon, waveManager, out string ammoValue, out ShopStatTier_V2 ammoTier))
             {
-                int totalCapacity = weapon.MaxAmmo + weapon.MaxReserveAmmo;
-                string ammoValue = weapon.WeaponType == WeaponType.Bazooka
-                    ? $"{weapon.MaxAmmo} / {totalCapacity}"
-                    : $"{weapon.MaxAmmo} / {weapon.MaxReserveAmmo}";
-                float ammoTierSample = weapon.WeaponType == WeaponType.Bazooka
-                    ? totalCapacity
-                    : weapon.MaxReserveAmmo;
-                ShowWeaponRow(
-                    _ammo,
-                    "Ammo",
-                    ammoValue,
-                    _tierResolver.GetAmmoReserveTier(ammoTierSample));
+                ShowWeaponRow(_ammo, "Your ammo", ammoValue, ammoTier);
             }
         }
 

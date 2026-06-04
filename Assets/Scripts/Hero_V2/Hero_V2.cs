@@ -90,6 +90,13 @@ namespace iStick2War_V2
             "otherwise rest on those colliders even when Ground raycasts miss. Adds Bunker to Rigidbody2D.excludeLayers " +
             "(Unity 6). BunkerHitbox / ray weapons are unaffected.")]
         [SerializeField] private bool _excludeBunkerLayerFromHeroRigidbodyContacts = true;
+        [Tooltip(
+            "Paratrooper Spine hitboxes use solid colliders (often on EnemyBodyPart). Without exclusion the hero " +
+            "Rigidbody2D cannot walk past grounded infantry. Raycasts / combat hits are unchanged.")]
+        [SerializeField] private bool _excludeEnemyBodyPartLayerFromHeroRigidbodyContacts = true;
+        [Tooltip(
+            "Dropped mp40 / naziHelmet props use EnemyLoot solid colliders. Excludes that layer so the hero can walk past loot.")]
+        [SerializeField] private bool _excludeEnemyLootLayerFromHeroRigidbodyContacts = true;
 
         [Header("Core References")]
         [SerializeField] private HeroModel_V2 _model;
@@ -111,6 +118,9 @@ namespace iStick2War_V2
         private HeroDeathHandler_V2 _deathHandler;
         private WaveManager_V2 _cachedWaveManager;
         private int _heroRigidbodyBunkerExcludeBits;
+        private int _heroRigidbodyEnemyBodyPartExcludeBits;
+        private int _heroRigidbodyEnemyLootExcludeBits;
+        private static bool s_configuredEnemyLootVsPlayerLayerCollision;
         private AutoHero_V2 _autoHero;
 
         private void Awake()
@@ -123,6 +133,8 @@ namespace iStick2War_V2
             HeroBodyPartsFactory_V2.EnsureBodyPartsOnHero(this);
             HeroBodyPartsFactory_V2.RepairBodyPartPhysics(this);
             ApplyHeroRigidbodyBunkerContactExclusion();
+            ApplyHeroRigidbodyEnemyBodyPartContactExclusion();
+            ApplyHeroRigidbodyEnemyLootContactExclusion();
             CreateSystems();
             InitSystems();
 
@@ -157,6 +169,8 @@ namespace iStick2War_V2
             }
 
             ClearHeroRigidbodyBunkerContactExclusion();
+            ClearHeroRigidbodyEnemyBodyPartContactExclusion();
+            ClearHeroRigidbodyEnemyLootContactExclusion();
         }
 
         private void ApplyHeroRigidbodyBunkerContactExclusion()
@@ -196,6 +210,108 @@ namespace iStick2War_V2
             }
 
             _heroRigidbodyBunkerExcludeBits = 0;
+        }
+
+        private void ApplyHeroRigidbodyEnemyBodyPartContactExclusion()
+        {
+            if (!_excludeEnemyBodyPartLayerFromHeroRigidbodyContacts || _model == null)
+            {
+                return;
+            }
+
+            Rigidbody2D rb = _model.GetComponent<Rigidbody2D>();
+            if (rb == null)
+            {
+                return;
+            }
+
+            int enemyBodyPart = LayerMask.NameToLayer("EnemyBodyPart");
+            if (enemyBodyPart < 0)
+            {
+                return;
+            }
+
+            _heroRigidbodyEnemyBodyPartExcludeBits = 1 << enemyBodyPart;
+            rb.excludeLayers |= _heroRigidbodyEnemyBodyPartExcludeBits;
+        }
+
+        private void ClearHeroRigidbodyEnemyBodyPartContactExclusion()
+        {
+            if (_heroRigidbodyEnemyBodyPartExcludeBits == 0 || _model == null)
+            {
+                return;
+            }
+
+            Rigidbody2D rb = _model.GetComponent<Rigidbody2D>();
+            if (rb != null)
+            {
+                rb.excludeLayers &= ~_heroRigidbodyEnemyBodyPartExcludeBits;
+            }
+
+            _heroRigidbodyEnemyBodyPartExcludeBits = 0;
+        }
+
+        private void ApplyHeroRigidbodyEnemyLootContactExclusion()
+        {
+            if (!_excludeEnemyLootLayerFromHeroRigidbodyContacts)
+            {
+                return;
+            }
+
+            EnsureEnemyLootDoesNotCollideWithPlayerLayer();
+
+            if (_model == null)
+            {
+                return;
+            }
+
+            Rigidbody2D rb = _model.GetComponent<Rigidbody2D>();
+            if (rb == null)
+            {
+                return;
+            }
+
+            int enemyLoot = LayerMask.NameToLayer("EnemyLoot");
+            if (enemyLoot < 0)
+            {
+                return;
+            }
+
+            _heroRigidbodyEnemyLootExcludeBits = 1 << enemyLoot;
+            rb.excludeLayers |= _heroRigidbodyEnemyLootExcludeBits;
+        }
+
+        private void ClearHeroRigidbodyEnemyLootContactExclusion()
+        {
+            if (_heroRigidbodyEnemyLootExcludeBits == 0 || _model == null)
+            {
+                return;
+            }
+
+            Rigidbody2D rb = _model.GetComponent<Rigidbody2D>();
+            if (rb != null)
+            {
+                rb.excludeLayers &= ~_heroRigidbodyEnemyLootExcludeBits;
+            }
+
+            _heroRigidbodyEnemyLootExcludeBits = 0;
+        }
+
+        private static void EnsureEnemyLootDoesNotCollideWithPlayerLayer()
+        {
+            if (s_configuredEnemyLootVsPlayerLayerCollision)
+            {
+                return;
+            }
+
+            int enemyLoot = LayerMask.NameToLayer("EnemyLoot");
+            int player = LayerMask.NameToLayer("Player");
+            if (enemyLoot >= 0 && player >= 0)
+            {
+                Physics2D.IgnoreLayerCollision(enemyLoot, player, true);
+            }
+
+            s_configuredEnemyLootVsPlayerLayerCollision = true;
         }
 
         /*

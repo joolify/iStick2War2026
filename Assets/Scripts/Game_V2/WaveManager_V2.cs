@@ -695,7 +695,7 @@ namespace iStick2War_V2
                     }
 
                     RememberShopPurchasedWeapon(offer.Weapon);
-                    Log($"Weapon unlocked: {offer.Weapon.DisplayName} for {weaponCost} (buy ammo on this row).");
+                    Log($"Weapon unlocked: {offer.Weapon.DisplayName} for {weaponCost} (full mag + reserve).");
                     WaveRunTelemetry_V2.NotifyShopPurchase("WeaponUnlock", weaponCost);
                     EmitMetaChanged();
                     return true;

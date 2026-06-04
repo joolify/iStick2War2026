@@ -1990,6 +1990,34 @@ namespace iStick2War_V2
             return false;
         }
 
+        private bool TryBuildOwnedWeaponAmmoSubtitle(HeroWeaponDefinition_V2 weapon, out string subtitle)
+        {
+            subtitle = string.Empty;
+            if (_waveManager == null || weapon == null)
+            {
+                return false;
+            }
+
+            Hero_V2 hero = _waveManager.Hero;
+            if (hero == null || !hero.TryGetOwnedWeaponAmmo(
+                    weapon,
+                    out int mag,
+                    out int maxMag,
+                    out int reserve,
+                    out int maxReserve))
+            {
+                return false;
+            }
+
+            subtitle = ShopOfferStatsPresenter_V2.FormatOwnedWeaponAmmoDisplay(
+                weapon.WeaponType,
+                mag,
+                maxMag,
+                reserve,
+                maxReserve);
+            return true;
+        }
+
         private string BuildOfferSubtitle(ShopOfferConfig_V2 offer)
         {
             if (_waveManager == null)
@@ -2025,6 +2053,16 @@ namespace iStick2War_V2
 
                     if (_waveManager.IsWeaponOwned(offer.Weapon))
                     {
+                        if (TryBuildOwnedWeaponAmmoSubtitle(offer.Weapon, out string ammoSubtitle))
+                        {
+                            if (_waveManager.IsWeaponAmmoFull(offer.Weapon))
+                            {
+                                return $"{ammoSubtitle} · Full";
+                            }
+
+                            return $"{ammoSubtitle} · Refill {ShopMoneyFormat_V2.FormatCost(_waveManager.GetOfferEffectiveCost(offer))}";
+                        }
+
                         if (_waveManager.IsWeaponAmmoFull(offer.Weapon))
                         {
                             return "Ammo full";

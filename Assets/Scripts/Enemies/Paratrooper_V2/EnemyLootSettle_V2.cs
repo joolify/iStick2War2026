@@ -63,6 +63,7 @@ namespace iStick2War_V2
             _colliders = GetComponentsInChildren<Collider2D>(true);
             _groundContactCount = 0;
             RegisterLootColliders();
+            ApplyHeroWalkThroughIgnoreCollisions();
         }
 
         private void OnDisable()
@@ -234,6 +235,72 @@ namespace iStick2War_V2
                     s_lootColliders.RemoveAt(i);
                 }
             }
+        }
+
+        private static HeroModel_V2 s_cachedHeroModel;
+
+        private void ApplyHeroWalkThroughIgnoreCollisions()
+        {
+            Collider2D[] heroColliders = CollectHeroMovementColliders();
+            if (heroColliders == null || _colliders == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _colliders.Length; i++)
+            {
+                Collider2D lootCol = _colliders[i];
+                if (lootCol == null || !lootCol.enabled || lootCol.isTrigger)
+                {
+                    continue;
+                }
+
+                for (int h = 0; h < heroColliders.Length; h++)
+                {
+                    Collider2D heroCol = heroColliders[h];
+                    if (heroCol == null || !heroCol.enabled || heroCol.isTrigger)
+                    {
+                        continue;
+                    }
+
+                    Physics2D.IgnoreCollision(lootCol, heroCol, true);
+                }
+            }
+        }
+
+        private static Collider2D[] CollectHeroMovementColliders()
+        {
+            if (s_cachedHeroModel == null)
+            {
+                s_cachedHeroModel = Object.FindAnyObjectByType<HeroModel_V2>();
+            }
+
+            if (s_cachedHeroModel == null)
+            {
+                return null;
+            }
+
+            Rigidbody2D heroRb = s_cachedHeroModel.GetComponent<Rigidbody2D>();
+            if (heroRb == null)
+            {
+                return s_cachedHeroModel.GetComponentsInChildren<Collider2D>(true);
+            }
+
+            var scratch = new Collider2D[32];
+            int count = heroRb.GetAttachedColliders(scratch);
+            if (count <= 0)
+            {
+                Collider2D rootCol = s_cachedHeroModel.GetComponent<Collider2D>();
+                return rootCol != null ? new[] { rootCol } : null;
+            }
+
+            var result = new Collider2D[count];
+            for (int i = 0; i < count; i++)
+            {
+                result[i] = scratch[i];
+            }
+
+            return result;
         }
     }
 }

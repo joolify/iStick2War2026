@@ -2494,6 +2494,7 @@ public class ParatrooperView_V2 : MonoBehaviour
         AddLayerToMask(ref mask, "EnemyLoot");
         AddLayerToMask(ref mask, "Aircraft");
         AddLayerToMask(ref mask, "MechRobot");
+        AddLayerToMask(ref mask, "Player");
         return mask;
     }
 
@@ -2516,6 +2517,7 @@ public class ParatrooperView_V2 : MonoBehaviour
         IgnoreLayerPair(lootLayer, "EnemyLoot");
         IgnoreLayerPair(lootLayer, "Aircraft");
         IgnoreLayerPair(lootLayer, "MechRobot");
+        IgnoreLayerPair(lootLayer, "Player");
         s_lootLayerCollisionsConfigured = true;
     }
 

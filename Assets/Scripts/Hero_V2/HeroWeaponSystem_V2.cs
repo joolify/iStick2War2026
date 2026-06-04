@@ -581,12 +581,40 @@ namespace iStick2War_V2
             _inventory.AddIfMissing(definition);
             bool added = _inventory.Count > beforeCount;
 
+            if (added)
+            {
+                SetWeaponAmmoToMax(definition);
+            }
+
             if (autoEquip)
             {
                 EquipWeaponFromShop(definition);
             }
+            else if (added)
+            {
+                HeroWeaponRuntimeState_V2 active = _inventory.ActiveWeapon;
+                if (active != null &&
+                    active.Definition != null &&
+                    active.Definition.WeaponType == definition.WeaponType)
+                {
+                    ApplyActiveWeaponToModel();
+                }
+            }
 
             return added;
+        }
+
+        private void SetWeaponAmmoToMax(HeroWeaponDefinition_V2 definition)
+        {
+            if (definition == null ||
+                !_inventory.TryGetWeaponState(definition, out HeroWeaponRuntimeState_V2 state) ||
+                state.Definition == null)
+            {
+                return;
+            }
+
+            state.CurrentAmmo = state.Definition.MaxAmmo;
+            state.CurrentReserveAmmo = state.Definition.MaxReserveAmmo;
         }
 
         // Shop purchases run while combat gate has disabled shooting; still sync inventory + HeroModel_V2.
