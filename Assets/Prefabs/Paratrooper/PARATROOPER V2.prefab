@@ -2575,6 +2575,18 @@ MonoBehaviour:
     - 
     LocalOffset: {x: 0, y: 0, z: 0}
     Scale: 0
+  _armSeverDropPrefabs:
+  - Prefab: {fileID: 1478095143944507139, guid: b52a92edd015b244f95aa113bb35318f, type: 3}
+    Count: 2
+  - Prefab: {fileID: 4187462531866338815, guid: ea19c6958e607aa4294ccf03111df778, type: 3}
+    Count: 2
+  - Prefab: {fileID: 3841499025524884311, guid: 2faa59d88044ea34eb322cd2d86f49f8, type: 3}
+    Count: 2
+  _legSeverDropPrefabs:
+  - Prefab: {fileID: 2753049576799832974, guid: cf9fdee4d9e190247b8cd741634e56a1, type: 3}
+    Count: 2
+  - Prefab: {fileID: 69334825556024327, guid: c96da4ac88417f44d8136738f0ed5569, type: 3}
+    Count: 2
   _severedPartLifetime: 5
   _severedPartForce: 6.5
   _severedPartTorque: 160

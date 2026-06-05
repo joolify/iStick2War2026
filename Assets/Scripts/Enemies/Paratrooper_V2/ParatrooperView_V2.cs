@@ -74,6 +74,13 @@ public class ParatrooperView_V2 : MonoBehaviour
         public float Scale = 1f;
     }
 
+    [Serializable]
+    private class SeveredPartDropPrefab
+    {
+        public GameObject Prefab;
+        public int Count = 2;
+    }
+
     private static readonly string[] ParachuteKeywords = { "parach", "chute", "canopy", "glide" };
     private SkeletonAnimation _skeletonAnimation;
     private ParticleSystem hitEffect;
@@ -149,6 +156,10 @@ public class ParatrooperView_V2 : MonoBehaviour
     [SerializeField] private string _gibPhysicsLayerName = "";
     [Header("Body part severing")]
     [SerializeField] private List<SeveredPartEntry> _severedPartEntries = new List<SeveredPartEntry>();
+    // Physics gib bundle when an arm (upper/lower) is severed.
+    [SerializeField] private List<SeveredPartDropPrefab> _armSeverDropPrefabs = new List<SeveredPartDropPrefab>();
+    // Physics gib bundle when a leg (upper/lower/foot) is severed.
+    [SerializeField] private List<SeveredPartDropPrefab> _legSeverDropPrefabs = new List<SeveredPartDropPrefab>();
     [SerializeField] private float _severedPartLifetime = 5f;
     [SerializeField] private float _severedPartForce = 6.5f;
     [SerializeField] private float _severedPartTorque = 160f;
@@ -486,7 +497,19 @@ public class ParatrooperView_V2 : MonoBehaviour
             ApplyHelmetAttachment();
             TryDropHelmetLoot(hitPoint);
         }
-        SpawnSeveredPartVisual(entry, bone, hitPoint, severity);
+
+        if (IsArmSeverDropBodyPart(bodyPart))
+        {
+            SpawnSeveredPartBundle(_armSeverDropPrefabs, entry, bone, hitPoint, severity);
+        }
+        else if (IsLegSeverDropBodyPart(bodyPart))
+        {
+            SpawnSeveredPartBundle(_legSeverDropPrefabs, entry, bone, hitPoint, severity);
+        }
+        else
+        {
+            SpawnSeveredPartVisual(entry, bone, hitPoint, severity);
+        }
     }
 
     private static Spine.Animation AnimationFromRef(AnimationReferenceAsset reference)
@@ -3089,6 +3112,72 @@ public class ParatrooperView_V2 : MonoBehaviour
         }
     }
 
+    private static bool IsArmSeverDropBodyPart(BodyPartType bodyPart)
+    {
+        switch (bodyPart)
+        {
+            case BodyPartType.ArmLowerFront:
+            case BodyPartType.ArmLowerBack:
+            case BodyPartType.ArmUpperFront:
+            case BodyPartType.ArmUpperBack:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static bool IsLegSeverDropBodyPart(BodyPartType bodyPart)
+    {
+        switch (bodyPart)
+        {
+            case BodyPartType.LegLowerFront:
+            case BodyPartType.LegLowerBack:
+            case BodyPartType.LegUpperFront:
+            case BodyPartType.LegUpperBack:
+            case BodyPartType.FootFront:
+            case BodyPartType.FootBack:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private void SpawnSeveredPartBundle(
+        List<SeveredPartDropPrefab> dropPrefabs,
+        SeveredPartEntry entry,
+        Bone bone,
+        Vector2 hitPoint,
+        float severity)
+    {
+        if (dropPrefabs == null || dropPrefabs.Count == 0)
+        {
+            SpawnSeveredPartVisual(entry, bone, hitPoint, severity);
+            return;
+        }
+
+        int spawnIndex = 0;
+        for (int i = 0; i < dropPrefabs.Count; i++)
+        {
+            SeveredPartDropPrefab drop = dropPrefabs[i];
+            if (drop == null || drop.Prefab == null)
+            {
+                continue;
+            }
+
+            int count = Mathf.Max(1, drop.Count);
+            for (int c = 0; c < count; c++)
+            {
+                SpawnSingleSeveredPartPrefab(drop.Prefab, entry, bone, hitPoint, severity, spawnIndex);
+                spawnIndex++;
+            }
+        }
+
+        if (spawnIndex == 0)
+        {
+            SpawnSeveredPartVisual(entry, bone, hitPoint, severity);
+        }
+    }
+
     private void SpawnSeveredPartVisual(SeveredPartEntry entry, Bone bone, Vector2 hitPoint, float severity)
     {
         if (bone == null || _skeletonAnimation == null)
@@ -3114,9 +3203,34 @@ public class ParatrooperView_V2 : MonoBehaviour
             return;
         }
 
+        SpawnSingleSeveredPartPrefab(prefab, entry, bone, hitPoint, severity, 0);
+    }
+
+    private void SpawnSingleSeveredPartPrefab(
+        GameObject prefab,
+        SeveredPartEntry entry,
+        Bone bone,
+        Vector2 hitPoint,
+        float severity,
+        int spawnIndex)
+    {
+        if (prefab == null || bone == null || _skeletonAnimation == null)
+        {
+            return;
+        }
+
+        string boneName = bone.Data != null ? bone.Data.Name : string.Empty;
         Vector3 worldBone = _skeletonAnimation.transform.TransformPoint(new Vector3(bone.WorldX, bone.WorldY, 0f));
         Vector3 localOffset = entry != null ? entry.LocalOffset : Vector3.zero;
         Vector3 spawnPos = worldBone + localOffset;
+
+        if (spawnIndex > 0)
+        {
+            float angleRad = spawnIndex * 2.39996323f;
+            float radius = 0.06f + spawnIndex * 0.015f;
+            spawnPos += new Vector3(Mathf.Cos(angleRad), Mathf.Sin(angleRad), 0f) * radius;
+        }
+
         spawnPos.z = _gibWorldZ;
 
         Vector2 launchDir = ((Vector2)spawnPos - hitPoint);
@@ -3158,7 +3272,7 @@ public class ParatrooperView_V2 : MonoBehaviour
         {
             Debug.Log(
                 $"[ParatrooperView_V2] Sever spawn OK bone='{boneName}', prefab='{prefab.name}', " +
-                $"force={force:0.##}, severity={severity:0.##}");
+                $"force={force:0.##}, severity={severity:0.##}, spawnIndex={spawnIndex}");
         }
 
         Destroy(severed, Mathf.Max(0.3f, _severedPartLifetime));

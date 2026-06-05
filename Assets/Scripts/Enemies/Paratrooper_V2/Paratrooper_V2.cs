@@ -1129,6 +1129,8 @@ public class Paratrooper : MonoBehaviour
 
         _controller?.CancelCombatForHeroDeath();
         _model.heroDeathStandDownActive = true;
+        // Run-in keeps horizontal RB speed; clear it so the trooper does not slide toward the dead hero.
+        StopGroundTrooperLocomotion();
 
         if (_stateMachine.CurrentState != StickmanBodyState.Idle)
         {
@@ -1237,8 +1239,36 @@ public class Paratrooper : MonoBehaviour
         // Death handling
         if (to == StickmanBodyState.Die || to == StickmanBodyState.GlideDie)
         {
+            if (to == StickmanBodyState.Die)
+            {
+                StopGroundTrooperLocomotion();
+            }
+
             _deathHandler.Die();
         }
+    }
+
+    // Groundtrooper run-in keeps RB horizontal speed; clear it on stand-down / ground death so units do not slide.
+    private void StopGroundTrooperLocomotion()
+    {
+        _groundAssaultActive = false;
+        _groundAssaultDirectionX = 0f;
+        _groundAssaultRunSpeed = 0f;
+
+        if (_rigidbody2D == null)
+        {
+            return;
+        }
+
+        if (!_airborneGravityScaleCachedValid)
+        {
+            _airborneGravityScaleCached = _rigidbody2D.gravityScale;
+            _airborneGravityScaleCachedValid = true;
+        }
+
+        _rigidbody2D.gravityScale = 0f;
+        _rigidbody2D.linearVelocity = Vector2.zero;
+        _rigidbody2D.angularVelocity = 0f;
     }
 
     private void UpdateAirborneBunkerCollisionExclusion(StickmanBodyState to)
@@ -1575,8 +1605,15 @@ public class Paratrooper : MonoBehaviour
         }
 
         StickmanBodyState s = _stateMachine.CurrentState;
-        if (s == StickmanBodyState.Run || s == StickmanBodyState.Land || s == StickmanBodyState.Shoot || s == StickmanBodyState.Grenade ||
-            s == StickmanBodyState.Electrocuted)
+        if (s == StickmanBodyState.Die)
+        {
+            StopGroundTrooperLocomotion();
+            return;
+        }
+
+        if (s == StickmanBodyState.Run || s == StickmanBodyState.Land || s == StickmanBodyState.Shoot ||
+            s == StickmanBodyState.Grenade || s == StickmanBodyState.Electrocuted ||
+            (s == StickmanBodyState.Idle && _model != null && _model.heroDeathStandDownActive))
         {
             if (!_airborneGravityScaleCachedValid)
             {
@@ -1623,13 +1660,29 @@ public class Paratrooper : MonoBehaviour
         StickmanBodyState s = _stateMachine.CurrentState;
         if (s == StickmanBodyState.Die || s == StickmanBodyState.GlideDie)
         {
-            _groundAssaultActive = false;
+            if (s == StickmanBodyState.Die)
+            {
+                StopGroundTrooperLocomotion();
+            }
+            else
+            {
+                _groundAssaultActive = false;
+            }
+
             return;
         }
 
         if (s != StickmanBodyState.Run)
         {
-            _groundAssaultActive = false;
+            if (_groundAssaultActive)
+            {
+                StopGroundTrooperLocomotion();
+            }
+            else
+            {
+                _groundAssaultActive = false;
+            }
+
             return;
         }
 
@@ -1777,6 +1830,17 @@ public class Paratrooper : MonoBehaviour
         p.y += deltaY;
         _rigidbody2D.position = p;
         Vector2 v = _rigidbody2D.linearVelocity;
+        if (s == StickmanBodyState.Die)
+        {
+            if (!Mathf.Approximately(v.x, 0f))
+            {
+                v.x = 0f;
+                _rigidbody2D.linearVelocity = v;
+            }
+
+            return;
+        }
+
         if (v.y < 0f)
         {
             v.y = 0f;
