@@ -131,6 +131,7 @@ namespace iStick2War_V2
 
         private float _lastFireTime = -999f;
         private Collider2D _cachedHeroCollider;
+        private Collider2D _cachedBunkerCoverCollider;
         private Bone[] _missileSpawnBones;
 
         private PatternSegment _segment = PatternSegment.None;
@@ -631,7 +632,7 @@ namespace iStick2War_V2
                 return;
             }
 
-            Vector2 worldTarget = GetHeroCombatAimWorldPoint();
+            Vector2 worldTarget = GetCombatAimWorldPoint();
             float skeletonZ = _skeletonAnimation.transform.position.z;
 
             Vector3 worldAim3 = new Vector3(worldTarget.x, worldTarget.y, skeletonZ);
@@ -859,6 +860,75 @@ namespace iStick2War_V2
             }
         }
 
+        private Vector2 GetCombatAimWorldPoint()
+        {
+            WaveManager_V2 waveManager = FindAnyObjectByType<WaveManager_V2>();
+            if (waveManager != null &&
+                waveManager.BunkerHealth > 0 &&
+                TryGetActiveBunkerCoverAimWorldPoint(out Vector2 bunkerAim))
+            {
+                return bunkerAim;
+            }
+
+            return GetHeroCombatAimWorldPoint();
+        }
+
+        private bool TryGetActiveBunkerCoverAimWorldPoint(out Vector2 aimPoint)
+        {
+            aimPoint = default;
+            Collider2D cover = ResolveActiveBunkerCoverCollider();
+            if (cover == null)
+            {
+                return false;
+            }
+
+            Bounds bounds = cover.bounds;
+            aimPoint = new Vector2(bounds.max.x, Mathf.Lerp(bounds.min.y, bounds.max.y, 0.5f));
+            return true;
+        }
+
+        private Collider2D ResolveActiveBunkerCoverCollider()
+        {
+            _cachedBunkerCoverCollider = null;
+            BunkerHitbox_V2[] markers = FindObjectsByType<BunkerHitbox_V2>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            if (markers == null || markers.Length == 0)
+            {
+                return null;
+            }
+
+            float bestMaxX = float.NegativeInfinity;
+            for (int i = 0; i < markers.Length; i++)
+            {
+                BunkerHitbox_V2 marker = markers[i];
+                if (marker == null)
+                {
+                    continue;
+                }
+
+                Collider2D col = marker.GetComponent<Collider2D>();
+                if (col == null || !col.enabled || !marker.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                string objectName = marker.gameObject.name;
+                bool isFront = objectName.IndexOf("bunker_front", StringComparison.OrdinalIgnoreCase) >= 0;
+                if (!isFront && markers.Length > 1)
+                {
+                    continue;
+                }
+
+                float maxX = col.bounds.max.x;
+                if (maxX > bestMaxX)
+                {
+                    bestMaxX = maxX;
+                    _cachedBunkerCoverCollider = col;
+                }
+            }
+
+            return _cachedBunkerCoverCollider;
+        }
+
         private Vector2 GetHeroCombatAimWorldPoint()
         {
             if (_cachedHeroCollider == null)
@@ -892,9 +962,8 @@ namespace iStick2War_V2
             origin = GetShotOrigin();
             direction = default;
 
-            // Muzzle from Spine when valid; combat direction toward hero body (not crosshair bone),
-            // so telegraph / hitscan stay correct even when called from FixedUpdate.
-            Vector2 aimTarget = GetHeroCombatAimWorldPoint();
+            // Muzzle from Spine when valid; combat direction toward bunker cover (when alive) or hero body.
+            Vector2 aimTarget = GetCombatAimWorldPoint();
             Vector2 toHero = aimTarget - origin;
             if (toHero.sqrMagnitude < 0.0001f)
             {
@@ -931,6 +1000,8 @@ namespace iStick2War_V2
             }
 
             MuzzleFlash_V2.Play(origin, direction);
+
+            Physics2D.SyncTransforms();
 
             bool prevHitTriggers = Physics2D.queriesHitTriggers;
             Physics2D.queriesHitTriggers = true;
@@ -995,64 +1066,39 @@ namespace iStick2War_V2
                 waveManager != null &&
                 waveManager.IsHeroInsideBunker(heroRefForShelter);
 
+            if (bunkerAlive && _respectBunkerCover && !foundBunkerAlongRay)
+            {
+                TryFindFirstBunkerCoverHit(origin, direction, out firstBunkerAlongRay, out foundBunkerAlongRay);
+            }
+
             RaycastHit2D damageHit = default;
             bool didApplyDamage = false;
 
+            // Bunker cover always absorbs first when the ray hits it (same rule as ParatrooperWeaponSystem_V2).
             if (bunkerAlive && _respectBunkerCover && foundBunkerAlongRay)
             {
-                bool heroIsCloser =
-                    foundHeroAlongRay && firstHeroAlongRay.distance < firstBunkerAlongRay.distance;
-                if (!heroIsCloser || heroSheltered)
-                {
-                    waveManager?.ApplyBunkerDamage(damage);
-                    didApplyDamage = true;
-                    damageHit = firstBunkerAlongRay;
-                    BulletImpactVfx_V2.PlayIfSurfaceHit(damageHit, direction);
-                }
+                waveManager?.ApplyBunkerDamage(damage);
+                didApplyDamage = true;
+                damageHit = firstBunkerAlongRay;
+                BulletImpactVfx_V2.PlayIfSurfaceHit(damageHit, direction);
+            }
+            else if (bunkerAlive && _respectBunkerCover && heroSheltered && foundHeroAlongRay)
+            {
+                waveManager?.ApplyBunkerDamage(damage);
+                didApplyDamage = true;
+                damageHit = firstHeroAlongRay;
+                BulletImpactVfx_V2.PlayIfSurfaceHit(damageHit, direction);
             }
 
             if (!didApplyDamage)
             {
-                for (int i = 0; i < hits.Length; i++)
+                if (TryApplyFirstBunkerDamageAlongHits(hits, waveManager, damage, direction, out damageHit))
                 {
-                    RaycastHit2D h = hits[i];
-                    if (h.collider == null)
-                    {
-                        continue;
-                    }
-
-                    if (_respectBunkerCover && IsBunkerCoverHit(h.collider))
-                    {
-                        if (waveManager != null && waveManager.BunkerHealth <= 0)
-                        {
-                            continue;
-                        }
-
-                        waveManager?.ApplyBunkerDamage(damage);
-                        didApplyDamage = true;
-                        damageHit = h;
-                        BulletImpactVfx_V2.PlayIfSurfaceHit(damageHit, direction);
-                        break;
-                    }
-
-                    if (HeroCombatHitRelay_V2.TryApplyRaycastWeaponHit(
-                            h,
-                            damage,
-                            direction,
-                            waveManager,
-                            _heroRoot,
-                            debugLogs: false,
-                            out bool heroDamageApplied))
-                    {
-                        if (heroDamageApplied)
-                        {
-                            didApplyDamage = true;
-                            damageHit = h;
-                            break;
-                        }
-
-                        continue;
-                    }
+                    didApplyDamage = true;
+                }
+                else if (TryApplyFirstHeroDamageAlongHits(hits, waveManager, damage, direction, out damageHit))
+                {
+                    didApplyDamage = true;
                 }
             }
 
@@ -1400,6 +1446,129 @@ namespace iStick2War_V2
             }
 
             _shotLineCoroutine = null;
+        }
+
+        private bool TryFindFirstBunkerCoverHit(
+            Vector2 origin,
+            Vector2 direction,
+            out RaycastHit2D hit,
+            out bool found)
+        {
+            hit = default;
+            found = false;
+
+            int mask = _bunkerShotBlockMask.value != 0
+                ? _bunkerShotBlockMask.value
+                : Physics2D.DefaultRaycastLayers;
+
+            bool prevHitTriggers = Physics2D.queriesHitTriggers;
+            Physics2D.queriesHitTriggers = true;
+            RaycastHit2D[] bunkerHits;
+            try
+            {
+                bunkerHits = Physics2D.RaycastAll(origin, direction, _range, mask);
+            }
+            finally
+            {
+                Physics2D.queriesHitTriggers = prevHitTriggers;
+            }
+
+            if (bunkerHits == null || bunkerHits.Length == 0)
+            {
+                return false;
+            }
+
+            Array.Sort(bunkerHits, (a, b) => a.distance.CompareTo(b.distance));
+            for (int i = 0; i < bunkerHits.Length; i++)
+            {
+                RaycastHit2D candidate = bunkerHits[i];
+                if (candidate.collider == null || !IsBunkerCoverHit(candidate.collider))
+                {
+                    continue;
+                }
+
+                hit = candidate;
+                found = true;
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool TryApplyFirstBunkerDamageAlongHits(
+            RaycastHit2D[] hits,
+            WaveManager_V2 waveManager,
+            int damage,
+            Vector2 direction,
+            out RaycastHit2D damageHit)
+        {
+            damageHit = default;
+            if (hits == null || !_respectBunkerCover)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < hits.Length; i++)
+            {
+                RaycastHit2D h = hits[i];
+                if (h.collider == null || !IsBunkerCoverHit(h.collider))
+                {
+                    continue;
+                }
+
+                if (waveManager != null && waveManager.BunkerHealth <= 0)
+                {
+                    continue;
+                }
+
+                waveManager?.ApplyBunkerDamage(damage);
+                damageHit = h;
+                BulletImpactVfx_V2.PlayIfSurfaceHit(damageHit, direction);
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool TryApplyFirstHeroDamageAlongHits(
+            RaycastHit2D[] hits,
+            WaveManager_V2 waveManager,
+            int damage,
+            Vector2 direction,
+            out RaycastHit2D damageHit)
+        {
+            damageHit = default;
+            if (hits == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < hits.Length; i++)
+            {
+                RaycastHit2D h = hits[i];
+                if (h.collider == null)
+                {
+                    continue;
+                }
+
+                if (HeroCombatHitRelay_V2.TryApplyRaycastWeaponHit(
+                        h,
+                        damage,
+                        direction,
+                        waveManager,
+                        _heroRoot,
+                        debugLogs: false,
+                        out bool heroDamageApplied))
+                {
+                    if (heroDamageApplied)
+                    {
+                        damageHit = h;
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private static bool IsBunkerCoverHit(Collider2D collider)

@@ -343,8 +343,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cbb0bf7fcde82df468bada6b7eb46901, type: 3}
   m_Name: 
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.MechRobotBossModel_V2
-  _health: 420
-  _maxHealth: 420
+  _health: 1680
+  _maxHealth: 1680
   currentState: 0
 --- !u!114 &2617224234740406937
 MonoBehaviour:

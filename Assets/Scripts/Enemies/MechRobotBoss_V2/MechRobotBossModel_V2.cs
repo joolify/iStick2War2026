@@ -23,10 +23,10 @@ namespace iStick2War_V2
  */
     public sealed class MechRobotBossModel_V2 : MonoBehaviour
     {
-        [SerializeField] private float _health = 420f;
+        [SerializeField] private float _health = 1680f;
 
         /// <summary>Spawn/max HP for UI ratio; kept in sync with <see cref="_health"/> on reset.</summary>
-        [SerializeField] private float _maxHealth = 420f;
+        [SerializeField] private float _maxHealth = 1680f;
 
         public MechRobotBossBodyState currentState = MechRobotBossBodyState.Idle;
 
