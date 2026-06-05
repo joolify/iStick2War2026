@@ -71,7 +71,7 @@ MonoBehaviour:
   _attachedPayloadBomb: {fileID: 8890011122334455667}
   _attachedPayloadLocalPosition: {x: 0, y: -1.33, z: 0}
   _attachedPayloadLocalScale: {x: 2, y: 2, z: 1}
-  _bombProjectilePrefab: {fileID: -6090124734264886313, guid: 3423af3f32db2d043bc526446c57f17f, type: 3}
+  _bombProjectilePrefab: {fileID: -6090124734264886314, guid: dc6d8808242ba674984a3fa659f57321, type: 3}
   _bombDropMount: {fileID: 8890011122334455667}
   _bombDamage: 24
   _bombExplosionRadius: 1.75

@@ -5040,7 +5040,7 @@ MonoBehaviour:
   _bunkerRepairAmount: 25
   _bunkerMaxHealth: 250
   _startingBunkerHealth: 250
-  _bunkerMaxUpgradeBaseCost: 649
+  _bunkerMaxUpgradeBaseCost: 200
   _bunkerMaxUpgradeAmount: 25
   _bunkerMaxHealthCap: 0
   _shopCostScalePerPurchase: 1.08
@@ -7783,7 +7783,7 @@ MonoBehaviour:
     _previewObject: {fileID: 2034365242}
   - _displayName: Bunker Max Upgrade
     _kind: 4
-    _cost: 649
+    _cost: 200
     _healthAmount: 0
     _bunkerRepairAmount: 0
     _bunkerMaxIncrease: 0

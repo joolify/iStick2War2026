@@ -292,6 +292,11 @@ public class ParatrooperController_V2 : MonoBehaviour
             return;
         }
 
+        if (_model != null && _model.isBurning)
+        {
+            return;
+        }
+
         _stateMachine.ChangeState(StickmanBodyState.Shoot);
     }
 

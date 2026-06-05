@@ -68,6 +68,7 @@ namespace iStick2War_V2
             _stateMachine = stateMachine;
             _movementSystem = movementSystem;
             _weaponSystem = weaponSystem;
+            _weaponSystem.OnReloadCompleted += HandleWeaponReloadCompleted;
         }
 
         public void Tick(float deltaTime)
@@ -168,6 +169,20 @@ namespace iStick2War_V2
                 return;
             }
 
+            // Reload timer can finish while the machine is still in Reloading; resume beam weapons same frame.
+            if (_stateMachine.CurrentState == HeroState.Reloading)
+            {
+                if (_isShootLoopActive &&
+                    _input.IsShootingHeld &&
+                    _weaponSystem.HasRoundsReadyToFire())
+                {
+                    _stateMachine.ForceState(HeroState.Shooting);
+                    return;
+                }
+
+                _stateMachine.ChangeState(HeroState.Idle);
+            }
+
             // Keep shooting state while shoot loop is active and button is still held.
             if (_isShootLoopActive && _input.IsShootingHeld)
             {
@@ -261,11 +276,26 @@ namespace iStick2War_V2
                     _view.StopShoot();
                 }
             }
-            else if (_input.IsShootingHeld && !_isShootLoopActive && _weaponSystem.HasRoundsReadyToFire() && !_outOfAmmoLatched)
+            else if (_input.IsShootingHeld &&
+                     !_isShootLoopActive &&
+                     _weaponSystem.HasRoundsReadyToFire())
             {
+                _outOfAmmoLatched = false;
                 _isShootLoopActive = true;
-                _stateMachine.ChangeState(HeroState.Shooting);
+                if (_stateMachine.CurrentState == HeroState.Reloading)
+                {
+                    _stateMachine.ForceState(HeroState.Shooting);
+                }
+                else
+                {
+                    _stateMachine.ChangeState(HeroState.Shooting);
+                }
+
                 _view.PlayShoot();
+                if (ShouldPlayShotAudioNow(_model.currentWeaponType))
+                {
+                    AudioManager_V2.PlayWeaponShot(_model.currentWeaponType);
+                }
             }
 
             if (!_input.IsShootingHeld && _isShootLoopActive)
@@ -662,6 +692,34 @@ namespace iStick2War_V2
 
             edgePoint = origin;
             return false;
+        }
+
+        private void HandleWeaponReloadCompleted(WeaponType weaponType)
+        {
+            _outOfAmmoLatched = false;
+            _nextOutOfAmmoFeedbackAt = 0f;
+
+            if (_weaponSystem.IsCombatDisabled || _model.isDead || !_input.IsShootingHeld)
+            {
+                return;
+            }
+
+            if (!_weaponSystem.HasRoundsReadyToFire())
+            {
+                return;
+            }
+
+            _isShootLoopActive = true;
+            if (_stateMachine.CurrentState != HeroState.Shooting)
+            {
+                _stateMachine.ForceState(HeroState.Shooting);
+            }
+
+            _view.PlayShoot();
+            if (ShouldPlayShotAudioNow(weaponType))
+            {
+                AudioManager_V2.PlayWeaponShot(weaponType);
+            }
         }
 
         private static void LogCombat(string message)

@@ -98,11 +98,6 @@ namespace iStick2War_V2
 
             switch (CurrentState)
             {
-                case HeroState.Reloading:
-                    if (newState == HeroState.Shooting)
-                        return false;
-                    break;
-
                 case HeroState.Shooting:
                     if (newState == HeroState.Reloading)
                         return true;

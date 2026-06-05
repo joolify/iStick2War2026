@@ -396,7 +396,7 @@ namespace iStick2War_V2
             {
                 droppedRenderer.sortingLayerID = payloadRenderer.sortingLayerID;
                 droppedRenderer.sortingOrder = payloadRenderer.sortingOrder;
-                dropped.transform.localScale = attached.lossyScale * 0.5f;
+                dropped.transform.localScale = attached.lossyScale;
                 return;
             }
 
@@ -449,11 +449,38 @@ namespace iStick2War_V2
             Transform carryParent = ResolvePayloadCarryParent();
             GameObject instance = Instantiate(_droppedBombPrefab, carryParent);
             instance.name = "bomb5@4K";
+            DisableCarriedPayloadGameplay(instance);
             Transform t = instance.transform;
             t.localPosition = _attachedPayloadLocalPosition;
             t.localRotation = Quaternion.identity;
             t.localScale = _attachedPayloadLocalScale;
             _attachedPayloadBomb = t;
+        }
+
+        private static void DisableCarriedPayloadGameplay(GameObject payload)
+        {
+            if (payload == null)
+            {
+                return;
+            }
+
+            BombProjectile_V2 projectile = payload.GetComponent<BombProjectile_V2>();
+            if (projectile != null)
+            {
+                projectile.enabled = false;
+            }
+
+            Collider2D col = payload.GetComponent<Collider2D>();
+            if (col != null)
+            {
+                col.enabled = false;
+            }
+
+            Rigidbody2D rb = payload.GetComponent<Rigidbody2D>();
+            if (rb != null)
+            {
+                rb.simulated = false;
+            }
         }
 
         private Transform ResolvePayloadCarryParent()

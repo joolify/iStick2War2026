@@ -1470,6 +1470,32 @@ public class ParatrooperView_V2 : MonoBehaviour
         HideParachuteVisualsForGroundDeath();
     }
 
+    // Called when flamethrower starts a ground burn while state may already be Run (groundtrooper walk-in).
+    public void RefreshBurnPresentation()
+    {
+        if (_model == null || !_model.isBurning || _stateMachine == null)
+        {
+            return;
+        }
+
+        SyncBurnVfx();
+
+        if (_model.burnFromAirborneFlamethrower)
+        {
+            if (_stateMachine.CurrentState == StickmanBodyState.Glide)
+            {
+                EnsureBurnGlideVisualActive();
+            }
+
+            return;
+        }
+
+        if (_stateMachine.CurrentState == StickmanBodyState.Run)
+        {
+            EnsureBurnRunVisualActive();
+        }
+    }
+
     private Spine.Animation GetBurnRunAnimation()
     {
         if (_fireRunAnim != null && _fireRunAnim.Animation != null)

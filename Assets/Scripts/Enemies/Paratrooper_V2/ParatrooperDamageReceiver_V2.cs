@@ -73,6 +73,12 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
 
     private void OnEnable()
     {
+        ResetForSpawn();
+    }
+
+    // Pool-safe: PrepareForSpawn may run without a disable/enable cycle on reused instances.
+    public void ResetForSpawn()
+    {
         _deathStateSent = false;
         _severedParts.Clear();
     }
@@ -142,6 +148,17 @@ public class ParatrooperDamageReceiver_V2 : MonoBehaviour
                 : _flamethrowerBurnDeathDelaySeconds;
             _model.StartBurning(delay, airborneBurn);
             _stateMachine.ChangeState(airborneBurn ? StickmanBodyState.Glide : StickmanBodyState.Run);
+            if (!airborneBurn)
+            {
+                // Ground troopers can already be in Run during walk-in; stop assault and refresh burn VFX immediately.
+                _paratrooper?.HandleFlamethrowerGroundBurnStarted();
+                ParatrooperView_V2 view =
+                    _paratrooper != null
+                        ? _paratrooper.GetComponentInChildren<ParatrooperView_V2>(true)
+                        : GetComponentInParent<ParatrooperView_V2>();
+                view?.RefreshBurnPresentation();
+            }
+
             if (_debugDamagePathLogs)
             {
                 Debug.Log($"[ParatrooperDamageReceiver_V2] Burn started by flamethrower. dieAt={_model.burnDieAtTime:0.##}");

@@ -451,6 +451,7 @@ public class Paratrooper : MonoBehaviour
 
         _controller?.ResetForSpawn();
         _weaponSystem?.ResetForSpawn();
+        _damageReceiver?.ResetForSpawn();
         _view?.ResetVisualStateForSpawn();
         _view?.EnsureDamagePresentationSubscribed(_damageReceiver);
         SanitizeVisualRootAlignment();
@@ -466,6 +467,12 @@ public class Paratrooper : MonoBehaviour
         }
         CaptureSpineWorldAnchorForPostSpawnFacingReconcile();
         ApplyHeroWalkThroughPhysicsExclusion();
+    }
+
+    // Stops groundtrooper walk-in and keeps the unit in ground burn (fire_run) instead of resuming MP40 combat.
+    public void HandleFlamethrowerGroundBurnStarted()
+    {
+        StopGroundTrooperLocomotion();
     }
 
     public void BeginGroundAssault(bool fromLeft, float runSpeed, float stopX)
@@ -1696,6 +1703,12 @@ public class Paratrooper : MonoBehaviour
             {
                 _rigidbody2D.linearVelocity = new Vector2(0f, 0f);
                 _rigidbody2D.angularVelocity = 0f;
+            }
+
+            // Flamethrower burn uses Run + fire_run; do not resume Shoot when the walk-in stop is reached mid-burn.
+            if (_model != null && _model.isBurning)
+            {
+                return;
             }
 
             TryCorrectFacingTowardHero();

@@ -113,7 +113,7 @@ MonoBehaviour:
   _maxLifetimeSeconds: 30
   _spriteFacesRightWhenScaleXPositive: 1
   _invertFlightDirectionX: 0
-  _bombProjectilePrefab: {fileID: -6090124734264886313, guid: 3423af3f32db2d043bc526446c57f17f, type: 3}
+  _bombProjectilePrefab: {fileID: -6090124734264886314, guid: dc6d8808242ba674984a3fa659f57321, type: 3}
   _bombDropMount: {fileID: 4477627569763441340}
   _bombDamage: 24
   _bombExplosionRadius: 1.75

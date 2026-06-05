@@ -564,6 +564,12 @@ namespace iStick2War_V2
                     PlayLoop(GetIdleAnimationForCurrentWeapon());
                     _shootLocomotionInitialized = false;
                     _jumpCombatInitialized = false;
+                    if (_model != null &&
+                        _model.isShootingPressed &&
+                        _model.currentWeaponType == WeaponType.Flamethrower)
+                    {
+                        TryPlayFlamethrowerVfx();
+                    }
                     break;
 
                 //case HeroState.Reloading:

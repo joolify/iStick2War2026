@@ -184,8 +184,8 @@ namespace iStick2War_V2
         [Tooltip("Starting bunker max HP for the run (can be raised via shop BunkerMaxUpgrade).")]
         [SerializeField] private int _bunkerMaxHealth = 250;
         [SerializeField] private int _startingBunkerHealth = 250;
-        [Tooltip("Base cost for bunker max upgrade; scales with each purchase.")]
-        [SerializeField] private int _bunkerMaxUpgradeBaseCost = 649;
+        [Tooltip("Base cost for bunker max upgrade (flat; does not scale per purchase).")]
+        [SerializeField] private int _bunkerMaxUpgradeBaseCost = 200;
         [Tooltip("HP added to bunker max (and current, up to new max) per upgrade.")]
         [SerializeField] private int _bunkerMaxUpgradeAmount = 25;
         [Tooltip("0 = no cap on bunker max from upgrades.")]
@@ -669,7 +669,7 @@ namespace iStick2War_V2
                     }
 
                     _bunkerMaxHealthRuntime += delta;
-                    _bunkerHealth = Mathf.Min(_bunkerMaxHealthRuntime, _bunkerHealth + delta);
+                    _bunkerHealth = _bunkerMaxHealthRuntime;
                     _bunkerMaxUpgradesThisRun++;
                     Log(
                         $"Bunker max upgraded (+{delta} max) for {maxCost}. hp={_bunkerHealth}/{_bunkerMaxHealthRuntime}");
@@ -1111,7 +1111,7 @@ namespace iStick2War_V2
 
         public int GetBunkerMaxUpgradeCost()
         {
-            return GetScaledPurchaseCost(Mathf.Max(0, _bunkerMaxUpgradeBaseCost), _bunkerMaxUpgradesThisRun);
+            return Mathf.Max(0, _bunkerMaxUpgradeBaseCost);
         }
 
         // Effective price for carousel UI and purchases (health / bunker max scale per buy; other kinds use offer.Cost).
@@ -1132,7 +1132,7 @@ namespace iStick2War_V2
                 case ShopOfferKind_V2.BunkerMaxUpgrade:
                 {
                     int basis = offer.Cost > 0 ? offer.Cost : _bunkerMaxUpgradeBaseCost;
-                    return GetScaledPurchaseCost(Mathf.Max(0, basis), _bunkerMaxUpgradesThisRun);
+                    return Mathf.Max(0, basis);
                 }
                 case ShopOfferKind_V2.BunkerRepair:
                 {
