@@ -2089,6 +2089,7 @@ namespace iStick2War_V2
             PrepareLifeOverTmp(_lifeOverInfoText, _lifeOverInfoMessage);
             PrepareLifeOverTmp(_lifeOverStartNewGameText, "Start Game");
             PrepareLifeOverTmp(_lifeOverGoToShopText, _lifeOverGoToShopLabel);
+            EnsureLifeOverLabelUiClickTargets();
 
             if (_lifeOverStartNewGameButton != null)
             {
@@ -2104,6 +2105,17 @@ namespace iStick2War_V2
             {
                 EnsureLifeOverControlVisible(_lifeOverGoToShopButton);
             }
+        }
+
+        private void EnsureLifeOverLabelUiClickTargets()
+        {
+            LifeOverLabelUiButton_V2.EnsureInfoLabelNonBlocking(_lifeOverInfoText);
+            LifeOverLabelUiButton_V2.EnsureOnLabel(
+                _lifeOverStartNewGameText,
+                LifeOverLabelUiButton_V2.LifeOverLabelAction.ContinueAfterLifeLost);
+            LifeOverLabelUiButton_V2.EnsureOnLabel(
+                _lifeOverGoToShopText,
+                LifeOverLabelUiButton_V2.LifeOverLabelAction.GoToShopAfterLifeLost);
         }
 
         private void EnsureLifeOverUiRootsVisible()
@@ -2158,6 +2170,7 @@ namespace iStick2War_V2
             }
 
             LifeOverUiFactory_V2.ApplyVisibleCanvasLayout(canvas.gameObject);
+            LifeOverUiFactory_V2.RepairOffScreenLifeOverLabels(canvas);
             DeactivateDuplicateLifeOverCanvases(canvas);
 
             TMP_Text[] texts = canvas.GetComponentsInChildren<TMP_Text>(true);

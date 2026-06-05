@@ -16,7 +16,12 @@ namespace iStick2War_V2
         private const string StartLabelName = "txt_lifeOver_startNewGame";
         private const string GoToShopLabelName = "txt_lifeOver_goToShop";
         private const int LifeOverCanvasSortingOrderOffset = 10;
-        private static readonly Vector2 DefaultCanvasSize = new Vector2(1920f, 1080f);
+        private static readonly Vector2 InfoLabelAnchoredPosition = new Vector2(0f, 55f);
+        private static readonly Vector2 InfoLabelSize = new Vector2(920f, 90f);
+        private static readonly Vector2 StartLabelAnchoredPosition = new Vector2(0f, -35f);
+        private static readonly Vector2 StartLabelSize = new Vector2(520f, 50f);
+        private static readonly Vector2 GoToShopLabelAnchoredPosition = new Vector2(0f, -95f);
+        private static readonly Vector2 GoToShopLabelSize = new Vector2(520f, 50f);
 
         public static bool EnsureLabelsExist(string infoMessage, bool logWhenChanged)
         {
@@ -50,25 +55,26 @@ namespace iStick2War_V2
                 referenceLabel,
                 InfoTextName,
                 infoMessage,
-                new Vector2(0f, 55f),
-                new Vector2(920f, 90f),
+                InfoLabelAnchoredPosition,
+                InfoLabelSize,
                 30);
             changed |= EnsureLabel(
                 canvasRoot,
                 referenceLabel,
                 StartLabelName,
                 "Start Game",
-                new Vector2(0f, -35f),
-                new Vector2(520f, 50f),
+                StartLabelAnchoredPosition,
+                StartLabelSize,
                 34);
             changed |= EnsureLabel(
                 canvasRoot,
                 referenceLabel,
                 GoToShopLabelName,
                 goToShopLabel,
-                new Vector2(0f, -95f),
-                new Vector2(520f, 50f),
+                GoToShopLabelAnchoredPosition,
+                GoToShopLabelSize,
                 34);
+            changed |= RepairOffScreenLifeOverLabels(canvasRoot);
 
             if (logWhenChanged && changed)
             {
@@ -103,7 +109,6 @@ namespace iStick2War_V2
             Transform existing = chromeRoot.Find(CanvasName);
             if (existing != null)
             {
-                ApplyCanvasFromShopReference(existing.gameObject, shopCanvas);
                 ApplyVisibleCanvasLayout(existing.gameObject);
                 return existing;
             }
@@ -155,7 +160,7 @@ namespace iStick2War_V2
             canvasGo.layer = shopCanvas != null ? shopCanvas.gameObject.layer : canvasGo.layer;
         }
 
-        // Shop-canvas often uses localScale 0; LifeOver text must use scale 1 and a real rect size to render.
+        // Shop-canvas often uses scale 0; LifeOver text must stay visible. Preserve scene/editor rect + label positions.
         public static void ApplyVisibleCanvasLayout(GameObject canvasGo)
         {
             if (canvasGo == null)
@@ -164,20 +169,9 @@ namespace iStick2War_V2
             }
 
             RectTransform canvasRect = canvasGo.GetComponent<RectTransform>();
-            if (canvasRect == null)
+            if (canvasRect != null)
             {
-                return;
-            }
-
-            canvasRect.localRotation = Quaternion.identity;
-            canvasRect.localScale = Vector3.one;
-            canvasRect.anchorMin = new Vector2(0.5f, 0.5f);
-            canvasRect.anchorMax = new Vector2(0.5f, 0.5f);
-            canvasRect.pivot = new Vector2(0.5f, 0.5f);
-            canvasRect.anchoredPosition = Vector2.zero;
-            if (canvasRect.sizeDelta.sqrMagnitude < 4f)
-            {
-                canvasRect.sizeDelta = DefaultCanvasSize;
+                canvasRect.localScale = Vector3.one;
             }
 
             Canvas canvas = canvasGo.GetComponent<Canvas>();
@@ -186,19 +180,22 @@ namespace iStick2War_V2
                 return;
             }
 
+            canvas.enabled = true;
             canvas.overrideSorting = true;
+
             Canvas shopCanvas = FindShopCanvasReference();
-            if (shopCanvas != null)
+            if (canvas.renderMode == RenderMode.ScreenSpaceCamera && canvas.worldCamera == null && shopCanvas != null)
             {
-                canvas.renderMode = shopCanvas.renderMode;
                 canvas.worldCamera = shopCanvas.worldCamera;
                 canvas.planeDistance = shopCanvas.planeDistance;
-                canvas.sortingLayerID = shopCanvas.sortingLayerID;
-                canvas.sortingOrder = shopCanvas.sortingOrder + LifeOverCanvasSortingOrderOffset;
             }
-            else if (canvas.sortingOrder < 210)
+
+            int sortOrder = shopCanvas != null
+                ? shopCanvas.sortingOrder + LifeOverCanvasSortingOrderOffset
+                : 300;
+            if (canvas.sortingOrder < sortOrder)
             {
-                canvas.sortingOrder = 210;
+                canvas.sortingOrder = sortOrder;
             }
         }
 
@@ -226,6 +223,7 @@ namespace iStick2War_V2
                         }
                     }
 
+                    // Keep scene/editor placement (e.g. labels over TextBTN_Medium* sprites).
                     return false;
                 }
             }
@@ -259,6 +257,89 @@ namespace iStick2War_V2
             tmp.raycastTarget = false;
             tmp.text = defaultText ?? string.Empty;
             return true;
+        }
+
+        // Only repair legacy shop-duplicated labels parked far off-screen; never overwrite hand-placed scene layout.
+        public static bool RepairOffScreenLifeOverLabels(Transform canvasRoot)
+        {
+            if (canvasRoot == null)
+            {
+                return false;
+            }
+
+            bool changed = false;
+            changed |= RepairOffScreenLabelIfNeeded(canvasRoot, InfoTextName, InfoLabelAnchoredPosition, InfoLabelSize);
+            changed |= RepairOffScreenLabelIfNeeded(canvasRoot, StartLabelName, StartLabelAnchoredPosition, StartLabelSize);
+            changed |= RepairOffScreenLabelIfNeeded(canvasRoot, GoToShopLabelName, GoToShopLabelAnchoredPosition, GoToShopLabelSize);
+            return changed;
+        }
+
+        private static bool RepairOffScreenLabelIfNeeded(
+            Transform canvasRoot,
+            string objectName,
+            Vector2 fallbackAnchoredPosition,
+            Vector2 fallbackSizeDelta)
+        {
+            Transform existing = canvasRoot.Find(objectName);
+            if (existing == null)
+            {
+                return false;
+            }
+
+            RectTransform rect = existing as RectTransform;
+            if (rect == null || !IsLikelyOffScreenLifeOverLabel(rect))
+            {
+                return false;
+            }
+
+            return ApplyCenteredLabelLayout(existing, fallbackAnchoredPosition, fallbackSizeDelta);
+        }
+
+        private static bool IsLikelyOffScreenLifeOverLabel(RectTransform rect)
+        {
+            if (rect.localScale.sqrMagnitude < 0.25f)
+            {
+                return true;
+            }
+
+            Vector2 pos = rect.anchoredPosition;
+            // Legacy shop-panel duplicates (e.g. goToShop parked at x=-593).
+            if (pos.x < -300f)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool ApplyCenteredLabelLayout(Transform labelTransform, Vector2 anchoredPosition, Vector2 sizeDelta)
+        {
+            if (labelTransform == null)
+            {
+                return false;
+            }
+
+            RectTransform rect = labelTransform as RectTransform;
+            if (rect == null)
+            {
+                return false;
+            }
+
+            bool changed =
+                rect.anchorMin != new Vector2(0.5f, 0.5f) ||
+                rect.anchorMax != new Vector2(0.5f, 0.5f) ||
+                rect.pivot != new Vector2(0.5f, 0.5f) ||
+                (rect.anchoredPosition - anchoredPosition).sqrMagnitude > 0.01f ||
+                (rect.sizeDelta - sizeDelta).sqrMagnitude > 0.01f ||
+                rect.localScale != Vector3.one;
+
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = anchoredPosition;
+            rect.sizeDelta = sizeDelta;
+            rect.localScale = Vector3.one;
+            return changed;
         }
 
         private static Canvas FindShopCanvasReference()

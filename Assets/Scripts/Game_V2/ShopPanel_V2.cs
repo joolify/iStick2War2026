@@ -2925,6 +2925,12 @@ namespace iStick2War_V2
         private Transform FindLifeOverCanvasTransform()
         {
             const string canvasName = "LifeOver-canvas";
+            Transform underLifeOverChrome = FindLifeOverCanvasUnderChromeRoot(canvasName);
+            if (underLifeOverChrome != null)
+            {
+                return underLifeOverChrome;
+            }
+
             Transform[] underShop = transform.GetComponentsInChildren<Transform>(true);
             for (int i = 0; i < underShop.Length; i++)
             {
@@ -2947,6 +2953,37 @@ namespace iStick2War_V2
                         candidate.gameObject.name.Equals(canvasName, System.StringComparison.OrdinalIgnoreCase))
                     {
                         return candidate;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static Transform FindLifeOverCanvasUnderChromeRoot(string canvasName)
+        {
+            GameObject[] roots = UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects();
+            for (int r = 0; r < roots.Length; r++)
+            {
+                Transform[] inRoot = roots[r].GetComponentsInChildren<Transform>(true);
+                for (int i = 0; i < inRoot.Length; i++)
+                {
+                    Transform candidate = inRoot[i];
+                    if (candidate == null ||
+                        !candidate.gameObject.name.Equals(canvasName, System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    Transform walk = candidate.parent;
+                    while (walk != null)
+                    {
+                        if (walk.gameObject.name.IndexOf("LifeOver V2", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            return candidate;
+                        }
+
+                        walk = walk.parent;
                     }
                 }
             }
