@@ -15,7 +15,7 @@ namespace iStick2War_V2
 
         [Header("Typed aircraft (optional; null falls back to genericFallback)")]
         public GameObject bombPlane;
-        public GameObject kamikazeDrone;
+        public GameObject kamikazeDrone; // Paratrooper_Exp — same as PotatomasherProjectile_V2
         public GameObject bombDrone;
         [Tooltip("Helicopter and other AircraftHealth_V2 not matched above.")]
         public GameObject helicopterOrGenericAircraft;

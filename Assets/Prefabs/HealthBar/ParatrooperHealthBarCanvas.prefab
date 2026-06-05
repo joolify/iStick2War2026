@@ -344,7 +344,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9e2195e211f9da142bdae53d90dcc49b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.WorldHealthBarFollower_V2
-  _followTarget: {fileID: 218890606031642440}
+  _followTarget: {fileID: 0}
   _worldOffset: {x: 0, y: 2.2, z: 0}
   _faceCamera: 1
   _camera: {fileID: 0}

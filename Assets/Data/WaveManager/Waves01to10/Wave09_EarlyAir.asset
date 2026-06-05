@@ -21,7 +21,7 @@ MonoBehaviour:
   _enemyDamageMultiplier: 1.09
   _bomberPassCount: 5
   _kamikazeDroneCount: 5
-  _bombDroneCount: 0
+  _bombDroneCount: 5
   _mechRobotBossCount: 0
   _waveRewardCurrency: 1290
   _openShopDirectly: 0

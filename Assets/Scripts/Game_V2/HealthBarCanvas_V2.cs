@@ -1,5 +1,6 @@
 using Assets.Scripts.Components;
 using iStick2War;
+using System;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
@@ -10,7 +11,7 @@ namespace iStick2War_V2
  * HealthBarCanvasBindMode (Health bar data source selector)
  *
  * PURPOSE:
- * Chooses whether HealthBarCanvas_V2 tracks hero HP, a specific ParatrooperModel_V2, or bunker HP via WaveManager_V2.
+ * Chooses whether HealthBarCanvas_V2 tracks hero HP, ParatrooperModel_V2, MechRobotBossModel_V2, or bunker HP via WaveManager_V2.
  *
  * NAVIGATION: see HealthBarCanvas_V2 class below; prefab subclass → HeroHealthBarCanvas_V2.cs.
  */
@@ -18,6 +19,7 @@ namespace iStick2War_V2
     {
         Hero,
         Paratrooper,
+        MechRobotBoss,
         Bunker
     }
 
@@ -25,7 +27,7 @@ namespace iStick2War_V2
  * HealthBarCanvas_V2 (Runtime health bar UI driver)
  *
  * PURPOSE:
- * Binds UI.Image fill ratios (and optional damage flash strip) to hero, paratrooper, or bunker HP sources each frame.
+ * Binds UI.Image fill ratios (and optional damage flash strip) to hero, paratrooper, mech boss, or bunker HP sources each frame.
  * Works with Screen Space or World Space canvases; combine with WorldHealthBarFollower_V2 for floating bars.
  *
  * ---------------------------------------------------------
@@ -36,7 +38,7 @@ namespace iStick2War_V2
  * ---------------------------------------------------------
  * NAVIGATION (Game_V2)
  *
- * Floating world bar motion → WorldHealthBarFollower_V2.cs | HP sources → WaveManager_V2.cs, Hero_V2.cs, ParatrooperModel_V2.cs
+ * Floating world bar motion → WorldHealthBarFollower_V2.cs | HP sources → WaveManager_V2.cs, Hero_V2.cs, ParatrooperModel_V2.cs, MechRobotBossModel_V2.cs
  *
  * ---------------------------------------------------------
  * DESIGN PRINCIPLE
@@ -53,6 +55,9 @@ namespace iStick2War_V2
         [Tooltip("Paratrooper mode: leave empty to use GetComponentInParent<ParatrooperModel_V2>().")]
         [SerializeField] private ParatrooperModel_V2 _paratrooperModel;
 
+        [Tooltip("MechRobotBoss mode: leave empty to use GetComponentInParent<MechRobotBossModel_V2>().")]
+        [SerializeField] private MechRobotBossModel_V2 _mechRobotBossModel;
+
         [Tooltip("Bunker mode: optional explicit WaveManager (e.g. drag from scene). When set, overrides FindAnyObjectByType.")]
         [SerializeField] private WaveManager_V2 _waveManager;
 
@@ -66,7 +71,7 @@ namespace iStick2War_V2
         [SerializeField] private bool _syncDamageFill = true;
 
         [FormerlySerializedAs("_zeroBarWhenHeroDead")]
-        [Tooltip("When bound unit is dead (hero or paratrooper), force empty green / full damage fill.")]
+        [Tooltip("When bound unit is dead (hero, paratrooper, or mech boss), force empty green / full damage fill.")]
         [SerializeField] private bool _zeroBarWhenDead = true;
 
         [Header("Reveal on damage")]
@@ -83,12 +88,15 @@ namespace iStick2War_V2
         private WaveManager_V2 _cachedWaveManager;
         private bool _warnedHealthImageNotFilled;
         private bool _warnedParatrooperModelMissing;
+        private bool _warnedMechRobotBossModelMissing;
         private bool _warnedBunkerWaveManagerMissing;
         private bool _paratrooperModelFromExternal;
+        private bool _mechRobotBossModelFromExternal;
 
         private CanvasGroup _revealCanvasGroup;
         private float _revealUntilUnscaledTime = float.NegativeInfinity;
         private ParatrooperDamageReceiver_V2 _subscribedParatrooperReceiver;
+        private MechRobotBossDamageReceiver_V2 _subscribedMechRobotBossReceiver;
         private Hero_V2 _subscribedHeroForReveal;
         private WaveManager_V2 _subscribedWaveForBunkerReveal;
 
@@ -100,6 +108,43 @@ namespace iStick2War_V2
             if (isActiveAndEnabled)
             {
                 MaintainRevealSubscriptions();
+            }
+        }
+
+        // Use when this canvas is not parented under the mech boss root.
+        public void SetMechRobotBossModelExternal(MechRobotBossModel_V2 model)
+        {
+            _mechRobotBossModel = model;
+            _mechRobotBossModelFromExternal = model != null;
+            if (isActiveAndEnabled)
+            {
+                MaintainRevealSubscriptions();
+            }
+        }
+
+        // Boss bars: set bind mode, model, and visibility (boss bars stay visible by default).
+        public void ConfigureForMechRobotBoss(MechRobotBossModel_V2 model, bool revealOnDamage = false)
+        {
+            _bindMode = HealthBarCanvasBindMode.MechRobotBoss;
+            SetMechRobotBossModelExternal(model);
+            SetRevealOnDamage(revealOnDamage);
+        }
+
+        public void SetRevealOnDamage(bool enabled)
+        {
+            _revealOnDamage = enabled;
+            if (_revealOnDamage)
+            {
+                EnsureRevealCanvasGroup();
+                return;
+            }
+
+            _revealCanvasGroup = GetComponent<CanvasGroup>();
+            if (_revealCanvasGroup != null)
+            {
+                _revealCanvasGroup.alpha = 1f;
+                _revealCanvasGroup.blocksRaycasts = false;
+                _revealCanvasGroup.interactable = false;
             }
         }
 
@@ -210,6 +255,31 @@ namespace iStick2War_V2
                     ratio = Mathf.Clamp01(_paratrooperModel.health / maxP);
                     return true;
 
+                case HealthBarCanvasBindMode.MechRobotBoss:
+                    if (_mechRobotBossModel == null)
+                    {
+                        if (!_warnedMechRobotBossModelMissing)
+                        {
+                            _warnedMechRobotBossModelMissing = true;
+                            Debug.LogWarning(
+                                "[HealthBarCanvas_V2] MechRobotBoss mode: no MechRobotBossModel_V2 found. " +
+                                "Parent the canvas under the mech root or assign Mech Robot Boss Model in the Inspector.",
+                                this);
+                        }
+
+                        return false;
+                    }
+
+                    dead = _mechRobotBossModel.IsDead();
+                    if (dead)
+                    {
+                        return true;
+                    }
+
+                    float maxM = Mathf.Max(1f, _mechRobotBossModel.maxHealth);
+                    ratio = Mathf.Clamp01(_mechRobotBossModel.health / maxM);
+                    return true;
+
                 case HealthBarCanvasBindMode.Bunker:
                 {
                     WaveManager_V2 wm = ResolveWaveManagerForBunker();
@@ -253,6 +323,20 @@ namespace iStick2War_V2
                         if (fromParents != null)
                         {
                             _paratrooperModel = fromParents;
+                        }
+                    }
+
+                    break;
+                }
+
+                case HealthBarCanvasBindMode.MechRobotBoss:
+                {
+                    if (!_mechRobotBossModelFromExternal)
+                    {
+                        MechRobotBossModel_V2 fromParents = GetComponentInParent<MechRobotBossModel_V2>();
+                        if (fromParents != null)
+                        {
+                            _mechRobotBossModel = fromParents;
                         }
                     }
 
@@ -356,6 +440,29 @@ namespace iStick2War_V2
                     break;
                 }
 
+                case HealthBarCanvasBindMode.MechRobotBoss:
+                {
+                    MechRobotBossDamageReceiver_V2 r = _mechRobotBossModel != null
+                        ? _mechRobotBossModel.GetComponent<MechRobotBossDamageReceiver_V2>()
+                        : null;
+                    if (r == null && _mechRobotBossModel != null)
+                    {
+                        r = _mechRobotBossModel.GetComponentInParent<MechRobotBossDamageReceiver_V2>();
+                    }
+
+                    if (r != _subscribedMechRobotBossReceiver)
+                    {
+                        UnsubscribeMechRobotBossReveal();
+                        if (r != null)
+                        {
+                            r.OnDamagePresentation += OnMechRobotBossDamagedReveal;
+                            _subscribedMechRobotBossReceiver = r;
+                        }
+                    }
+
+                    break;
+                }
+
                 case HealthBarCanvasBindMode.Hero:
                 {
                     if (_hero != _subscribedHeroForReveal)
@@ -392,6 +499,7 @@ namespace iStick2War_V2
         private void UnsubscribeAllReveal()
         {
             UnsubscribeParatrooperReveal();
+            UnsubscribeMechRobotBossReveal();
             UnsubscribeHeroReveal();
             UnsubscribeBunkerReveal();
         }
@@ -402,6 +510,15 @@ namespace iStick2War_V2
             {
                 _subscribedParatrooperReceiver.OnDamagePresentation -= OnParatrooperDamagedReveal;
                 _subscribedParatrooperReceiver = null;
+            }
+        }
+
+        private void UnsubscribeMechRobotBossReveal()
+        {
+            if (_subscribedMechRobotBossReceiver != null)
+            {
+                _subscribedMechRobotBossReceiver.OnDamagePresentation -= OnMechRobotBossDamagedReveal;
+                _subscribedMechRobotBossReceiver = null;
             }
         }
 
@@ -432,6 +549,16 @@ namespace iStick2War_V2
             }
 
             if (_revealOnlyBulletLikeParatrooperHits && !IsBulletLikeParatrooperHit(info))
+            {
+                return;
+            }
+
+            FlashReveal();
+        }
+
+        private void OnMechRobotBossDamagedReveal(DamageInfo info, float dealt)
+        {
+            if (dealt <= 0.0001f)
             {
                 return;
             }

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: AircraftExplosionVfxDefaults_V2
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.AircraftExplosionVfxDefaults_V2
   bombPlane: {fileID: 0}
-  kamikazeDrone: {fileID: 0}
+  kamikazeDrone: {fileID: 4499060826324477447, guid: f73e60829c6dce94987212d502d3ae91, type: 3}
   bombDrone: {fileID: 0}
   helicopterOrGenericAircraft: {fileID: 4499060826324477447, guid: 5d35738cb6a36444f82f0a0552a70716, type: 3}
   genericFallback: {fileID: 4499060826324477447, guid: f73e60829c6dce94987212d502d3ae91, type: 3}

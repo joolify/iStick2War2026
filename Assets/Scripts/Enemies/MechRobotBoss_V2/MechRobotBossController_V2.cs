@@ -1,4 +1,5 @@
 using Assets.Scripts.Components;
+using Spine.Unity;
 using UnityEngine;
 
 namespace iStick2War_V2
@@ -35,6 +36,7 @@ namespace iStick2War_V2
         private MechRobotBossStateMachine_V2 _stateMachine;
         private MechRobotBossWeaponSystem_V2 _weaponSystem;
         private Rigidbody2D _rigidbody2D;
+        private SkeletonAnimation _skeletonAnimation;
 
         [Header("Movement")]
         [SerializeField] private float _walkSpeed = 2.1f;
@@ -74,6 +76,11 @@ namespace iStick2War_V2
                 {
                     _rigidbody2D = GetComponentInChildren<Rigidbody2D>(true);
                 }
+            }
+
+            if (_skeletonAnimation == null)
+            {
+                _skeletonAnimation = GetComponentInChildren<SkeletonAnimation>(true);
             }
 
             if (_stateMachine != null)
@@ -162,11 +169,14 @@ namespace iStick2War_V2
             {
                 if (_rigidbody2D != null)
                 {
-                    _rigidbody2D.linearVelocity = new Vector2(0f, _rigidbody2D.linearVelocity.y);
+                    _rigidbody2D.linearVelocity = Vector2.zero;
+                    _rigidbody2D.angularVelocity = 0f;
                 }
 
                 return;
             }
+
+            StabilizeBossPhysicsPose();
 
             Hero_V2 hero = FindAnyObjectByType<Hero_V2>();
             if (hero == null)
@@ -256,7 +266,7 @@ namespace iStick2War_V2
             float dir = dx >= 0f ? 1f : -1f;
             if (_rigidbody2D != null)
             {
-                _rigidbody2D.linearVelocity = new Vector2(dir * speed, _rigidbody2D.linearVelocity.y);
+                _rigidbody2D.linearVelocity = new Vector2(dir * speed, 0f);
             }
             else
             {
@@ -290,7 +300,24 @@ namespace iStick2War_V2
         {
             if (_rigidbody2D != null)
             {
-                _rigidbody2D.linearVelocity = new Vector2(0f, _rigidbody2D.linearVelocity.y);
+                _rigidbody2D.linearVelocity = Vector2.zero;
+                _rigidbody2D.angularVelocity = 0f;
+            }
+        }
+
+        private void StabilizeBossPhysicsPose()
+        {
+            if (_rigidbody2D == null)
+            {
+                return;
+            }
+
+            _rigidbody2D.angularVelocity = 0f;
+            _rigidbody2D.rotation = 0f;
+            Vector2 velocity = _rigidbody2D.linearVelocity;
+            if (Mathf.Abs(velocity.y) > 0.0001f)
+            {
+                _rigidbody2D.linearVelocity = new Vector2(velocity.x, 0f);
             }
         }
 
@@ -301,10 +328,29 @@ namespace iStick2War_V2
                 return;
             }
 
-            bool faceRight = deltaXFromHero > 0f;
+            if (_skeletonAnimation == null)
+            {
+                _skeletonAnimation = GetComponentInChildren<SkeletonAnimation>(true);
+            }
+
+            if (_skeletonAnimation != null && _skeletonAnimation.Skeleton != null)
+            {
+                bool faceRight = deltaXFromHero > 0f;
+                float absScale = Mathf.Abs(_skeletonAnimation.Skeleton.ScaleX);
+                if (absScale < 0.001f)
+                {
+                    absScale = 1f;
+                }
+
+                _skeletonAnimation.Skeleton.ScaleX = faceRight ? absScale : -absScale;
+                return;
+            }
+
+            // Fallback only when skeleton is missing: keep root scale positive to avoid child RB mirror bugs.
+            bool faceRightFallback = deltaXFromHero > 0f;
             Vector3 s = transform.localScale;
             float ax = Mathf.Abs(s.x);
-            s.x = faceRight ? ax : -ax;
+            s.x = faceRightFallback ? ax : -ax;
             transform.localScale = s;
         }
     }

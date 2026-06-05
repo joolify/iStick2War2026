@@ -247,9 +247,10 @@ namespace iStick2War_V2
                 }
             }
 
-            if (_explosionEffectPrefab != null)
+            if (!AircraftExplosionVfx_V2.TrySpawnKind(center, AircraftExplosionVfxKind_V2.KamikazeDrone) &&
+                _explosionEffectPrefab != null)
             {
-                GameObject fx = SimplePrefabPool_V2.Spawn(_explosionEffectPrefab, transform.position, Quaternion.identity);
+                GameObject fx = SimplePrefabPool_V2.Spawn(_explosionEffectPrefab, center, Quaternion.identity);
                 if (fx != null)
                 {
                     PooledAutoDespawn_V2 timer = fx.GetComponent<PooledAutoDespawn_V2>();

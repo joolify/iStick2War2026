@@ -3126,7 +3126,7 @@ namespace iStick2War_V2
                 {
                     worldPosition = new Vector3(
                         x,
-                        groundYAtCam + Mathf.Max(0f, _mechBossGroundYOffsetWorld),
+                        groundYAtCam,
                         _anchorSpawnWorldZ);
                     return true;
                 }
@@ -3135,7 +3135,7 @@ namespace iStick2War_V2
                 {
                     worldPosition = new Vector3(
                         x,
-                        hit.point.y + Mathf.Max(0f, _mechBossGroundYOffsetWorld),
+                        hit.point.y,
                         _anchorSpawnWorldZ);
                     return true;
                 }

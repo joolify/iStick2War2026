@@ -1,6 +1,6 @@
 {
 "skeleton": {
-	"hash": "byZ4o6s/RdE",
+	"hash": "O8Pg1HVZcOs",
 	"spine": "4.2.43",
 	"x": -14.5,
 	"y": -6.18,
@@ -55,7 +55,17 @@
 	{ "name": "thigh-front", "bone": "thigh-front", "attachment": "thigh" },
 	{ "name": "crosshair", "bone": "crosshair", "attachment": "crosshair" },
 	{ "name": "body", "bone": "root" },
-	{ "name": "missiles", "bone": "controlcabin", "attachment": "missiles" }
+	{ "name": "missiles", "bone": "controlcabin", "attachment": "missiles" },
+	{ "name": "controlcabin-bb", "bone": "controlcabin", "attachment": "controlcabin-bb" },
+	{ "name": "cannon-bb", "bone": "cannon", "attachment": "cannon-bb" },
+	{ "name": "thigh-front-bb", "bone": "thigh-front", "attachment": "thigh-front-bb" },
+	{ "name": "calf-front-bb", "bone": "calf-front", "attachment": "calf-front-bb" },
+	{ "name": "foot-front-bb", "bone": "foot-front", "attachment": "foot-front-bb" },
+	{ "name": "toe-front-bb", "bone": "toe-front", "attachment": "toe-front-bb" },
+	{ "name": "thigh-back-bb", "bone": "thigh-back", "attachment": "thigh-back-bb" },
+	{ "name": "calf-back-bb", "bone": "calf-back", "attachment": "calf-back-bb" },
+	{ "name": "foot-back-bb", "bone": "foot-back", "attachment": "foot-back-bb" },
+	{ "name": "toe-back-bb", "bone": "toe-back", "attachment": "toe-back-bb" }
 ],
 "ik": [
 	{
@@ -123,6 +133,13 @@
 					"height": 175
 				}
 			},
+			"calf-back-bb": {
+				"calf-back-bb": {
+					"type": "boundingbox",
+					"vertexCount": 6,
+					"vertices": [ -19.31, -19.64, 84.2, -12.88, 92.72, 8.91, 66, 21.14, -19.11, 15.54, -32.92, -7.84 ]
+				}
+			},
 			"calf-front": {
 				"calf": {
 					"x": 35.15,
@@ -132,6 +149,13 @@
 					"rotation": 167.52,
 					"width": 419,
 					"height": 175
+				}
+			},
+			"calf-front-bb": {
+				"calf-front-bb": {
+					"type": "boundingbox",
+					"vertexCount": 6,
+					"vertices": [ -18.92, -21.56, 85.04, -14.73, 90.18, 7.44, 72.41, 18.31, -19, 14.66, -32.32, -8.86 ]
 				}
 			},
 			"cannon": {
@@ -145,6 +169,13 @@
 					"height": 475
 				}
 			},
+			"cannon-bb": {
+				"cannon-bb": {
+					"type": "boundingbox",
+					"vertexCount": 15,
+					"vertices": [ 121.78, -23.29, 197.62, -22.84, 200.94, -13.36, 236.49, -13.37, 236.97, 10.33, 130.79, 12.26, 123.69, 41.17, 104.27, 60.14, 94.31, 49.24, 113.26, 21.74, 47.85, 19.39, 33.15, 14.66, -5.24, 11.82, -11.41, -15.19, 82.43, -25.65 ]
+				}
+			},
 			"controlcabin": {
 				"body": {
 					"x": 71.53,
@@ -154,6 +185,13 @@
 					"rotation": -50.16,
 					"width": 871,
 					"height": 775
+				}
+			},
+			"controlcabin-bb": {
+				"controlcabin-bb": {
+					"type": "boundingbox",
+					"vertexCount": 15,
+					"vertices": [ 13.14, -66.48, -35.69, -3.52, -23.45, 23.98, -35.43, 47.95, 1.81, 95.07, 18.08, 81.48, 39.57, 73.49, 53.95, 83.63, 77.27, 54.94, 105.13, 57.81, 130.51, 25.9, 119.26, -27.93, 124.89, -103.49, 100.02, -121.77, 70.71, -118.45 ]
 				}
 			},
 			"crosshair": {
@@ -170,6 +208,13 @@
 					"height": 463
 				}
 			},
+			"foot-back-bb": {
+				"foot-back-bb": {
+					"type": "boundingbox",
+					"vertexCount": 11,
+					"vertices": [ 71.2, 22.11, 0.06, 22.56, -12.86, -1.4, -9.4, -13.73, -20.38, -39.06, 16.85, -79.97, 74.28, -81.75, 105.51, -33.59, 96.41, -16.1, 79.57, -7.07, 78.88, 14.92 ]
+				}
+			},
 			"foot-front": {
 				"foot": {
 					"x": 38.6,
@@ -179,6 +224,13 @@
 					"rotation": 46.19,
 					"width": 446,
 					"height": 463
+				}
+			},
+			"foot-front-bb": {
+				"foot-front-bb": {
+					"type": "boundingbox",
+					"vertexCount": 12,
+					"vertices": [ 25.42, 18.01, -2.64, 20.18, -15.49, 0.78, -10.04, -14.02, -23, -37.49, 9.68, -77.6, 66.35, -83.55, 100.61, -38.15, 91.95, -19.73, 78.98, -11.73, 77.54, 13.11, 68.37, 20.63 ]
 				}
 			},
 			"missiles": {
@@ -203,6 +255,13 @@
 					"height": 472
 				}
 			},
+			"thigh-back-bb": {
+				"thigh-back-bb": {
+					"type": "boundingbox",
+					"vertexCount": 8,
+					"vertices": [ -23.33, -1.12, -1.7, -29.3, 105.71, -18.73, 119.22, 8.2, 111.51, 24.95, 83.88, 35.37, 74.69, 22.67, -6.57, 30.51 ]
+				}
+			},
 			"thigh-front": {
 				"thigh": {
 					"x": 45.53,
@@ -212,6 +271,13 @@
 					"rotation": 52.87,
 					"width": 444,
 					"height": 472
+				}
+			},
+			"thigh-front-bb": {
+				"thigh-front-bb": {
+					"type": "boundingbox",
+					"vertexCount": 8,
+					"vertices": [ -24.88, 0.22, -3.05, -28.39, 102.3, -21.01, 117.55, 6.99, 110.85, 24.88, 82.31, 35.04, 76.25, 24.04, -5.26, 28.29 ]
 				}
 			},
 			"toe-back": {
@@ -225,6 +291,13 @@
 					"height": 251
 				}
 			},
+			"toe-back-bb": {
+				"toe-back-bb": {
+					"type": "boundingbox",
+					"vertexCount": 7,
+					"vertices": [ 32.55, 28.64, 16.13, -8.27, 26.8, -15.27, 34.79, -25.88, 52.22, -29.31, 101.38, 7.92, 88.11, 25.25 ]
+				}
+			},
 			"toe-front": {
 				"toe": {
 					"x": 42.52,
@@ -234,6 +307,13 @@
 					"rotation": 35.3,
 					"width": 371,
 					"height": 251
+				}
+			},
+			"toe-front-bb": {
+				"toe-front-bb": {
+					"type": "boundingbox",
+					"vertexCount": 8,
+					"vertices": [ 30.07, 28.21, 22.52, 8.56, 14.19, -9.9, 26.89, -14.62, 31.8, -23.87, 50.41, -29.84, 100.04, 4.26, 86.55, 23.19 ]
 				}
 			}
 		}

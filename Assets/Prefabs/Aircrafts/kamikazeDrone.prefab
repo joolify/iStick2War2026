@@ -114,8 +114,8 @@ MonoBehaviour:
   _detonateDistanceToBunker: 1.6
   _explosionDamage: 35
   _heroExplosionRadius: 1.8
-  _explosionEffectPrefab: {fileID: 103486838786112517, guid: 2935c48982d1ad24a930f228ee4ce589, type: 3}
-  _explosionEffectLifetime: 1.2
+  _explosionEffectPrefab: {fileID: 4499060826324477447, guid: f73e60829c6dce94987212d502d3ae91, type: 3}
+  _explosionEffectLifetime: 1.5
 --- !u!114 &7475570967911277827
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -130,8 +130,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.AircraftHealth_V2
   _maxHealth: 120
   _destroyRootWhenDead: 1
-  _airExplosionEffectPrefab: {fileID: 103486838786112517, guid: 2935c48982d1ad24a930f228ee4ce589, type: 3}
-  _airExplosionEffectLifetime: 1.4
+  _airExplosionEffectPrefab: {fileID: 0}
+  _airExplosionEffectLifetime: 1.5
 --- !u!60 &-4200106614136303229
 PolygonCollider2D:
   m_ObjectHideFlags: 0

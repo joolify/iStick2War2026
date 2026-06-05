@@ -1,5 +1,6 @@
 using Assets.Scripts.Components;
 using iStick2War;
+using System;
 using UnityEngine;
 
 namespace iStick2War_V2
@@ -36,6 +37,8 @@ namespace iStick2War_V2
         private MechRobotBossDeathHandler_V2 _deathHandler;
         private bool _deathStateSent;
 
+        public event Action<DamageInfo, float> OnDamagePresentation;
+
         private void OnEnable()
         {
             _deathStateSent = false;
@@ -66,6 +69,11 @@ namespace iStick2War_V2
             float finalDamage = Mathf.Max(0f, info.BaseDamage * mult);
             _model.ApplyDamage(finalDamage);
             bool isDead = _model.IsDead();
+
+            if (finalDamage > 0.0001f)
+            {
+                OnDamagePresentation?.Invoke(info, finalDamage);
+            }
 
             if (isDead && !_deathStateSent)
             {

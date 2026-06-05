@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -25,6 +26,7 @@ namespace iStick2War_V2
  *
  * Presentation-only motion layer so bar prefabs stay reusable across paratroopers, bunkers, and bosses.
  */
+    [DefaultExecutionOrder(650)]
     public sealed class WorldHealthBarFollower_V2 : MonoBehaviour
     {
         [Tooltip("World object to follow, e.g. paratrooper root, Spine head bone transform, or bunker.")]
@@ -50,6 +52,7 @@ namespace iStick2War_V2
         private bool _loggedZeroScale;
         private bool _loggedCullingMask;
         private bool _loggedCanvasScalerMode;
+        private Func<Vector3> _worldAnchorOverride;
 
         private void Awake()
         {
@@ -141,7 +144,7 @@ namespace iStick2War_V2
 
         private void LateUpdate()
         {
-            if (_followTarget == null)
+            if (_followTarget == null && _worldAnchorOverride == null)
             {
                 if (!_loggedMissingTarget)
                 {
@@ -161,8 +164,8 @@ namespace iStick2War_V2
             }
 
             _loggedMissingTarget = false;
-            Vector3 p = _followTarget.position + _worldOffset;
-            transform.position = p;
+            Vector3 anchor = ResolveAnchorWorldPosition();
+            transform.position = anchor + _worldOffset;
 
             if (!_faceCamera)
             {
@@ -196,10 +199,39 @@ namespace iStick2War_V2
             enabled = true;
             _loggedMissingTarget = false;
 
-            if (target != null)
+            if (target != null || _worldAnchorOverride != null)
             {
-                transform.position = target.position + _worldOffset;
+                transform.position = ResolveAnchorWorldPosition() + _worldOffset;
             }
+        }
+
+        // Optional spine / custom anchor (runs every LateUpdate before offset).
+        public void SetWorldAnchorOverride(Func<Vector3> provider)
+        {
+            _worldAnchorOverride = provider;
+            if (isActiveAndEnabled && (_followTarget != null || _worldAnchorOverride != null))
+            {
+                transform.position = ResolveAnchorWorldPosition() + _worldOffset;
+            }
+        }
+
+        public void SetWorldOffset(Vector3 offset)
+        {
+            _worldOffset = offset;
+            if (_followTarget != null || _worldAnchorOverride != null)
+            {
+                transform.position = ResolveAnchorWorldPosition() + _worldOffset;
+            }
+        }
+
+        private Vector3 ResolveAnchorWorldPosition()
+        {
+            if (_worldAnchorOverride != null)
+            {
+                return _worldAnchorOverride();
+            }
+
+            return _followTarget != null ? _followTarget.position : transform.position;
         }
     }
 }

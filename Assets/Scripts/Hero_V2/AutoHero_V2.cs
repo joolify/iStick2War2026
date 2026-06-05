@@ -169,6 +169,7 @@ namespace iStick2War_V2
 
         private readonly List<Collider2D> _enemyOverlapResults = new List<Collider2D>(128);
         private readonly List<ParatrooperBodyPart_V2> _paratrooperBodyPartBuffer = new List<ParatrooperBodyPart_V2>(16);
+        private readonly List<MechRobotBossBodyPart_V2> _mechBodyPartBuffer = new List<MechRobotBossBodyPart_V2>(12);
         private int _enemyBodyPartLayer = -1;
         private WaveLoopState_V2 _lastWaveState = WaveLoopState_V2.Preparing;
         private int _shopPhasesCompleted;
@@ -1484,6 +1485,12 @@ namespace iStick2War_V2
                 Vector2 aircraftRangeRef = target.bounds.center;
                 inRange = Vector2.Distance(aircraftRangeRef, heroPos) <= maxShootDist * slack;
             }
+            else if (hasTarget && IsMechBossCollider(target))
+            {
+                // Mech boss hitbox sits high on the Spine view; use world distance instead of strict Y box checks.
+                float slack = Mathf.Max(1f, _aircraftShootRangeSlackMultiplier);
+                inRange = Vector2.Distance(aimPoint, heroPos) <= maxShootDist * slack;
+            }
             else
             {
                 float verticalSlack = IsInfantryEnemyCollider(target) ? 1.35f : 0.85f;
@@ -2778,7 +2785,7 @@ namespace iStick2War_V2
             }
 
             MechRobotBossBodyState s = GetMechBossStateOrDie(c);
-            return s == MechRobotBossBodyState.Shoot || s == MechRobotBossBodyState.Aim;
+            return s != MechRobotBossBodyState.Die;
         }
 
         /// <summary>Ground paratrooper combat or living mech boss (for emergency shoot / weapon selection).</summary>
@@ -3073,6 +3080,55 @@ namespace iStick2War_V2
                 target.GetComponent<MechRobotBossBodyPart_V2>() ?? target.GetComponentInParent<MechRobotBossBodyPart_V2>();
             if (mechPart != null)
             {
+                MechRobotBossModel_V2 mechModel = mechPart.GetComponentInParent<MechRobotBossModel_V2>();
+                Transform mechRoot = mechModel != null ? mechModel.transform : mechPart.transform.root;
+                _mechBodyPartBuffer.Clear();
+                mechRoot.GetComponentsInChildren(true, _mechBodyPartBuffer);
+
+                Vector2? bestMechTorso = null;
+                float bestMechTorsoDist = float.MaxValue;
+                Vector2? bestMechAny = null;
+                float bestMechAnyDist = float.MaxValue;
+
+                for (int i = 0; i < _mechBodyPartBuffer.Count; i++)
+                {
+                    MechRobotBossBodyPart_V2 part = _mechBodyPartBuffer[i];
+                    if (part == null || !part.isActiveAndEnabled || !part.IsLivingCharacterForTargeting())
+                    {
+                        continue;
+                    }
+
+                    Collider2D col = part.GetComponent<Collider2D>();
+                    if (col == null || !col.enabled)
+                    {
+                        continue;
+                    }
+
+                    Vector2 center = col.bounds.center;
+                    float dist = (center - heroPos).sqrMagnitude;
+                    if (part.bodyPart == BodyPartType.Torso && dist < bestMechTorsoDist)
+                    {
+                        bestMechTorsoDist = dist;
+                        bestMechTorso = center;
+                    }
+
+                    if (dist < bestMechAnyDist)
+                    {
+                        bestMechAnyDist = dist;
+                        bestMechAny = center;
+                    }
+                }
+
+                if (bestMechTorso.HasValue)
+                {
+                    return bestMechTorso.Value;
+                }
+
+                if (bestMechAny.HasValue)
+                {
+                    return bestMechAny.Value;
+                }
+
                 Collider2D mechCol = mechPart.GetComponent<Collider2D>();
                 if (mechCol != null)
                 {
