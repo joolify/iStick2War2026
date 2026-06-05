@@ -106,7 +106,7 @@ namespace iStick2War_V2
         [SerializeField] private int _baseDamage = 14;
         [SerializeField] private LayerMask _whatToHit;
         [SerializeField] private Transform _firePoint;
-        [SerializeField] private string _aimBoneName = "gun";
+        [SerializeField] private string _aimBoneName = "cannon-aim";
         [Tooltip("Spine bone driven toward the hero (same pattern as Hero_V2 / Paratrooper); moves cannon IK when set up in Spine.")]
         [SerializeField] private string _crossHairBoneName = "crosshair";
         [Header("Bunker cover")]
@@ -151,6 +151,7 @@ namespace iStick2War_V2
         private int _legacyDamageScaled = 14;
 
         private MechRobotBossShootPresentation _shootPresentation = MechRobotBossShootPresentation.Default;
+        private bool _crosshairUpdateLocalHooked;
 
         public bool AttackPatternEnabled => _attackPatternEnabled;
 
@@ -234,6 +235,22 @@ namespace iStick2War_V2
             CacheHeroCollider();
             EnsureTelegraphLine();
             EnsureShotLineRenderer();
+            EnsureCrosshairUpdateLocalHook();
+        }
+
+        private void OnEnable()
+        {
+            EnsureCrosshairUpdateLocalHook();
+        }
+
+        private void OnDisable()
+        {
+            UnsubscribeCrosshairUpdateLocal();
+        }
+
+        private void OnDestroy()
+        {
+            UnsubscribeCrosshairUpdateLocal();
         }
 
         public void ResetForSpawn()
@@ -247,7 +264,10 @@ namespace iStick2War_V2
             _heroModel = _heroRoot != null ? _heroRoot.GetComponent<HeroModel_V2>() : FindAnyObjectByType<HeroModel_V2>();
             CacheHeroCollider();
             CacheScaledDamages();
+            ResolveAimBone();
+            ResolveCrossHairBone();
             ResolveMissileSpawnBones();
+            EnsureCrosshairUpdateLocalHook();
         }
 
         // Advance attack loop while the boss is in combat range. Safe to call every FixedUpdate.
@@ -507,30 +527,101 @@ namespace iStick2War_V2
             ApplyHitscanDamage(_legacyDamageScaled);
         }
 
-        private void LateUpdate()
+        private void EnsureCrosshairUpdateLocalHook()
         {
-            if (_model == null || _model.IsDead() || _model.currentState == MechRobotBossBodyState.Die)
+            if (_skeletonAnimation == null)
+            {
+                _skeletonAnimation = GetComponent<SkeletonAnimation>();
+                if (_skeletonAnimation == null)
+                {
+                    _skeletonAnimation = GetComponentInChildren<SkeletonAnimation>(true);
+                }
+            }
+
+            if (_skeletonAnimation == null || _crosshairUpdateLocalHooked)
             {
                 return;
             }
 
-            if (_skeletonAnimation == null || _crossHairBone == null)
+            _skeletonAnimation.UpdateLocal += OnSkeletonUpdateLocalAim;
+            _crosshairUpdateLocalHooked = true;
+        }
+
+        private void UnsubscribeCrosshairUpdateLocal()
+        {
+            if (!_crosshairUpdateLocalHooked || _skeletonAnimation == null)
+            {
+                return;
+            }
+
+            _skeletonAnimation.UpdateLocal -= OnSkeletonUpdateLocalAim;
+            _crosshairUpdateLocalHooked = false;
+        }
+
+        // After Spine applies locomotion clips, before aim-ik runs (see SkeletonAnimation.AfterAnimationApplied).
+        private void OnSkeletonUpdateLocalAim(ISkeletonAnimation animated)
+        {
+            if (!ShouldUpdateCombatCrosshair())
             {
                 return;
             }
 
             EnsureHeroReferences();
-            if (_heroModel != null && _heroModel.isDead)
+            ResolveAimBone();
+            ResolveCrossHairBone();
+            if (_crossHairBone == null)
             {
                 return;
+            }
+
+            ForceWeaponAimConstraintsActive();
+            SyncCrosshairToHeroCombatPoint();
+        }
+
+        private bool ShouldUpdateCombatCrosshair()
+        {
+            if (_model == null || _model.IsDead() || _model.currentState == MechRobotBossBodyState.Die)
+            {
+                return false;
+            }
+
+            if (_skeletonAnimation == null)
+            {
+                return false;
+            }
+
+            if (_heroModel != null && _heroModel.isDead)
+            {
+                return false;
             }
 
             if (_heroRoot == null && _heroModel == null)
             {
+                return false;
+            }
+
+            return true;
+        }
+
+        private void ForceWeaponAimConstraintsActive()
+        {
+            Skeleton skeleton = _skeletonAnimation.Skeleton;
+            if (skeleton == null)
+            {
                 return;
             }
 
-            SyncCrosshairToHeroCombatPoint();
+            IkConstraint aimIk = skeleton.FindIkConstraint("aim-ik");
+            if (aimIk != null)
+            {
+                aimIk.Mix = 1f;
+            }
+
+            IkConstraint crosshairIk = skeleton.FindIkConstraint("crosshair");
+            if (crosshairIk != null)
+            {
+                crosshairIk.Mix = 1f;
+            }
         }
 
         private void SyncCrosshairToHeroCombatPoint()
@@ -541,7 +632,11 @@ namespace iStick2War_V2
             }
 
             Vector2 worldTarget = GetHeroCombatAimWorldPoint();
-            Vector3 skeletonSpacePoint = _skeletonAnimation.transform.InverseTransformPoint(worldTarget);
+            float skeletonZ = _skeletonAnimation.transform.position.z;
+
+            Vector3 worldAim3 = new Vector3(worldTarget.x, worldTarget.y, skeletonZ);
+            Vector3 skeletonUnityLocal = _skeletonAnimation.transform.InverseTransformPoint(worldAim3);
+            Vector3 skeletonSpacePoint = skeletonUnityLocal;
             skeletonSpacePoint.x *= _skeletonAnimation.Skeleton.ScaleX;
             skeletonSpacePoint.y *= _skeletonAnimation.Skeleton.ScaleY;
             _crossHairBone.SetLocalPosition(skeletonSpacePoint);
@@ -745,11 +840,22 @@ namespace iStick2War_V2
             _cachedHeroCollider = null;
             if (_heroRoot != null)
             {
-                _cachedHeroCollider = _heroRoot.GetComponent<Collider2D>();
-                if (_cachedHeroCollider == null)
+                Collider2D preferred = HeroBodyPart_V2.ResolvePrimaryCombatCollider(_heroRoot);
+                if (preferred != null)
                 {
-                    _cachedHeroCollider = _heroRoot.GetComponentInChildren<Collider2D>(true);
+                    _cachedHeroCollider = preferred;
+                    return;
                 }
+            }
+
+            if (_heroRoot != null)
+            {
+                _cachedHeroCollider = _heroRoot.GetComponentInChildren<Collider2D>(true);
+            }
+
+            if (_cachedHeroCollider == null && _heroModel != null)
+            {
+                _cachedHeroCollider = _heroModel.GetComponentInChildren<Collider2D>(true);
             }
         }
 
@@ -786,23 +892,8 @@ namespace iStick2War_V2
             origin = GetShotOrigin();
             direction = default;
 
-            SyncCrosshairToHeroCombatPoint();
-
-            if (_aimBone != null && _crossHairBone != null && _skeletonAnimation != null)
-            {
-                Vector2 aimPos = _skeletonAnimation.transform.TransformPoint(
-                    new Vector3(_aimBone.WorldX, _aimBone.WorldY, 0f));
-                Vector2 crossPos = _skeletonAnimation.transform.TransformPoint(
-                    new Vector3(_crossHairBone.WorldX, _crossHairBone.WorldY, 0f));
-                Vector2 dir = crossPos - aimPos;
-                if (dir.sqrMagnitude > 0.0001f)
-                {
-                    origin = aimPos;
-                    direction = dir.normalized;
-                    return true;
-                }
-            }
-
+            // Muzzle from Spine when valid; combat direction toward hero body (not crosshair bone),
+            // so telegraph / hitscan stay correct even when called from FixedUpdate.
             Vector2 aimTarget = GetHeroCombatAimWorldPoint();
             Vector2 toHero = aimTarget - origin;
             if (toHero.sqrMagnitude < 0.0001f)

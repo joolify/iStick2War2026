@@ -323,7 +323,16 @@
 	"cannon": {}
 },
 "animations": {
-	"aim": {},
+	"aim": {
+		"ik": {
+			"aim-ik": [
+				{}
+			],
+			"crosshair": [
+				{}
+			]
+		}
+	},
 	"idle": {
 		"bones": {
 			"hip": {
@@ -411,6 +420,14 @@
 					{ "time": 1 }
 				]
 			}
+		},
+		"ik": {
+			"aim-ik": [
+				{}
+			],
+			"crosshair": [
+				{}
+			]
 		},
 		"events": [
 			{ "time": 0.0333, "name": "cannon" }

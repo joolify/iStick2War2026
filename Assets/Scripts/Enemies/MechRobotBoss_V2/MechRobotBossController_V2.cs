@@ -336,13 +336,27 @@ namespace iStick2War_V2
             if (_skeletonAnimation != null && _skeletonAnimation.Skeleton != null)
             {
                 bool faceRight = deltaXFromHero > 0f;
-                float absScale = Mathf.Abs(_skeletonAnimation.Skeleton.ScaleX);
-                if (absScale < 0.001f)
+
+                // Keep skeleton ScaleX positive: 1-bone aim-ik on cannon adds 180° when ascaleX < 0, so the
+                // barrel ends up backward while the body still looks flipped. Mirror via view scale (Paratrooper pattern).
+                float absSkeletonScaleX = Mathf.Abs(_skeletonAnimation.Skeleton.ScaleX);
+                if (absSkeletonScaleX < 0.001f)
                 {
-                    absScale = 1f;
+                    absSkeletonScaleX = 1f;
                 }
 
-                _skeletonAnimation.Skeleton.ScaleX = faceRight ? absScale : -absScale;
+                _skeletonAnimation.Skeleton.ScaleX = absSkeletonScaleX;
+
+                Transform viewTransform = _skeletonAnimation.transform;
+                Vector3 viewScale = viewTransform.localScale;
+                float absViewX = Mathf.Abs(viewScale.x);
+                if (absViewX < 0.001f)
+                {
+                    absViewX = 1f;
+                }
+
+                viewScale.x = faceRight ? absViewX : -absViewX;
+                viewTransform.localScale = viewScale;
                 return;
             }
 
