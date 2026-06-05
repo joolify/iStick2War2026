@@ -40,6 +40,18 @@ namespace iStick2War_V2
     [DisallowMultipleComponent]
     public sealed class BombDrone_V2 : AircraftHealthCompositionRootBase_V2
     {
+        // Pre–controller-split bombDrone.prefab stored these on the composition root; migrated in InitializeForSpawn.
+        [SerializeField] private float _horizontalFlySpeed = 6.2f;
+        [SerializeField] private float _flightOffscreenMarginWorld = 4f;
+        [SerializeField] private float _maxLifetimeSeconds = 30f;
+        [SerializeField] private bool _spriteFacesRightWhenScaleXPositive = true;
+        [SerializeField] private bool _invertFlightDirectionX;
+        [SerializeField] private BombProjectile_V2 _bombProjectilePrefab;
+        [SerializeField] private Transform _bombDropMount;
+        [SerializeField] private int _bombDamage = 24;
+        [SerializeField] private float _bombExplosionRadius = 1.75f;
+        [SerializeField] private float _dropToleranceX = 0.7f;
+
         private BombDroneModel_V2 _model;
         private BombDroneStateMachine_V2 _stateMachine;
         private BombDroneController_V2 _controller;
@@ -59,6 +71,19 @@ namespace iStick2War_V2
         public void InitializeForSpawn()
         {
             EnsureReferences();
+            _controller.AdoptLegacyCompositionRootTuningIfUnset(
+                _bombProjectilePrefab,
+                _bombDropMount,
+                droppedBombPrefab: null,
+                attachedPayloadBomb: null,
+                _horizontalFlySpeed,
+                _flightOffscreenMarginWorld,
+                _maxLifetimeSeconds,
+                _spriteFacesRightWhenScaleXPositive,
+                _invertFlightDirectionX,
+                _bombDamage,
+                _bombExplosionRadius,
+                _dropToleranceX);
             _stateMachine.Initialize(_model);
             _controller.Initialize(_model, _stateMachine);
             _view.Initialize(_stateMachine);

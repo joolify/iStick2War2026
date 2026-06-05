@@ -8727,7 +8727,7 @@ MonoBehaviour:
   _bomberPassIntervalSeconds: 4.5
   _kamikazeDronePrefabAsset: {fileID: 6742630069675736119, guid: 3c720939265f18e45807ac65c794ca80, type: 3}
   _kamikazeDroneSpawnIntervalSeconds: 3.2
-  _bombDronePrefab: {fileID: 2886576470817135857, guid: 9449e99e58fa4ee4892c0965881c3d47, type: 3}
+  _bombDronePrefab: {fileID: 2249719271186148079, guid: 1d567b523471f344a9a3e290b7f84ae0, type: 3}
   _bombDroneSpawnIntervalSeconds: 4.1
   _aircraftAutoDestroySeconds: 4
   _paratrooperMountChildName: ParatrooperDrop

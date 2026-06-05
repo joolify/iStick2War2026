@@ -77,6 +77,80 @@ namespace iStick2War_V2
             _rb = GetComponent<Rigidbody2D>();
         }
 
+        // Pre–controller-split prefabs (bombDrone.prefab) kept tuning on BombDrone_V2; copy onto runtime-added Controller fields.
+        internal void AdoptLegacyCompositionRootTuningIfUnset(
+            BombProjectile_V2 bombProjectilePrefab,
+            Transform bombDropMount,
+            GameObject droppedBombPrefab,
+            Transform attachedPayloadBomb,
+            float horizontalFlySpeed,
+            float flightOffscreenMarginWorld,
+            float maxLifetimeSeconds,
+            bool spriteFacesRightWhenScaleXPositive,
+            bool invertFlightDirectionX,
+            int bombDamage,
+            float bombExplosionRadius,
+            float dropToleranceX)
+        {
+            if (_bombProjectilePrefab == null && bombProjectilePrefab != null)
+            {
+                _bombProjectilePrefab = bombProjectilePrefab;
+            }
+
+            if (_bombDropMount == null && bombDropMount != null)
+            {
+                _bombDropMount = bombDropMount;
+            }
+
+            if (_droppedBombPrefab == null && droppedBombPrefab != null)
+            {
+                _droppedBombPrefab = droppedBombPrefab;
+            }
+
+            if (_attachedPayloadBomb == null && attachedPayloadBomb != null)
+            {
+                _attachedPayloadBomb = attachedPayloadBomb;
+            }
+
+            if (_bombProjectilePrefab == null && _droppedBombPrefab == null && attachedPayloadBomb == null)
+            {
+                return;
+            }
+
+            if (horizontalFlySpeed > 0f)
+            {
+                _horizontalFlySpeed = horizontalFlySpeed;
+            }
+
+            if (flightOffscreenMarginWorld > 0f)
+            {
+                _flightOffscreenMarginWorld = flightOffscreenMarginWorld;
+            }
+
+            if (maxLifetimeSeconds > 0f)
+            {
+                _maxLifetimeSeconds = maxLifetimeSeconds;
+            }
+
+            _spriteFacesRightWhenScaleXPositive = spriteFacesRightWhenScaleXPositive;
+            _invertFlightDirectionX = invertFlightDirectionX;
+
+            if (bombDamage > 0)
+            {
+                _bombDamage = bombDamage;
+            }
+
+            if (bombExplosionRadius > 0f)
+            {
+                _bombExplosionRadius = bombExplosionRadius;
+            }
+
+            if (dropToleranceX > 0f)
+            {
+                _dropToleranceX = dropToleranceX;
+            }
+        }
+
         public void StartFlight()
         {
             if (_model == null || _stateMachine == null)
@@ -103,6 +177,7 @@ namespace iStick2War_V2
             _stateMachine.ChangeState(BombDroneState_V2.Fly);
 
             EnsureAttachedPayloadForSpawn();
+            SyncAttachedPayloadSorting();
         }
 
         public void FreezeForCombatMatrixHarness()
@@ -193,7 +268,8 @@ namespace iStick2War_V2
             }
 
             float tolerance = Mathf.Max(0.1f, _dropToleranceX);
-            float dx = Mathf.Abs(transform.position.x - _bunkerHitbox.transform.position.x);
+            float bunkerX = ResolveBunkerDropAlignWorldX(_bunkerHitbox);
+            float dx = Mathf.Abs(transform.position.x - bunkerX);
             if (dx > tolerance)
             {
                 return;
@@ -203,37 +279,153 @@ namespace iStick2War_V2
             _stateMachine.ChangeState(BombDroneState_V2.HoverOverBunker);
         }
 
+        private static float ResolveBunkerDropAlignWorldX(BunkerHitbox_V2 bunkerHitbox)
+        {
+            if (bunkerHitbox == null)
+            {
+                return 0f;
+            }
+
+            Collider2D col = bunkerHitbox.GetComponent<Collider2D>();
+            if (col != null)
+            {
+                return col.bounds.center.x;
+            }
+
+            return bunkerHitbox.transform.position.x;
+        }
+
+        private Vector3 ResolveBombDropWorldPosition()
+        {
+            Transform attached = _attachedPayloadBomb;
+            if (attached != null && attached && attached.gameObject.activeInHierarchy)
+            {
+                return attached.position;
+            }
+
+            if (_bombDropMount != null)
+            {
+                return _bombDropMount.position;
+            }
+
+            return transform.position;
+        }
+
         private void CompleteHoverAndBeginDrop()
         {
-            Vector3 dropPos = _bombDropMount != null ? _bombDropMount.position : transform.position;
+            Vector3 dropPos = ResolveBombDropWorldPosition();
+            dropPos.x = CombatBand_V2.ClampBomberReleaseWorldX(dropPos.x);
 
             _model.bombDropped = true;
             _returnToFlyAfterDropAt = Time.time + Mathf.Max(0.05f, _dropBombStateDuration);
             _stateMachine.ChangeState(BombDroneState_V2.DropBomb);
 
-            Transform attached = _attachedPayloadBomb;
-            if (attached != null && attached && attached.IsChildOf(transform))
+            bool gameplayBombSpawned = TrySpawnGameplayBomb(dropPos);
+            ReleaseOrHideAttachedPayload(dropPos, gameplayBombSpawned);
+
+            if (!gameplayBombSpawned && _droppedBombPrefab != null)
             {
-                attached.SetParent(null, true);
-                attached.position = dropPos;
-                ApplyDroppedBombPhysics(attached.gameObject);
+                GameObject dropped = SimplePrefabPool_V2.Spawn(_droppedBombPrefab, dropPos, Quaternion.identity);
+                ApplyDroppedBombPresentation(dropped);
+                ApplyDroppedBombPhysics(dropped);
+            }
+        }
+
+        private bool TrySpawnGameplayBomb(Vector3 dropPos)
+        {
+            if (_bombProjectilePrefab == null)
+            {
+                return false;
+            }
+
+            BombProjectile_V2 bomb = SimplePrefabPool_V2.Spawn(_bombProjectilePrefab, dropPos, Quaternion.identity);
+            if (bomb == null)
+            {
+                return false;
+            }
+
+            Vector2 inherited = _rb != null ? _rb.linearVelocity : Vector2.zero;
+            bomb.Initialize(inherited, Mathf.Max(1, _bombDamage), Mathf.Max(0.2f, _bombExplosionRadius));
+            ApplyDroppedBombPresentation(bomb.gameObject);
+            return true;
+        }
+
+        private void SyncAttachedPayloadSorting()
+        {
+            Transform attached = _attachedPayloadBomb;
+            if (attached == null || !attached)
+            {
                 return;
             }
 
-            if (_droppedBombPrefab != null)
+            SpriteRenderer payloadRenderer = attached.GetComponent<SpriteRenderer>();
+            if (payloadRenderer == null)
             {
-                GameObject dropped = SimplePrefabPool_V2.Spawn(_droppedBombPrefab, dropPos, Quaternion.identity);
-                ApplyDroppedBombPhysics(dropped);
+                return;
             }
-            else if (_bombProjectilePrefab != null)
+
+            MeshRenderer droneBody = GetComponentInChildren<MeshRenderer>(true);
+            if (droneBody == null)
             {
-                BombProjectile_V2 bomb = SimplePrefabPool_V2.Spawn(_bombProjectilePrefab, dropPos, Quaternion.identity);
-                if (bomb != null)
-                {
-                    Vector2 inherited = _rb != null ? _rb.linearVelocity : Vector2.zero;
-                    bomb.Initialize(inherited, Mathf.Max(1, _bombDamage), Mathf.Max(0.2f, _bombExplosionRadius));
-                }
+                return;
             }
+
+            payloadRenderer.sortingLayerID = droneBody.sortingLayerID;
+            payloadRenderer.sortingOrder = droneBody.sortingOrder - 1;
+        }
+
+        private void ApplyDroppedBombPresentation(GameObject dropped)
+        {
+            if (dropped == null)
+            {
+                return;
+            }
+
+            SpriteRenderer droppedRenderer = dropped.GetComponent<SpriteRenderer>();
+            if (droppedRenderer == null)
+            {
+                return;
+            }
+
+            Transform attached = _attachedPayloadBomb;
+            SpriteRenderer payloadRenderer = attached != null && attached
+                ? attached.GetComponent<SpriteRenderer>()
+                : null;
+
+            if (payloadRenderer != null)
+            {
+                droppedRenderer.sortingLayerID = payloadRenderer.sortingLayerID;
+                droppedRenderer.sortingOrder = payloadRenderer.sortingOrder;
+                dropped.transform.localScale = attached.lossyScale * 0.5f;
+                return;
+            }
+
+            MeshRenderer droneBody = GetComponentInChildren<MeshRenderer>(true);
+            if (droneBody != null)
+            {
+                droppedRenderer.sortingLayerID = droneBody.sortingLayerID;
+                droppedRenderer.sortingOrder = droneBody.sortingOrder - 1;
+            }
+        }
+
+        private void ReleaseOrHideAttachedPayload(Vector3 dropPos, bool gameplayBombSpawned)
+        {
+            Transform attached = _attachedPayloadBomb;
+            if (attached == null || !attached || !attached.IsChildOf(transform))
+            {
+                return;
+            }
+
+            if (gameplayBombSpawned)
+            {
+                // Cosmetic bomb5 sprite on the drone; pooled BombProjectile_V2 owns fall + explosion.
+                attached.gameObject.SetActive(false);
+                return;
+            }
+
+            attached.SetParent(null, true);
+            attached.position = dropPos;
+            ApplyDroppedBombPhysics(attached.gameObject);
         }
 
         private void EnsureAttachedPayloadForSpawn()
@@ -241,6 +433,11 @@ namespace iStick2War_V2
             Transform attached = _attachedPayloadBomb;
             if (attached != null && attached && attached.IsChildOf(transform))
             {
+                if (!attached.gameObject.activeSelf)
+                {
+                    attached.gameObject.SetActive(true);
+                }
+
                 return;
             }
 
