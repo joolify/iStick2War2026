@@ -1469,9 +1469,13 @@ namespace iStick2War_V2
             }
 
             float maxShootDist = weaponRange * rangeFactor;
-            bool isImmediateAirThreat = hasTarget && target != null && IsAircraftCollider(target);
+            bool isAircraftTarget = hasTarget && target != null && IsAircraftCollider(target);
+            bool isImmediateAirCombatThreat =
+                hasTarget &&
+                target != null &&
+                IsImmediateAirCombatThreat(target, bombThreat || splashActive);
             bool inRange;
-            if (isImmediateAirThreat)
+            if (isAircraftTarget)
             {
                 // Drone/aircraft fights should not be gated by strict box checks; allow generous world-distance fire.
                 float slack = Mathf.Max(1f, _aircraftShootRangeSlackMultiplier);
@@ -1498,16 +1502,15 @@ namespace iStick2War_V2
             // (telemetry wave_cleared rows often snapshot after clears — was confusing vs autoHeroHasTarget).
             bool targetShootableOnCamera =
                 hasTarget &&
-                (shootFrustumPlanes == null ||
-                 GeometryUtility.TestPlanesAABB(shootFrustumPlanes, target.bounds));
-            if (isImmediateGroundParatrooperThreat || isImmediateAirThreat)
+                IsEnemyBoundsShootVisible(shootVisCam, shootFrustumPlanes, target.bounds);
+            if (isImmediateGroundParatrooperThreat || isImmediateAirCombatThreat)
             {
-                // Emergency override: immediate threats (ground combat paratrooper / active air threat) should not be
-                // blocked by transient frustum gating failures.
+                // Emergency override: enemies already attacking (ground Shoot/Grenade, bomb drop, bombplane under splash)
+                // may sit on the frustum edge; do not block those shots.
                 targetShootableOnCamera = true;
             }
 
-            bool shootBlockedByBunkerMove = wantBunker && !isImmediateGroundParatrooperThreat && !isImmediateAirThreat;
+            bool shootBlockedByBunkerMove = wantBunker && !isImmediateGroundParatrooperThreat && !isAircraftTarget;
             if (shootBlockedByBunkerMove &&
                 wantBunkerFromBombs &&
                 bombThreat &&
@@ -2802,6 +2805,33 @@ namespace iStick2War_V2
 
         // Emergency shoot bypass: only enemies already able to attack should ignore camera gating.
         // Groundtrooper run-in uses Run while still outside the view, so it must wait for normal visibility.
+        // BombDrone in Fly (approach pass) must also wait — otherwise AutoHero fires at off-screen drones.
+        private static bool IsImmediateAirCombatThreat(Collider2D c, bool bombSplashThreatActive)
+        {
+            if (c == null)
+            {
+                return false;
+            }
+
+            if (bombSplashThreatActive && IsBombingAircraftCollider(c))
+            {
+                return true;
+            }
+
+            BombDrone_V2 bombDrone = c.GetComponentInParent<BombDrone_V2>();
+            if (bombDrone != null)
+            {
+                BombDroneModel_V2 model = bombDrone.GetComponent<BombDroneModel_V2>();
+                if (model != null)
+                {
+                    BombDroneState_V2 state = model.currentState;
+                    return state == BombDroneState_V2.HoverOverBunker || state == BombDroneState_V2.DropBomb;
+                }
+            }
+
+            return false;
+        }
+
         private static bool IsImmediateGroundCombatInfantryTarget(Collider2D c)
         {
             if (c == null)

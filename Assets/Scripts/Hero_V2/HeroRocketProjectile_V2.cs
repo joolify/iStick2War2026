@@ -440,8 +440,8 @@ namespace iStick2War_V2
                 if (aircraft != null && !damagedAircraft.Contains(aircraft))
                 {
                     damagedAircraft.Add(aircraft);
-                    damagedKinds.Add(ClassifyAircraftExplosionVfxKind(aircraft));
-                    aircraft.ApplyDamage(finalAircraftDamage);
+                    damagedKinds.Add(ToRocketExplosionVfxKind(AircraftExplosionVfx_V2.Classify(aircraft)));
+                    aircraft.ApplyDamage(finalAircraftDamage, suppressDeathExplosionVfx: true);
                 }
             }
 
@@ -780,29 +780,19 @@ namespace iStick2War_V2
             return false;
         }
 
-        private static RocketExplosionVfxKind ClassifyAircraftExplosionVfxKind(AircraftHealth_V2 aircraft)
+        private static RocketExplosionVfxKind ToRocketExplosionVfxKind(AircraftExplosionVfxKind_V2 kind)
         {
-            if (aircraft == null)
+            switch (kind)
             {
-                return RocketExplosionVfxKind.HelicopterOrGenericAircraft;
+                case AircraftExplosionVfxKind_V2.BombPlane:
+                    return RocketExplosionVfxKind.BombPlane;
+                case AircraftExplosionVfxKind_V2.KamikazeDrone:
+                    return RocketExplosionVfxKind.KamikazeDrone;
+                case AircraftExplosionVfxKind_V2.BombDrone:
+                    return RocketExplosionVfxKind.BombDrone;
+                default:
+                    return RocketExplosionVfxKind.HelicopterOrGenericAircraft;
             }
-
-            if (aircraft.GetComponentInParent<KamikazeDroneDriver_V2>() != null)
-            {
-                return RocketExplosionVfxKind.KamikazeDrone;
-            }
-
-            if (aircraft.GetComponentInParent<BombDrone_V2>() != null)
-            {
-                return RocketExplosionVfxKind.BombDrone;
-            }
-
-            if (aircraft.GetComponentInParent<Bombplane_V2>() != null)
-            {
-                return RocketExplosionVfxKind.BombPlane;
-            }
-
-            return RocketExplosionVfxKind.HelicopterOrGenericAircraft;
         }
 
         /// <summary>

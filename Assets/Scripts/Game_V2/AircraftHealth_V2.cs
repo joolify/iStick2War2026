@@ -81,8 +81,8 @@ namespace iStick2War_V2
             _currentHealth = Mathf.Max(1f, _maxHealth);
         }
 
-        /// <summary>Apply damage from hero weapons (per-weapon values come from <see cref="HeroWeaponDefinition_V2"/>).</summary>
-        public void ApplyDamage(float damage)
+        // suppressDeathExplosionVfx: bazooka detonation spawns typed blast VFX at the rocket; skip duplicate at aircraft root.
+        public void ApplyDamage(float damage, bool suppressDeathExplosionVfx = false)
         {
             if (damage <= 0f || _currentHealth <= 0f || _isDead)
             {
@@ -92,11 +92,11 @@ namespace iStick2War_V2
             _currentHealth -= damage;
             if (_currentHealth <= 0f)
             {
-                Die();
+                Die(suppressDeathExplosionVfx);
             }
         }
 
-        private void Die()
+        private void Die(bool suppressDeathExplosionVfx)
         {
             if (_isDead)
             {
@@ -105,18 +105,14 @@ namespace iStick2War_V2
 
             _isDead = true;
             OnDestroyed?.Invoke(this);
-            if (_airExplosionEffectPrefab != null)
+            if (!suppressDeathExplosionVfx)
             {
-                GameObject fx = SimplePrefabPool_V2.Spawn(_airExplosionEffectPrefab, transform.position, Quaternion.identity);
-                if (fx != null)
+                // Hit-scan (Colt, Thompson, …): same typed/fallback VFX as bazooka aircraft kills.
+                if (!AircraftExplosionVfx_V2.TrySpawnForAircraftDeath(this) &&
+                    _airExplosionEffectPrefab != null)
                 {
-                    PooledAutoDespawn_V2 timer = fx.GetComponent<PooledAutoDespawn_V2>();
-                    if (timer == null)
-                    {
-                        timer = fx.AddComponent<PooledAutoDespawn_V2>();
-                    }
-
-                    timer.Arm(Mathf.Max(0.05f, _airExplosionEffectLifetime));
+                    Vector3 explosionPoint = AircraftExplosionVfx_V2.ResolveDeathWorldPoint(this);
+                    SpawnLegacyAirExplosion(_airExplosionEffectPrefab, explosionPoint, _airExplosionEffectLifetime);
                 }
             }
 
@@ -124,6 +120,23 @@ namespace iStick2War_V2
             {
                 SimplePrefabPool_V2.Despawn(gameObject);
             }
+        }
+
+        private static void SpawnLegacyAirExplosion(GameObject prefab, Vector3 worldPosition, float lifetimeSeconds)
+        {
+            GameObject fx = SimplePrefabPool_V2.Spawn(prefab, worldPosition, Quaternion.identity);
+            if (fx == null)
+            {
+                return;
+            }
+
+            PooledAutoDespawn_V2 timer = fx.GetComponent<PooledAutoDespawn_V2>();
+            if (timer == null)
+            {
+                timer = fx.AddComponent<PooledAutoDespawn_V2>();
+            }
+
+            timer.Arm(Mathf.Max(0.05f, lifetimeSeconds));
         }
     }
 }
