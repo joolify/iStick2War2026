@@ -61,6 +61,13 @@ namespace iStick2War_V2
             public AnimationReferenceAsset DryFire;
         }
 
+        // Track 1 = aim loop; track 2 = shoot overlay so muzzle bones stay on aim pose during rapid fire.
+        private const int WeaponAimTrackIndex = 1;
+        private const int WeaponShootTrackIndex = 2;
+        // Infantry / bunker band; helicopters spawn around y=5–9 (EnemySpawner_V2._spawnYRange).
+        // Shared with HeroController bazooka carrier-passthrough gating (infantry/bunker band; helicopters spawn higher).
+        internal const float ProjectileGroundTargetMaxWorldY = 2.5f;
+
         public SkeletonAnimation _skeletonAnimation;
 
         private HeroStateMachine_V2 _stateMachine;
@@ -332,9 +339,10 @@ namespace iStick2War_V2
 
             _touchPos = ResolveAimWorldPoint();
             FaceTowardWorldX(_touchPos);
-            SetCrosshair(_touchPos);
             UpdateFlamethrowerVfxPose();
             TickVisualRecoil();
+            // Crosshair after recoil so bone placement matches the authoritative aim point used in TryGetAimData.
+            SetCrosshair(_touchPos);
 
             // Runtime failsafe: even if ParticleSystem has Play On Awake, never show flamethrower
             // unless controller currently holds shoot.
@@ -378,7 +386,10 @@ namespace iStick2War_V2
                 return transform.position;
             }
 
-            Vector3 w = cam.ScreenToWorldPoint(Input.mousePosition);
+            float aimPlaneZ = _skeletonAnimation != null ? _skeletonAnimation.transform.position.z : 0f;
+            Vector3 screen = Input.mousePosition;
+            screen.z = cam.WorldToScreenPoint(new Vector3(0f, 0f, aimPlaneZ)).z;
+            Vector3 w = cam.ScreenToWorldPoint(screen);
             return new Vector2(w.x, w.y);
         }
 
@@ -634,7 +645,8 @@ namespace iStick2War_V2
                 return;
             }
 
-            _skeletonAnimation.AnimationState.ClearTrack(1);
+            _skeletonAnimation.AnimationState.ClearTrack(WeaponAimTrackIndex);
+            _skeletonAnimation.AnimationState.ClearTrack(WeaponShootTrackIndex);
 
             AnimationReferenceAsset deathAnim = GetRandomFallDownBackDeathAnimation();
             if (TrySetTrackAnimation(0, deathAnim, false))
@@ -826,7 +838,7 @@ namespace iStick2War_V2
             }
 
             AnimationReferenceAsset aimAnim = GetAimAnimationForCurrentWeapon();
-            TrySetTrackAnimation(1, aimAnim, true);
+            TrySetTrackAnimation(WeaponAimTrackIndex, aimAnim, true);
         }
 
         private void SetCrosshair(Vector2 worldAimPos)
@@ -898,8 +910,14 @@ namespace iStick2War_V2
 
         public bool TryGetAimData(out Vector2 origin, out Vector2 direction)
         {
+            return TryGetAimData(out origin, out direction, out _);
+        }
+
+        public bool TryGetAimData(out Vector2 origin, out Vector2 direction, out Vector2 aimTarget)
+        {
             origin = default;
             direction = default;
+            aimTarget = default;
 
             if (_skeletonAnimation == null || _aimPointBone == null || _crossHairBone == null)
             {
@@ -910,14 +928,28 @@ namespace iStick2War_V2
             Vector2 aimPos = _skeletonAnimation.transform.TransformPoint(
                 new Vector3(_aimPointBone.WorldX, _aimPointBone.WorldY, 0f)
             );
-            Vector2 crossPos = _skeletonAnimation.transform.TransformPoint(
-                new Vector3(_crossHairBone.WorldX, _crossHairBone.WorldY, 0f)
-            );
+            // Use the resolved aim target (mouse / AutoHero override), not crosshair bone world X/Y.
+            // Visual recoil rotates the skeleton after SetCrosshair, which skews crosshair bone world
+            // position and made bazooka rockets fly off-axis during rapid fire.
+            aimTarget = ResolveAimWorldPoint();
+            Vector2 shotDirection = aimTarget - aimPos;
 
-            Vector2 shotDirection = crossPos - aimPos;
+            HeroWeaponDefinition_V2 weaponDef = _model != null ? _model.currentWeaponDefinition : null;
+            if (weaponDef != null && weaponDef.UseProjectile &&
+                aimTarget.y <= ProjectileGroundTargetMaxWorldY)
+            {
+                // Muzzle bone often sits below the crosshair on infantry; lead toward target X/Y instead of
+                // firing over their heads when aimTarget.y is slightly above the tube.
+                Vector2 leadPoint = new Vector2(
+                    aimTarget.x,
+                    Mathf.Max(aimTarget.y, aimPos.y - 0.05f));
+                shotDirection = leadPoint - aimPos;
+            }
+
             if (shotDirection.sqrMagnitude <= 0.0001f)
             {
-                Debug.LogWarning($"[HeroView_V2] TryGetAimData failed. Direction too small. aimPos={aimPos}, crossPos={crossPos}");
+                Debug.LogWarning(
+                    $"[HeroView_V2] TryGetAimData failed. Direction too small. aimPos={aimPos}, aimTarget={aimTarget}");
                 return false;
             }
 
@@ -988,7 +1020,8 @@ namespace iStick2War_V2
                 return;
             }
 
-            _skeletonAnimation.AnimationState.SetAnimation(1, shootAnim, true);
+            PlayAimLoop();
+            _skeletonAnimation.AnimationState.SetAnimation(WeaponShootTrackIndex, shootAnim, true);
             TryPlayFlamethrowerVfx();
         }
 
@@ -1026,6 +1059,23 @@ namespace iStick2War_V2
 
             // Keep jump visible on base track while still allowing air aiming.
             PlayAimLoop();
+
+            // Bazooka: drive fire from H/bazooka_shoot start_shoot events on the shoot overlay track.
+            if (_model != null && _model.currentWeaponType == WeaponType.Bazooka)
+            {
+                if (isShooting)
+                {
+                    AnimationReferenceAsset shootAnim = GetShootAnimationForCurrentWeapon();
+                    if (shootAnim != null)
+                    {
+                        _skeletonAnimation.AnimationState.SetAnimation(WeaponShootTrackIndex, shootAnim, true);
+                    }
+                }
+                else
+                {
+                    _skeletonAnimation.AnimationState.ClearTrack(WeaponShootTrackIndex);
+                }
+            }
         }
 
         /// <summary>
@@ -1378,15 +1428,8 @@ namespace iStick2War_V2
         {
             StopFlamethrowerVfxIfActive();
             StopTeslaLightningVfxIfActive();
-            AnimationReferenceAsset aimAnim = GetAimAnimationForCurrentWeapon();
-            if (aimAnim != null)
-            {
-                _skeletonAnimation.AnimationState.SetAnimation(1, aimAnim, true);
-            }
-            else
-            {
-                _skeletonAnimation.AnimationState.ClearTrack(1);
-            }
+            _skeletonAnimation.AnimationState.ClearTrack(WeaponShootTrackIndex);
+            PlayAimLoop();
         }
 
         internal void PlayReload()
@@ -1400,11 +1443,11 @@ namespace iStick2War_V2
             }
 
             // Keep locomotion on track 0, play reload on weapon/upper-body track.
-            _skeletonAnimation.AnimationState.SetAnimation(1, reloadAnim, false);
+            _skeletonAnimation.AnimationState.SetAnimation(WeaponAimTrackIndex, reloadAnim, false);
             AnimationReferenceAsset aimAnim = GetAimAnimationForCurrentWeapon();
             if (aimAnim != null)
             {
-                _skeletonAnimation.AnimationState.AddAnimation(1, aimAnim, true, 0f);
+                _skeletonAnimation.AnimationState.AddAnimation(WeaponAimTrackIndex, aimAnim, true, 0f);
             }
         }
 
@@ -1413,11 +1456,11 @@ namespace iStick2War_V2
             AnimationReferenceAsset dryFireAnim = GetDryFireAnimationForCurrentWeapon();
             if (dryFireAnim != null)
             {
-                _skeletonAnimation.AnimationState.SetAnimation(1, dryFireAnim, false);
+                _skeletonAnimation.AnimationState.SetAnimation(WeaponAimTrackIndex, dryFireAnim, false);
                 AnimationReferenceAsset aimAnim = GetAimAnimationForCurrentWeapon();
                 if (aimAnim != null)
                 {
-                    _skeletonAnimation.AnimationState.AddAnimation(1, aimAnim, true, 0f);
+                    _skeletonAnimation.AnimationState.AddAnimation(WeaponAimTrackIndex, aimAnim, true, 0f);
                 }
                 return;
             }

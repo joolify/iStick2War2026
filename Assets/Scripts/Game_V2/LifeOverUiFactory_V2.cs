@@ -14,10 +14,16 @@ namespace iStick2War_V2
         private const string CanvasName = "LifeOver-canvas";
         private const string InfoTextName = "txt_lifeOver_info";
         private const string StartLabelName = "txt_lifeOver_startNewGame";
+        private const string GoToShopLabelName = "txt_lifeOver_goToShop";
         private const int LifeOverCanvasSortingOrderOffset = 10;
         private static readonly Vector2 DefaultCanvasSize = new Vector2(1920f, 1080f);
 
         public static bool EnsureLabelsExist(string infoMessage, bool logWhenChanged)
+        {
+            return EnsureLabelsExist(infoMessage, "Go to shop", logWhenChanged);
+        }
+
+        public static bool EnsureLabelsExist(string infoMessage, string goToShopLabel, bool logWhenChanged)
         {
             Transform chromeRoot = FindChromeRoot();
             if (chromeRoot == null)
@@ -53,6 +59,14 @@ namespace iStick2War_V2
                 StartLabelName,
                 "Start Game",
                 new Vector2(0f, -35f),
+                new Vector2(520f, 50f),
+                34);
+            changed |= EnsureLabel(
+                canvasRoot,
+                referenceLabel,
+                GoToShopLabelName,
+                goToShopLabel,
+                new Vector2(0f, -95f),
                 new Vector2(520f, 50f),
                 34);
 
@@ -203,9 +217,13 @@ namespace iStick2War_V2
                 TMP_Text existingTmp = existing.GetComponent<TMP_Text>();
                 if (existingTmp != null)
                 {
-                    if (!string.IsNullOrEmpty(defaultText) && string.IsNullOrWhiteSpace(existingTmp.text))
+                    if (!string.IsNullOrEmpty(defaultText))
                     {
-                        existingTmp.text = defaultText;
+                        if (string.IsNullOrWhiteSpace(existingTmp.text) ||
+                            objectName.Equals(GoToShopLabelName, System.StringComparison.Ordinal))
+                        {
+                            existingTmp.text = defaultText;
+                        }
                     }
 
                     return false;

@@ -349,10 +349,13 @@ namespace iStick2War_V2
             {
                 "txt_lifeOver_info",
                 "txt_lifeOver_startNewGame",
+                "txt_lifeOver_goToShop",
                 "txt_shop_info",
                 "txt_shop_startNewGame",
                 "TextBTN_MediumStartNewGame",
                 "TextBTN_MediumStartGame",
+                "TextBTN_MediumGoToShop",
+                "TextBTN_MediumGoToShop_Pressed",
             };
 
             Transform[] transforms = GetComponentsInChildren<Transform>(true);

@@ -26,11 +26,11 @@ namespace iStick2War_V2.Editor
 
             Undo.IncrementCurrentGroup();
             int undoGroup = Undo.GetCurrentGroup();
-            LifeOverUiFactory_V2.EnsureLabelsExist(infoMessage, logWhenChanged: true);
+            LifeOverUiFactory_V2.EnsureLabelsExist(infoMessage, "Go to shop", logWhenChanged: true);
             Undo.CollapseUndoOperations(undoGroup);
             EditorUtility.DisplayDialog(
                 "LifeOver UI",
-                "LifeOver-canvas + txt_lifeOver_info + txt_lifeOver_startNewGame ensured under LifeOver V2.\n\n" +
+                "LifeOver-canvas + txt_lifeOver_info + txt_lifeOver_startNewGame + txt_lifeOver_goToShop ensured under LifeOver V2.\n\n" +
                 "Save the scene and assign Life Over Root / text fields on WaveManager if needed.",
                 "OK");
         }

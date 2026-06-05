@@ -214,7 +214,7 @@ namespace iStick2War_V2
 
             // Programmatic weapon switches (e.g. AutoHero_V2) bypass HandleWeaponSwitchInput, so _outOfAmmoLatched
             // can stay true after a dry-fire on the previous weapon even when the new weapon has a loaded magazine.
-            if (_outOfAmmoLatched && _model.currentAmmo > 0)
+            if (_outOfAmmoLatched && _weaponSystem.HasRoundsReadyToFire())
             {
                 _outOfAmmoLatched = false;
                 _nextOutOfAmmoFeedbackAt = 0f;
@@ -243,7 +243,7 @@ namespace iStick2War_V2
             }
 
             if (_input.IsShootingHeld &&
-                _model.currentAmmo <= 0 &&
+                !_weaponSystem.HasRoundsReadyToFire() &&
                 !_weaponSystem.IsReloading())
             {
                 if (!_outOfAmmoLatched)
@@ -261,7 +261,7 @@ namespace iStick2War_V2
                     _view.StopShoot();
                 }
             }
-            else if (_input.IsShootingHeld && !_isShootLoopActive && _model.currentAmmo > 0 && !_outOfAmmoLatched)
+            else if (_input.IsShootingHeld && !_isShootLoopActive && _weaponSystem.HasRoundsReadyToFire() && !_outOfAmmoLatched)
             {
                 _isShootLoopActive = true;
                 _stateMachine.ChangeState(HeroState.Shooting);
@@ -328,15 +328,10 @@ namespace iStick2War_V2
                 case HeroState.Jumping:
                     _movementSystem.Move(_model.moveInput, deltaTime);
                     _view.UpdateJumpCombatOverlay(_isShootLoopActive && _input.IsShootingHeld);
-                    if (_isShootLoopActive && _input.IsShootingHeld)
+                    // Beam weapons only; bazooka and hitscan fire from Spine start_shoot (jump shoot overlay on track 2).
+                    if (_isShootLoopActive && _input.IsShootingHeld && ShootingStateTicksWeaponShots())
                     {
-                        // Bazooka is semi-auto (ShootStarted only); other weapons keep per-tick jump fire.
-                        bool useJumpShootTick = _model.currentWeaponType != WeaponType.Bazooka ||
-                                                ShootingStateTicksWeaponShots();
-                        if (useJumpShootTick)
-                        {
-                            TryShootNow();
-                        }
+                        TryShootNow();
                     }
                     break;
 
@@ -346,6 +341,7 @@ namespace iStick2War_V2
                     _view.UpdateShootLocomotion(_model.moveInput != Vector2.zero);
                     // Beam weapons and projectiles (bazooka) resolve shots here so a missing/irregular Spine
                     // "ShootStarted" on looped clips cannot silently drop rounds.
+                    // Bazooka uses Spine start_shoot / stop_shoot only (see ShootingStateTicksWeaponShots).
                     // TryShootNow is cheap when CanShoot() is false (fire-rate gate inside Shoot / ShootProjectile).
                     if (_isShootLoopActive &&
                         _input.IsShootingHeld &&
@@ -378,20 +374,19 @@ namespace iStick2War_V2
                         return;
                     }
 
-                    // While jumping, non-bazooka weapons resolve fire in the Jumping-state tick (base track).
-                    // Bazooka stays event-driven so hold-fire cannot machine-gun rockets in the air.
-                    if (_stateMachine.CurrentState == HeroState.Jumping && _model.currentWeaponType != WeaponType.Bazooka)
+                    // Jumping: beam tick only; bazooka / hitscan use Spine start_shoot on the jump shoot overlay.
+                    if (_stateMachine.CurrentState == HeroState.Jumping && ShootingStateTicksWeaponShots())
                     {
                         return;
                     }
 
-                    // Grounded Tesla / flamethrower / projectiles: fire from ExecuteActions tick (see ShootingStateTicksWeaponShots).
+                    // Tesla / flamethrower: fire from Shooting-state tick, not Spine ShootStarted.
                     if (ShootingStateTicksWeaponShots())
                     {
                         return;
                     }
 
-                    if (_model.currentAmmo <= 0)
+                    if (!_weaponSystem.HasRoundsReadyToFire())
                     {
                         LogCombat("[HeroController_V2] ShootStarted cancelled: out of ammo.");
                         _isShootLoopActive = false;
@@ -430,19 +425,7 @@ namespace iStick2War_V2
         /// </summary>
         private bool ShootingStateTicksWeaponShots()
         {
-            if (UsesContinuousShootTickResolution(_model.currentWeaponType))
-            {
-                return true;
-            }
-
-            // Projectile weapons default to tick-driven fire so looped Spine clips can't drop shots.
-            // Bazooka is excluded: hold-fire at fireRate reads as many mid-flight explosions before distant hits.
-            if (_weaponSystem.ActiveWeaponUsesProjectile() && _model.currentWeaponType != WeaponType.Bazooka)
-            {
-                return true;
-            }
-
-            return false;
+            return UsesContinuousShootTickResolution(_model.currentWeaponType);
         }
 
         private float GetOutOfAmmoFeedbackIntervalSeconds()
@@ -464,7 +447,7 @@ namespace iStick2War_V2
 
         private void TryShootNow()
         {
-            if (_model.currentAmmo <= 0)
+            if (!_weaponSystem.HasRoundsReadyToFire())
             {
                 if (_input.IsShootingHeld &&
                     !_weaponSystem.IsReloading())
@@ -477,7 +460,7 @@ namespace iStick2War_V2
 
             bool isFlamethrower = _model.currentWeaponType == WeaponType.Flamethrower;
 
-            if (!_view.TryGetAimData(out var aimPos, out var direction))
+            if (!_view.TryGetAimData(out var aimPos, out var direction, out var aimTarget))
             {
                 Debug.LogWarning("[HeroController_V2] TryShootNow: TryGetAimData failed.");
                 if (isFlamethrower && Time.time >= _nextFlamethrowerDebugLogAt)
@@ -496,7 +479,12 @@ namespace iStick2War_V2
 
             if (_weaponSystem.ActiveWeaponUsesProjectile())
             {
-                bool didShootProjectile = _weaponSystem.ShootProjectile(aimPos, direction);
+                bool allowCarrierPassthrough =
+                    aimTarget.y <= HeroView_V2.ProjectileGroundTargetMaxWorldY;
+                bool didShootProjectile = _weaponSystem.ShootProjectile(
+                    aimPos,
+                    direction,
+                    allowCarrierPassthrough);
                 if (didShootProjectile &&
                     ShouldPlayMuzzleFlashForWeapon(_model.currentWeaponType))
                 {

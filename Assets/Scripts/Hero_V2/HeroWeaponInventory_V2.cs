@@ -8,6 +8,10 @@ namespace iStick2War_V2
         // Colt45: magazine rounds are consumed; reserve is unlimited for reload + UI (∞).
         public static bool HasInfiniteReserveAmmo(WeaponType weaponType) =>
             weaponType == WeaponType.Colt45;
+
+        // Bazooka: single-round tube auto-chambers from reserve; no manual reload step.
+        public static bool SkipsManualReload(WeaponType weaponType) =>
+            weaponType == WeaponType.Bazooka;
     }
 
     /*

@@ -716,6 +716,11 @@ namespace iStick2War_V2
                 return false;
             }
 
+            if (HeroWeaponAmmoRules_V2.SkipsManualReload(_model.currentWeaponType))
+            {
+                return false;
+            }
+
             // Show prompt when magazine is empty but there is reserve ammo to reload from.
             return _model.currentAmmo <= 0 && _model.currentReserveAmmo > 0;
         }

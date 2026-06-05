@@ -27,6 +27,16 @@ namespace iStick2War_V2
 
         private void OnMouseDown()
         {
+            if (LifeOverUiClickRouting_V2.IsBlanketLifeOverRoot(gameObject))
+            {
+                return;
+            }
+
+            if (LifeOverUiClickRouting_V2.IsPointerOverGoToShopButton())
+            {
+                return;
+            }
+
             AudioManager_V2.PlayMenuClick();
             if (_waveManager == null)
             {

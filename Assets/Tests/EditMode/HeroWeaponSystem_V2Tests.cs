@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Collections.Generic;
 using iStick2War;
 using iStick2War_V2;
@@ -174,6 +175,58 @@ namespace iStick2War.Tests.EditMode
             Assert.That(_model.currentWeaponType, Is.EqualTo(WeaponType.MP40));
             Assert.That(_system.TrySwitchToPreviousWeapon(), Is.True);
             Assert.That(_model.currentWeaponType, Is.EqualTo(WeaponType.Thompson));
+        }
+
+        [Test]
+        public void Bazooka_CanReload_IsFalse_EvenWhenMagazineEmptyAndReserveAvailable()
+        {
+            HeroWeaponDefinition_V2 bazooka = CreateBazookaDefinition(maxAmmo: 1, maxReserveAmmo: 5);
+            _system = new HeroWeaponSystem_V2(_model, new[] { bazooka }, WeaponType.Bazooka);
+
+            SetActiveWeaponAmmo(_system, 0, 5);
+            _model.SetAmmoState(0, 5);
+
+            Assert.That(_system.CanReload(), Is.False);
+            Assert.That(_system.HasRoundsReadyToFire(), Is.True);
+            Assert.That(_model.currentAmmo, Is.EqualTo(1));
+            Assert.That(_model.currentReserveAmmo, Is.EqualTo(4));
+        }
+
+        [Test]
+        public void Bazooka_AfterShot_AutoChambersFromReserveWithoutReload()
+        {
+            HeroWeaponDefinition_V2 bazooka = CreateBazookaDefinition(maxAmmo: 1, maxReserveAmmo: 5);
+            _system = new HeroWeaponSystem_V2(_model, new[] { bazooka }, WeaponType.Bazooka);
+
+            Assert.That(_model.currentAmmo, Is.EqualTo(1));
+            Assert.That(_model.currentReserveAmmo, Is.EqualTo(5));
+
+            _system.TryShoot();
+
+            Assert.That(_model.currentAmmo, Is.EqualTo(1));
+            Assert.That(_model.currentReserveAmmo, Is.EqualTo(4));
+            Assert.That(_system.CanReload(), Is.False);
+            Assert.That(_system.CanShoot(), Is.False);
+        }
+
+        private HeroWeaponDefinition_V2 CreateBazookaDefinition(int maxAmmo, int maxReserveAmmo)
+        {
+            HeroWeaponDefinition_V2 bazooka = EditModeTestHelpers.CreateWeaponDefinition(WeaponType.Bazooka);
+            EditModeTestHelpers.SetPrivateField(bazooka, "_maxAmmo", maxAmmo);
+            EditModeTestHelpers.SetPrivateField(bazooka, "_maxReserveAmmo", maxReserveAmmo);
+            _destroyList.Add(bazooka);
+            return bazooka;
+        }
+
+        private static void SetActiveWeaponAmmo(HeroWeaponSystem_V2 system, int magazineAmmo, int reserveAmmo)
+        {
+            object inventory = EditModeTestHelpers.GetPrivateField<object>(system, "_inventory");
+            PropertyInfo activeWeaponProperty = inventory.GetType().GetProperty(
+                "ActiveWeapon",
+                BindingFlags.Instance | BindingFlags.Public);
+            object activeWeapon = activeWeaponProperty.GetValue(inventory);
+            activeWeapon.GetType().GetProperty("CurrentAmmo").SetValue(activeWeapon, magazineAmmo);
+            activeWeapon.GetType().GetProperty("CurrentReserveAmmo").SetValue(activeWeapon, reserveAmmo);
         }
     }
 }

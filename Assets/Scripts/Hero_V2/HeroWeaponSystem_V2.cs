@@ -107,6 +107,12 @@ namespace iStick2War_V2
         // -------------------------
         // SHOOT CHECK
         // -------------------------
+        public bool HasRoundsReadyToFire()
+        {
+            TryChamberFromReserveIfNeeded();
+            return _model.currentAmmo > 0;
+        }
+
         public bool CanShoot()
         {
             TickMinigunHeat();
@@ -115,6 +121,7 @@ namespace iStick2War_V2
             if (isDisabled) return false;
             if (_model.isDead) return false;
             if (_isReloading) return false;
+            TryChamberFromReserveIfNeeded();
             if (_model.currentAmmo <= 0)
             {
                 return false;
@@ -287,6 +294,11 @@ namespace iStick2War_V2
             if (isDisabled) return false;
             if (_model.isDead) return false;
             if (_isReloading) return false;
+            if (HeroWeaponAmmoRules_V2.SkipsManualReload(_model.currentWeaponType))
+            {
+                return false;
+            }
+
             if (_model.currentAmmo == _model.maxAmmo)
             {
                 return false;
@@ -424,7 +436,7 @@ namespace iStick2War_V2
                    ShouldUseProjectile(definition);
         }
 
-        public bool ShootProjectile(Vector2 origin, Vector2 direction)
+        public bool ShootProjectile(Vector2 origin, Vector2 direction, bool allowCarrierPassthrough = true)
         {
             if (!TryGetActiveWeaponDefinition(out HeroWeaponDefinition_V2 definition))
             {
@@ -464,7 +476,8 @@ namespace iStick2War_V2
                     definition.ProjectileSpeed,
                     definition.ProjectileLifetime,
                     definition.BaseDamage,
-                    definition.DamageVsAircraft);
+                    definition.DamageVsAircraft,
+                    allowCarrierPassthrough);
             }
             else
             {
@@ -823,6 +836,38 @@ namespace iStick2War_V2
             }
 
             _model.ConsumeAmmo(amount);
+            TryChamberFromReserveIfNeeded();
+        }
+
+        private void TryChamberFromReserveIfNeeded()
+        {
+            if (!HeroWeaponAmmoRules_V2.SkipsManualReload(_model.currentWeaponType))
+            {
+                return;
+            }
+
+            HeroWeaponRuntimeState_V2 active = _inventory.ActiveWeapon;
+            if (active == null || active.Definition == null)
+            {
+                return;
+            }
+
+            if (active.CurrentAmmo < active.Definition.MaxAmmo)
+            {
+                if (HeroWeaponAmmoRules_V2.HasInfiniteReserveAmmo(active.Definition.WeaponType))
+                {
+                    active.CurrentAmmo = active.Definition.MaxAmmo;
+                }
+                else if (active.CurrentReserveAmmo > 0)
+                {
+                    int needed = active.Definition.MaxAmmo - active.CurrentAmmo;
+                    int toLoad = Mathf.Min(needed, active.CurrentReserveAmmo);
+                    active.CurrentAmmo += toLoad;
+                    active.CurrentReserveAmmo = Mathf.Max(0, active.CurrentReserveAmmo - toLoad);
+                }
+            }
+
+            _model.SetAmmoState(active.CurrentAmmo, active.CurrentReserveAmmo);
         }
 
         private void RefillAmmo()

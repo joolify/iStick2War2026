@@ -122,11 +122,21 @@ namespace iStick2War_V2
         private bool _useManualMovement;
         private float _armedAt;
         private Vector2 _spawnWorldPos;
+        private bool _enableCarrierPassthroughForThisShot = true;
         private readonly HashSet<Collider2D> _passthroughIgnoredColliders = new HashSet<Collider2D>();
+        private static readonly List<HeroRocketProjectile_V2> s_activeRockets = new List<HeroRocketProjectile_V2>();
 
-        public void Initialize(Vector2 direction, float speed, float lifetime, float damage, float explosionDamageVsAircraft = -1f)
+        public void Initialize(
+            Vector2 direction,
+            float speed,
+            float lifetime,
+            float damage,
+            float explosionDamageVsAircraft = -1f,
+            bool allowCarrierPassthrough = true)
         {
             _isInitialized = true;
+            _enableCarrierPassthroughForThisShot = allowCarrierPassthrough;
+            EnsureHeroProjectilePhysicsLayer();
             _spawnWorldPos = transform.position;
             _passthroughIgnoredColliders.Clear();
             _damage = Mathf.Max(0f, damage);
@@ -165,6 +175,20 @@ namespace iStick2War_V2
             CancelInvoke(nameof(ExplodeFromTimeout));
             Invoke(nameof(ExplodeFromTimeout), _lifetime);
             _armedAt = Time.time + Mathf.Max(0f, _armingDelaySeconds);
+            IgnoreCollisionsWithOtherActiveRockets();
+        }
+
+        private void OnEnable()
+        {
+            if (!s_activeRockets.Contains(this))
+            {
+                s_activeRockets.Add(this);
+            }
+        }
+
+        private void OnDisable()
+        {
+            s_activeRockets.Remove(this);
         }
 
         private void Awake()
@@ -175,7 +199,7 @@ namespace iStick2War_V2
             }
 
             EnsureDetonateOnTriggerLayerMask();
-            EnsureExplosionOverlapMaskIncludesAirLayers();
+            EnsureExplosionOverlapMaskIncludesCombatLayers();
         }
 
         private void Start()
@@ -233,6 +257,11 @@ namespace iStick2War_V2
             }
 
             if (impactCollider != null && impactCollider.GetComponentInParent<Hero_V2>() != null)
+            {
+                return;
+            }
+
+            if (impactCollider != null && impactCollider.GetComponentInParent<HeroRocketProjectile_V2>() != null)
             {
                 return;
             }
@@ -337,7 +366,9 @@ namespace iStick2War_V2
                 float finalDamage = Mathf.Max(0f, _damage * damageMultiplier);
                 float finalAircraftDamage = Mathf.Max(0f, _explosionDamageVsAircraft * damageMultiplier);
 
-                ParatrooperBodyPart_V2 bodyPart = hit.GetComponent<ParatrooperBodyPart_V2>();
+                ParatrooperBodyPart_V2 bodyPart =
+                    hit.GetComponent<ParatrooperBodyPart_V2>() ??
+                    hit.GetComponentInParent<ParatrooperBodyPart_V2>();
                 if (bodyPart != null)
                 {
                     ParatrooperDamageReceiver_V2 receiver = bodyPart.GetComponentInParent<ParatrooperDamageReceiver_V2>();
@@ -364,7 +395,9 @@ namespace iStick2War_V2
                     continue;
                 }
 
-                MechRobotBossBodyPart_V2 mechPart = hit.GetComponent<MechRobotBossBodyPart_V2>();
+                MechRobotBossBodyPart_V2 mechPart =
+                    hit.GetComponent<MechRobotBossBodyPart_V2>() ??
+                    hit.GetComponentInParent<MechRobotBossBodyPart_V2>();
                 if (mechPart != null)
                 {
                     MechRobotBossDamageReceiver_V2 mechReceiver =
@@ -454,7 +487,9 @@ namespace iStick2War_V2
         // Carrier helis dropping troops: large hull colliders sit above ground targets and caused mid-air pops.
         private bool TryPassthroughCarrierAircraftImpact(Collider2D impactCollider)
         {
-            if (!_enableCarrierPassthroughWhileShootingLow || impactCollider == null)
+            if (!_enableCarrierPassthroughForThisShot ||
+                !_enableCarrierPassthroughWhileShootingLow ||
+                impactCollider == null)
             {
                 return false;
             }
@@ -639,21 +674,55 @@ namespace iStick2War_V2
         }
 
         /// <summary>
-        /// Ensures <see cref="Physics2D.OverlapCircleAll"/> can see aircraft hitboxes on the <c>Aircraft</c> layer
-        /// (some prefabs use <c>EnemyBodyPart</c> already; others only Aircraft).
+        /// Ensures overlap queries see infantry and aircraft hitboxes even when prefab masks are stale.
         /// </summary>
-        private void EnsureExplosionOverlapMaskIncludesAirLayers()
+        private void EnsureExplosionOverlapMaskIncludesCombatLayers()
         {
-            int aircraftLayer = LayerMask.NameToLayer("Aircraft");
-            if (aircraftLayer >= 0)
+            string[] layerNames = { "Enemy", "EnemyBodyPart", "Aircraft", "MechRobot", "Bunker" };
+            for (int i = 0; i < layerNames.Length; i++)
             {
-                _explosionMask |= 1 << aircraftLayer;
+                int layer = LayerMask.NameToLayer(layerNames[i]);
+                if (layer >= 0)
+                {
+                    _explosionMask |= 1 << layer;
+                }
+            }
+        }
+
+        // Paratrooper rigidbodies exclude Player so the hero can walk through infantry; rockets must not use Player.
+        private void EnsureHeroProjectilePhysicsLayer()
+        {
+            int defaultLayer = LayerMask.NameToLayer("Default");
+            if (defaultLayer >= 0)
+            {
+                gameObject.layer = defaultLayer;
+            }
+        }
+
+        private void IgnoreCollisionsWithOtherActiveRockets()
+        {
+            Collider2D selfCollider = GetComponent<Collider2D>();
+            if (selfCollider == null)
+            {
+                return;
             }
 
-            int mechLayer = LayerMask.NameToLayer("MechRobot");
-            if (mechLayer >= 0)
+            for (int i = 0; i < s_activeRockets.Count; i++)
             {
-                _explosionMask |= 1 << mechLayer;
+                HeroRocketProjectile_V2 other = s_activeRockets[i];
+                if (other == null || other == this)
+                {
+                    continue;
+                }
+
+                Collider2D otherCollider = other.GetComponent<Collider2D>();
+                if (otherCollider == null)
+                {
+                    continue;
+                }
+
+                Physics2D.IgnoreCollision(selfCollider, otherCollider, true);
+                _passthroughIgnoredColliders.Add(otherCollider);
             }
         }
 
