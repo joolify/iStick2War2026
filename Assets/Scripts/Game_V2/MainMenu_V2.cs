@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -93,6 +94,7 @@ namespace iStick2War_V2
 
         private bool _gameStarted;
         private bool _loggedMissingSettingsPanel;
+        private Coroutine _loadGameplaySceneRoutine;
         private readonly Dictionary<string, bool> _menuButtonActiveBeforeSettings = new Dictionary<string, bool>();
 
         // True when the menu is active and HandlePlay has not run this session
@@ -363,24 +365,30 @@ namespace iStick2War_V2
             AudioManager_V2.PlayMenuClick();
             _gameStarted = true;
 
-            if (_settingsPanel != null)
-            {
-                _settingsPanel.SetActive(false);
-            }
-
-            HideMainMenuRoots();
-
             // Unity does not reset timeScale when loading scenes; ReturnToMainMenu loads with timeScale 0.
             // Always resume simulation when leaving the menu so Play works for every boot path.
             Time.timeScale = 1f;
 
             if (_loadGameplaySceneOnPlay && !string.IsNullOrWhiteSpace(_gameplaySceneName))
             {
+                // Async load keeps MainMenuScene visible until SampleScene is ready — sync LoadScene
+                // unloads menu art first and flashes the camera clear color (blue) during the load gap.
                 WaveManager_V2.MarkGameplayEnteredFromMainMenu();
-                SceneManager.LoadScene(_gameplaySceneName, LoadSceneMode.Single);
+                if (_loadGameplaySceneRoutine != null)
+                {
+                    StopCoroutine(_loadGameplaySceneRoutine);
+                }
+
+                _loadGameplaySceneRoutine = StartCoroutine(LoadGameplaySceneWhenReady());
                 return;
             }
 
+            if (_settingsPanel != null)
+            {
+                _settingsPanel.SetActive(false);
+            }
+
+            HideMainMenuRoots();
             NotifyWaveManagerGameStartedIfPossible();
         }
 
@@ -395,6 +403,31 @@ namespace iStick2War_V2
             {
                 _waveManager.NotifyGameStartedFromMainMenu();
             }
+        }
+
+        private IEnumerator LoadGameplaySceneWhenReady()
+        {
+            AsyncOperation loadOp = SceneManager.LoadSceneAsync(_gameplaySceneName, LoadSceneMode.Single);
+            if (loadOp == null)
+            {
+                SceneManager.LoadScene(_gameplaySceneName, LoadSceneMode.Single);
+                _loadGameplaySceneRoutine = null;
+                yield break;
+            }
+
+            loadOp.allowSceneActivation = false;
+            while (loadOp.progress < 0.9f)
+            {
+                yield return null;
+            }
+
+            loadOp.allowSceneActivation = true;
+            while (!loadOp.isDone)
+            {
+                yield return null;
+            }
+
+            _loadGameplaySceneRoutine = null;
         }
 
         // Called from UI Button or MainMenuNavButton_V2 (world Collider2D).

@@ -256,6 +256,8 @@ namespace iStick2War_V2
         private HeroWeaponDefinition_V2 _lastShopPurchasedWeapon;
         private static float s_restartRunPermanentDamageBonus01;
         private static bool s_skipMainMenuRedirectOnce;
+        private static bool s_notifyGameplayFromMainMenuPending;
+        private static bool s_skipPrepareDelayAfterMainMenuPlay;
         private const string MainMenuSceneName = "MainMenuScene";
         private int _livesRemaining;
         private GameOverContinueUi_V2 _resolvedGameOverContinueUi;
@@ -316,12 +318,13 @@ namespace iStick2War_V2
         public static void MarkGameplayEnteredFromMainMenu()
         {
             s_skipMainMenuRedirectOnce = true;
+            s_notifyGameplayFromMainMenuPending = true;
+            s_skipPrepareDelayAfterMainMenuPlay = true;
         }
 
         // Call from MainMenu_V2 after Play: shows Wave N for _topBarWaveTextVisibleSeconds, then fades out.
         public void NotifyGameStartedFromMainMenu()
         {
-            MarkGameplayEnteredFromMainMenu();
             HideLifeOverUiCompletely();
             AudioManager_V2.SetGameplayMusic();
             BeginTopBarWaveTextIntro();
@@ -514,6 +517,12 @@ namespace iStick2War_V2
             }
 
             EnterPreparingState();
+            if (s_notifyGameplayFromMainMenuPending)
+            {
+                s_notifyGameplayFromMainMenuPending = false;
+                NotifyGameStartedFromMainMenu();
+            }
+
             EmitMetaChanged();
             RefreshTopBar();
         }
@@ -1294,7 +1303,15 @@ namespace iStick2War_V2
             float prepare = 0f;
             if (wave == null || !wave.OpenShopDirectly)
             {
-                prepare = Mathf.Max(0.1f, _prepareDurationSeconds) + Mathf.Max(0f, _extraPrepareDelaySecondsForNextWave);
+                if (s_skipPrepareDelayAfterMainMenuPlay)
+                {
+                    s_skipPrepareDelayAfterMainMenuPlay = false;
+                }
+                else
+                {
+                    prepare = Mathf.Max(0.1f, _prepareDurationSeconds) +
+                              Mathf.Max(0f, _extraPrepareDelaySecondsForNextWave);
+                }
             }
 
             _extraPrepareDelaySecondsForNextWave = 0f;

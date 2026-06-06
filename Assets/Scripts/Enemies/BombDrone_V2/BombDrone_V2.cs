@@ -60,11 +60,17 @@ namespace iStick2War_V2
 
         public void BeginRun()
         {
+            BeginRun(spawnedFromLeft: false, gameplayCamera: null);
+        }
+
+        public void BeginRun(bool spawnedFromLeft, Camera gameplayCamera)
+        {
             if (!_initialized)
             {
                 InitializeForSpawn();
             }
 
+            _controller?.ConfigureSpawnContext(spawnedFromLeft, gameplayCamera);
             _controller?.StartFlight();
         }
 

@@ -69,12 +69,25 @@ namespace iStick2War_V2
         private BunkerHitbox_V2 _bunkerHitbox;
         private float _returnToFlyAfterDropAt;
         private float _hoverEndAt;
+        private float _approachStartedAt;
+        private bool _hasEnteredViewportHorizontally;
+        private bool _hasSpawnSide;
+        private bool _spawnedFromLeft;
+        private Camera _spawnCameraOverride;
+        private bool _pendingFlightIntegration;
 
         public void Initialize(BombDroneModel_V2 model, BombDroneStateMachine_V2 stateMachine)
         {
             _model = model;
             _stateMachine = stateMachine;
             _rb = GetComponent<Rigidbody2D>();
+        }
+
+        public void ConfigureSpawnContext(bool spawnedFromLeft, Camera gameplayCamera)
+        {
+            _hasSpawnSide = true;
+            _spawnedFromLeft = spawnedFromLeft;
+            _spawnCameraOverride = gameplayCamera;
         }
 
         // Pre–controller-split prefabs (bombDrone.prefab) kept tuning on BombDrone_V2; copy onto runtime-added Controller fields.
@@ -158,19 +171,16 @@ namespace iStick2War_V2
                 return;
             }
 
-            _cam = Camera.main;
+            _cam = ResolveGameplayCamera();
             _bunkerHitbox = FindAnyObjectByType<BunkerHitbox_V2>(FindObjectsInactive.Include);
             _model.expireAt = Time.time + Mathf.Max(2f, _maxLifetimeSeconds);
             _model.bombDropped = false;
             _model.started = true;
-            _model.directionX = ResolveInitialDirectionXTowardBunkerOrFacing(
-                _bunkerHitbox,
-                transform,
-                _spriteFacesRightWhenScaleXPositive);
-            if (_invertFlightDirectionX)
-            {
-                _model.directionX *= -1f;
-            }
+            _model.directionX = ResolveAndSanitizeInitialDirectionX();
+            _approachStartedAt = Time.time;
+            _hasEnteredViewportHorizontally = false;
+            _pendingFlightIntegration = false;
+            EnsureFlightRigidbodyReady();
 
             _returnToFlyAfterDropAt = 0f;
             _hoverEndAt = 0f;
@@ -206,6 +216,12 @@ namespace iStick2War_V2
             }
 
             BombDroneState_V2 state = _stateMachine.CurrentState;
+            if (Time.time >= _model.expireAt)
+            {
+                DespawnSelfViaPool(gameObject);
+                return;
+            }
+
             if (state == BombDroneState_V2.Idle || state == BombDroneState_V2.Die)
             {
                 return;
@@ -215,16 +231,36 @@ namespace iStick2War_V2
 
             if (ShouldIntegrateHorizontalFlight(state))
             {
-                IntegrateHorizontalFlight();
+                _pendingFlightIntegration = true;
             }
 
-            if (Time.time >= _model.expireAt)
+            TrackViewportEntryIfNeeded();
+            CorrectApproachDirectionIfDriftingOffscreen(state);
+            ForceApproachTowardPlayfieldWhenOutsideViewport(state);
+
+            TryDespawnWhenPastCameraBounds(state);
+        }
+
+        private void FixedUpdate()
+        {
+            if (_model == null || _stateMachine == null || !_model.started || _model.frozenForCombatMatrixHarness)
             {
-                DespawnSelfViaPool(gameObject);
                 return;
             }
 
-            TryDespawnWhenPastCameraBounds(state);
+            if (!_pendingFlightIntegration)
+            {
+                return;
+            }
+
+            _pendingFlightIntegration = false;
+            BombDroneState_V2 state = _stateMachine.CurrentState;
+            if (state == BombDroneState_V2.Idle || state == BombDroneState_V2.Die)
+            {
+                return;
+            }
+
+            IntegrateHorizontalFlight(state);
         }
 
         private static bool ShouldIntegrateHorizontalFlight(BombDroneState_V2 state)
@@ -233,16 +269,46 @@ namespace iStick2War_V2
             return state == BombDroneState_V2.Fly || state == BombDroneState_V2.DropBomb;
         }
 
-        private void IntegrateHorizontalFlight()
+        private void IntegrateHorizontalFlight(BombDroneState_V2 state)
         {
+            EnsureFlightRigidbodyReady();
             float speed = Mathf.Max(0.1f, _horizontalFlySpeed);
-            transform.position += Vector3.right * (_model.directionX * speed * Time.deltaTime);
-            Physics2D.SyncTransforms();
+            Vector2 delta = Vector2.right * (_model.directionX * speed * Time.fixedDeltaTime);
+            if (_rb != null)
+            {
+                _rb.MovePosition(_rb.position + delta);
+            }
+            else
+            {
+                transform.position += (Vector3)delta;
+                Physics2D.SyncTransforms();
+            }
 
-            if (!_model.bombDropped && _stateMachine.CurrentState == BombDroneState_V2.Fly)
+            if (!_model.bombDropped && state == BombDroneState_V2.Fly)
             {
                 TryBeginHoverOverBunker();
             }
+        }
+
+        private void EnsureFlightRigidbodyReady()
+        {
+            if (_rb == null)
+            {
+                _rb = GetComponent<Rigidbody2D>();
+            }
+
+            if (_rb == null)
+            {
+                return;
+            }
+
+            _rb.bodyType = RigidbodyType2D.Kinematic;
+            _rb.simulated = true;
+            _rb.gravityScale = 0f;
+            _rb.linearVelocity = Vector2.zero;
+            _rb.angularVelocity = 0f;
+            _rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+            _rb.WakeUp();
         }
 
         private void TickStateTimers(BombDroneState_V2 state)
@@ -277,10 +343,7 @@ namespace iStick2War_V2
 
         private void TryDespawnWhenPastCameraBounds(BombDroneState_V2 state)
         {
-            if (_cam == null)
-            {
-                _cam = Camera.main;
-            }
+            RefreshFlightCameraIfNeeded();
 
             if (_model.bombDropped && IsPastExitViewportHorizontalEdges(_cam, 0.02f))
             {
@@ -290,10 +353,11 @@ namespace iStick2War_V2
 
             if (!TryGetOrthographicCameraHorizontalBounds(_cam, _flightOffscreenMarginWorld, out float left, out float right))
             {
+                TryApproachStuckOutsideViewportFailsafe(state);
                 return;
             }
 
-            float x = transform.position.x;
+            float x = GetFlightWorldPositionX();
             if (_model.bombDropped)
             {
                 if (x > right || x < left)
@@ -304,11 +368,220 @@ namespace iStick2War_V2
                 return;
             }
 
-            if (state == BombDroneState_V2.Fly &&
+            if (IsActiveFlightState(state) &&
                 IsPastHorizontalFlyBounds(x, _model.directionX, left, right))
             {
                 DespawnSelfViaPool(gameObject);
+                return;
             }
+
+            if (IsActiveFlightState(state) &&
+                (x > right || x < left) &&
+                !_hasEnteredViewportHorizontally &&
+                Time.time - _approachStartedAt >= 3f)
+            {
+                DespawnSelfViaPool(gameObject);
+                return;
+            }
+
+            if (state == BombDroneState_V2.HoverOverBunker &&
+                !IsHorizontallyInsideViewport(0.12f) &&
+                Time.time >= _hoverEndAt + 0.75f)
+            {
+                DespawnSelfViaPool(gameObject);
+                return;
+            }
+
+            TryApproachStuckOutsideViewportFailsafe(state);
+        }
+
+        private static bool IsActiveFlightState(BombDroneState_V2 state)
+        {
+            return state == BombDroneState_V2.Fly ||
+                   state == BombDroneState_V2.HoverOverBunker ||
+                   state == BombDroneState_V2.DropBomb;
+        }
+
+        private void RefreshFlightCameraIfNeeded()
+        {
+            if (_spawnCameraOverride != null && _spawnCameraOverride.isActiveAndEnabled)
+            {
+                _cam = _spawnCameraOverride;
+                return;
+            }
+
+            if (_cam == null || !_cam.isActiveAndEnabled)
+            {
+                _cam = ResolveGameplayCamera();
+            }
+        }
+
+        private Camera ResolveGameplayCamera()
+        {
+            if (_spawnCameraOverride != null && _spawnCameraOverride.isActiveAndEnabled)
+            {
+                return _spawnCameraOverride;
+            }
+
+            EnemySpawner_V2 spawner = FindAnyObjectByType<EnemySpawner_V2>(FindObjectsInactive.Include);
+            if (spawner != null)
+            {
+                Camera spawnerCamera = spawner.GetSpawnCamera();
+                if (spawnerCamera != null)
+                {
+                    return spawnerCamera;
+                }
+            }
+
+            return Camera.main;
+        }
+
+        private float ResolveAndSanitizeInitialDirectionX()
+        {
+            float directionX;
+            if (_hasSpawnSide)
+            {
+                float travelDir = _spawnedFromLeft ? 1f : -1f;
+                directionX = _invertFlightDirectionX ? -travelDir : travelDir;
+            }
+            else
+            {
+                directionX = ResolveInitialDirectionXTowardBunkerOrFacing(
+                    _bunkerHitbox,
+                    transform,
+                    _spriteFacesRightWhenScaleXPositive);
+                if (_invertFlightDirectionX)
+                {
+                    directionX *= -1f;
+                }
+            }
+
+            return SanitizeApproachDirectionTowardPlayfield(directionX);
+        }
+
+        private void ForceApproachTowardPlayfieldWhenOutsideViewport(BombDroneState_V2 state)
+        {
+            if (_model.bombDropped || state == BombDroneState_V2.HoverOverBunker)
+            {
+                return;
+            }
+
+            if (IsHorizontallyInsideViewport(0.04f))
+            {
+                return;
+            }
+
+            RefreshFlightCameraIfNeeded();
+            if (_cam == null)
+            {
+                return;
+            }
+
+            float cameraX = _cam.transform.position.x;
+            float worldX = GetFlightWorldPositionX();
+            float towardCenter = cameraX - worldX;
+            if (Mathf.Abs(towardCenter) <= 0.05f)
+            {
+                return;
+            }
+
+            _model.directionX = Mathf.Sign(towardCenter);
+        }
+
+        private float GetFlightWorldPositionX()
+        {
+            if (_rb != null)
+            {
+                return _rb.position.x;
+            }
+
+            return transform.position.x;
+        }
+
+        private float SanitizeApproachDirectionTowardPlayfield(float directionX)
+        {
+            RefreshFlightCameraIfNeeded();
+            if (_cam == null)
+            {
+                return directionX;
+            }
+
+            float worldX = GetFlightWorldPositionX();
+            float cameraX = _cam.transform.position.x;
+            if (worldX < cameraX - 0.05f && directionX < 0f)
+            {
+                return 1f;
+            }
+
+            if (worldX > cameraX + 0.05f && directionX > 0f)
+            {
+                return -1f;
+            }
+
+            return directionX;
+        }
+
+        private void TrackViewportEntryIfNeeded()
+        {
+            if (_hasEnteredViewportHorizontally || _model.bombDropped)
+            {
+                return;
+            }
+
+            if (IsHorizontallyInsideViewport(0.02f))
+            {
+                _hasEnteredViewportHorizontally = true;
+            }
+        }
+
+        private void CorrectApproachDirectionIfDriftingOffscreen(BombDroneState_V2 state)
+        {
+            if (_model.bombDropped || state == BombDroneState_V2.HoverOverBunker)
+            {
+                return;
+            }
+
+            _model.directionX = SanitizeApproachDirectionTowardPlayfield(_model.directionX);
+        }
+
+        private void TryApproachStuckOutsideViewportFailsafe(BombDroneState_V2 state)
+        {
+            if (_model.bombDropped || !IsActiveFlightState(state) || _hasEnteredViewportHorizontally)
+            {
+                return;
+            }
+
+            float elapsed = Time.time - _approachStartedAt;
+            if (elapsed < 5f || IsHorizontallyInsideViewport(0.12f))
+            {
+                return;
+            }
+
+            if (elapsed < 10f)
+            {
+                ForceApproachTowardPlayfieldWhenOutsideViewport(state);
+                return;
+            }
+
+            DespawnSelfViaPool(gameObject);
+        }
+
+        private bool IsHorizontallyInsideViewport(float viewportMargin)
+        {
+            RefreshFlightCameraIfNeeded();
+            if (_cam == null)
+            {
+                return false;
+            }
+
+            Vector3 viewport = _cam.WorldToViewportPoint(transform.position);
+            if (viewport.z <= 0f)
+            {
+                return false;
+            }
+
+            float margin = Mathf.Max(0f, viewportMargin);
+            return viewport.x >= -margin && viewport.x <= 1f + margin;
         }
 
         private bool IsPastExitViewportHorizontalEdges(Camera cam, float viewportMargin)
@@ -335,6 +608,11 @@ namespace iStick2War_V2
                 return;
             }
 
+            if (!IsHorizontallyInsideViewport(0.08f))
+            {
+                return;
+            }
+
             if (_bunkerHitbox == null)
             {
                 _bunkerHitbox = FindAnyObjectByType<BunkerHitbox_V2>(FindObjectsInactive.Include);
@@ -346,7 +624,7 @@ namespace iStick2War_V2
 
             float tolerance = Mathf.Max(0.1f, _dropToleranceX);
             float bunkerX = ResolveBunkerDropAlignWorldX(_bunkerHitbox);
-            float dx = Mathf.Abs(transform.position.x - bunkerX);
+            float dx = Mathf.Abs(GetFlightWorldPositionX() - bunkerX);
             if (dx > tolerance)
             {
                 return;
@@ -598,6 +876,12 @@ namespace iStick2War_V2
             _model.frozenForCombatMatrixHarness = false;
             _returnToFlyAfterDropAt = 0f;
             _hoverEndAt = 0f;
+            _approachStartedAt = 0f;
+            _hasEnteredViewportHorizontally = false;
+            _hasSpawnSide = false;
+            _spawnedFromLeft = false;
+            _spawnCameraOverride = null;
+            _pendingFlightIntegration = false;
         }
     }
 }

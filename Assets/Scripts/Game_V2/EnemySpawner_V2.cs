@@ -408,6 +408,11 @@ namespace iStick2War_V2
             }
         }
 
+        public Camera GetSpawnCamera()
+        {
+            return _spawnCamera != null ? _spawnCamera : Camera.main;
+        }
+
         public void BeginWave(
             WaveConfig_V2 config,
             Action onEnemyKilled,
@@ -1432,7 +1437,7 @@ namespace iStick2War_V2
                 applyGenericHorizontalFlight: false,
                 applyAutoDespawnTimer: false,
                 applyApproachStagger: false,
-                onSpawned: go =>
+                onSpawned: (go, fromLeft) =>
                 {
                     SetupKamikazeDroneSpineRuntime(go);
                     BeginKamikazeDroneStateFlow(go);
@@ -1485,7 +1490,7 @@ namespace iStick2War_V2
                 applyGenericHorizontalFlight: false,
                 applyAutoDespawnTimer: false,
                 applyApproachStagger: false,
-                onSpawned: go =>
+                onSpawned: (go, fromLeft) =>
                 {
                     BombDrone_V2 drone = go.GetComponent<BombDrone_V2>();
                     if (drone == null)
@@ -1497,7 +1502,7 @@ namespace iStick2War_V2
 
                     if (drone != null)
                     {
-                        drone.BeginRun();
+                        drone.BeginRun(fromLeft, GetSpawnCamera());
                     }
                 });
 
@@ -1519,7 +1524,7 @@ namespace iStick2War_V2
             bool applyGenericHorizontalFlight,
             bool applyAutoDespawnTimer,
             bool applyApproachStagger,
-            Action<GameObject> onSpawned)
+            Action<GameObject, bool> onSpawned)
         {
             if (!_isWaveActive || prefab == null)
             {
@@ -1592,7 +1597,7 @@ namespace iStick2War_V2
             ApplyAircraftSpriteSorting(spawned);
             EnsureAirThreatCollidersUseEnemyBodyPartLayer(spawned);
             _spawnedAircraftInstances.Add(spawned);
-            onSpawned?.Invoke(spawned);
+            onSpawned?.Invoke(spawned, fromLeft);
 
             if (applyGenericHorizontalFlight && _aircraftEnableHorizontalFlight && _aircraftHorizontalFlySpeed > 0f)
             {
