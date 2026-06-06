@@ -923,9 +923,14 @@ namespace iStick2War_V2
                 return false;
             }
 
+            PruneInactiveTrackedDeaths();
             int cap = Mathf.Max(1, _earlyWaveMaxSimultaneousAliveParatroopers);
             return _trackedDeaths.Count >= cap;
         }
+
+        // True while the spawn coroutine is still scheduling flights/drops (watchdog should not treat long gaps as fatal yet).
+        public bool IsParatrooperSpawnScheduleStillRunning =>
+            _isWaveActive && !_spawnRoutineFinished;
 
         private void SpawnOne(int spawnIndexInWave, int paratroopersThisFlight)
         {
@@ -934,6 +939,7 @@ namespace iStick2War_V2
                 return;
             }
 
+            _lastSpawnAttemptUnscaledTime = Time.unscaledTime;
             PruneDestroyedAircraftFromTracking();
 
             bool usedAnchorSpawn;

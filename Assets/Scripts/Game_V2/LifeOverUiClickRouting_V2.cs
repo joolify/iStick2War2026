@@ -11,7 +11,7 @@ namespace iStick2War_V2
                    gameObject.name.Equals("LifeOver V2", System.StringComparison.OrdinalIgnoreCase);
         }
 
-        internal static bool IsPointerOverGoToShopButton()
+        internal static bool IsPointerOverDedicatedLifeOverButton()
         {
             Camera camera = Camera.main;
             if (camera == null)
@@ -24,7 +24,13 @@ namespace iStick2War_V2
             for (int i = 0; i < hits.Length; i++)
             {
                 Collider2D hit = hits[i];
-                if (hit != null && hit.GetComponentInParent<LifeOverGoToShopButton_V2>() != null)
+                if (hit == null)
+                {
+                    continue;
+                }
+
+                if (hit.GetComponentInParent<LifeOverGoToShopButton_V2>() != null ||
+                    hit.GetComponentInParent<LifeOverGoToMainMenuButton_V2>() != null)
                 {
                     return true;
                 }

@@ -32,7 +32,7 @@ namespace iStick2War_V2
                 return;
             }
 
-            if (LifeOverUiClickRouting_V2.IsPointerOverGoToShopButton())
+            if (LifeOverUiClickRouting_V2.IsPointerOverDedicatedLifeOverButton())
             {
                 return;
             }

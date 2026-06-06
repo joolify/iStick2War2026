@@ -15,7 +15,8 @@ namespace iStick2War_V2
         public enum LifeOverLabelAction
         {
             ContinueAfterLifeLost,
-            GoToShopAfterLifeLost
+            GoToShopAfterLifeLost,
+            GoToMainMenuAfterLifeLost
         }
 
         [SerializeField] private LifeOverLabelAction _action;
@@ -50,6 +51,9 @@ namespace iStick2War_V2
                     break;
                 case LifeOverLabelAction.GoToShopAfterLifeLost:
                     _waveManager.TryGoToShopAfterLifeLost();
+                    break;
+                case LifeOverLabelAction.GoToMainMenuAfterLifeLost:
+                    _waveManager.TryGoToMainMenuAfterLifeLost();
                     break;
             }
         }

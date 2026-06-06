@@ -214,7 +214,12 @@ namespace iStick2War_V2
         [SerializeField] private TMP_Text _lifeOverGoToShopText;
         [Tooltip("Go-to-shop control, e.g. TextBTN_MediumGoToShop (LifeOverGoToShopButton_V2).")]
         [SerializeField] private GameObject _lifeOverGoToShopButton;
+        [Tooltip("Main-menu label, e.g. txt_lifeOver_goToMainMenu on LifeOver-canvas.")]
+        [SerializeField] private TMP_Text _lifeOverGoToMainMenuText;
+        [Tooltip("Main-menu control, e.g. TextBTN_MediumGoToMainMenu (LifeOverGoToMainMenuButton_V2).")]
+        [SerializeField] private GameObject _lifeOverGoToMainMenuButton;
         [SerializeField] private string _lifeOverGoToShopLabel = "Go to shop";
+        [SerializeField] private string _lifeOverGoToMainMenuLabel = "Main menu";
         [SerializeField] private string _lifeOverInfoMessage =
             "You died. Press \"Start Game\" to try the wave again";
         [Tooltip("Optional top-bar hold while LifeOver is visible.")]
@@ -1177,6 +1182,25 @@ namespace iStick2War_V2
             return true;
         }
 
+        // Called from LifeOverGoToMainMenuButton_V2 (e.g. TextBTN_MediumGoToMainMenu). Saves run and loads MainMenuScene.
+        public bool TryGoToMainMenuAfterLifeLost()
+        {
+            if (_state != WaveLoopState_V2.LifeOver)
+            {
+                if (_debugWaveLogs)
+                {
+                    Log($"TryGoToMainMenuAfterLifeLost ignored (state={_state}).");
+                }
+
+                return false;
+            }
+
+            PersistActiveRunSave();
+            Log("LifeOver -> main menu (run saved).");
+            GameplayPauseButton_V2.ReturnToMainMenuScene();
+            return true;
+        }
+
         private bool TryStartRetryWaveFromShopAfterLifeLost()
         {
             if (!_shopExitRetriesSameWave)
@@ -1530,6 +1554,7 @@ namespace iStick2War_V2
             ResolveLifeOverUiIfNeeded();
             SetLifeOverUiVisible(true);
             EnsureLifeOverGoToShopClickTargets();
+            EnsureLifeOverGoToMainMenuClickTargets();
             EnsureLifeOverContinueClickTargets();
             if (_debugWaveLogs)
             {
@@ -1552,6 +1577,11 @@ namespace iStick2War_V2
                 if (_lifeOverGoToShopText == null)
                 {
                     Debug.LogWarning("[WaveManager_V2] txt_lifeOver_goToShop not found under LifeOver UI root.");
+                }
+
+                if (_lifeOverGoToMainMenuText == null)
+                {
+                    Debug.LogWarning("[WaveManager_V2] txt_lifeOver_goToMainMenu not found under LifeOver UI root.");
                 }
             }
 
@@ -2096,6 +2126,8 @@ namespace iStick2War_V2
             _lifeOverStartNewGameButton = null;
             _lifeOverGoToShopText = null;
             _lifeOverGoToShopButton = null;
+            _lifeOverGoToMainMenuText = null;
+            _lifeOverGoToMainMenuButton = null;
         }
 
         private void ResolveLifeOverUiIfNeeded()
@@ -2144,6 +2176,20 @@ namespace iStick2War_V2
                 _lifeOverGoToShopButton = FindLifeOverGameObjectByNames(
                     lifeOverScope,
                     "TextBTN_MediumGoToShop");
+            }
+
+            if (_lifeOverGoToMainMenuText == null)
+            {
+                _lifeOverGoToMainMenuText = FindLifeOverTmpByNames(
+                    lifeOverScope,
+                    "txt_lifeOver_goToMainMenu");
+            }
+
+            if (_lifeOverGoToMainMenuButton == null)
+            {
+                _lifeOverGoToMainMenuButton = FindLifeOverGameObjectByNames(
+                    lifeOverScope,
+                    "TextBTN_MediumGoToMainMenu");
             }
         }
 
@@ -2345,6 +2391,7 @@ namespace iStick2War_V2
             PrepareLifeOverTmp(_lifeOverInfoText, _lifeOverInfoMessage);
             PrepareLifeOverTmp(_lifeOverStartNewGameText, "Start Game");
             PrepareLifeOverTmp(_lifeOverGoToShopText, _lifeOverGoToShopLabel);
+            PrepareLifeOverTmp(_lifeOverGoToMainMenuText, _lifeOverGoToMainMenuLabel);
             EnsureLifeOverLabelUiClickTargets();
 
             if (_lifeOverStartNewGameButton != null)
@@ -2361,6 +2408,16 @@ namespace iStick2War_V2
             {
                 EnsureLifeOverControlVisible(_lifeOverGoToShopButton);
             }
+
+            if (_lifeOverGoToMainMenuText != null)
+            {
+                EnsureLifeOverControlVisible(_lifeOverGoToMainMenuText.gameObject);
+            }
+
+            if (_lifeOverGoToMainMenuButton != null)
+            {
+                EnsureLifeOverControlVisible(_lifeOverGoToMainMenuButton);
+            }
         }
 
         private void EnsureLifeOverLabelUiClickTargets()
@@ -2372,6 +2429,9 @@ namespace iStick2War_V2
             LifeOverLabelUiButton_V2.EnsureOnLabel(
                 _lifeOverGoToShopText,
                 LifeOverLabelUiButton_V2.LifeOverLabelAction.GoToShopAfterLifeLost);
+            LifeOverLabelUiButton_V2.EnsureOnLabel(
+                _lifeOverGoToMainMenuText,
+                LifeOverLabelUiButton_V2.LifeOverLabelAction.GoToMainMenuAfterLifeLost);
         }
 
         private void EnsureLifeOverUiRootsVisible()
@@ -2489,6 +2549,7 @@ namespace iStick2War_V2
 
             // Runtime added a full-screen fallback collider on the chrome root; it steals Go to shop clicks.
             if (chromeRoot.GetComponent<LifeOverGoToShopButton_V2>() == null &&
+                chromeRoot.GetComponent<LifeOverGoToMainMenuButton_V2>() == null &&
                 chromeRoot.GetComponent<SpriteRenderer>() == null &&
                 chromeRoot.GetComponent<Collider2D>() is BoxCollider2D boxCollider)
             {
@@ -2502,6 +2563,15 @@ namespace iStick2War_V2
             if (target != null)
             {
                 EnsureLifeOverGoToShopButtonOnTarget(target);
+            }
+        }
+
+        private static void EnsureLifeOverGoToMainMenuClickTargets()
+        {
+            GameObject target = FindLifeOverNamedControl("TextBTN_MediumGoToMainMenu");
+            if (target != null)
+            {
+                EnsureLifeOverGoToMainMenuButtonOnTarget(target);
             }
         }
 
@@ -2576,6 +2646,41 @@ namespace iStick2War_V2
             RefitLifeOverButtonCollider(target, collider);
         }
 
+        private static void EnsureLifeOverGoToMainMenuButtonOnTarget(GameObject target)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            LifeOverContinueButton_V2 continueButton = target.GetComponent<LifeOverContinueButton_V2>();
+            if (continueButton != null)
+            {
+                global::UnityEngine.Object.Destroy(continueButton);
+            }
+
+            ShopNavArrowUiButton_V2 shopTextButton = target.GetComponent<ShopNavArrowUiButton_V2>();
+            if (shopTextButton != null)
+            {
+                shopTextButton.enabled = false;
+            }
+
+            if (target.GetComponent<LifeOverGoToMainMenuButton_V2>() == null)
+            {
+                target.AddComponent<LifeOverGoToMainMenuButton_V2>();
+            }
+
+            Collider2D collider = target.GetComponent<Collider2D>();
+            if (collider == null)
+            {
+                BoxCollider2D box = target.AddComponent<BoxCollider2D>();
+                box.isTrigger = false;
+                collider = box;
+            }
+
+            RefitLifeOverButtonCollider(target, collider);
+        }
+
         private static void RefitLifeOverButtonCollider(GameObject target, Collider2D collider)
         {
             if (target == null || collider == null)
@@ -2606,7 +2711,9 @@ namespace iStick2War_V2
 
         private static void EnsureLifeOverContinueButtonOnTarget(GameObject target)
         {
-            if (target == null || target.GetComponent<LifeOverGoToShopButton_V2>() != null)
+            if (target == null ||
+                target.GetComponent<LifeOverGoToShopButton_V2>() != null ||
+                target.GetComponent<LifeOverGoToMainMenuButton_V2>() != null)
             {
                 return;
             }
@@ -2688,6 +2795,7 @@ namespace iStick2War_V2
             SetLifeOverLeafActive(_lifeOverInfoText, false);
             SetLifeOverLeafActive(_lifeOverStartNewGameText, false);
             SetLifeOverLeafActive(_lifeOverGoToShopText, false);
+            SetLifeOverLeafActive(_lifeOverGoToMainMenuText, false);
 
             if (_lifeOverStartNewGameButton != null)
             {
@@ -2697,6 +2805,11 @@ namespace iStick2War_V2
             if (_lifeOverGoToShopButton != null)
             {
                 _lifeOverGoToShopButton.SetActive(false);
+            }
+
+            if (_lifeOverGoToMainMenuButton != null)
+            {
+                _lifeOverGoToMainMenuButton.SetActive(false);
             }
 
             HideLifeOverNamedObjectsInScene();
@@ -2734,10 +2847,12 @@ namespace iStick2War_V2
                 "txt_lifeOver_info",
                 "txt_lifeOver_startNewGame",
                 "txt_lifeOver_goToShop",
+                "txt_lifeOver_goToMainMenu",
                 "txt_shop_info",
                 "txt_shop_startNewGame",
                 "TextBTN_MediumStartNewGame",
                 "TextBTN_MediumGoToShop",
+                "TextBTN_MediumGoToMainMenu",
             };
 
             TMP_Text[] allTexts = FindObjectsByType<TMP_Text>(FindObjectsInactive.Include);
@@ -2768,6 +2883,7 @@ namespace iStick2War_V2
                     bool lifeOverOnlyName =
                         objectName.Equals("txt_lifeOver_startNewGame", StringComparison.Ordinal) ||
                         objectName.Equals("txt_lifeOver_goToShop", StringComparison.Ordinal) ||
+                        objectName.Equals("txt_lifeOver_goToMainMenu", StringComparison.Ordinal) ||
                         objectName.Equals("txt_shop_startNewGame", StringComparison.Ordinal);
 
                     if (!lifeOverOnlyName && !IsLifeOverUiTransform(text.transform))
@@ -2804,6 +2920,8 @@ namespace iStick2War_V2
                 "TextBTN_MediumStartGame",
                 "TextBTN_MediumGoToShop",
                 "TextBTN_MediumGoToShop_Pressed",
+                "TextBTN_MediumGoToMainMenu",
+                "TextBTN_MediumGoToMainMenu_Pressed",
             };
 
             GameObject[] objects = FindObjectsByType<GameObject>(FindObjectsInactive.Include);
@@ -3217,11 +3335,37 @@ namespace iStick2War_V2
                 _enemySpawner.IsWaveActive &&
                 !_enemySpawner.HasFinishedScheduledParatrooperSpawnsThisWave)
             {
-                float noSpawnSeconds = Mathf.Max(0f, now - _enemySpawner.LastParatrooperSpawnUnscaledTime);
+                // Helicopter flights count as spawn activity even before a paratrooper lands.
+                float lastSpawnActivityUnscaledTime = Mathf.Max(
+                    _enemySpawner.LastParatrooperSpawnUnscaledTime,
+                    _enemySpawner.LastSpawnAttemptUnscaledTime);
+                float noSpawnSeconds = Mathf.Max(0f, now - lastSpawnActivityUnscaledTime);
+                int livingParatroopers = _enemySpawner.GetLivingParatroopersTrackedCountForTelemetry();
+                int pendingDrops = _enemySpawner.PendingParatrooperDropsThisWave;
                 if (noSpawnSeconds >= Mathf.Max(5f, _enemyNoSpawnErrorSeconds))
                 {
+                    // HitStop / menu pause / app backgrounding freeze scaled-time coroutines; do not false-trigger.
+                    if (Time.timeScale <= 0.001f)
+                    {
+                        return false;
+                    }
+
+                    // Early-wave cap or player still fighting living infantry while more drops are scheduled.
+                    if (livingParatroopers > 0 &&
+                        (_enemySpawner.IsParatrooperSpawnScheduleStillRunning || pendingDrops > 0))
+                    {
+                        return false;
+                    }
+
+                    // Carrier drop pipelines can take multiple trigger/gate timeouts after flights are scheduled.
+                    float pendingDropGraceSeconds = Mathf.Max(_enemyNoSpawnErrorSeconds * 2f, 120f);
+                    if (pendingDrops > 0 && noSpawnSeconds < pendingDropGraceSeconds)
+                    {
+                        return false;
+                    }
+
                     if (_enemySpawner.IsSpawnStarvedThisWave &&
-                        _enemySpawner.GetLivingParatroopersTrackedCountForTelemetry() <= 0)
+                        livingParatroopers <= 0)
                     {
                         if (_enemySpawner.TryRecoverSpawnStarvation(out string recoveryDetails))
                         {
@@ -3234,15 +3378,17 @@ namespace iStick2War_V2
                         EnterGameErrorState(
                             $"Spawn starvation: no spawns for {noSpawnSeconds:0.0}s " +
                             $"(threshold={_enemyNoSpawnErrorSeconds:0.0}s), target={_enemySpawner.TargetParatroopersThisWave}, " +
-                            $"spawned={_enemySpawner.SpawnedParatroopersThisWave}, pending={_enemySpawner.PendingParatrooperDropsThisWave}, " +
-                            $"living={_enemySpawner.GetLivingParatroopersTrackedCountForTelemetry()}, " +
+                            $"spawned={_enemySpawner.SpawnedParatroopersThisWave}, pending={pendingDrops}, " +
+                            $"living={livingParatroopers}, " +
                             $"exit='{_enemySpawner.SpawnRoutineExitReason}', lastAbort='{_enemySpawner.LastSpawnAbortReason}'.");
                         return true;
                     }
 
                     EnterGameErrorState(
                         $"No enemy spawns for {noSpawnSeconds:0.0}s (threshold={_enemyNoSpawnErrorSeconds:0.0}s), " +
-                        $"spawnedThisWave={_enemySpawner.SpawnedParatroopersThisWave}.");
+                        $"spawnedThisWave={_enemySpawner.SpawnedParatroopersThisWave}, pendingDrops={pendingDrops}, " +
+                        $"living={livingParatroopers}, scheduleRunning={_enemySpawner.IsParatrooperSpawnScheduleStillRunning}, " +
+                        $"exit='{_enemySpawner.SpawnRoutineExitReason}'.");
                     return true;
                 }
             }

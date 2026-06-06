@@ -56,10 +56,12 @@ namespace iStick2War_V2
         [SerializeField, Range(0f, 1f)] private float _masterVolume = 1f;
         [SerializeField, Range(0f, 1f)] private float _sfxVolume = 0.9f;
         [SerializeField, Range(0f, 1f)] private float _musicVolume = 0.55f;
-        [SerializeField, Range(0f, 1f)] private float _worldLoopVolume = 0.22f;
+        [SerializeField, Range(0f, 1f)] private float _worldLoopVolume = 0.33f;
 
-        // Keeps aircraft loop loudness proportional to the SFX slider default mix.
-        private const float WorldLoopFromSfxRatio = 0.22f / 0.9f;
+        // Aircraft loop base mix (0.33 = +50% vs prior 0.22); scales with SFX slider via ApplyVolumeSettings.
+        private const float AircraftLoopBaseVolume = 0.33f;
+        private const float DefaultSfxVolumeForLoopMix = 0.9f;
+        private const float WorldLoopFromSfxRatio = AircraftLoopBaseVolume / DefaultSfxVolumeForLoopMix;
 
         private AudioSource _sfxSource;
         private AudioSource _musicSource;
