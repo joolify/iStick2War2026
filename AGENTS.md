@@ -28,6 +28,20 @@ Short orientation for humans and coding agents working in this repository.
 - **Prefab safety**: when **moving** `.cs` files, preserve the **`.meta` GUID`** so existing prefabs keep script references.
 - **Architecture**: keep gameplay out of **View**; use existing Model / Controller / StateMachine splits (see rule file above).
 
+## Git workflow (solo / Unity)
+
+The maintainer uses **one branch only** (`master`) — **no feature branches** — to avoid painful Unity merge conflicts (scenes, prefabs, `.meta`).
+
+| Practice | Detail |
+|----------|--------|
+| **Scope** | One feature at a time (~1–2 hours of Cursor work). |
+| **Success** | Play Mode / manual verify → **commit + push** to `master`. |
+| **Failure** | Discard all changes; **`git reset --hard`** to latest commit (worst case: lose that session). |
+| **Commits** | Small, frequent when working; message should state *why* (e.g. fix vs feature). |
+| **Agents** | Do not create branches or long-lived WIP unless the user explicitly asks. Prefer a focused diff that can be committed or fully reverted in one step. |
+
+Optional safety: tag milestones before risky refactors (e.g. `ea-0.1.0-candidate`). Before `reset --hard`, confirm no untracked assets the user meant to keep (audio, scenes).
+
 ## After structural changes
 
 - If you add a new **composition root** or move a major **entry-point** file, update the file’s **header navigation** block and, if relevant, `.cursor/rules/istick2war-unity-skills.mdc` or this file in the same PR.
