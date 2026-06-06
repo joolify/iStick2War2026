@@ -258,6 +258,7 @@ namespace iStick2War_V2
         private static bool s_skipMainMenuRedirectOnce;
         private static bool s_notifyGameplayFromMainMenuPending;
         private static bool s_skipPrepareDelayAfterMainMenuPlay;
+        private static bool s_loadSavedRunPending;
         private const string MainMenuSceneName = "MainMenuScene";
         private int _livesRemaining;
         private GameOverContinueUi_V2 _resolvedGameOverContinueUi;
@@ -321,6 +322,15 @@ namespace iStick2War_V2
             s_notifyGameplayFromMainMenuPending = true;
             s_skipPrepareDelayAfterMainMenuPlay = true;
         }
+
+        // Main menu Continue: load SampleScene and restore run_save.json instead of starting a fresh run.
+        public static void MarkLoadSavedRunPending()
+        {
+            s_loadSavedRunPending = true;
+            MarkGameplayEnteredFromMainMenu();
+        }
+
+        public static bool HasSavedRunAvailable() => RunSaveService_V2.HasSave();
 
         // Call from MainMenu_V2 after Play: shows Wave N for _topBarWaveTextVisibleSeconds, then fades out.
         public void NotifyGameStartedFromMainMenu()
@@ -516,6 +526,11 @@ namespace iStick2War_V2
                 return;
             }
 
+            if (TryApplyPendingSavedRun())
+            {
+                return;
+            }
+
             EnterPreparingState();
             if (s_notifyGameplayFromMainMenuPending)
             {
@@ -525,6 +540,182 @@ namespace iStick2War_V2
 
             EmitMetaChanged();
             RefreshTopBar();
+        }
+
+        private void OnApplicationPause(bool pauseStatus)
+        {
+            if (pauseStatus)
+            {
+                TrySaveActiveRun();
+            }
+        }
+
+        private void OnApplicationQuit()
+        {
+            TrySaveActiveRun();
+        }
+
+        private bool TryApplyPendingSavedRun()
+        {
+            if (!s_loadSavedRunPending)
+            {
+                return false;
+            }
+
+            s_loadSavedRunPending = false;
+            s_notifyGameplayFromMainMenuPending = false;
+            s_skipPrepareDelayAfterMainMenuPlay = false;
+
+            if (!RunSaveService_V2.TryLoad(out RunSaveFile_V2 save))
+            {
+                Log("[WaveManager_V2] Continue requested but no valid run save was found.");
+                EnterPreparingState();
+                EmitMetaChanged();
+                RefreshTopBar();
+                return true;
+            }
+
+            ApplyRunSave(save);
+            EmitMetaChanged();
+            RefreshTopBar();
+            AudioManager_V2.SetGameplayMusic();
+            return true;
+        }
+
+        private void ApplyRunSave(RunSaveFile_V2 save)
+        {
+            _waveIndex = Mathf.Max(0, save.waveIndex);
+            _currency = Mathf.Max(0, save.currency);
+            _bunkerMaxHealthRuntime = Mathf.Max(1, save.bunkerMaxHealth);
+            _bunkerHealth = Mathf.Clamp(save.bunkerHealth, 0, _bunkerMaxHealthRuntime);
+            _livesRemaining = Mathf.Max(0, save.livesRemaining);
+            _healthPurchasesThisRun = Mathf.Max(0, save.healthPurchasesThisRun);
+            _bunkerRepairsThisRun = Mathf.Max(0, save.bunkerRepairsThisRun);
+            _bunkerMaxUpgradesThisRun = Mathf.Max(0, save.bunkerMaxUpgradesThisRun);
+            _shopExitRetriesSameWave = save.shopExitRetriesSameWave;
+            _continueEnemyPressureMultiplierRuntime = Mathf.Max(1f, save.continueEnemyPressureMultiplier);
+            s_restartRunPermanentDamageBonus01 = Mathf.Clamp01(save.restartRunPermanentDamageBonus01);
+
+            if (_hero != null && save.hero != null)
+            {
+                _hero.ApplyRunSaveHeroState(save.hero, _shopPanel);
+            }
+
+            WaveLoopState_V2 restoredState = (WaveLoopState_V2)save.loopState;
+            RestoreLoopStateAfterSave(restoredState, save.shopOfferIndex);
+        }
+
+        private void RestoreLoopStateAfterSave(WaveLoopState_V2 restoredState, int shopOfferIndex)
+        {
+            HideLifeOverUiCompletely();
+            SetHeroDeathGameOverUiVisible(false);
+            SetGameWonUiVisible(false);
+            SetGameErrorUiVisible(false);
+
+            if (_enemySpawner != null)
+            {
+                _enemySpawner.StopWave();
+            }
+
+            switch (restoredState)
+            {
+                case WaveLoopState_V2.Shop:
+                    SetState(WaveLoopState_V2.Shop);
+                    SetCameraFollowEnabled(false);
+                    if (_shopPanel != null)
+                    {
+                        _shopPanel.Show();
+                        _shopPanel.SetCarouselOfferIndex(shopOfferIndex);
+                        _shopPanel.Refresh();
+                    }
+                    break;
+                case WaveLoopState_V2.LifeOver:
+                    EnterLifeOverState();
+                    break;
+                case WaveLoopState_V2.InWave:
+                    EnterInWaveState();
+                    break;
+                case WaveLoopState_V2.Preparing:
+                default:
+                    s_skipPrepareDelayAfterMainMenuPlay = true;
+                    EnterPreparingState();
+                    break;
+            }
+
+            if (_hero != null)
+            {
+                _hero.RefreshWaveLoopCombatGate();
+            }
+        }
+
+        private bool TrySaveActiveRun()
+        {
+            if (!CanPersistCurrentRunState())
+            {
+                return false;
+            }
+
+            RunSaveFile_V2 save = CaptureRunSaveSnapshot();
+            if (save == null)
+            {
+                return false;
+            }
+
+            bool ok = RunSaveService_V2.TrySave(save);
+            if (ok && _debugWaveLogs)
+            {
+                Log($"[WaveManager_V2] Run saved. wave={CurrentWaveNumber}, state={_state}, currency={_currency}");
+            }
+
+            return ok;
+        }
+
+        private bool CanPersistCurrentRunState()
+        {
+            return _state == WaveLoopState_V2.Preparing ||
+                   _state == WaveLoopState_V2.InWave ||
+                   _state == WaveLoopState_V2.Shop ||
+                   _state == WaveLoopState_V2.LifeOver;
+        }
+
+        private RunSaveFile_V2 CaptureRunSaveSnapshot()
+        {
+            Scene active = SceneManager.GetActiveScene();
+            RunSaveFile_V2 save = new RunSaveFile_V2
+            {
+                gameplaySceneName = active.name,
+                waveIndex = _waveIndex,
+                loopState = (int)_state,
+                currency = _currency,
+                bunkerHealth = _bunkerHealth,
+                bunkerMaxHealth = _bunkerMaxHealthRuntime,
+                livesRemaining = _livesRemaining,
+                healthPurchasesThisRun = _healthPurchasesThisRun,
+                bunkerRepairsThisRun = _bunkerRepairsThisRun,
+                bunkerMaxUpgradesThisRun = _bunkerMaxUpgradesThisRun,
+                shopExitRetriesSameWave = _shopExitRetriesSameWave,
+                continueEnemyPressureMultiplier = _continueEnemyPressureMultiplierRuntime,
+                shopOfferIndex = _shopPanel != null ? _shopPanel.GetCarouselOfferIndex() : 0,
+                restartRunPermanentDamageBonus01 = s_restartRunPermanentDamageBonus01,
+                hero = _hero != null ? _hero.CaptureRunSaveHeroState() : new HeroSaveBlock_V2()
+            };
+            return save;
+        }
+
+        private void PersistRunSaveIfPossible()
+        {
+            TrySaveActiveRun();
+        }
+
+        // Called before leaving SampleScene via pause menu (GameplayPauseButton_V2).
+        public void PersistActiveRunSave()
+        {
+            TrySaveActiveRun();
+        }
+
+        private void ClearPersistedRunSave()
+        {
+            RunSaveService_V2.ClearSave();
         }
 
         private bool TryRedirectBootToMainMenuScene()
@@ -881,6 +1072,7 @@ namespace iStick2War_V2
 
             s_restartRunPermanentDamageBonus01 =
                 Mathf.Clamp01(s_restartRunPermanentDamageBonus01 + Mathf.Max(0f, _restartRunPermanentDamageBonusStep));
+            ClearPersistedRunSave();
             Time.timeScale = 1f;
             // Full scene reload resets wave index, economy defaults, bunker, and run lives.
             Scene active = SceneManager.GetActiveScene();
@@ -1293,6 +1485,7 @@ namespace iStick2War_V2
             }
             Log($"Wave {CurrentWaveNumber} cleared. reward={reward}, currency={_currency}");
             EmitMetaChanged();
+            PersistRunSaveIfPossible();
         }
 
         private void EnterPreparingState()
@@ -1317,6 +1510,7 @@ namespace iStick2War_V2
             _extraPrepareDelaySecondsForNextWave = 0f;
             _stateEndTime = Time.time + prepare;
             _enemiesKilledThisWave = 0;
+            PersistRunSaveIfPossible();
         }
 
         private void EnterLifeOverState()
@@ -1366,6 +1560,8 @@ namespace iStick2War_V2
             {
                 BeginTopBarStatusIntro("Life lost", hold);
             }
+
+            PersistRunSaveIfPossible();
         }
 
         private void ApplyBetweenWavePressureReset()
@@ -1450,6 +1646,7 @@ namespace iStick2War_V2
                 $"configDuration={wave.WaveDurationSeconds:0.0}s (not used as hard cap when spawner active), " +
                 $"spawnerFailSafe={failSafeBasis:0.0}s");
             _continueEnemyPressureMultiplierRuntime = 1f;
+            PersistRunSaveIfPossible();
         }
 
         private bool TryOpenShopDirectlyFromWave(WaveConfig_V2 wave)
@@ -1593,6 +1790,7 @@ namespace iStick2War_V2
             }
 
             Log($"WaveManager entered GameOver (heroDeath={heroDeath}).");
+            ClearPersistedRunSave();
         }
 
         private void EnterGameWonState()
@@ -1612,6 +1810,7 @@ namespace iStick2War_V2
             ResolveGameWonUiIfNeeded();
             SetGameWonUiVisible(true);
             Log($"WaveManager entered GameWon at wave {CurrentWaveNumber}.");
+            ClearPersistedRunSave();
         }
 
         private string BuildGameErrorDiagnosticsSnapshot()

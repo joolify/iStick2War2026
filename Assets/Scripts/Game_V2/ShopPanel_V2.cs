@@ -268,6 +268,38 @@ namespace iStick2War_V2
             return _visibleShopOffers[_offerIndex];
         }
 
+        public int GetCarouselOfferIndex() => _offerIndex;
+
+        public void SetCarouselOfferIndex(int offerIndex)
+        {
+            _offerIndex = Mathf.Max(0, offerIndex);
+        }
+
+        public HeroWeaponDefinition_V2 TryResolveWeaponDefinitionByType(WeaponType weaponType)
+        {
+            if (_shopOffers == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < _shopOffers.Count; i++)
+            {
+                ShopOfferConfig_V2 row = _shopOffers[i];
+                if (row == null)
+                {
+                    continue;
+                }
+
+                HeroWeaponDefinition_V2 weapon = row.Weapon;
+                if (weapon != null && weapon.WeaponType == weaponType)
+                {
+                    return weapon;
+                }
+            }
+
+            return null;
+        }
+
         public void Initialize(WaveManager_V2 waveManager)
         {
             _waveManager = waveManager;

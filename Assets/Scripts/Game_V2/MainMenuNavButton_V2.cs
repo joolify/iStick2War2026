@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace iStick2War_V2
 {
@@ -30,11 +29,10 @@ namespace iStick2War_V2
     [RequireComponent(typeof(Collider2D))]
     public sealed class MainMenuNavButton_V2 : MonoBehaviour
     {
-        private const string MainMenuSceneName = "MainMenuScene";
-
         public enum MenuAction
         {
             Play,
+            Continue,
             Settings,
             CloseSettings,
             // Load dedicated main menu scene.
@@ -113,6 +111,10 @@ namespace iStick2War_V2
             {
                 _mainMenu.HandlePlay();
             }
+            else if (_action == MenuAction.Continue)
+            {
+                _mainMenu.HandleContinue();
+            }
             else if (_action == MenuAction.Settings)
             {
                 _mainMenu.HandleShowSettings();
@@ -126,26 +128,7 @@ namespace iStick2War_V2
         // Freeze time before scene load so boot state always starts paused in menu.
         private static void LoadMainMenuScene()
         {
-            Time.timeScale = 0f;
-            SceneManager.sceneLoaded -= FinishReturnToMainMenuAfterSceneLoad;
-            SceneManager.sceneLoaded += FinishReturnToMainMenuAfterSceneLoad;
-            SceneManager.LoadScene(MainMenuSceneName, LoadSceneMode.Single);
-        }
-
-        // may be on an inactive GameObject (so Awake never runs on load). Restore menu visibility
-        // and pause after the new scene instance exists.
-        private static void FinishReturnToMainMenuAfterSceneLoad(Scene scene, LoadSceneMode mode)
-        {
-            SceneManager.sceneLoaded -= FinishReturnToMainMenuAfterSceneLoad;
-            MainMenu_V2[] menus = FindObjectsByType<MainMenu_V2>(FindObjectsInactive.Include);
-            for (int i = 0; i < menus.Length; i++)
-            {
-                if (menus[i] != null)
-                {
-                    menus[i].ApplyReturnToMainMenuAfterSceneReload();
-                    break;
-                }
-            }
+            GameplayPauseButton_V2.ReturnToMainMenuScene();
         }
     }
 }

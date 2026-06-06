@@ -205,6 +205,12 @@ namespace iStick2War_V2
 
         public int WeaponCount => _weapons.Count;
 
+        public void ClearAll()
+        {
+            _weapons.Clear();
+            _activeIndex = -1;
+        }
+
         public HeroWeaponRuntimeState_V2 GetWeaponStateAtIndex(int zeroBasedIndex)
         {
             if (zeroBasedIndex < 0 || zeroBasedIndex >= _weapons.Count)

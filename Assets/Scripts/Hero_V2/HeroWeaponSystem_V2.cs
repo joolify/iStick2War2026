@@ -685,6 +685,82 @@ namespace iStick2War_V2
                    state.CurrentReserveAmmo >= state.Definition.MaxReserveAmmo;
         }
 
+        // Run save/load: replace owned weapons and ammo; active weapon is synced to HeroModel_V2.
+        public void ReplaceInventoryFromSave(
+            RunSaveWeaponEntry_V2[] entries,
+            WeaponType activeWeapon,
+            System.Func<WeaponType, HeroWeaponDefinition_V2> resolveDefinition)
+        {
+            _isReloading = false;
+            _minigunHeat01 = 0f;
+            _inventory.ClearAll();
+
+            if (entries != null && resolveDefinition != null)
+            {
+                for (int i = 0; i < entries.Length; i++)
+                {
+                    RunSaveWeaponEntry_V2 entry = entries[i];
+                    if (entry == null)
+                    {
+                        continue;
+                    }
+
+                    WeaponType weaponType = (WeaponType)entry.weaponType;
+                    HeroWeaponDefinition_V2 definition = resolveDefinition(weaponType);
+                    if (definition == null)
+                    {
+                        continue;
+                    }
+
+                    _inventory.AddIfMissing(definition);
+                    if (_inventory.TryGetWeaponState(definition, out HeroWeaponRuntimeState_V2 state) &&
+                        state != null)
+                    {
+                        state.CurrentAmmo = Mathf.Max(0, entry.currentAmmo);
+                        state.CurrentReserveAmmo = Mathf.Max(0, entry.currentReserveAmmo);
+                    }
+                }
+            }
+
+            if (!_inventory.SetActiveByType(activeWeapon))
+            {
+                if (_inventory.WeaponCount > 0)
+                {
+                    _inventory.SetActiveBySlot(0);
+                }
+            }
+
+            ApplyActiveWeaponToModel();
+        }
+
+        public RunSaveWeaponEntry_V2[] CaptureInventoryForSave()
+        {
+            int count = _inventory.WeaponCount;
+            if (count <= 0)
+            {
+                return System.Array.Empty<RunSaveWeaponEntry_V2>();
+            }
+
+            RunSaveWeaponEntry_V2[] entries = new RunSaveWeaponEntry_V2[count];
+            for (int i = 0; i < count; i++)
+            {
+                HeroWeaponRuntimeState_V2 state = _inventory.GetWeaponStateAtIndex(i);
+                if (state == null || state.Definition == null)
+                {
+                    continue;
+                }
+
+                entries[i] = new RunSaveWeaponEntry_V2
+                {
+                    weaponType = (int)state.Definition.WeaponType,
+                    currentAmmo = state.CurrentAmmo,
+                    currentReserveAmmo = state.CurrentReserveAmmo
+                };
+            }
+
+            return entries;
+        }
+
         public bool TryGetWeaponAmmoCounts(
             HeroWeaponDefinition_V2 definition,
             out int currentMagazine,

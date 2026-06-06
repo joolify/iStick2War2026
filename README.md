@@ -4,6 +4,9 @@ A 2D wave-based stickman war game built in Unity, targeting **Early Access** sco
 
 This repository is the active **Unity 6** codebase (`6000.4.1f1`). Gameplay logic is organized under `Assets/Scripts/` with a consistent **V2** architecture (composition roots, state machines, Spine-driven presentation).
 
+**Current phase:** Feature complete → QA & polish → Early Access.  
+**Release notes (v0.1.0 EA):** [docs/releases/0.1.0.md](docs/releases/0.1.0.md) — settings, run save/load, project status, and release gate checklists (EN/SV).
+
 ### Project metrics (at a glance)
 
 | Metric | Value |
@@ -224,6 +227,7 @@ Authoritative compile validation: open the project in the Unity Editor. `iStick2
 | `Assets/Data/` | Weapons, wave assets |
 | `Assets/Scenes/` | Main gameplay and menu scenes |
 | `AGENTS.md` | Short orientation for humans and coding agents |
+| `docs/releases/` | Versioned release notes (e.g. [0.1.0.md](docs/releases/0.1.0.md)) |
 | `.cursor/rules/` | Project conventions for Cursor |
 
 ---

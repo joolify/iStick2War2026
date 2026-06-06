@@ -755,5 +755,83 @@ namespace iStick2War_V2
 
             _weaponSystem.RestrictInventoryToAllowedWeaponTypes(allowedWeaponTypes);
         }
+
+        public HeroWeaponDefinition_V2 TryFindWeaponDefinitionByType(WeaponType weaponType)
+        {
+            if (_initialWeapons == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < _initialWeapons.Count; i++)
+            {
+                HeroWeaponDefinition_V2 definition = _initialWeapons[i];
+                if (definition != null && definition.WeaponType == weaponType)
+                {
+                    return definition;
+                }
+            }
+
+            return null;
+        }
+
+        public HeroSaveBlock_V2 CaptureRunSaveHeroState()
+        {
+            if (_model == null || _weaponSystem == null)
+            {
+                return new HeroSaveBlock_V2();
+            }
+
+            RunSaveWeaponEntry_V2[] weapons = _weaponSystem.CaptureInventoryForSave();
+            return new HeroSaveBlock_V2
+            {
+                maxHealth = _model.maxHealth,
+                currentHealth = _model.currentHealth,
+                isDead = _model.isDead,
+                activeWeaponType = (int)_model.currentWeaponType,
+                weapons = new RunSaveWeaponEntryList_V2 { items = weapons }
+            };
+        }
+
+        public void ApplyRunSaveHeroState(
+            HeroSaveBlock_V2 heroSave,
+            ShopPanel_V2 shopPanel)
+        {
+            if (_model == null || _weaponSystem == null || heroSave == null)
+            {
+                return;
+            }
+
+            WeaponType activeWeapon = (WeaponType)heroSave.activeWeaponType;
+            _weaponSystem.ReplaceInventoryFromSave(
+                heroSave.weapons != null ? heroSave.weapons.items : null,
+                activeWeapon,
+                type =>
+                {
+                    HeroWeaponDefinition_V2 fromHero = TryFindWeaponDefinitionByType(type);
+                    if (fromHero != null)
+                    {
+                        return fromHero;
+                    }
+
+                    return shopPanel != null ? shopPanel.TryResolveWeaponDefinitionByType(type) : null;
+                });
+
+            _model.RestoreHealthStateForSave(heroSave.maxHealth, heroSave.currentHealth, heroSave.isDead);
+            if (heroSave.isDead)
+            {
+                _controller?.SetCombatPaused(true);
+                _movementSystem?.Disable();
+                _weaponSystem.Disable();
+                return;
+            }
+
+            _deathHandler?.ResetAfterRevive();
+            _view?.ResetPresentationAfterRevive();
+            _movementSystem?.Enable();
+            _weaponSystem.Enable();
+            _controller?.SetCombatPaused(true);
+            RefreshEquippedWeaponVisuals();
+        }
     }
 }

@@ -107,6 +107,25 @@ namespace iStick2War_V2
             currentState = HeroState.Idle;
         }
 
+        // Run save/load: set HP and death flag without running death-handler side effects.
+        public void RestoreHealthStateForSave(int maxHp, int currentHp, bool dead)
+        {
+            maxHealth = Mathf.Max(1, maxHp);
+            if (dead)
+            {
+                currentHealth = 0;
+                SetDead();
+                return;
+            }
+
+            isDead = false;
+            currentHealth = Mathf.Clamp(currentHp, 1, maxHealth);
+            if (currentState == HeroState.Dead)
+            {
+                currentState = HeroState.Idle;
+            }
+        }
+
         // -------------------------
         // HEALTH LOGIC (safe)
         // -------------------------

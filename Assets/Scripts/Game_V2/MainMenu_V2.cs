@@ -40,7 +40,10 @@ namespace iStick2War_V2
         private const string TmpStartGameAltName = "txt_mainMenu_startGame";
         private const string TmpSettingsAltName = "txt_mainMenu_settings";
         private const string DefaultWorldPlayButtonName = "TextBTN_MediumStartGame";
+        private const string DefaultWorldContinueButtonName = "TextBTN_MediumContinue";
         private const string DefaultWorldSettingsButtonName = "TextBTN_MediumSettings";
+        private const string TmpContinueName = "txt_mainmenu_continue";
+        private const string TmpContinueAltName = "txt_mainMenu_continue";
         private const string DefaultSettingsPanelName = "Settings V2";
         private const string DefaultSettingsBackButtonName = "TextBTN_MediumGoBack";
         private const string MainMenuBackgroundObjectName = "bkg_main_menu";
@@ -48,12 +51,16 @@ namespace iStick2War_V2
         {
             DefaultWorldPlayButtonName,
             DefaultWorldSettingsButtonName,
+            DefaultWorldContinueButtonName,
             "TextBTN_MediumStartGame_Pressed",
             "TextBTN_MediumSettinngs_Pressed",
+            "TextBTN_MediumContinue_Pressed",
             TmpPlayName,
             TmpSettingsName,
             TmpStartGameAltName,
-            TmpSettingsAltName
+            TmpSettingsAltName,
+            TmpContinueName,
+            TmpContinueAltName
         };
         private static readonly string[] DefaultMenuObjectNames =
         {
@@ -73,6 +80,7 @@ namespace iStick2War_V2
 
         [Header("Buttons (optional if TMP names exist)")]
         [SerializeField] private Button _playButton;
+        [SerializeField] private Button _continueButton;
         [SerializeField] private Button _settingsButton;
 
         [Header("Settings")]
@@ -83,6 +91,7 @@ namespace iStick2War_V2
 
         [Header("World-space TextBTN (optional)")]
         [SerializeField] private string _worldPlayButtonObjectName = DefaultWorldPlayButtonName;
+        [SerializeField] private string _worldContinueButtonObjectName = DefaultWorldContinueButtonName;
         [SerializeField] private string _worldSettingsButtonObjectName = DefaultWorldSettingsButtonName;
 
         [Header("Gameplay")]
@@ -101,6 +110,8 @@ namespace iStick2War_V2
         // (automation / tests: use with WaveManager_V2 Preparing, not only Time.timeScale).
         public bool IsWaitingForPlay =>
             isActiveAndEnabled && gameObject.activeInHierarchy && !_gameStarted;
+
+        public bool CanContinueSavedRun => WaveManager_V2.HasSavedRunAvailable();
 
         private void Awake()
         {
@@ -123,10 +134,17 @@ namespace iStick2War_V2
                 _playButton.onClick.AddListener(HandlePlay);
             }
 
+            if (_continueButton != null)
+            {
+                _continueButton.onClick.AddListener(HandleContinue);
+            }
+
             if (_settingsButton != null)
             {
                 _settingsButton.onClick.AddListener(HandleShowSettings);
             }
+
+            RefreshContinueAvailability();
         }
 
         private void LateUpdate()
@@ -145,6 +163,11 @@ namespace iStick2War_V2
             if (_playButton != null)
             {
                 _playButton.onClick.RemoveListener(HandlePlay);
+            }
+
+            if (_continueButton != null)
+            {
+                _continueButton.onClick.RemoveListener(HandleContinue);
             }
 
             if (_settingsButton != null)
@@ -189,6 +212,7 @@ namespace iStick2War_V2
         private void WireWorldNavButtonsIfNeeded()
         {
             EnsureWorldNavButton(_worldPlayButtonObjectName, MainMenuNavButton_V2.MenuAction.Play);
+            EnsureWorldNavButton(_worldContinueButtonObjectName, MainMenuNavButton_V2.MenuAction.Continue);
             EnsureWorldNavButton(_worldSettingsButtonObjectName, MainMenuNavButton_V2.MenuAction.Settings);
             EnsureWorldNavButton(DefaultSettingsBackButtonName, MainMenuNavButton_V2.MenuAction.CloseSettings);
             // Legacy sprite names from early main-menu prefabs.
@@ -364,6 +388,7 @@ namespace iStick2War_V2
 
             AudioManager_V2.PlayMenuClick();
             _gameStarted = true;
+            RunSaveService_V2.ClearSave();
 
             // Unity does not reset timeScale when loading scenes; ReturnToMainMenu loads with timeScale 0.
             // Always resume simulation when leaving the menu so Play works for every boot path.
@@ -390,6 +415,61 @@ namespace iStick2War_V2
 
             HideMainMenuRoots();
             NotifyWaveManagerGameStartedIfPossible();
+        }
+
+        // Resume the last autosaved run (shop, preparing, in-wave restart, or life-over).
+        public void HandleContinue()
+        {
+            if (_gameStarted || !CanContinueSavedRun)
+            {
+                return;
+            }
+
+            AudioManager_V2.PlayMenuClick();
+            _gameStarted = true;
+            Time.timeScale = 1f;
+
+            if (_loadGameplaySceneOnPlay && !string.IsNullOrWhiteSpace(_gameplaySceneName))
+            {
+                WaveManager_V2.MarkLoadSavedRunPending();
+                if (_loadGameplaySceneRoutine != null)
+                {
+                    StopCoroutine(_loadGameplaySceneRoutine);
+                }
+
+                _loadGameplaySceneRoutine = StartCoroutine(LoadGameplaySceneWhenReady());
+                return;
+            }
+
+            Debug.LogWarning(
+                "[MainMenu_V2] Continue requires _loadGameplaySceneOnPlay with a gameplay scene name.");
+        }
+
+        private void RefreshContinueAvailability()
+        {
+            bool hasSave = CanContinueSavedRun;
+            SetNamedSceneObjectActive(_worldContinueButtonObjectName, hasSave);
+            SetNamedSceneObjectActive("TextBTN_MediumContinue_Pressed", false);
+            SetNamedSceneObjectActive(TmpContinueName, hasSave);
+            SetNamedSceneObjectActive(TmpContinueAltName, hasSave);
+            if (_continueButton != null)
+            {
+                _continueButton.gameObject.SetActive(hasSave);
+            }
+        }
+
+        private void SetNamedSceneObjectActive(string objectName, bool active)
+        {
+            if (string.IsNullOrWhiteSpace(objectName))
+            {
+                return;
+            }
+
+            GameObject target = FindNamedObjectInScene(objectName);
+            if (target != null)
+            {
+                target.SetActive(active);
+            }
         }
 
         private void NotifyWaveManagerGameStartedIfPossible()
@@ -632,6 +712,8 @@ namespace iStick2War_V2
             {
                 Time.timeScale = 0f;
             }
+
+            RefreshContinueAvailability();
         }
 
         private void ShowByNameFallback()
