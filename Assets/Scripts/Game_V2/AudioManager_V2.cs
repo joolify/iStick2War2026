@@ -53,9 +53,13 @@ namespace iStick2War_V2
         [SerializeField] private AudioClip _outOfAmmo;
 
         [Header("Mix")]
+        [SerializeField, Range(0f, 1f)] private float _masterVolume = 1f;
         [SerializeField, Range(0f, 1f)] private float _sfxVolume = 0.9f;
         [SerializeField, Range(0f, 1f)] private float _musicVolume = 0.55f;
         [SerializeField, Range(0f, 1f)] private float _worldLoopVolume = 0.22f;
+
+        // Keeps aircraft loop loudness proportional to the SFX slider default mix.
+        private const float WorldLoopFromSfxRatio = 0.22f / 0.9f;
 
         private AudioSource _sfxSource;
         private AudioSource _musicSource;
@@ -85,6 +89,7 @@ namespace iStick2War_V2
 
         public static AudioManager_V2 EnsureInstance()
         {
+            EnsureAudioListenerPresent();
             if (s_instance != null)
             {
                 return s_instance;
@@ -227,8 +232,38 @@ namespace iStick2War_V2
             EnsureSources();
             ForceGlobalAudioEnabled();
             LoadDefaultClipsIfMissing();
+            GameSettings_V2.LoadAndApplyAll();
             LogMissingClipSummaryOnce();
             LogStartupState();
+        }
+
+        public void ApplyVolumeSettings(float masterVolume, float musicVolume, float sfxVolume)
+        {
+            _masterVolume = Mathf.Clamp01(masterVolume);
+            _musicVolume = Mathf.Clamp01(musicVolume);
+            _sfxVolume = Mathf.Clamp01(sfxVolume);
+            _worldLoopVolume = _sfxVolume * WorldLoopFromSfxRatio;
+            RefreshAllSourceVolumes();
+        }
+
+        private float EffectiveMasterVolume => Mathf.Clamp01(_masterVolume);
+        private float EffectiveMusicVolume => _musicVolume * EffectiveMasterVolume;
+        private float EffectiveSfxVolume => _sfxVolume * EffectiveMasterVolume;
+        private float EffectiveWorldLoopVolume => _worldLoopVolume * EffectiveMasterVolume;
+
+        private void RefreshAllSourceVolumes()
+        {
+            if (_musicSource != null)
+            {
+                _musicSource.volume = EffectiveMusicVolume;
+            }
+
+            if (_continuousWeaponSource != null)
+            {
+                _continuousWeaponSource.volume = EffectiveSfxVolume;
+            }
+
+            RefreshAircraftLoops();
         }
 
         private void Start()
@@ -277,7 +312,7 @@ namespace iStick2War_V2
                 _musicSource.spatialBlend = 0f;
                 _musicSource.ignoreListenerPause = true;
                 _musicSource.ignoreListenerVolume = true;
-                _musicSource.volume = _musicVolume;
+                _musicSource.volume = EffectiveMusicVolume;
             }
 
             if (_aircraftSource == null)
@@ -288,7 +323,7 @@ namespace iStick2War_V2
                 _aircraftSource.spatialBlend = 0f;
                 _aircraftSource.ignoreListenerPause = true;
                 _aircraftSource.ignoreListenerVolume = true;
-                _aircraftSource.volume = _worldLoopVolume;
+                _aircraftSource.volume = EffectiveWorldLoopVolume;
             }
 
             if (_droneSource == null)
@@ -299,7 +334,7 @@ namespace iStick2War_V2
                 _droneSource.spatialBlend = 0f;
                 _droneSource.ignoreListenerPause = true;
                 _droneSource.ignoreListenerVolume = true;
-                _droneSource.volume = _worldLoopVolume * 0.9f;
+                _droneSource.volume = EffectiveWorldLoopVolume * 0.9f;
             }
 
             if (_continuousWeaponSource == null)
@@ -310,15 +345,48 @@ namespace iStick2War_V2
                 _continuousWeaponSource.spatialBlend = 0f;
                 _continuousWeaponSource.ignoreListenerPause = true;
                 _continuousWeaponSource.ignoreListenerVolume = true;
-                _continuousWeaponSource.volume = _sfxVolume;
+                _continuousWeaponSource.volume = EffectiveSfxVolume;
             }
         }
 
         private void ForceGlobalAudioEnabled()
         {
+            EnsureAudioListenerPresent();
             // Some editor/game-view states can leave listener volume muted.
             AudioListener.pause = false;
             AudioListener.volume = 1f;
+        }
+
+        // MainMenuScene boot and runtime AudioManager fallback must never leave the scene without a listener.
+        private static void EnsureAudioListenerPresent()
+        {
+            if (FindAnyObjectByType<AudioListener>(FindObjectsInactive.Include) != null)
+            {
+                return;
+            }
+
+            Camera mainCamera = Camera.main;
+            if (mainCamera == null)
+            {
+                Camera[] cameras = FindObjectsByType<Camera>(FindObjectsInactive.Include);
+                if (cameras.Length > 0)
+                {
+                    mainCamera = cameras[0];
+                }
+            }
+
+            if (mainCamera != null)
+            {
+                if (mainCamera.GetComponent<AudioListener>() == null)
+                {
+                    mainCamera.gameObject.AddComponent<AudioListener>();
+                }
+
+                return;
+            }
+
+            GameObject listenerRoot = new GameObject("AudioListener_V2");
+            listenerRoot.AddComponent<AudioListener>();
         }
 
         private void EnsureClipsLoaded()
@@ -476,7 +544,7 @@ namespace iStick2War_V2
             }
 
             _musicSource.clip = clip;
-            _musicSource.volume = _musicVolume;
+            _musicSource.volume = EffectiveMusicVolume;
             _musicSource.Play();
         }
 
@@ -556,7 +624,7 @@ namespace iStick2War_V2
                 return;
             }
 
-            _sfxSource.PlayOneShot(clip, _sfxVolume);
+            _sfxSource.PlayOneShot(clip, EffectiveSfxVolume);
         }
 
         private void PlayMissileExplosionOncePerImpactWindow()
@@ -592,7 +660,7 @@ namespace iStick2War_V2
                 return;
             }
 
-            _continuousWeaponSource.volume = _sfxVolume;
+            _continuousWeaponSource.volume = EffectiveSfxVolume;
             if (_activeContinuousWeapon == weaponType &&
                 _continuousWeaponSource.clip == clip &&
                 _continuousWeaponSource.isPlaying)
@@ -664,8 +732,8 @@ namespace iStick2War_V2
                 FindAnyObjectByType<KamikazeDrone_V2>(FindObjectsInactive.Exclude) != null;
 
             AudioClip aircraftClip = hasBombPlane ? _bombPlaneLoop : hasHelicopter ? _helicopterLoop : null;
-            UpdateLoopSource(_aircraftSource, aircraftClip, _worldLoopVolume);
-            UpdateLoopSource(_droneSource, hasDrone ? _droneLoop : null, _worldLoopVolume * 0.9f);
+            UpdateLoopSource(_aircraftSource, aircraftClip, EffectiveWorldLoopVolume);
+            UpdateLoopSource(_droneSource, hasDrone ? _droneLoop : null, EffectiveWorldLoopVolume * 0.9f);
         }
 
         private static void UpdateLoopSource(AudioSource source, AudioClip clip, float volume)

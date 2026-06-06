@@ -390,7 +390,16 @@ namespace iStick2War_V2
             Vector3 screen = Input.mousePosition;
             screen.z = cam.WorldToScreenPoint(new Vector3(0f, 0f, aimPlaneZ)).z;
             Vector3 w = cam.ScreenToWorldPoint(screen);
-            return new Vector2(w.x, w.y);
+            Vector2 mouseWorld = new Vector2(w.x, w.y);
+
+            float sensitivity = GameSettings_V2.MouseSensitivity;
+            if (Mathf.Approximately(sensitivity, 1f))
+            {
+                return mouseWorld;
+            }
+
+            Vector2 pivot = cam.transform.position;
+            return pivot + (mouseWorld - pivot) * sensitivity;
         }
 
         private Vector2 ClampFlamethrowerAimWorldPoint(Vector2 rawAimWorld)

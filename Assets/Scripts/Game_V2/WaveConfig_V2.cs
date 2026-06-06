@@ -82,6 +82,13 @@ namespace iStick2War_V2
         [SerializeField] private int _waveRewardCurrency = 80;
 
         [Header("Dev shortcut")]
+        [InspectorName("Start At Main Menu On Scene Load")]
+        [Tooltip(
+            "When this row is the active wave at gameplay scene boot (wave index 0), load MainMenuScene " +
+            "instead of starting Prepare/InWave. Main menu Play loads the gameplay scene and skips this once. " +
+            "Useful when pressing Play in the editor on SampleScene. Turn off before shipping.")]
+        [SerializeField] private bool _startAtMainMenuOnSceneLoad;
+        [InspectorName("Open Shop Directly")]
         [Tooltip(
             "Skip playing this wave: after Prepare, open the shop immediately (wave reward still granted). " +
             "Useful for testing shop UI on the first wave row. Turn off before shipping.")]
@@ -99,6 +106,7 @@ namespace iStick2War_V2
         public int BombDroneCount => Mathf.Max(0, _bombDroneCount);
         public int MechRobotBossCount => Mathf.Max(0, _mechRobotBossCount);
         public int WaveRewardCurrency => Mathf.Max(0, _waveRewardCurrency);
+        public bool StartAtMainMenuOnSceneLoad => _startAtMainMenuOnSceneLoad;
         public bool OpenShopDirectly => _openShopDirectly;
     }
 }

@@ -11,7 +11,7 @@ namespace iStick2War_V2
  *
  * Responsibilities:
  * - StartFlight: seed Model (timers, direction toward bunker when available)
- * - Update: horizontal motion only in Fly; HoverOverBunker holds position; DropBomb holds until clip timer
+ * - Update: horizontal motion in Fly and DropBomb (exit continues during drop clip); HoverOverBunker holds position
  * - TryBeginHoverOverBunker: X-alignment vs BunkerHitbox_V2 → HoverOverBunker for hold duration
  * - After hold: spawn payload at mount, enter DropBomb for View, then return to Fly
  * - Camera-bounded despawn and max lifetime despawn via SimplePrefabPool_V2
@@ -206,32 +206,16 @@ namespace iStick2War_V2
             }
 
             BombDroneState_V2 state = _stateMachine.CurrentState;
-
-            if (state == BombDroneState_V2.Fly)
+            if (state == BombDroneState_V2.Idle || state == BombDroneState_V2.Die)
             {
-                float speed = Mathf.Max(0.1f, _horizontalFlySpeed);
-                transform.position += Vector3.right * (_model.directionX * speed * Time.deltaTime);
-                Physics2D.SyncTransforms();
-
-                if (!_model.bombDropped)
-                {
-                    TryBeginHoverOverBunker();
-                }
+                return;
             }
-            else if (state == BombDroneState_V2.HoverOverBunker)
+
+            TickStateTimers(state);
+
+            if (ShouldIntegrateHorizontalFlight(state))
             {
-                if (Time.time >= _hoverEndAt)
-                {
-                    CompleteHoverAndBeginDrop();
-                }
-            }
-            else if (state == BombDroneState_V2.DropBomb)
-            {
-                if (_returnToFlyAfterDropAt > 0f && Time.time >= _returnToFlyAfterDropAt)
-                {
-                    _returnToFlyAfterDropAt = 0f;
-                    _stateMachine.ChangeState(BombDroneState_V2.Fly);
-                }
+                IntegrateHorizontalFlight();
             }
 
             if (Time.time >= _model.expireAt)
@@ -240,15 +224,108 @@ namespace iStick2War_V2
                 return;
             }
 
-            if (state == BombDroneState_V2.Fly &&
-                TryGetOrthographicCameraHorizontalBounds(_cam, _flightOffscreenMarginWorld, out float left, out float right))
+            TryDespawnWhenPastCameraBounds(state);
+        }
+
+        private static bool ShouldIntegrateHorizontalFlight(BombDroneState_V2 state)
+        {
+            // DropBomb follows hover release; keep flying out while the one-shot drop clip plays.
+            return state == BombDroneState_V2.Fly || state == BombDroneState_V2.DropBomb;
+        }
+
+        private void IntegrateHorizontalFlight()
+        {
+            float speed = Mathf.Max(0.1f, _horizontalFlySpeed);
+            transform.position += Vector3.right * (_model.directionX * speed * Time.deltaTime);
+            Physics2D.SyncTransforms();
+
+            if (!_model.bombDropped && _stateMachine.CurrentState == BombDroneState_V2.Fly)
             {
-                float x = transform.position.x;
-                if (IsPastHorizontalFlyBounds(x, _model.directionX, left, right))
+                TryBeginHoverOverBunker();
+            }
+        }
+
+        private void TickStateTimers(BombDroneState_V2 state)
+        {
+            if (state == BombDroneState_V2.HoverOverBunker)
+            {
+                // Failsafe if hover end time was cleared while still hovering (pool edge cases).
+                if (_hoverEndAt <= 0f)
+                {
+                    _hoverEndAt = Time.time;
+                }
+
+                if (Time.time >= _hoverEndAt)
+                {
+                    CompleteHoverAndBeginDrop();
+                }
+            }
+            else if (state == BombDroneState_V2.DropBomb)
+            {
+                if (_returnToFlyAfterDropAt <= 0f)
+                {
+                    _returnToFlyAfterDropAt = Time.time + Mathf.Max(0.05f, _dropBombStateDuration);
+                }
+
+                if (Time.time >= _returnToFlyAfterDropAt)
+                {
+                    _returnToFlyAfterDropAt = 0f;
+                    _stateMachine.ChangeState(BombDroneState_V2.Fly);
+                }
+            }
+        }
+
+        private void TryDespawnWhenPastCameraBounds(BombDroneState_V2 state)
+        {
+            if (_cam == null)
+            {
+                _cam = Camera.main;
+            }
+
+            if (_model.bombDropped && IsPastExitViewportHorizontalEdges(_cam, 0.02f))
+            {
+                DespawnSelfViaPool(gameObject);
+                return;
+            }
+
+            if (!TryGetOrthographicCameraHorizontalBounds(_cam, _flightOffscreenMarginWorld, out float left, out float right))
+            {
+                return;
+            }
+
+            float x = transform.position.x;
+            if (_model.bombDropped)
+            {
+                if (x > right || x < left)
                 {
                     DespawnSelfViaPool(gameObject);
                 }
+
+                return;
             }
+
+            if (state == BombDroneState_V2.Fly &&
+                IsPastHorizontalFlyBounds(x, _model.directionX, left, right))
+            {
+                DespawnSelfViaPool(gameObject);
+            }
+        }
+
+        private bool IsPastExitViewportHorizontalEdges(Camera cam, float viewportMargin)
+        {
+            if (cam == null)
+            {
+                return false;
+            }
+
+            Vector3 viewport = cam.WorldToViewportPoint(transform.position);
+            if (viewport.z <= 0f)
+            {
+                return false;
+            }
+
+            float margin = Mathf.Max(0f, viewportMargin);
+            return viewport.x < -margin || viewport.x > 1f + margin;
         }
 
         private void TryBeginHoverOverBunker()

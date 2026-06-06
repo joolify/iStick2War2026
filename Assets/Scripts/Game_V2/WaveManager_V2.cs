@@ -255,6 +255,8 @@ namespace iStick2War_V2
         private float _continueEnemyPressureMultiplierRuntime = 1f;
         private HeroWeaponDefinition_V2 _lastShopPurchasedWeapon;
         private static float s_restartRunPermanentDamageBonus01;
+        private static bool s_skipMainMenuRedirectOnce;
+        private const string MainMenuSceneName = "MainMenuScene";
         private int _livesRemaining;
         private GameOverContinueUi_V2 _resolvedGameOverContinueUi;
         private Canvas _shopCanvasActivatedForLifeOver;
@@ -310,9 +312,16 @@ namespace iStick2War_V2
             return !string.IsNullOrWhiteSpace(reason);
         }
 
+        // Call from MainMenu_V2 before loading the gameplay scene, or after Play when menu lives in-scene.
+        public static void MarkGameplayEnteredFromMainMenu()
+        {
+            s_skipMainMenuRedirectOnce = true;
+        }
+
         // Call from MainMenu_V2 after Play: shows Wave N for _topBarWaveTextVisibleSeconds, then fades out.
         public void NotifyGameStartedFromMainMenu()
         {
+            MarkGameplayEnteredFromMainMenu();
             HideLifeOverUiCompletely();
             AudioManager_V2.SetGameplayMusic();
             BeginTopBarWaveTextIntro();
@@ -499,9 +508,40 @@ namespace iStick2War_V2
                 _shopPanel.Hide();
             }
 
+            if (TryRedirectBootToMainMenuScene())
+            {
+                return;
+            }
+
             EnterPreparingState();
             EmitMetaChanged();
             RefreshTopBar();
+        }
+
+        private bool TryRedirectBootToMainMenuScene()
+        {
+            if (s_skipMainMenuRedirectOnce)
+            {
+                s_skipMainMenuRedirectOnce = false;
+                return false;
+            }
+
+            if (_waveIndex != 0)
+            {
+                return false;
+            }
+
+            WaveConfig_V2 wave = GetCurrentWaveConfig();
+            if (wave == null || !wave.StartAtMainMenuOnSceneLoad)
+            {
+                return false;
+            }
+
+            Log("[WaveManager_V2] Wave 1 StartAtMainMenuOnSceneLoad: loading MainMenuScene.");
+            Time.timeScale = 0f;
+            AudioManager_V2.SetMenuMusic();
+            SceneManager.LoadScene(MainMenuSceneName, LoadSceneMode.Single);
+            return true;
         }
 
         private void Update()

@@ -36,6 +36,7 @@ namespace iStick2War_V2
         {
             Play,
             Settings,
+            CloseSettings,
             // Load dedicated main menu scene.
             ReturnToMainMenu
         }
@@ -46,6 +47,12 @@ namespace iStick2War_V2
 
         internal bool IsReturnToMainMenuAction() => _action == MenuAction.ReturnToMainMenu;
         internal bool IsPlayAction() => _action == MenuAction.Play;
+
+        internal void Configure(MainMenu_V2 mainMenu, MenuAction action)
+        {
+            _mainMenu = mainMenu;
+            _action = action;
+        }
 
         // Automation helper for tests/agents.
         public void TriggerAutomationClick()
@@ -106,9 +113,13 @@ namespace iStick2War_V2
             {
                 _mainMenu.HandlePlay();
             }
-            else
+            else if (_action == MenuAction.Settings)
             {
-                _mainMenu.HandleSettingsToggle();
+                _mainMenu.HandleShowSettings();
+            }
+            else if (_action == MenuAction.CloseSettings)
+            {
+                _mainMenu.HandleHideSettings();
             }
         }
 

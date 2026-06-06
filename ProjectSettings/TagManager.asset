@@ -29,7 +29,7 @@ TagManager:
   - MechRobot
   - SpawnPoints
   - EnemyLoot
-  - 
+  - Settings
   - 
   - 
   - 
@@ -96,6 +96,9 @@ TagManager:
     locked: 0
   - name: LifeOver
     uniqueID: 1862622779
+    locked: 0
+  - name: Settings
+    uniqueID: 3579727845
     locked: 0
   m_RenderingLayers:
   - Default

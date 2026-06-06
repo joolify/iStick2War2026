@@ -76,6 +76,11 @@ namespace iStick2War_V2
 
         public static void AddImpulse(WorldShakeImpulseKind_V2 kind)
         {
+            if (!GameSettings_V2.ScreenShakeEnabled)
+            {
+                return;
+            }
+
             if (s_instance == null)
             {
                 if (!s_warnedNoInstance)
@@ -92,6 +97,11 @@ namespace iStick2War_V2
 
         public void AddShake(float amount)
         {
+            if (!GameSettings_V2.ScreenShakeEnabled)
+            {
+                return;
+            }
+
             float impulse = Mathf.Max(0f, amount);
             _trauma = Mathf.Clamp01(_trauma + impulse);
             _peakOffsetWorld = Mathf.Max(_peakOffsetWorld, impulse);
