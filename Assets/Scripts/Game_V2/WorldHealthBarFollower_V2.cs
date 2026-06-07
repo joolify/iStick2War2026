@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.UI;
 
 namespace iStick2War_V2
@@ -47,12 +48,23 @@ namespace iStick2War_V2
         [Tooltip("When true, disables this behaviour if Follow Target is null (avoids warnings every frame).")]
         [SerializeField] private bool _disableIfNoTarget;
 
+        [Header("Render above follow target (paratrooper)")]
+        [Tooltip("When true, force this canvas onto a sorting layer above Paratrooper mesh and refresh each LateUpdate.")]
+        [SerializeField] private bool _renderAboveFollowTargetMesh;
+        [SerializeField] private string _renderAboveSortingLayerName = "Topbar";
+        [SerializeField] private int _renderAboveSortingOrderOffset = 10;
+        [Tooltip("Extra world Z added to the follow offset so the bar draws in front of co-planar Spine meshes.")]
+        [SerializeField] private float _renderAboveDepthBiasZ = -0.5f;
+
         private bool _loggedMissingTarget;
         private bool _loggedCanvasMode;
         private bool _loggedZeroScale;
         private bool _loggedCullingMask;
         private bool _loggedCanvasScalerMode;
         private Func<Vector3> _worldAnchorOverride;
+        private MeshRenderer _followTargetMeshRenderer;
+        private Canvas _followCanvas;
+        private SortingGroup _followSortingGroup;
 
         private void Awake()
         {
@@ -165,43 +177,68 @@ namespace iStick2War_V2
 
             _loggedMissingTarget = false;
             Vector3 anchor = ResolveAnchorWorldPosition();
-            transform.position = anchor + _worldOffset;
+            transform.position = anchor + ResolveFollowOffset();
 
             if (!_faceCamera)
             {
+                if (_renderAboveFollowTargetMesh)
+                {
+                    ApplyRenderAboveFollowTargetMeshSorting();
+                }
+
                 return;
             }
 
             Camera cam = _camera != null ? _camera : Camera.main;
             if (cam == null)
             {
+                if (_renderAboveFollowTargetMesh)
+                {
+                    ApplyRenderAboveFollowTargetMeshSorting();
+                }
+
                 return;
             }
 
             if (_matchCameraRotation)
             {
                 transform.rotation = cam.transform.rotation;
+                if (_renderAboveFollowTargetMesh)
+                {
+                    ApplyRenderAboveFollowTargetMeshSorting();
+                }
+
                 return;
             }
 
             Vector3 toCam = cam.transform.position - transform.position;
             if (toCam.sqrMagnitude < 1e-8f)
             {
+                if (_renderAboveFollowTargetMesh)
+                {
+                    ApplyRenderAboveFollowTargetMeshSorting();
+                }
+
                 return;
             }
 
             transform.rotation = Quaternion.LookRotation(-toCam.normalized, Vector3.up);
+            if (_renderAboveFollowTargetMesh)
+            {
+                ApplyRenderAboveFollowTargetMeshSorting();
+            }
         }
 
         public void SetFollowTarget(Transform target)
         {
             _followTarget = target;
+            _followTargetMeshRenderer = null;
             enabled = true;
             _loggedMissingTarget = false;
 
             if (target != null || _worldAnchorOverride != null)
             {
-                transform.position = ResolveAnchorWorldPosition() + _worldOffset;
+                transform.position = ResolveAnchorWorldPosition() + ResolveFollowOffset();
             }
         }
 
@@ -211,7 +248,7 @@ namespace iStick2War_V2
             _worldAnchorOverride = provider;
             if (isActiveAndEnabled && (_followTarget != null || _worldAnchorOverride != null))
             {
-                transform.position = ResolveAnchorWorldPosition() + _worldOffset;
+                transform.position = ResolveAnchorWorldPosition() + ResolveFollowOffset();
             }
         }
 
@@ -220,8 +257,85 @@ namespace iStick2War_V2
             _worldOffset = offset;
             if (_followTarget != null || _worldAnchorOverride != null)
             {
-                transform.position = ResolveAnchorWorldPosition() + _worldOffset;
+                transform.position = ResolveAnchorWorldPosition() + ResolveFollowOffset();
             }
+        }
+
+        // Paratrooper bars must sit above per-spawn Spine mesh sorting; refresh after each follow tick.
+        public void ConfigureRenderAboveFollowTargetMesh(
+            bool enabled,
+            string sortingLayerName = "Topbar",
+            int sortingOrderOffset = 10,
+            float depthBiasZ = -0.5f)
+        {
+            _renderAboveFollowTargetMesh = enabled;
+            _renderAboveSortingLayerName = sortingLayerName;
+            _renderAboveSortingOrderOffset = sortingOrderOffset;
+            _renderAboveDepthBiasZ = depthBiasZ;
+            _followTargetMeshRenderer = null;
+            if (enabled)
+            {
+                ApplyRenderAboveFollowTargetMeshSorting();
+            }
+        }
+
+        private void ApplyRenderAboveFollowTargetMeshSorting()
+        {
+            if (_followCanvas == null)
+            {
+                _followCanvas = GetComponent<Canvas>();
+                if (_followCanvas == null)
+                {
+                    _followCanvas = GetComponentInChildren<Canvas>(true);
+                }
+            }
+
+            if (_followCanvas == null)
+            {
+                return;
+            }
+
+            if (_followTargetMeshRenderer == null && _followTarget != null)
+            {
+                _followTargetMeshRenderer = _followTarget.GetComponentInChildren<MeshRenderer>(true);
+            }
+
+            int layerId = SortingLayer.NameToID(_renderAboveSortingLayerName);
+            if (layerId == 0 && _renderAboveSortingLayerName != "Default")
+            {
+                layerId = SortingLayer.NameToID("Topbar");
+            }
+
+            int order = _followTargetMeshRenderer != null
+                ? _followTargetMeshRenderer.sortingOrder + _renderAboveSortingOrderOffset
+                : _renderAboveSortingOrderOffset;
+
+            _followCanvas.overrideSorting = true;
+            _followCanvas.sortingLayerID = layerId;
+            _followCanvas.sortingOrder = order;
+
+            if (_followSortingGroup == null)
+            {
+                _followSortingGroup = GetComponent<SortingGroup>();
+                if (_followSortingGroup == null)
+                {
+                    _followSortingGroup = gameObject.AddComponent<SortingGroup>();
+                }
+            }
+
+            _followSortingGroup.sortingLayerID = layerId;
+            _followSortingGroup.sortingOrder = order;
+        }
+
+        private Vector3 ResolveFollowOffset()
+        {
+            Vector3 offset = _worldOffset;
+            if (_renderAboveFollowTargetMesh)
+            {
+                offset.z += _renderAboveDepthBiasZ;
+            }
+
+            return offset;
         }
 
         private Vector3 ResolveAnchorWorldPosition()

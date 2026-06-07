@@ -282,15 +282,15 @@ Canvas:
   m_PlaneDistance: 100
   m_PixelPerfect: 0
   m_ReceivesEvents: 1
-  m_OverrideSorting: 0
+  m_OverrideSorting: 1
   m_OverridePixelPerfect: 0
   m_SortingBucketNormalizedSize: 0
   m_VertexColorAlwaysGammaSpace: 0
   m_UseReflectionProbes: 0
   m_AdditionalShaderChannelsFlag: 0
   m_UpdateRectTransformForStandalone: 0
-  m_SortingLayerID: 1456502635
-  m_SortingOrder: 0
+  m_SortingLayerID: 1338141175
+  m_SortingOrder: 100
   m_TargetDisplay: 0
 --- !u!114 &8560142009041665923
 MonoBehaviour:
@@ -347,8 +347,13 @@ MonoBehaviour:
   _followTarget: {fileID: 0}
   _worldOffset: {x: 0, y: 2.2, z: 0}
   _faceCamera: 1
+  _matchCameraRotation: 1
   _camera: {fileID: 0}
   _disableIfNoTarget: 0
+  _renderAboveFollowTargetMesh: 1
+  _renderAboveSortingLayerName: Topbar
+  _renderAboveSortingOrderOffset: 10
+  _renderAboveDepthBiasZ: -0.5
 --- !u!114 &6136890680177115995
 MonoBehaviour:
   m_ObjectHideFlags: 0

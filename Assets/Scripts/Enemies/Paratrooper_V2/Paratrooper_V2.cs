@@ -601,6 +601,7 @@ public class Paratrooper : MonoBehaviour
         }
 
         follower?.SetFollowTarget(transform);
+        follower?.ConfigureRenderAboveFollowTargetMesh(enabled: true);
         _cachedHealthBarFollower = follower;
 
         if (_model == null)
