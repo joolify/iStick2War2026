@@ -74,7 +74,7 @@ namespace iStick2War_V2
         [SerializeField]
         private string _scalingVersion = "default";
 
-        [Tooltip("When _rows is empty, resolve waves 1-10 from a built-in retention-focused curve.")]
+        [Tooltip("When _rows is empty, resolve waves 1-15 from a built-in retention-focused curve.")]
         [SerializeField]
         private bool _useBuiltInDefaultCurveWhenRowsEmpty = true;
 
@@ -108,8 +108,8 @@ namespace iStick2War_V2
 
         private static WaveBalanceWaveRow ResolveBuiltInCurveWaveRow(int wave)
         {
-            // Mild ramp for waves 1-3, steeper pressure from 4-10 with matching reward.
-            float t = Mathf.Clamp01((wave - 1f) / 9f);
+            // Mild ramp for waves 1-3, steeper pressure through wave 15 with matching reward.
+            float t = Mathf.Clamp01((wave - 1f) / 14f);
             return new WaveBalanceWaveRow
             {
                 enemyHpMultiplier = Mathf.Lerp(1f, 1.42f, t),

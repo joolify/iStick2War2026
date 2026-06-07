@@ -11,11 +11,12 @@ namespace iStick2War_V2
  * No runtime behaviour here.
  *
  * ---------------------------------------------------------
- * DESIGN INTENT (early air campaign, waves ~1–10)
+ * DESIGN INTENT (early air campaign, waves ~1–15)
  *
  * - Waves 1–3: helicopter + paratroopers only, low density.
  * - Waves 4–7: ramp counts/tempo; first bomb-plane passes when BomberPassCount is above zero.
- * - Waves 8–10: heavier air; more bomb-plane passes when BomberPassCount is raised (spawned by EnemySpawner_V2).
+ * - Waves 8–12: heavier air; more bomb-plane passes when BomberPassCount is raised (spawned by EnemySpawner_V2).
+ * - Waves 13–15: late-run pressure; tune per-wave assets under Assets/Data/WaveManager/Waves01to15/.
  * - EnemyCount (paratrooper drops per wave) remains “drops per wave” (one helicopter approach per count with the current spawner).
  * - GroundTrooperCount spawns the same Paratrooper_V2 prefab from off-screen ground without Deploy / Glide.
  *

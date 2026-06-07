@@ -130,6 +130,8 @@ namespace iStick2War_V2
                 return;
             }
 
+            AudioManager_V2.PlayMissileExplosion();
+
             PooledAutoDespawn_V2 timer = fx.GetComponent<PooledAutoDespawn_V2>();
             if (timer == null)
             {

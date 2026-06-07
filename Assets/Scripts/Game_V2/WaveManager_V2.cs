@@ -127,7 +127,7 @@ namespace iStick2War_V2
         [SerializeField] private TMP_Text _heroDeathTopBarTitle;
         [Tooltip("Top bar label, e.g. txt_topbar_gameOver_continue. Hidden until Hero_V2 dies.")]
         [SerializeField] private TMP_Text _heroDeathTopBarContinue;
-        [Header("Game Won UI — wave 10 clear")]
+        [Header("Game Won UI — final wave clear")]
         [Tooltip("e.g. world-space GameWon root. Hidden until last wave is cleared.")]
         [SerializeField] private GameObject _gameWonRoot;
         [Tooltip("Continue button on win panel, e.g. btn_gameWon_continue.")]
@@ -1122,6 +1122,7 @@ namespace iStick2War_V2
             else
             {
                 CombatProjectileCleanup_V2.DespawnAllActiveProjectiles();
+                EnemyLootCleanup_V2.DespawnAllActiveGroundLoot();
             }
 
             if (_hero == null || !_hero.TryReviveForLifeRetry())
@@ -1733,6 +1734,7 @@ namespace iStick2War_V2
             else
             {
                 CombatProjectileCleanup_V2.DespawnAllActiveProjectiles();
+                EnemyLootCleanup_V2.DespawnAllActiveGroundLoot();
             }
 
             if (_hero == null || !_hero.TryReviveForLifeRetry())
@@ -3979,7 +3981,7 @@ namespace iStick2War_V2
             _deferredTopBarWaveIntroRoutine = null;
         }
 
-        // Ensures ancestors from the wave label up to (and including) Topbar-canvas are active so TMP can render.
+        // Ensures ancestors from the wave label up to the gameplay HUD canvas are active so TMP can render.
         private void EnsureTopbarBranchActiveForWaveLabel()
         {
             if (_topBarWaveText == null)
@@ -3988,20 +3990,20 @@ namespace iStick2War_V2
             }
 
             Transform t = _topBarWaveText.transform;
-            Transform topbarCanvas = null;
+            Transform hudCanvas = null;
             Transform walk = t;
             while (walk != null)
             {
-                if (walk.name.Equals("Topbar-canvas", StringComparison.OrdinalIgnoreCase))
+                if (IsGameplayHudCanvasRoot(walk))
                 {
-                    topbarCanvas = walk;
+                    hudCanvas = walk;
                     break;
                 }
 
                 walk = walk.parent;
             }
 
-            if (topbarCanvas == null)
+            if (hudCanvas == null)
             {
                 return;
             }
@@ -4014,13 +4016,31 @@ namespace iStick2War_V2
                     walk.gameObject.SetActive(true);
                 }
 
-                if (walk == topbarCanvas)
+                Canvas canvas = walk.GetComponent<Canvas>();
+                if (canvas != null)
+                {
+                    canvas.enabled = true;
+                }
+
+                if (walk == hudCanvas)
                 {
                     break;
                 }
 
                 walk = walk.parent;
             }
+        }
+
+        private static bool IsGameplayHudCanvasRoot(Transform transform)
+        {
+            if (transform == null)
+            {
+                return false;
+            }
+
+            string name = transform.name;
+            return name.Equals("Topbar-canvas", StringComparison.OrdinalIgnoreCase) ||
+                   name.Equals("HUD-Canvas", StringComparison.OrdinalIgnoreCase);
         }
 
         private IEnumerator TopBarStatusTextIntroRoutine(string message, float holdSeconds)

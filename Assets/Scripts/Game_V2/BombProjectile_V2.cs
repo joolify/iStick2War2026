@@ -217,6 +217,7 @@ namespace iStick2War_V2
                 }
             }
 
+            AudioManager_V2.PlayMissileExplosion();
             DespawnSelf();
         }
 

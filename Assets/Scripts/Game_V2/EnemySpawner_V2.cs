@@ -524,12 +524,13 @@ namespace iStick2War_V2
             StartCoroutine(RunTrackedAirThreatRoutine(routine));
         }
 
-        // Life retry / wave restart: stop spawner, despawn living enemies, and clear airborne ordnance.
+        // Life retry / wave restart: stop spawner, despawn living enemies, clear ordnance, and remove ground loot.
         public void ClearActiveWaveCombatForLifeRetry(string reason = null)
         {
             StopWave();
             DespawnAllLivingInfantryForLifeRetry(reason);
             CombatProjectileCleanup_V2.DespawnAllActiveProjectiles();
+            EnemyLootCleanup_V2.DespawnAllActiveGroundLoot();
         }
 
         private void DespawnAllLivingInfantryForLifeRetry(string reason)

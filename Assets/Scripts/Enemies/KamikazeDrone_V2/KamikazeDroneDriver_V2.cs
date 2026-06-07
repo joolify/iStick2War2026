@@ -253,6 +253,8 @@ namespace iStick2War_V2
                 GameObject fx = SimplePrefabPool_V2.Spawn(_explosionEffectPrefab, center, Quaternion.identity);
                 if (fx != null)
                 {
+                    AudioManager_V2.PlayMissileExplosion();
+
                     PooledAutoDespawn_V2 timer = fx.GetComponent<PooledAutoDespawn_V2>();
                     if (timer == null)
                     {

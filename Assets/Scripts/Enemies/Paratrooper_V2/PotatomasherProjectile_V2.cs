@@ -427,6 +427,7 @@ namespace iStick2War_V2
             }
 
             EnsureExplosionEffectPrefab();
+            AudioManager_V2.PlayGrenadeExplosion();
             if (_explosionEffectPrefab != null)
             {
                 GameObject fx = Instantiate(_explosionEffectPrefab, transform.position, Quaternion.identity);

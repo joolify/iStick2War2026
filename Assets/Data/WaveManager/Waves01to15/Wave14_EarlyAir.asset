@@ -10,18 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c3e0b36a6a9941f4b9f05a30121bf937, type: 3}
-  m_Name: Wave03_EarlyAir
+  m_Name: Wave14_EarlyAir
   m_EditorClassIdentifier: Assembly-CSharp::iStick2War_V2.WaveConfig_V2
-  _enemyCount: 10
-  _waveDurationSeconds: 135
-  _spawnIntervalSeconds: 1.75
-  _groundTrooperCount: 5
-  _groundTrooperSpawnIntervalSeconds: 1.8
-  _enemyHealthMultiplier: 1.03
-  _enemyDamageMultiplier: 1
-  _bomberPassCount: 0
+  _enemyCount: 8
+  _waveDurationSeconds: 38
+  _spawnIntervalSeconds: 1.2
+  _enemyHealthMultiplier: 1.2
+  _enemyDamageMultiplier: 1.1
+  _bomberPassCount: 3
   _kamikazeDroneCount: 0
   _bombDroneCount: 0
   _mechRobotBossCount: 0
-  _waveRewardCurrency: 630
-  _openShopDirectly: 0
+  _waveRewardCurrency: 1510
