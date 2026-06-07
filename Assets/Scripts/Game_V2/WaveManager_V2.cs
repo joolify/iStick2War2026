@@ -593,7 +593,7 @@ namespace iStick2War_V2
             _currency = Mathf.Max(0, save.currency);
             _bunkerMaxHealthRuntime = Mathf.Max(1, save.bunkerMaxHealth);
             _bunkerHealth = Mathf.Clamp(save.bunkerHealth, 0, _bunkerMaxHealthRuntime);
-            _livesRemaining = Mathf.Max(0, save.livesRemaining);
+            _livesRemaining = Mathf.Clamp(save.livesRemaining, 0, MaxLivesPerRun);
             _healthPurchasesThisRun = Mathf.Max(0, save.healthPurchasesThisRun);
             _bunkerRepairsThisRun = Mathf.Max(0, save.bunkerRepairsThisRun);
             _bunkerMaxUpgradesThisRun = Mathf.Max(0, save.bunkerMaxUpgradesThisRun);
@@ -1107,6 +1107,13 @@ namespace iStick2War_V2
         {
             _livesRemaining = Mathf.Max(0, _livesRemaining - 1);
             EmitLivesChanged();
+
+            if (_livesRemaining <= 0)
+            {
+                Log("Final life consumed. Entering Game Over.");
+                EnterGameOverState();
+                return;
+            }
 
             if (_enemySpawner != null)
             {
