@@ -139,7 +139,7 @@ public class Paratrooper : MonoBehaviour
     [Header("Combat Facing")]
     [Tooltip("Must match EnemySpawner_V2 _paratrooperFacesRightWhenScaleXPositive (spawn flip convention).")]
     [SerializeField] private bool _facesRightWhenScaleXPositive = true;
-    [Tooltip("Flip root scale X when the unit faces away from the hero (on land and while grounded in combat).")]
+    [Tooltip("Flip Skeleton.ScaleX when the unit faces away from the hero (on land and while grounded in combat).")]
     [FormerlySerializedAs("_correctFacingTowardHeroOnLand")]
     [SerializeField] private bool _correctFacingTowardHero = true;
     [SerializeField] private float _facingHeroXTolerance = 0.15f;
@@ -455,6 +455,7 @@ public class Paratrooper : MonoBehaviour
         _view?.ResetVisualStateForSpawn();
         _view?.EnsureDamagePresentationSubscribed(_damageReceiver);
         SanitizeVisualRootAlignment();
+        EnsurePositiveRootScaleX();
         EnsureWorldHealthBar();
         _groundAssaultActive = false;
         _groundAssaultDirectionX = 0f;
@@ -847,7 +848,7 @@ public class Paratrooper : MonoBehaviour
         return result;
     }
 
-    // Flip toward hero when root scale X faces away (landing drift, hero passing to the other side, etc.).
+    // Flip toward hero via Skeleton.ScaleX (weapon IK + MP40 clips); root scale stays positive for uniform size.
     private void TryCorrectFacingTowardHero()
     {
         if (!_correctFacingTowardHero)
@@ -860,7 +861,28 @@ public class Paratrooper : MonoBehaviour
             return;
         }
 
-        float deltaX = heroX - transform.position.x;
+        TryCorrectFacingTowardWorldX(heroX);
+    }
+
+    // WeaponSystem calls this before crosshair sync while shooting; Paratrooper.Update covers other grounded states.
+    public void TryCorrectFacingTowardHeroForCombat()
+    {
+        TryCorrectFacingTowardHero();
+    }
+
+    public bool IsCombatFacingRight()
+    {
+        return IsVisuallyFacingRight();
+    }
+
+    public void TryCorrectFacingTowardWorldX(float worldX)
+    {
+        if (!_correctFacingTowardHero)
+        {
+            return;
+        }
+
+        float deltaX = worldX - transform.position.x;
         if (Mathf.Abs(deltaX) < _facingHeroXTolerance)
         {
             return;
@@ -894,13 +916,52 @@ public class Paratrooper : MonoBehaviour
 
     private bool IsVisuallyFacingRight()
     {
+        EnsureSkeletonAnimationResolved();
+        if (_skeletonAnimation != null && _skeletonAnimation.Skeleton != null)
+        {
+            bool positiveSkeletonScaleX = _skeletonAnimation.Skeleton.ScaleX >= 0f;
+            return positiveSkeletonScaleX == _facesRightWhenScaleXPositive;
+        }
+
         bool positiveScaleX = transform.localScale.x >= 0f;
         return positiveScaleX == _facesRightWhenScaleXPositive;
     }
 
     private void ApplyFacingRight(bool faceRight)
     {
-        bool usePositiveScaleX = faceRight == _facesRightWhenScaleXPositive;
+        EnsureSkeletonAnimationResolved();
+        if (_skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
+        {
+            return;
+        }
+
+        EnsurePositiveRootScaleX();
+
+        if (faceRight == IsVisuallyFacingRight())
+        {
+            return;
+        }
+
+        // Match Hero / legacy Flippable: weapon IK and MP40 clips key off Skeleton.ScaleX, not mirrored root scale.
+        _skeletonAnimation.Skeleton.ScaleX *= -1f;
+        _weaponSystem?.RefreshCombatAimPresentation();
+        SnapHealthBarToCurrentPosition();
+    }
+
+    private void EnsureSkeletonAnimationResolved()
+    {
+        if (_skeletonAnimation == null)
+        {
+            _skeletonAnimation = GetComponent<SkeletonAnimation>();
+            if (_skeletonAnimation == null)
+            {
+                _skeletonAnimation = GetComponentInChildren<SkeletonAnimation>(true);
+            }
+        }
+    }
+
+    private void EnsurePositiveRootScaleX()
+    {
         Vector3 s = transform.localScale;
         float absX = Mathf.Abs(s.x);
         if (absX < 1e-6f)
@@ -908,11 +969,11 @@ public class Paratrooper : MonoBehaviour
             absX = 1f;
         }
 
-        s.x = usePositiveScaleX ? absX : -absX;
-        CaptureSpineWorldAnchorForPostSpawnFacingReconcile();
-        transform.localScale = s;
-        ReconcileRootPositionAfterSpawnFacing();
-        SnapHealthBarToCurrentPosition();
+        if (!Mathf.Approximately(s.x, absX))
+        {
+            s.x = absX;
+            transform.localScale = s;
+        }
     }
 
     /// <summary>

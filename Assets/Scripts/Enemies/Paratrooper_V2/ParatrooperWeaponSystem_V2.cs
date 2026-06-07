@@ -143,6 +143,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
     private int _shellCasingSortingLayerId = -1;
     private Collider2D _cachedHeroCollider;
     private Collider2D _cachedBunkerCoverCollider;
+    private Paratrooper _paratrooper;
 
     public void ApplyWaveDamageMultiplier(float multiplier)
     {
@@ -166,9 +167,9 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             return;
         }
 
-        if (_skeletonAnimation == null || _crossHairBone == null)
+        if (_paratrooper == null)
         {
-            return;
+            _paratrooper = GetComponentInParent<Paratrooper>();
         }
 
         if (IsHeroDeadForCombat())
@@ -176,8 +177,16 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
             return;
         }
 
+        Vector2 combatAimWorld = GetCombatAimWorldPoint();
+        _paratrooper?.TryCorrectFacingTowardWorldX(combatAimWorld.x);
+
+        if (_skeletonAnimation == null || _crossHairBone == null)
+        {
+            return;
+        }
+
         // Before SkeletonAnimation.Update applies aim-weapon-ik (same pattern as HeroView_V2.SetCrosshair in Update).
-        SyncCrosshairToCombatAimPoint();
+        SyncCrosshairToCombatAimPoint(combatAimWorld);
     }
 
     // Stop tracking the hero and restore the Spine IK target to setup pose (hero death stand-down).
@@ -199,17 +208,29 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         }
 
         ResolveAimBones();
-        SyncCrosshairToCombatAimPoint();
+        Vector2 combatAimWorld = GetCombatAimWorldPoint();
+        if (_paratrooper == null)
+        {
+            _paratrooper = GetComponentInParent<Paratrooper>();
+        }
+
+        _paratrooper?.TryCorrectFacingTowardWorldX(combatAimWorld.x);
+        SyncCrosshairToCombatAimPoint(combatAimWorld);
     }
 
     private void SyncCrosshairToCombatAimPoint()
+    {
+        SyncCrosshairToCombatAimPoint(GetCombatAimWorldPoint());
+    }
+
+    private void SyncCrosshairToCombatAimPoint(Vector2 worldTarget)
     {
         if (_skeletonAnimation == null || _crossHairBone == null)
         {
             return;
         }
 
-        Vector2 worldTarget = GetCombatAimWorldPoint();
+        worldTarget = ClampCombatAimToFacingHemisphere(worldTarget);
         float skeletonZ = _skeletonAnimation.transform.position.z;
 
         ResolveAimBones();
@@ -955,9 +976,7 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
 
     private Vector2 GetCombatAimWorldPoint()
     {
-        WaveManager_V2 waveManager = FindAnyObjectByType<WaveManager_V2>();
-        if (waveManager != null &&
-            waveManager.BunkerHealth > 0 &&
+        if (ShouldUseBunkerCoverCombatAim() &&
             TryGetActiveBunkerCoverAimWorldPoint(out Vector2 bunkerAim))
         {
             return bunkerAim;
@@ -966,12 +985,79 @@ public class ParatrooperWeaponSystem_V2 : MonoBehaviour
         return GetHeroCombatAimWorldPoint();
     }
 
+    // MP40 crosshair + ray direction: bunker cover only while the hero is sheltered inside the bunker zone.
+    private bool ShouldUseBunkerCoverCombatAim()
+    {
+        WaveManager_V2 waveManager = FindAnyObjectByType<WaveManager_V2>();
+        if (waveManager == null || waveManager.BunkerHealth <= 0)
+        {
+            return false;
+        }
+
+        EnsureHeroReferencesResolved();
+        if (_heroRoot == null || _heroModel == null || _heroModel.isDead)
+        {
+            return true;
+        }
+
+        return waveManager.IsHeroInsideBunker(_heroRoot);
+    }
+
+    private void EnsureHeroReferencesResolved()
+    {
+        if (_heroRoot == null)
+        {
+            _heroRoot = FindAnyObjectByType<Hero_V2>();
+        }
+
+        if (_heroModel == null && _heroRoot != null)
+        {
+            _heroModel = _heroRoot.GetComponent<HeroModel_V2>();
+        }
+
+        if (_heroModel == null)
+        {
+            _heroModel = FindAnyObjectByType<HeroModel_V2>();
+        }
+
+        if (_heroRoot == null && _heroModel != null)
+        {
+            _heroRoot = _heroModel.GetComponentInParent<Hero_V2>();
+        }
+    }
+
+    // Prevent aim-weapon-ik from bending the torso backward when the target sits behind the current facing.
+    private Vector2 ClampCombatAimToFacingHemisphere(Vector2 worldTarget)
+    {
+        if (_skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
+        {
+            return worldTarget;
+        }
+
+        float skeletonX = _skeletonAnimation.transform.position.x;
+        float deltaX = worldTarget.x - skeletonX;
+        bool facingRight = _paratrooper != null
+            ? _paratrooper.IsCombatFacingRight()
+            : _skeletonAnimation.Skeleton.ScaleX >= 0f;
+        const float minForwardWorldX = 0.35f;
+
+        if (facingRight && deltaX < minForwardWorldX)
+        {
+            worldTarget.x = skeletonX + minForwardWorldX;
+        }
+        else if (!facingRight && deltaX > -minForwardWorldX)
+        {
+            worldTarget.x = skeletonX - minForwardWorldX;
+        }
+
+        return worldTarget;
+    }
+
     // MP40 uses the outer bunker face; grenades lob toward hero / bunker interior (not the near trigger face).
     private Vector2 GetGrenadeThrowTargetWorldPoint(Vector2 throwOrigin)
     {
         Vector2 target = GetHeroCombatAimWorldPoint();
-        WaveManager_V2 waveManager = FindAnyObjectByType<WaveManager_V2>();
-        if (waveManager != null && waveManager.BunkerHealth > 0)
+        if (ShouldUseBunkerCoverCombatAim())
         {
             Collider2D cover = ResolveActiveBunkerCoverCollider();
             if (cover != null)

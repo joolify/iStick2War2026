@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
+using Spine.Unity;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -1754,9 +1755,6 @@ namespace iStick2War_V2
             if (usedAnchorSpawn || spawnAsGroundTrooper)
             {
                 ApplyParatrooperSpawnFacing(spawned.transform, fromLeft);
-                // Awake() may flatten Spine local offset while prefab scale is still default; facing flips root X
-                // scale afterward and mirrors the skeleton in world space unless we compensate again.
-                spawned.ReconcileRootPositionAfterSpawnFacing();
             }
 
             // Awake visual sanitize / missing reconcile (e.g. SkeletonAnimation on root) can leave rigidbody root off
@@ -3540,11 +3538,30 @@ namespace iStick2War_V2
 
             // From LEFT side -> face RIGHT toward center. From RIGHT side -> face LEFT toward center.
             bool shouldFaceRight = spawnedFromLeftSide;
-            bool usePositiveScaleX = shouldFaceRight == _paratrooperFacesRightWhenScaleXPositive;
 
             Vector3 s = paratrooperRoot.localScale;
-            s.x = usePositiveScaleX ? Mathf.Abs(s.x) : -Mathf.Abs(s.x);
+            s.x = Mathf.Abs(s.x);
+            if (s.x < 1e-6f)
+            {
+                s.x = 1f;
+            }
+
             paratrooperRoot.localScale = s;
+
+            SkeletonAnimation skeletonAnimation = paratrooperRoot.GetComponentInChildren<SkeletonAnimation>(true);
+            if (skeletonAnimation == null || skeletonAnimation.Skeleton == null)
+            {
+                return;
+            }
+
+            float skeletonMag = Mathf.Abs(skeletonAnimation.Skeleton.ScaleX);
+            if (skeletonMag < 1e-6f)
+            {
+                skeletonMag = 1f;
+            }
+
+            bool wantPositiveSkeletonX = shouldFaceRight == _paratrooperFacesRightWhenScaleXPositive;
+            skeletonAnimation.Skeleton.ScaleX = wantPositiveSkeletonX ? skeletonMag : -skeletonMag;
         }
 
         private void ApplyAircraftSpriteSorting(GameObject aircraft)
