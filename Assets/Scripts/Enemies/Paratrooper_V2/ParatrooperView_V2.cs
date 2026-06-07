@@ -892,8 +892,9 @@ public class ParatrooperView_V2 : MonoBehaviour
             ForceApplyAnimationFirstFrame(nextAnimation);
             // E/land_fall_down_back* keys parachute slot + parachuteBone; do not use ground-death parachute hide here.
             RestoreParachuteSlotVisibilityForAirborneDeathLand();
-            TryDropMp40OnGroundDeath();
             _skeletonAnimation.LateUpdate();
+            // Frame 0 still holds gunBone high (glide pose); drop after LateUpdate so ground snap uses grounded RB column.
+            TryDropMp40OnGroundDeath();
             if (trackEntry != null && _controller != null)
             {
                 trackEntry.Complete -= OnGlideDieGroundImpactLandClipComplete;
@@ -2618,14 +2619,34 @@ public class ParatrooperView_V2 : MonoBehaviour
             return false;
         }
 
-        Vector2 origin = new Vector2(spawnPos.x, spawnPos.y + 0.35f);
-        RaycastHit2D hit = Physics2D.Raycast(origin, Vector2.down, 1.75f, groundMask);
-        if (hit.collider == null)
+        float probeX = spawnPos.x;
+        float skyStartY = spawnPos.y + 0.75f;
+        Rigidbody2D rootRb = GetComponentInParent<Rigidbody2D>();
+        if (rootRb != null)
         {
-            return false;
+            skyStartY = Mathf.Max(skyStartY, rootRb.position.y + 2f);
+            // Airborne-death land clip frame 0: skeleton/gunBone can still be high while RB is snapped to floor.
+            if (spawnPos.y - rootRb.position.y > 1f)
+            {
+                probeX = rootRb.position.x;
+            }
         }
 
-        spawnPos.x = hit.point.x;
+        const float skyRayLength = 24f;
+        RaycastHit2D hit = Physics2D.Raycast(new Vector2(probeX, skyStartY), Vector2.down, skyRayLength, groundMask);
+        if (hit.collider == null)
+        {
+            Vector2 nearOrigin = new Vector2(spawnPos.x, spawnPos.y + 0.35f);
+            hit = Physics2D.Raycast(nearOrigin, Vector2.down, 2.5f, groundMask);
+            if (hit.collider == null)
+            {
+                return false;
+            }
+
+            probeX = spawnPos.x;
+        }
+
+        spawnPos.x = probeX;
         spawnPos.y = hit.point.y + _groundLootSpawnClearance;
         spawnPos.z = _gibWorldZ;
         return true;
