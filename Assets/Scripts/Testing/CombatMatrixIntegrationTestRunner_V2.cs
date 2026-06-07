@@ -548,6 +548,12 @@ namespace iStick2War_V2
             {
                 kamis[i]?.FreezeForCombatMatrixHarness();
             }
+
+            AircraftIdleSelfDestruct_V2[] idleMonitors = root.GetComponentsInChildren<AircraftIdleSelfDestruct_V2>(true);
+            for (int i = 0; i < idleMonitors.Length; i++)
+            {
+                idleMonitors[i]?.FreezeForCombatMatrixHarness();
+            }
         }
 
         private GameObject ResolvePrefab(CombatMatrixEnemyKind kind)

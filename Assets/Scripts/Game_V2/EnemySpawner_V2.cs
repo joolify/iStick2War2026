@@ -1004,6 +1004,7 @@ namespace iStick2War_V2
                     ApplyAircraftSpriteSorting(aircraft);
                     SetupHelicopterSpineRuntime(aircraft);
                     _spawnedAircraftInstances.Add(aircraft);
+                    AircraftIdleSelfDestruct_V2.EnsureAndBeginMonitoring(aircraft);
 
                     if (_aircraftEnableHorizontalFlight && _aircraftHorizontalFlySpeed > 0f)
                     {
@@ -1385,6 +1386,7 @@ namespace iStick2War_V2
             ApplyAircraftFacing(bomber, fromLeft);
             ApplyAircraftSpriteSorting(bomber);
             _spawnedAircraftInstances.Add(bomber);
+            AircraftIdleSelfDestruct_V2.EnsureAndBeginMonitoring(bomber);
 
             Bombplane_V2 bombplane = bomber.GetComponent<Bombplane_V2>();
             // Bombplane_V2 moves itself in Update; adding AircraftFlyAcrossScreen_V2 doubles speed and can despawn
@@ -1655,14 +1657,24 @@ namespace iStick2War_V2
             // Some drone prefabs are visual-only and miss colliders. Add a trigger collider so
             // overlap/raycast targeting can still pick the drone.
             Collider2D[] existing = root.GetComponentsInChildren<Collider2D>(true);
-            if (existing != null && existing.Length > 0)
+            if (existing == null || existing.Length == 0)
+            {
+                CircleCollider2D cc = root.AddComponent<CircleCollider2D>();
+                cc.radius = 0.65f;
+                cc.isTrigger = true;
+            }
+
+            EnsureAircraftIdleSelfDestruct(root);
+        }
+
+        private static void EnsureAircraftIdleSelfDestruct(GameObject root)
+        {
+            if (root == null)
             {
                 return;
             }
 
-            CircleCollider2D cc = root.AddComponent<CircleCollider2D>();
-            cc.radius = 0.65f;
-            cc.isTrigger = true;
+            AircraftIdleSelfDestruct_V2.EnsureAndBeginMonitoring(root);
         }
 
         private static void EnsureAirThreatCollidersUseEnemyBodyPartLayer(GameObject root)
