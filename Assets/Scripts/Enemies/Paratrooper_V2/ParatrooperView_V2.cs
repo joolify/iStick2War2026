@@ -570,6 +570,46 @@ public class ParatrooperView_V2 : MonoBehaviour
         if (_landFallDownBack3Anim == null) Debug.LogError(nameof(_landFallDownBack3Anim) + " is missing.");
     }
 
+    private void ApplyParachuteVisibilityForState(
+        StickmanBodyState state,
+        bool landAfterAirborneDeath,
+        bool isDeathState)
+    {
+        if (_suppressParachuteVisualsForGroundSpawn)
+        {
+            return;
+        }
+
+        if (landAfterAirborneDeath || isDeathState)
+        {
+            return;
+        }
+
+        if (IsAirborneParachuteBodyState(state))
+        {
+            _suppressParachuteVisuals = false;
+            RestoreParachuteSlotVisibilityForAirborneDeathLand();
+            return;
+        }
+
+        // E/land keys collapsing chute frames; hide again once ground combat starts (grenade / shoot / run).
+        if (state == StickmanBodyState.Land)
+        {
+            _suppressParachuteVisuals = false;
+            return;
+        }
+
+        _suppressParachuteVisuals = true;
+        HideParachuteVisualsForGroundDeath();
+    }
+
+    private static bool IsAirborneParachuteBodyState(StickmanBodyState state)
+    {
+        return state == StickmanBodyState.Deploy ||
+               state == StickmanBodyState.Glide ||
+               state == StickmanBodyState.GlideElectrocuted;
+    }
+
     /// <summary>
     /// Plays the appropriate animation for the given state.
     /// </summary>
@@ -590,10 +630,7 @@ public class ParatrooperView_V2 : MonoBehaviour
             (_lastStateBeforeChange == StickmanBodyState.GlideDie ||
              (_model != null && _model.pendingAirborneDeathLandImpactClip));
 
-        if (!isDeathState && !landAfterAirborneDeath && !_suppressParachuteVisualsForGroundSpawn)
-        {
-            _suppressParachuteVisuals = false;
-        }
+        ApplyParachuteVisibilityForState(state, landAfterAirborneDeath, isDeathState);
 
         if (_deathAnimationLocked && !isDeathState)
         {
