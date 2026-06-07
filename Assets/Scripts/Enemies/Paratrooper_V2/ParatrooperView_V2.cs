@@ -82,6 +82,8 @@ public class ParatrooperView_V2 : MonoBehaviour
     }
 
     private static readonly string[] ParachuteKeywords = { "parach", "chute", "canopy", "glide" };
+    // Legacy ParatrooperView incremented per spawn so overlapping gliders did not z-fight on the same sorting order.
+    private static int s_paratrooperMeshSortingCounter = 1;
     private SkeletonAnimation _skeletonAnimation;
     private ParticleSystem hitEffect;
     private StickmanBodyState _lastStateBeforeChange;
@@ -476,7 +478,45 @@ public class ParatrooperView_V2 : MonoBehaviour
             }
         }
 
+        ApplyUniqueSpineMeshSortingOrderForSpawn();
         ResolveAimBones();
+    }
+
+    // Each pooled spawn gets a distinct MeshRenderer.sortingOrder so stacked parachutes do not flicker.
+    private void ApplyUniqueSpineMeshSortingOrderForSpawn()
+    {
+        MeshRenderer meshRenderer = ResolveSpineMeshRenderer();
+        if (meshRenderer == null)
+        {
+            return;
+        }
+
+        s_paratrooperMeshSortingCounter++;
+        if (s_paratrooperMeshSortingCounter >= 30000)
+        {
+            s_paratrooperMeshSortingCounter = 1;
+        }
+
+        meshRenderer.sortingOrder = s_paratrooperMeshSortingCounter;
+    }
+
+    private MeshRenderer ResolveSpineMeshRenderer()
+    {
+        if (_skeletonAnimation == null)
+        {
+            _skeletonAnimation = GetComponent<SkeletonAnimation>();
+        }
+
+        if (_skeletonAnimation != null)
+        {
+            MeshRenderer onSkeleton = _skeletonAnimation.GetComponent<MeshRenderer>();
+            if (onSkeleton != null)
+            {
+                return onSkeleton;
+            }
+        }
+
+        return GetComponentInChildren<MeshRenderer>(true);
     }
 
     public void HandleBodyPartSevered(BodyPartType bodyPart, Vector2 hitPoint, float severity)
