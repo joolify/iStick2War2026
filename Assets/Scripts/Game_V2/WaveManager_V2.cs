@@ -123,6 +123,8 @@ namespace iStick2War_V2
         [SerializeField] private GameObject _heroDeathGameOverRoot;
         [Tooltip("Child button on GameOver root, e.g. btn_gameOver_continue / bkg_gameOver_continue.")]
         [SerializeField] private GameObject _heroDeathContinueButton;
+        [Tooltip("Instantiated under GameOver when the root has no continue child.")]
+        [SerializeField] private GameObject _gameOverContinueButtonPrefab;
         [Tooltip("Top bar label, e.g. txt_topbar_gameOver. Hidden until Hero_V2 dies.")]
         [SerializeField] private TMP_Text _heroDeathTopBarTitle;
         [Tooltip("Top bar label, e.g. txt_topbar_gameOver_continue. Hidden until Hero_V2 dies.")]
@@ -226,6 +228,8 @@ namespace iStick2War_V2
         [SerializeField] private float _lifeLostTopBarHoldSeconds = 2.5f;
         [Tooltip("Seconds to wait after hero death before LifeOver UI appears (death animation beat).")]
         [SerializeField] private float _lifeOverShowDelaySeconds = 3f;
+        [Tooltip("Seconds to wait after final life before GameOver UI appears. Uses Life Over Show Delay when <= 0.")]
+        [SerializeField] private float _gameOverShowDelaySeconds = 3f;
         [SerializeField] private HeartLifeBar_V2 _heartLifeBar;
         [SerializeField] private GameOverContinueUi_V2 _gameOverContinueUi;
 
@@ -253,6 +257,8 @@ namespace iStick2War_V2
         private Coroutine _deferredTopBarWaveIntroRoutine;
         private Coroutine _lifeOverRevealRoutine;
         private bool _lifeOverRevealPending;
+        private Coroutine _gameOverRevealRoutine;
+        private bool _gameOverRevealPending;
         private Color _topBarWaveTextBaseColor = Color.white;
         private bool _topBarWaveTextBaseColorCached;
         private WaveRunScalingSnapshot _scalingForActiveWave;
@@ -747,10 +753,10 @@ namespace iStick2War_V2
             }
 
             // Dev wave shortcuts need SampleScene to stay loaded (shop / LifeOver testing).
-            if (wave.OpenShopDirectly || wave.OpenLifeOverDirectly)
+            if (wave.OpenShopDirectly || wave.OpenLifeOverDirectly || wave.OpenGameOverDirectly)
             {
                 Log(
-                    "[WaveManager_V2] StartAtMainMenuOnSceneLoad ignored: OpenShopDirectly or OpenLifeOverDirectly is enabled on wave 1.");
+                    "[WaveManager_V2] StartAtMainMenuOnSceneLoad ignored: OpenShopDirectly, OpenLifeOverDirectly, or OpenGameOverDirectly is enabled on wave 1.");
                 return false;
             }
 
@@ -768,6 +774,7 @@ namespace iStick2War_V2
                 _state != WaveLoopState_V2.GameError &&
                 _state != WaveLoopState_V2.LifeOver &&
                 !_lifeOverRevealPending &&
+                !_gameOverRevealPending &&
                 _hero != null &&
                 _hero.IsDead())
             {
@@ -786,7 +793,7 @@ namespace iStick2War_V2
                     }
                     break;
                 case WaveLoopState_V2.InWave:
-                    if (!_lifeOverRevealPending)
+                    if (!_lifeOverRevealPending && !_gameOverRevealPending)
                     {
                         TickInWaveState();
                     }
@@ -1120,7 +1127,7 @@ namespace iStick2War_V2
             if (_livesRemaining <= 0)
             {
                 Log("Final life consumed. Entering Game Over.");
-                EnterGameOverState();
+                BeginGameOverRevealAfterDeath();
                 return;
             }
 
@@ -1141,6 +1148,7 @@ namespace iStick2War_V2
                 $"Life lost. livesRemaining={_livesRemaining}, bunker restored to {_bunkerHealth}/{_bunkerMaxHealthRuntime}, " +
                 $"retry wave={CurrentWaveNumber} (LifeOver in {Mathf.Max(0f, _lifeOverShowDelaySeconds):0.##}s).");
 
+            CancelGameOverRevealRoutine();
             CancelLifeOverRevealRoutine();
             float delay = Mathf.Max(0f, _lifeOverShowDelaySeconds);
             if (delay <= 0f)
@@ -1186,6 +1194,59 @@ namespace iStick2War_V2
             }
 
             _lifeOverRevealPending = false;
+        }
+
+        private void BeginGameOverRevealAfterDeath()
+        {
+            ClearActiveCombatForDeathUi("Final hero death");
+
+            CancelLifeOverRevealRoutine();
+            CancelGameOverRevealRoutine();
+
+            float delay = _gameOverShowDelaySeconds > 0f
+                ? _gameOverShowDelaySeconds
+                : Mathf.Max(0f, _lifeOverShowDelaySeconds);
+            if (delay <= 0f)
+            {
+                EnterGameOverState();
+                return;
+            }
+
+            Log($"Game Over in {delay:0.##}s (final life lost).");
+            _gameOverRevealPending = true;
+            _gameOverRevealRoutine = StartCoroutine(GameOverRevealAfterDelay(delay));
+        }
+
+        private IEnumerator GameOverRevealAfterDelay(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            _gameOverRevealRoutine = null;
+            _gameOverRevealPending = false;
+            EnterGameOverState();
+        }
+
+        private void CancelGameOverRevealRoutine()
+        {
+            if (_gameOverRevealRoutine != null)
+            {
+                StopCoroutine(_gameOverRevealRoutine);
+                _gameOverRevealRoutine = null;
+            }
+
+            _gameOverRevealPending = false;
+        }
+
+        private void ClearActiveCombatForDeathUi(string reason)
+        {
+            if (_enemySpawner != null)
+            {
+                _enemySpawner.ClearActiveWaveCombatForLifeRetry(reason);
+            }
+            else
+            {
+                CombatProjectileCleanup_V2.DespawnAllActiveProjectiles();
+                EnemyLootCleanup_V2.DespawnAllActiveGroundLoot();
+            }
         }
 
         // Called from LifeOverNavButton_V2 (e.g. TextBTN_MediumStartNewGame). Restarts the same wave index.
@@ -1579,7 +1640,7 @@ namespace iStick2War_V2
             SetState(WaveLoopState_V2.Preparing);
             WaveConfig_V2 wave = GetCurrentWaveConfig();
             float prepare = 0f;
-            if (wave == null || (!wave.OpenShopDirectly && !wave.OpenLifeOverDirectly))
+            if (wave == null || (!wave.OpenShopDirectly && !wave.OpenLifeOverDirectly && !wave.OpenGameOverDirectly))
             {
                 if (s_skipPrepareDelayAfterMainMenuPlay)
                 {
@@ -1689,6 +1750,11 @@ namespace iStick2War_V2
             }
 
             if (allowDevWaveShortcuts && TryOpenLifeOverDirectlyFromWave(wave))
+            {
+                return;
+            }
+
+            if (allowDevWaveShortcuts && TryOpenGameOverDirectlyFromWave(wave))
             {
                 return;
             }
@@ -1804,6 +1870,29 @@ namespace iStick2War_V2
             return true;
         }
 
+        private bool TryOpenGameOverDirectlyFromWave(WaveConfig_V2 wave)
+        {
+            if (wave == null || !wave.OpenGameOverDirectly)
+            {
+                return false;
+            }
+
+            CancelLifeOverRevealRoutine();
+            CancelGameOverRevealRoutine();
+            HideLifeOverUiCompletely();
+
+            _livesRemaining = 0;
+            EmitLivesChanged();
+            ClearActiveCombatForDeathUi("OpenGameOverDirectly dev shortcut");
+
+            _scalingForActiveWave = BuildScalingSnapshot(wave, CurrentWaveNumber);
+            _hasScalingForActiveWave = true;
+            _inWaveEnteredUnscaledTime = Time.unscaledTime;
+            Log($"Wave {CurrentWaveNumber} skipped (OpenGameOverDirectly). Opening GameOver.");
+            EnterGameOverState(forceHeroDeathPresentation: true);
+            return true;
+        }
+
         private static WaveRunScalingSnapshot BuildContinuePressureSnapshot(
             WaveRunScalingSnapshot source,
             float pressureMultiplier)
@@ -1890,9 +1979,10 @@ namespace iStick2War_V2
                 effectiveWaveRewardCurrency: effReward);
         }
 
-        private void EnterGameOverState()
+        private void EnterGameOverState(bool forceHeroDeathPresentation = false)
         {
             CancelLifeOverRevealRoutine();
+            CancelGameOverRevealRoutine();
             _shopExitRetriesSameWave = false;
             SetLifeOverUiVisible(false);
             AudioManager_V2.PlayFailure();
@@ -1907,7 +1997,7 @@ namespace iStick2War_V2
             }
             SetCameraFollowEnabled(false);
 
-            bool heroDeath = _hero != null && _hero.IsDead();
+            bool heroDeath = forceHeroDeathPresentation || (_hero != null && _hero.IsDead());
             if (heroDeath)
             {
                 Paratrooper.StandDownAllLivingForHeroDeath();
@@ -2120,6 +2210,7 @@ namespace iStick2War_V2
         private void EnterGameErrorState(string reason)
         {
             CancelLifeOverRevealRoutine();
+            CancelGameOverRevealRoutine();
             // Telemetry and other OnStateChanged listeners read this immediately; set before SetState
             // so WaveRunTelemetry_V2 can emit game_error:<detail> on the same callback tick.
             _lastGameErrorReason = string.IsNullOrWhiteSpace(reason) ? "Unknown error." : reason.Trim();
@@ -3500,9 +3591,18 @@ namespace iStick2War_V2
                 _lifeOverRoot.SetActive(false);
             }
 
+            if (visible)
+            {
+                EnsureGameOverWorldContentIfNeeded();
+            }
+
             if (_heroDeathGameOverRoot != null)
             {
                 _heroDeathGameOverRoot.SetActive(visible);
+                if (visible)
+                {
+                    SetTransformHierarchyActive(_heroDeathGameOverRoot.transform, true);
+                }
             }
 
             if (_heroDeathContinueButton != null)
@@ -3512,12 +3612,136 @@ namespace iStick2War_V2
 
             if (_heroDeathTopBarTitle != null)
             {
+                if (visible)
+                {
+                    EnsureGameplayOverlayBranchActive(_heroDeathTopBarTitle.transform);
+                }
+
                 _heroDeathTopBarTitle.gameObject.SetActive(visible);
             }
 
             if (_heroDeathTopBarContinue != null)
             {
+                if (visible)
+                {
+                    EnsureGameplayOverlayBranchActive(_heroDeathTopBarContinue.transform);
+                }
+
                 _heroDeathTopBarContinue.gameObject.SetActive(visible);
+            }
+        }
+
+        private void EnsureGameOverWorldContentIfNeeded()
+        {
+            ResolveHeroDeathGameOverUiIfNeeded();
+            if (_heroDeathGameOverRoot == null)
+            {
+                return;
+            }
+
+            if (_heroDeathContinueButton == null)
+            {
+                Transform existing = _heroDeathGameOverRoot.transform.Find("bkg_gameOver_continue");
+                if (existing == null)
+                {
+                    existing = _heroDeathGameOverRoot.transform.Find("btn_gameOver_continue");
+                }
+
+                if (existing != null)
+                {
+                    _heroDeathContinueButton = existing.gameObject;
+                }
+            }
+
+            if (_heroDeathContinueButton != null || _gameOverContinueButtonPrefab == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _heroDeathGameOverRoot.transform.childCount; i++)
+            {
+                Transform child = _heroDeathGameOverRoot.transform.GetChild(i);
+                if (child != null && child.GetComponentInChildren<SpriteRenderer>(true) != null)
+                {
+                    _heroDeathContinueButton = child.gameObject;
+                    return;
+                }
+            }
+
+            GameObject instance = Instantiate(
+                _gameOverContinueButtonPrefab,
+                _heroDeathGameOverRoot.transform,
+                false);
+            instance.name = "bkg_gameOver_continue";
+            _heroDeathContinueButton = instance;
+        }
+
+        private static void SetTransformHierarchyActive(Transform root, bool active)
+        {
+            if (root == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < root.childCount; i++)
+            {
+                Transform child = root.GetChild(i);
+                if (child == null)
+                {
+                    continue;
+                }
+
+                child.gameObject.SetActive(active);
+                SetTransformHierarchyActive(child, active);
+            }
+        }
+
+        // Activates ancestors up to Topbar-canvas / HUD-Canvas so legacy top-bar TMP can render.
+        private static void EnsureGameplayOverlayBranchActive(Transform leaf)
+        {
+            if (leaf == null)
+            {
+                return;
+            }
+
+            Transform hudCanvas = null;
+            Transform walk = leaf;
+            while (walk != null)
+            {
+                if (IsGameplayHudCanvasRoot(walk))
+                {
+                    hudCanvas = walk;
+                    break;
+                }
+
+                walk = walk.parent;
+            }
+
+            if (hudCanvas == null)
+            {
+                return;
+            }
+
+            walk = leaf;
+            while (walk != null)
+            {
+                if (!walk.gameObject.activeSelf)
+                {
+                    walk.gameObject.SetActive(true);
+                }
+
+                Canvas canvas = walk.GetComponent<Canvas>();
+                if (canvas != null)
+                {
+                    canvas.enabled = true;
+                }
+
+                if (walk == hudCanvas)
+                {
+                    break;
+                }
+
+                walk = walk.parent;
             }
         }
 
@@ -4036,46 +4260,7 @@ namespace iStick2War_V2
                 return;
             }
 
-            Transform t = _topBarWaveText.transform;
-            Transform hudCanvas = null;
-            Transform walk = t;
-            while (walk != null)
-            {
-                if (IsGameplayHudCanvasRoot(walk))
-                {
-                    hudCanvas = walk;
-                    break;
-                }
-
-                walk = walk.parent;
-            }
-
-            if (hudCanvas == null)
-            {
-                return;
-            }
-
-            walk = _topBarWaveText.transform;
-            while (walk != null)
-            {
-                if (!walk.gameObject.activeSelf)
-                {
-                    walk.gameObject.SetActive(true);
-                }
-
-                Canvas canvas = walk.GetComponent<Canvas>();
-                if (canvas != null)
-                {
-                    canvas.enabled = true;
-                }
-
-                if (walk == hudCanvas)
-                {
-                    break;
-                }
-
-                walk = walk.parent;
-            }
+            EnsureGameplayOverlayBranchActive(_topBarWaveText.transform);
         }
 
         private static bool IsGameplayHudCanvasRoot(Transform transform)

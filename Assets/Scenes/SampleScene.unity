@@ -4876,6 +4876,7 @@ MonoBehaviour:
   _gameOverUi: {fileID: 0}
   _heroDeathGameOverRoot: {fileID: 2055013475}
   _heroDeathContinueButton: {fileID: 0}
+  _gameOverContinueButtonPrefab: {fileID: 1026648901204125123, guid: 7f4005ad05d847b4c94dc8e45328639b, type: 3}
   _heroDeathTopBarTitle: {fileID: 194176247}
   _heroDeathTopBarContinue: {fileID: 678943501}
   _gameWonRoot: {fileID: 94604670}
@@ -11567,7 +11568,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &2055013476
 Transform:
   m_ObjectHideFlags: 0
