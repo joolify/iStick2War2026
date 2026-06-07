@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -7,65 +8,54 @@ using UnityEngine.UI;
 namespace iStick2War_V2
 {
     /*
- * MainMenuNavButton_V2 (World-space menu hit target)
- *
- * PURPOSE:
- * Collider2D + OnMouseDown handler for main menu actions (Play, Settings, ReturnToMainMenu) when UI Buttons cannot
- * raycast SpriteRenderer-based art. Delegates to MainMenu_V2 when assigned.
- * Sibling TextBTN_Medium*_Pressed shows while held (same pattern as shop text buttons).
- * Paired txt_mainMenu_* labels nudge down/left while pressed.
- *
- * ---------------------------------------------------------
- * ❌ MUST NOT
- *
- * - Pause Time.timeScale itself (MainMenu_V2 owns freeze policy).
- *
- * ---------------------------------------------------------
- * NAVIGATION (Game_V2)
- *
- * Menu owner → MainMenu_V2.cs
- * Shop world hits → ShopBuyButton_V2.cs, ShopNavArrow_V2.cs (same Collider2D pattern)
- *
- * ---------------------------------------------------------
- * DESIGN PRINCIPLE
- *
- * Mirrors ShopNavArrow_V2 / ShopBuyButton_V2: thin input surface for world-space canvas stacks.
- */
-    [AddComponentMenu("iStick2War/Main Menu Nav Button V2")]
+     * LifeOverNavButton_V2 (Life lost — TextBTN hit targets)
+     *
+     * PURPOSE:
+     * Collider2D + OnMouseDown for LifeOver V2 actions (continue, shop, main menu).
+     * Sibling TextBTN_Medium*_Pressed shows while held; paired txt_lifeOver_* labels nudge (-5, -5).
+     * Real-time delay before the action so the pressed state is visible (menu uses the same pattern).
+     *
+     * NAVIGATION: WaveManager_V2 TryContinueAfterLifeLost / TryGoToShopAfterLifeLost / TryGoToMainMenuAfterLifeLost.
+     */
+    [AddComponentMenu("iStick2War/Life Over Nav Button V2")]
     [RequireComponent(typeof(Collider2D))]
-    public sealed class MainMenuNavButton_V2 : MonoBehaviour
+    public sealed class LifeOverNavButton_V2 : MonoBehaviour
     {
-        public enum MenuAction
+        public enum LifeOverAction
         {
-            Play,
             Continue,
-            Settings,
-            CloseSettings,
-            // Load dedicated main menu scene.
-            ReturnToMainMenu
+            GoToShop,
+            GoToMainMenu
         }
 
-        [SerializeField] private MainMenu_V2 _mainMenu;
-        [SerializeField] private MenuAction _action = MenuAction.Play;
+        [SerializeField] private WaveManager_V2 _waveManager;
+        [SerializeField] private LifeOverAction _action = LifeOverAction.Continue;
         [Header("Pressed visual (TextBTN siblings)")]
         [SerializeField] private GameObject _normalVisual;
         [SerializeField] private GameObject _pressedVisual;
         [Header("Label nudge when pressed")]
         [SerializeField] private TMP_Text _associatedLabel;
         [SerializeField] private Vector2 _labelPressedOffset = new Vector2(-5f, -5f);
+        [Tooltip("Real-time pause before LifeOver action runs (Time.timeScale may be 0).")]
+        [SerializeField] private float _actionDelaySeconds = 0.2f;
+        [Tooltip("Longer delay for Go to shop — shop transition hides LifeOver chrome immediately after.")]
+        [SerializeField] private float _goToShopDelaySeconds = 0.4f;
         [SerializeField] private bool _debugLogs;
 
         private bool _isPointerDown;
         private bool _latchPressedVisual;
+        private Coroutine _delayedActionRoutine;
         private RectTransform _labelRect;
         private Vector2 _labelRestAnchoredPosition;
         private bool _labelRestCached;
 
-        internal bool IsReturnToMainMenuAction() => _action == MenuAction.ReturnToMainMenu;
-        internal bool IsPlayAction() => _action == MenuAction.Play;
+        internal bool IsContinueAction() => _action == LifeOverAction.Continue;
+
+        internal bool IsDedicatedNavAction() => _action != LifeOverAction.Continue;
 
         private void Awake()
         {
+            ResolveWaveManagerIfNeeded();
             ResolveVisualPairIfNeeded();
             ShowNormalVisual();
         }
@@ -80,6 +70,12 @@ namespace iStick2War_V2
         {
             _isPointerDown = false;
             _latchPressedVisual = false;
+            if (_delayedActionRoutine != null)
+            {
+                StopCoroutine(_delayedActionRoutine);
+                _delayedActionRoutine = null;
+            }
+
             ShowNormalVisual();
         }
 
@@ -97,97 +93,36 @@ namespace iStick2War_V2
             }
         }
 
-        internal void Configure(MainMenu_V2 mainMenu, MenuAction action)
+        internal void Configure(WaveManager_V2 waveManager, LifeOverAction action)
         {
-            _mainMenu = mainMenu;
+            _waveManager = waveManager;
             _action = action;
             ResolveVisualPairIfNeeded();
             ShowNormalVisual();
         }
 
-        internal void ResetToNormalVisual()
-        {
-            _isPointerDown = false;
-            _latchPressedVisual = false;
-            ShowNormalVisual();
-        }
-
-        // Automation helper for tests/agents.
         public void TriggerAutomationClick()
         {
-            OnMouseDown();
+            ExecuteAction();
         }
 
         private void OnMouseDown()
         {
-            WaveManager_V2 waveManager = UnityEngine.Object.FindAnyObjectByType<WaveManager_V2>();
-            if (waveManager != null)
+            if (_delayedActionRoutine != null)
             {
-                WaveLoopState_V2 state = waveManager.State;
-                bool gameplayOwnsInput =
-                    state == WaveLoopState_V2.Preparing ||
-                    state == WaveLoopState_V2.InWave ||
-                    state == WaveLoopState_V2.Shop;
-                if (gameplayOwnsInput)
-                {
-                    if (_debugLogs)
-                    {
-                        Debug.Log(
-                            $"[MainMenuNavButton_V2] Ignored click on '{name}' while gameplay state is {state}.");
-                    }
+                return;
+            }
 
-                    return;
-                }
+            if (_waveManager != null && _waveManager.State != WaveLoopState_V2.LifeOver)
+            {
+                return;
             }
 
             _isPointerDown = true;
+            _latchPressedVisual = true;
             ShowPressedVisual();
-
-            if (_action == MenuAction.ReturnToMainMenu)
-            {
-                AudioManager_V2.PlayMenuClick();
-                if (_debugLogs)
-                {
-                    Debug.Log($"[MainMenuNavButton_V2] '{name}' OnMouseDown -> {_action} (reload active scene, pause first)");
-                }
-
-                LoadMainMenuScene();
-                return;
-            }
-
-            if (_mainMenu == null)
-            {
-                if (_debugLogs)
-                {
-                    Debug.LogWarning($"[MainMenuNavButton_V2] '{name}': assign MainMenu_V2.");
-                }
-
-                return;
-            }
-
-            if (_debugLogs)
-            {
-                Debug.Log($"[MainMenuNavButton_V2] '{name}' OnMouseDown -> {_action}");
-            }
-
-            if (_action == MenuAction.Play)
-            {
-                _mainMenu.HandlePlay();
-            }
-            else if (_action == MenuAction.Continue)
-            {
-                _mainMenu.HandleContinue();
-            }
-            else if (_action == MenuAction.Settings)
-            {
-                _latchPressedVisual = true;
-                _mainMenu.HandleShowSettings();
-            }
-            else if (_action == MenuAction.CloseSettings)
-            {
-                _latchPressedVisual = true;
-                _mainMenu.HandleHideSettings();
-            }
+            AudioManager_V2.PlayMenuClick();
+            _delayedActionRoutine = StartCoroutine(DelayedExecuteAction());
         }
 
         private void OnMouseUp()
@@ -213,10 +148,63 @@ namespace iStick2War_V2
             }
         }
 
-        // Freeze time before scene load so boot state always starts paused in menu.
-        private static void LoadMainMenuScene()
+        private IEnumerator DelayedExecuteAction()
         {
-            GameplayPauseButton_V2.ReturnToMainMenuScene();
+            float delay = ResolveActionDelaySeconds();
+            if (delay > 0f)
+            {
+                yield return new WaitForSecondsRealtime(delay);
+            }
+
+            _delayedActionRoutine = null;
+            ExecuteAction();
+        }
+
+        private float ResolveActionDelaySeconds()
+        {
+            if (_action == LifeOverAction.GoToShop)
+            {
+                return Mathf.Max(0f, _goToShopDelaySeconds);
+            }
+
+            return Mathf.Max(0f, _actionDelaySeconds);
+        }
+
+        private void ExecuteAction()
+        {
+            ResolveWaveManagerIfNeeded();
+            if (_waveManager == null || _waveManager.State != WaveLoopState_V2.LifeOver)
+            {
+                _latchPressedVisual = false;
+                ShowNormalVisual();
+                return;
+            }
+
+            if (_debugLogs)
+            {
+                Debug.Log($"[LifeOverNavButton_V2] '{name}' -> {_action}");
+            }
+
+            switch (_action)
+            {
+                case LifeOverAction.Continue:
+                    _waveManager.TryContinueAfterLifeLost();
+                    break;
+                case LifeOverAction.GoToShop:
+                    _waveManager.TryGoToShopAfterLifeLost();
+                    break;
+                case LifeOverAction.GoToMainMenu:
+                    _waveManager.TryGoToMainMenuAfterLifeLost();
+                    break;
+            }
+        }
+
+        private void ResolveWaveManagerIfNeeded()
+        {
+            if (_waveManager == null)
+            {
+                _waveManager = UnityEngine.Object.FindAnyObjectByType<WaveManager_V2>(FindObjectsInactive.Exclude);
+            }
         }
 
         private void ResolveVisualPairIfNeeded()
@@ -348,26 +336,19 @@ namespace iStick2War_V2
                 return null;
             }
 
-            if (buttonName.Equals("TextBTN_MediumStartGame", StringComparison.OrdinalIgnoreCase) ||
-                buttonName.Equals("btn_main_menu_play", StringComparison.OrdinalIgnoreCase))
+            if (buttonName.Equals("TextBTN_MediumStartNewGame", StringComparison.OrdinalIgnoreCase))
             {
-                return new[] { "txt_mainMenu_startGame", "txt_mainmenu_play" };
+                return new[] { "txt_lifeOver_startNewGame" };
             }
 
-            if (buttonName.Equals("TextBTN_MediumSettings", StringComparison.OrdinalIgnoreCase) ||
-                buttonName.Equals("btn_main_menu_settings", StringComparison.OrdinalIgnoreCase))
+            if (buttonName.Equals("TextBTN_MediumGoToShop", StringComparison.OrdinalIgnoreCase))
             {
-                return new[] { "txt_mainMenu_settings", "txt_mainmenu_settings" };
+                return new[] { "txt_lifeOver_goToShop" };
             }
 
-            if (buttonName.Equals("TextBTN_MediumContinue", StringComparison.OrdinalIgnoreCase))
+            if (buttonName.Equals("TextBTN_MediumGoToMainMenu", StringComparison.OrdinalIgnoreCase))
             {
-                return new[] { "txt_mainMenu_continue", "txt_mainmenu_continue" };
-            }
-
-            if (buttonName.Equals("TextBTN_MediumGoBack", StringComparison.OrdinalIgnoreCase))
-            {
-                return new[] { "txt_settings_goBack" };
+                return new[] { "txt_lifeOver_goToMainMenu" };
             }
 
             return null;
@@ -422,7 +403,6 @@ namespace iStick2War_V2
                 return;
             }
 
-            // Keep this host alive so mouse up / pointer exit still fire.
             if (ReferenceEquals(visualRoot, gameObject))
             {
                 SetVisualArtifactsVisible(visualRoot.transform, visible);

@@ -15,6 +15,7 @@ namespace iStick2War_V2
         private const string InfoTextName = "txt_lifeOver_info";
         private const string StartLabelName = "txt_lifeOver_startNewGame";
         private const string GoToShopLabelName = "txt_lifeOver_goToShop";
+        private const string GoToMainMenuLabelName = "txt_lifeOver_goToMainMenu";
         private const int LifeOverCanvasSortingOrderOffset = 10;
         private static readonly Vector2 InfoLabelAnchoredPosition = new Vector2(0f, 55f);
         private static readonly Vector2 InfoLabelSize = new Vector2(920f, 90f);
@@ -22,6 +23,9 @@ namespace iStick2War_V2
         private static readonly Vector2 StartLabelSize = new Vector2(520f, 50f);
         private static readonly Vector2 GoToShopLabelAnchoredPosition = new Vector2(0f, -95f);
         private static readonly Vector2 GoToShopLabelSize = new Vector2(520f, 50f);
+        // Mirrors hand-placed start label column (e.g. x=568) on the left for Main menu.
+        private static readonly Vector2 GoToMainMenuLabelAnchoredPosition = new Vector2(-568f, -419f);
+        private static readonly Vector2 GoToMainMenuLabelSize = new Vector2(520f, 50f);
 
         public static bool EnsureLabelsExist(string infoMessage, bool logWhenChanged)
         {
@@ -271,6 +275,11 @@ namespace iStick2War_V2
             changed |= RepairOffScreenLabelIfNeeded(canvasRoot, InfoTextName, InfoLabelAnchoredPosition, InfoLabelSize);
             changed |= RepairOffScreenLabelIfNeeded(canvasRoot, StartLabelName, StartLabelAnchoredPosition, StartLabelSize);
             changed |= RepairOffScreenLabelIfNeeded(canvasRoot, GoToShopLabelName, GoToShopLabelAnchoredPosition, GoToShopLabelSize);
+            changed |= RepairOffScreenLabelIfNeeded(
+                canvasRoot,
+                GoToMainMenuLabelName,
+                GoToMainMenuLabelAnchoredPosition,
+                GoToMainMenuLabelSize);
             return changed;
         }
 

@@ -2429,6 +2429,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.MainMenuNavButton_V2
   _mainMenu: {fileID: 0}
   _action: 0
+  _normalVisual: {fileID: 0}
+  _pressedVisual: {fileID: 0}
+  _associatedLabel: {fileID: 0}
+  _labelPressedOffset: {x: -5, y: -5}
   _debugLogs: 0
 --- !u!61 &761496380
 BoxCollider2D:
@@ -2490,6 +2494,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.MainMenuNavButton_V2
   _mainMenu: {fileID: 1019635509}
   _action: 1
+  _normalVisual: {fileID: 0}
+  _pressedVisual: {fileID: 0}
+  _associatedLabel: {fileID: 0}
+  _labelPressedOffset: {x: -5, y: -5}
   _debugLogs: 0
 --- !u!114 &761496382
 MonoBehaviour:
@@ -2805,6 +2813,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.MainMenuNavButton_V2
   _mainMenu: {fileID: 1019635509}
   _action: 0
+  _normalVisual: {fileID: 0}
+  _pressedVisual: {fileID: 0}
+  _associatedLabel: {fileID: 0}
+  _labelPressedOffset: {x: -5, y: -5}
   _debugLogs: 0
 --- !u!61 &801908246
 BoxCollider2D:
@@ -3086,7 +3098,7 @@ RectTransform:
   m_Father: {fileID: 1605830725}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 10, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -3545,11 +3557,14 @@ MonoBehaviour:
   _hideOnPlay:
   - {fileID: 0}
   _playButton: {fileID: 0}
+  _continueButton: {fileID: 0}
   _settingsButton: {fileID: 0}
   _settingsPanel: {fileID: 1737768579}
   _settingsPanelObjectName: Settings V2
   _pauseTimeWhileMenuOpen: 1
+  _settingsOpenDelaySeconds: 0.2
   _worldPlayButtonObjectName: TextBTN_MediumStartGame
+  _worldContinueButtonObjectName: TextBTN_MediumContinue
   _worldSettingsButtonObjectName: TextBTN_MediumSettings
   _loadGameplaySceneOnPlay: 1
   _gameplaySceneName: SampleScene
@@ -4478,7 +4493,7 @@ RectTransform:
   m_Father: {fileID: 1459547506}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -4553,7 +4568,7 @@ RectTransform:
   m_Father: {fileID: 1138682571}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -5205,6 +5220,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.MainMenuNavButton_V2
   _mainMenu: {fileID: 1019635509}
   _action: 0
+  _normalVisual: {fileID: 0}
+  _pressedVisual: {fileID: 0}
+  _associatedLabel: {fileID: 0}
+  _labelPressedOffset: {x: -5, y: -5}
   _debugLogs: 0
 --- !u!61 &1404668189
 BoxCollider2D:
@@ -6072,7 +6091,7 @@ RectTransform:
   m_Father: {fileID: 945116504}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 10, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -6147,7 +6166,7 @@ RectTransform:
   m_Father: {fileID: 13027908}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -6499,7 +6518,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 495628631038052154, guid: 3c5e1e2cae7833a44b5a5bc1f2ae30b3, type: 3}
       propertyPath: m_Name
-      value: TextBTN_MediumSettinngs_Pressed
+      value: TextBTN_MediumSettings_Pressed
       objectReference: {fileID: 0}
     - target: {fileID: 495628631038052154, guid: 3c5e1e2cae7833a44b5a5bc1f2ae30b3, type: 3}
       propertyPath: m_IsActive
@@ -6580,6 +6599,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.MainMenuNavButton_V2
   _mainMenu: {fileID: 1019635509}
   _action: 1
+  _normalVisual: {fileID: 0}
+  _pressedVisual: {fileID: 0}
+  _associatedLabel: {fileID: 0}
+  _labelPressedOffset: {x: -5, y: -5}
   _debugLogs: 0
 --- !u!61 &1670838457
 BoxCollider2D:
@@ -7010,6 +7033,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.MainMenuNavButton_V2
   _mainMenu: {fileID: 1019635509}
   _action: 0
+  _normalVisual: {fileID: 0}
+  _pressedVisual: {fileID: 0}
+  _associatedLabel: {fileID: 0}
+  _labelPressedOffset: {x: -5, y: -5}
   _debugLogs: 0
 --- !u!61 &1712380668
 BoxCollider2D:
@@ -7075,7 +7102,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1737768580
 Transform:
   m_ObjectHideFlags: 0
@@ -7184,7 +7211,7 @@ RectTransform:
   m_Father: {fileID: 1820834895}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 20, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -7370,7 +7397,7 @@ RectTransform:
   m_Father: {fileID: 381422869}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 10, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -7629,7 +7656,7 @@ RectTransform:
   m_Father: {fileID: 1080507288}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 10, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -8245,6 +8272,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.MainMenuNavButton_V2
   _mainMenu: {fileID: 1019635509}
   _action: 0
+  _normalVisual: {fileID: 0}
+  _pressedVisual: {fileID: 0}
+  _associatedLabel: {fileID: 0}
+  _labelPressedOffset: {x: -5, y: -5}
   _debugLogs: 0
 --- !u!61 &2137890189
 BoxCollider2D:

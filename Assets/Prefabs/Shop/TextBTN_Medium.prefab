@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 2819617076099847035}
   - component: {fileID: 5138671209414897213}
   - component: {fileID: 5138671209414897214}
+  - component: {fileID: 4555322803877653221}
   m_Layer: 0
   m_Name: TextBTN_Medium
   m_TagString: Untagged
@@ -78,9 +79,9 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingLayerID: 1862622779
+  m_SortingLayer: 18
+  m_SortingOrder: 205
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: efee20b64d1e73942a29ba61ce3379c3, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -138,3 +139,24 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 2.81, y: 1.1}
   m_EdgeRadius: 0
+--- !u!114 &4555322803877653221
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8620983417269468788}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d27dc421b6a83b04baa749f92916081e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.LifeOverNavButton_V2
+  _waveManager: {fileID: 0}
+  _action: 0
+  _normalVisual: {fileID: 8620983417269468788}
+  _pressedVisual: {fileID: 0}
+  _associatedLabel: {fileID: 0}
+  _labelPressedOffset: {x: -5, y: -5}
+  _actionDelaySeconds: 0.2
+  _goToShopDelaySeconds: 0.2
+  _debugLogs: 0

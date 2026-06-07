@@ -53,7 +53,7 @@ namespace iStick2War_V2
             DefaultWorldSettingsButtonName,
             DefaultWorldContinueButtonName,
             "TextBTN_MediumStartGame_Pressed",
-            "TextBTN_MediumSettinngs_Pressed",
+            "TextBTN_MediumSettings_Pressed",
             "TextBTN_MediumContinue_Pressed",
             TmpPlayName,
             TmpSettingsName,
@@ -88,6 +88,8 @@ namespace iStick2War_V2
         [Tooltip("Resolved at runtime when _settingsPanel is unset (MainMenuScene default).")]
         [SerializeField] private string _settingsPanelObjectName = DefaultSettingsPanelName;
         [SerializeField] private bool _pauseTimeWhileMenuOpen = true;
+        [Tooltip("Real-time pause before Settings V2 opens/closes so pressed TextBTN states stay visible.")]
+        [SerializeField] private float _settingsOpenDelaySeconds = 0.2f;
 
         [Header("World-space TextBTN (optional)")]
         [SerializeField] private string _worldPlayButtonObjectName = DefaultWorldPlayButtonName;
@@ -104,6 +106,8 @@ namespace iStick2War_V2
         private bool _gameStarted;
         private bool _loggedMissingSettingsPanel;
         private Coroutine _loadGameplaySceneRoutine;
+        private Coroutine _showSettingsRoutine;
+        private Coroutine _hideSettingsRoutine;
         private readonly Dictionary<string, bool> _menuButtonActiveBeforeSettings = new Dictionary<string, bool>();
 
         // True when the menu is active and HandlePlay has not run this session
@@ -513,7 +517,11 @@ namespace iStick2War_V2
         // Called from UI Button or MainMenuNavButton_V2 (world Collider2D).
         public void HandleShowSettings()
         {
-            AudioManager_V2.PlayMenuClick();
+            if (_showSettingsRoutine != null)
+            {
+                return;
+            }
+
             ResolveSettingsPanelIfNeeded();
             if (_settingsPanel == null)
             {
@@ -525,6 +533,34 @@ namespace iStick2War_V2
                         DefaultSettingsPanelName + "' root in the scene.");
                 }
 
+                return;
+            }
+
+            if (_settingsPanel.activeSelf)
+            {
+                return;
+            }
+
+            AudioManager_V2.PlayMenuClick();
+            _showSettingsRoutine = StartCoroutine(ShowSettingsAfterDelay());
+        }
+
+        private IEnumerator ShowSettingsAfterDelay()
+        {
+            float delay = Mathf.Max(0f, _settingsOpenDelaySeconds);
+            if (delay > 0f)
+            {
+                yield return new WaitForSecondsRealtime(delay);
+            }
+
+            _showSettingsRoutine = null;
+            OpenSettingsPanelNow();
+        }
+
+        private void OpenSettingsPanelNow()
+        {
+            if (_settingsPanel == null || _settingsPanel.activeSelf)
+            {
                 return;
             }
 
@@ -611,8 +647,42 @@ namespace iStick2War_V2
         // Called from UI Button or MainMenuNavButton_V2 (TextBTN_MediumGoBack).
         public void HandleHideSettings()
         {
+            if (_hideSettingsRoutine != null)
+            {
+                return;
+            }
+
+            ResolveSettingsPanelIfNeeded();
+            if (_settingsPanel == null || !_settingsPanel.activeSelf)
+            {
+                return;
+            }
+
+            if (_showSettingsRoutine != null)
+            {
+                StopCoroutine(_showSettingsRoutine);
+                _showSettingsRoutine = null;
+            }
+
             AudioManager_V2.PlayMenuClick();
-            if (_settingsPanel != null)
+            _hideSettingsRoutine = StartCoroutine(HideSettingsAfterDelay());
+        }
+
+        private IEnumerator HideSettingsAfterDelay()
+        {
+            float delay = Mathf.Max(0f, _settingsOpenDelaySeconds);
+            if (delay > 0f)
+            {
+                yield return new WaitForSecondsRealtime(delay);
+            }
+
+            _hideSettingsRoutine = null;
+            CloseSettingsPanelNow();
+        }
+
+        private void CloseSettingsPanelNow()
+        {
+            if (_settingsPanel != null && _settingsPanel.activeSelf)
             {
                 _settingsPanel.SetActive(false);
             }

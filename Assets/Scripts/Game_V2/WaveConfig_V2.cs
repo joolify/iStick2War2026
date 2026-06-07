@@ -86,13 +86,18 @@ namespace iStick2War_V2
         [Tooltip(
             "When this row is the active wave at gameplay scene boot (wave index 0), load MainMenuScene " +
             "instead of starting Prepare/InWave. Main menu Play loads the gameplay scene and skips this once. " +
-            "Useful when pressing Play in the editor on SampleScene. Turn off before shipping.")]
+            "Useful when pressing Play in the editor on SampleScene. Ignored when Open Shop Directly or Open LifeOver Directly is on. Turn off before shipping.")]
         [SerializeField] private bool _startAtMainMenuOnSceneLoad;
         [InspectorName("Open Shop Directly")]
         [Tooltip(
             "Skip playing this wave: after Prepare, open the shop immediately (wave reward still granted). " +
             "Useful for testing shop UI on the first wave row. Turn off before shipping.")]
         [SerializeField] private bool _openShopDirectly;
+        [InspectorName("Open LifeOver Directly")]
+        [Tooltip(
+            "Skip playing this wave: after Prepare, open the LifeOver menu immediately (one life consumed, bunker restored). " +
+            "Useful for testing LifeOver UI. Turn off before shipping.")]
+        [SerializeField] private bool _openLifeOverDirectly;
 
         public int EnemyCount => Mathf.Max(0, _enemyCount);
         public int GroundTrooperCount => Mathf.Max(0, _groundTrooperCount);
@@ -108,5 +113,6 @@ namespace iStick2War_V2
         public int WaveRewardCurrency => Mathf.Max(0, _waveRewardCurrency);
         public bool StartAtMainMenuOnSceneLoad => _startAtMainMenuOnSceneLoad;
         public bool OpenShopDirectly => _openShopDirectly;
+        public bool OpenLifeOverDirectly => _openLifeOverDirectly;
     }
 }

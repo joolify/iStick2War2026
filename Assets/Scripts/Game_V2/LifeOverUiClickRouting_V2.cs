@@ -29,7 +29,8 @@ namespace iStick2War_V2
                     continue;
                 }
 
-                if (hit.GetComponentInParent<LifeOverGoToShopButton_V2>() != null ||
+                if (hit.GetComponentInParent<LifeOverNavButton_V2>() != null ||
+                    hit.GetComponentInParent<LifeOverGoToShopButton_V2>() != null ||
                     hit.GetComponentInParent<LifeOverGoToMainMenuButton_V2>() != null)
                 {
                     return true;

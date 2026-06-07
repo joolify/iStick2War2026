@@ -28,6 +28,14 @@ Short orientation for humans and coding agents working in this repository.
 - **Prefab safety**: when **moving** `.cs` files, preserve the **`.meta` GUID`** so existing prefabs keep script references.
 - **Architecture**: keep gameplay out of **View**; use existing Model / Controller / StateMachine splits (see rule file above).
 
+## Design philosophy
+
+- Feel > Features
+- Ship > Perfect
+- Small commits
+- One gameplay change at a time
+- Playtest after every feature
+
 ## Git workflow (solo / Unity)
 
 The maintainer uses **one branch only** (`master`) — **no feature branches** — to avoid painful Unity merge conflicts (scenes, prefabs, `.meta`).
