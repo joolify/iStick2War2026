@@ -224,6 +224,8 @@ namespace iStick2War_V2
             "You died. Press \"Start Game\" to try the wave again";
         [Tooltip("Optional top-bar hold while LifeOver is visible.")]
         [SerializeField] private float _lifeLostTopBarHoldSeconds = 2.5f;
+        [Tooltip("Seconds to wait after hero death before LifeOver UI appears (death animation beat).")]
+        [SerializeField] private float _lifeOverShowDelaySeconds = 3f;
         [SerializeField] private HeartLifeBar_V2 _heartLifeBar;
         [SerializeField] private GameOverContinueUi_V2 _gameOverContinueUi;
 
@@ -249,6 +251,8 @@ namespace iStick2War_V2
         private bool _bunkerRootResolveAttempted;
         private Coroutine _topBarWaveTextRoutine;
         private Coroutine _deferredTopBarWaveIntroRoutine;
+        private Coroutine _lifeOverRevealRoutine;
+        private bool _lifeOverRevealPending;
         private Color _topBarWaveTextBaseColor = Color.white;
         private bool _topBarWaveTextBaseColorCached;
         private WaveRunScalingSnapshot _scalingForActiveWave;
@@ -763,6 +767,7 @@ namespace iStick2War_V2
                 _state != WaveLoopState_V2.GameWon &&
                 _state != WaveLoopState_V2.GameError &&
                 _state != WaveLoopState_V2.LifeOver &&
+                !_lifeOverRevealPending &&
                 _hero != null &&
                 _hero.IsDead())
             {
@@ -781,7 +786,11 @@ namespace iStick2War_V2
                     }
                     break;
                 case WaveLoopState_V2.InWave:
-                    TickInWaveState();
+                    if (!_lifeOverRevealPending)
+                    {
+                        TickInWaveState();
+                    }
+
                     break;
                 case WaveLoopState_V2.Shop:
                     if (Input.GetKeyDown(_nextWaveDebugKey) || Input.GetKeyDown(KeyCode.N))
@@ -1125,6 +1134,35 @@ namespace iStick2War_V2
                 EnemyLootCleanup_V2.DespawnAllActiveGroundLoot();
             }
 
+            _continueEnemyPressureMultiplierRuntime = 1f;
+            _bunkerHealth = _bunkerMaxHealthRuntime;
+            EmitMetaChanged();
+            Log(
+                $"Life lost. livesRemaining={_livesRemaining}, bunker restored to {_bunkerHealth}/{_bunkerMaxHealthRuntime}, " +
+                $"retry wave={CurrentWaveNumber} (LifeOver in {Mathf.Max(0f, _lifeOverShowDelaySeconds):0.##}s).");
+
+            CancelLifeOverRevealRoutine();
+            float delay = Mathf.Max(0f, _lifeOverShowDelaySeconds);
+            if (delay <= 0f)
+            {
+                FinishLifeOverRevealAfterDeath();
+                return;
+            }
+
+            _lifeOverRevealPending = true;
+            _lifeOverRevealRoutine = StartCoroutine(LifeOverRevealAfterDelay(delay));
+        }
+
+        private IEnumerator LifeOverRevealAfterDelay(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            _lifeOverRevealRoutine = null;
+            _lifeOverRevealPending = false;
+            FinishLifeOverRevealAfterDeath();
+        }
+
+        private void FinishLifeOverRevealAfterDeath()
+        {
             if (_hero == null || !_hero.TryReviveForLifeRetry())
             {
                 Log("Life retry failed (hero revive). Falling back to Game Over.");
@@ -1136,11 +1174,18 @@ namespace iStick2War_V2
             SetGameErrorUiVisible(false);
             SetGameWonUiVisible(false);
             SetCameraFollowEnabled(true);
-            _continueEnemyPressureMultiplierRuntime = 1f;
-            _bunkerHealth = _bunkerMaxHealthRuntime;
             EnterLifeOverState();
-            EmitMetaChanged();
-            Log($"Life lost. livesRemaining={_livesRemaining}, bunker restored to {_bunkerHealth}/{_bunkerMaxHealthRuntime}, retry wave={CurrentWaveNumber} (awaiting LifeOver continue).");
+        }
+
+        private void CancelLifeOverRevealRoutine()
+        {
+            if (_lifeOverRevealRoutine != null)
+            {
+                StopCoroutine(_lifeOverRevealRoutine);
+                _lifeOverRevealRoutine = null;
+            }
+
+            _lifeOverRevealPending = false;
         }
 
         // Called from LifeOverNavButton_V2 (e.g. TextBTN_MediumStartNewGame). Restarts the same wave index.
@@ -1847,6 +1892,7 @@ namespace iStick2War_V2
 
         private void EnterGameOverState()
         {
+            CancelLifeOverRevealRoutine();
             _shopExitRetriesSameWave = false;
             SetLifeOverUiVisible(false);
             AudioManager_V2.PlayFailure();
@@ -2073,6 +2119,7 @@ namespace iStick2War_V2
 
         private void EnterGameErrorState(string reason)
         {
+            CancelLifeOverRevealRoutine();
             // Telemetry and other OnStateChanged listeners read this immediately; set before SetState
             // so WaveRunTelemetry_V2 can emit game_error:<detail> on the same callback tick.
             _lastGameErrorReason = string.IsNullOrWhiteSpace(reason) ? "Unknown error." : reason.Trim();
