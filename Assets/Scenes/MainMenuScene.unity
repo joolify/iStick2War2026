@@ -2388,16 +2388,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: TextBTN_MediumSettings
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 6478010877993726271, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 761496382}
-    - targetCorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 761496381}
     - targetCorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
       insertIndex: -1
       addedObject: {fileID: 761496380}
@@ -2427,12 +2422,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe1414f8fee59164ea94648a5a792060, type: 3}
   m_Name: 
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.MainMenuNavButton_V2
-  _mainMenu: {fileID: 0}
+  _mainMenu: {fileID: 1019635509}
   _action: 0
-  _normalVisual: {fileID: 0}
-  _pressedVisual: {fileID: 0}
-  _associatedLabel: {fileID: 0}
-  _labelPressedOffset: {x: -5, y: -5}
+  _normalVisual: {fileID: 761496378}
+  _pressedVisual: {fileID: 1670838455}
+  _associatedLabel: {fileID: 1354063404}
+  _labelPressedOffset: {x: 0, y: -5}
   _debugLogs: 0
 --- !u!61 &761496380
 BoxCollider2D:
@@ -2480,39 +2475,6 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 2.81, y: 1.1}
   m_EdgeRadius: 0
---- !u!114 &761496381
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 761496378}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe1414f8fee59164ea94648a5a792060, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.MainMenuNavButton_V2
-  _mainMenu: {fileID: 1019635509}
-  _action: 1
-  _normalVisual: {fileID: 0}
-  _pressedVisual: {fileID: 0}
-  _associatedLabel: {fileID: 0}
-  _labelPressedOffset: {x: -5, y: -5}
-  _debugLogs: 0
---- !u!114 &761496382
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 761496378}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b68f4caf490aeca4192819ef27e2bc88, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.LifeOverContinueButton_V2
-  _waveManager: {fileID: 0}
-  _debugLogs: 0
 --- !u!1 &775683364
 GameObject:
   m_ObjectHideFlags: 0
@@ -2775,13 +2737,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: TextBTN_MediumContinue
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 6478010877993726271, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 801908247}
     - targetCorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
       insertIndex: -1
       addedObject: {fileID: 801908246}
@@ -2813,10 +2773,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.MainMenuNavButton_V2
   _mainMenu: {fileID: 1019635509}
   _action: 0
-  _normalVisual: {fileID: 0}
-  _pressedVisual: {fileID: 0}
-  _associatedLabel: {fileID: 0}
-  _labelPressedOffset: {x: -5, y: -5}
+  _normalVisual: {fileID: 801908244}
+  _pressedVisual: {fileID: 1712380666}
+  _associatedLabel: {fileID: 161854998}
+  _labelPressedOffset: {x: 0, y: -5}
   _debugLogs: 0
 --- !u!61 &801908246
 BoxCollider2D:
@@ -2864,20 +2824,6 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 2.81, y: 1.1}
   m_EdgeRadius: 0
---- !u!114 &801908247
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 801908244}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b68f4caf490aeca4192819ef27e2bc88, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.LifeOverContinueButton_V2
-  _waveManager: {fileID: 0}
-  _debugLogs: 0
 --- !u!1 &803321024
 GameObject:
   m_ObjectHideFlags: 0
@@ -3950,6 +3896,11 @@ PrefabInstance:
 --- !u!4 &1040249664 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8654968151492287728, guid: 3c5e1e2cae7833a44b5a5bc1f2ae30b3, type: 3}
+  m_PrefabInstance: {fileID: 1040249663}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &1040249665 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 495628631038052154, guid: 3c5e1e2cae7833a44b5a5bc1f2ae30b3, type: 3}
   m_PrefabInstance: {fileID: 1040249663}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &1062099555
@@ -5126,6 +5077,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 803321025}
     m_Modifications:
+    - target: {fileID: 2157726040404032759, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _labelPressedOffset.y
+      value: -5
+      objectReference: {fileID: 0}
     - target: {fileID: 2819617076099847035, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
       propertyPath: m_LocalPosition.x
       value: -8.449997
@@ -5166,18 +5121,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingLayer
-      value: 18
-      objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingOrder
-      value: 205
-      objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingLayerID
-      value: 1862622779
-      objectReference: {fileID: 0}
+    - target: {fileID: 6478010877993726271, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _mainMenu
+      value: 
+      objectReference: {fileID: 1019635509}
+    - target: {fileID: 6478010877993726271, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _pressedVisual
+      value: 
+      objectReference: {fileID: 2137890187}
     - target: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
       propertyPath: m_Name
       value: TextBTN_MediumStartGame
@@ -5185,106 +5136,13 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1404668190}
-    - targetCorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1404668189}
-    - targetCorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1404668188}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
 --- !u!4 &1404668186 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2819617076099847035, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
   m_PrefabInstance: {fileID: 1404668185}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1404668187 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-  m_PrefabInstance: {fileID: 1404668185}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1404668188
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1404668187}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe1414f8fee59164ea94648a5a792060, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.MainMenuNavButton_V2
-  _mainMenu: {fileID: 1019635509}
-  _action: 0
-  _normalVisual: {fileID: 0}
-  _pressedVisual: {fileID: 0}
-  _associatedLabel: {fileID: 0}
-  _labelPressedOffset: {x: -5, y: -5}
-  _debugLogs: 0
---- !u!61 &1404668189
-BoxCollider2D:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1404668187}
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Density: 1
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ForceSendLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_ForceReceiveLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_ContactCaptureLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_CallbackLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_IsTrigger: 0
-  m_UsedByEffector: 0
-  m_CompositeOperation: 0
-  m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
-  m_SpriteTilingProperty:
-    border: {x: 0, y: 0, z: 0, w: 0}
-    pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 2.81, y: 1.1}
-    newSize: {x: 2.81, y: 1.1}
-    adaptiveTilingThreshold: 0.5
-    drawMode: 0
-    adaptiveTiling: 0
-  m_AutoTiling: 0
-  m_Size: {x: 2.81, y: 1.1}
-  m_EdgeRadius: 0
---- !u!114 &1404668190
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1404668187}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b68f4caf490aeca4192819ef27e2bc88, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.LifeOverContinueButton_V2
-  _waveManager: {fileID: 0}
-  _debugLogs: 0
 --- !u!1 &1408504726
 GameObject:
   m_ObjectHideFlags: 0
@@ -6218,7 +6076,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1658584659}
   - component: {fileID: 1658584662}
-  - component: {fileID: 1658584661}
   - component: {fileID: 1658584660}
   m_Layer: 14
   m_Name: txt_settings_goBack
@@ -6247,19 +6104,6 @@ RectTransform:
   m_SizeDelta: {x: 520, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1658584660
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1658584658}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 741add0c65e504f41a5bea8417121729, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.LifeOverLabelUiButton_V2
-  _action: 0
---- !u!114 &1658584661
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8034,6 +7878,30 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2157726040404032759, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _action
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 2157726040404032759, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _mainMenu
+      value: 
+      objectReference: {fileID: 1019635509}
+    - target: {fileID: 2157726040404032759, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _pressedVisual
+      value: 
+      objectReference: {fileID: 1040249665}
+    - target: {fileID: 2157726040404032759, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _associatedLabel
+      value: 
+      objectReference: {fileID: 1658584660}
+    - target: {fileID: 2157726040404032759, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _labelPressedOffset.x
+      value: -5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2157726040404032759, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _labelPressedOffset.y
+      value: -5
+      objectReference: {fileID: 0}
     - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
       propertyPath: m_SortingLayer
       value: 19
@@ -8053,35 +7921,13 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2092908216}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
 --- !u!4 &2092908214 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2819617076099847035, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
   m_PrefabInstance: {fileID: 2092908213}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &2092908215 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-  m_PrefabInstance: {fileID: 2092908213}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &2092908216
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2092908215}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b68f4caf490aeca4192819ef27e2bc88, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.LifeOverContinueButton_V2
-  _waveManager: {fileID: 0}
-  _debugLogs: 0
 --- !u!1 &2104610556
 GameObject:
   m_ObjectHideFlags: 0

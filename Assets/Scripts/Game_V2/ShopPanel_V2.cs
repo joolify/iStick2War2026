@@ -37,6 +37,7 @@ namespace iStick2War_V2
  *
  * Presentation-focused MonoBehaviour with explicit methods WaveManager invokes; keeps economy rules centralized.
  */
+    [ExecuteAlways]
     public sealed class ShopPanel_V2 : MonoBehaviour
     {
         [Header("UI (optional)")]
@@ -311,6 +312,7 @@ namespace iStick2War_V2
 
             MaybeDetachFromScaledParent();
             CacheVisualRootTransform();
+            EnsureShopUiCanvasesLayout();
             RebuildVisibleShopOffersIfNeeded();
             _resolvedCarouselPreviewRoot = null;
             InvalidatePreviewCatalog();
@@ -332,6 +334,16 @@ namespace iStick2War_V2
             }
         }
 
+        private void OnEnable()
+        {
+            if (Application.isPlaying)
+            {
+                return;
+            }
+
+            EnsureShopUiCanvasesLayout();
+        }
+
         public void Show()
         {
             if (_waveManager != null)
@@ -345,6 +357,7 @@ namespace iStick2War_V2
             RebuildVisibleShopOffersIfNeeded();
             RestoreVisualRootTransformIfNeeded();
             AttachToCameraIfNeeded();
+            EnsureShopUiCanvasesLayout();
             SetVisualComponentsVisible(true);
             SetShopTextButtonsVisible(true);
             EnsureShopNavButtonsReady();
@@ -3128,6 +3141,33 @@ namespace iStick2War_V2
             }
 
             return Camera.main;
+        }
+
+        // Screen Space Camera canvases (Shop-canvas) often serialize scale 0; Scene view gizmos then diverge from Game view.
+        private void EnsureShopUiCanvasesLayout()
+        {
+            Canvas[] canvases = GetComponentsInChildren<Canvas>(true);
+            Camera camera = ResolveCamera();
+            for (int i = 0; i < canvases.Length; i++)
+            {
+                Canvas canvas = canvases[i];
+                if (canvas == null)
+                {
+                    continue;
+                }
+
+                if (canvas.transform is RectTransform rect && rect.localScale.sqrMagnitude < 0.001f)
+                {
+                    rect.localScale = Vector3.one;
+                }
+
+                if (canvas.renderMode == RenderMode.ScreenSpaceCamera && canvas.worldCamera == null && camera != null)
+                {
+                    canvas.worldCamera = camera;
+                }
+
+                canvas.enabled = true;
+            }
         }
 
         private void AttachToCameraIfNeeded()

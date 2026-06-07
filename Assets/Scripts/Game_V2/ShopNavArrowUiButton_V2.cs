@@ -9,7 +9,7 @@ namespace iStick2War_V2
     /*
      * TextBTN_Medium* shop controls: carousel prev/next, BUY, and start-game.
      * Supports canvas UI (Button + raycast Graphic) and world-space sprites (Collider2D + mouse overlap).
-     * Sibling *_Pressed visuals show while the button is held (same as TextBTN_MediumNext).
+     * Sibling TextBTN_Medium*_Pressed shows while held; paired txt_shop_* labels nudge (-5, -5).
      */
     public enum ShopTextButtonBehavior
     {
@@ -37,6 +37,10 @@ namespace iStick2War_V2
         [Tooltip("Pressed-state root (e.g. TextBTN_MediumPrev_Pressed). Auto-resolved as '<normal name>_Pressed' when empty.")]
         [SerializeField] private GameObject _pressedVisual;
 
+        [Header("Label nudge when pressed")]
+        [SerializeField] private TMP_Text _associatedLabel;
+        [SerializeField] private Vector2 _labelPressedOffset = new Vector2(-5f, -5f);
+
         [Header("Debug")]
         [SerializeField] private bool _debugLogs;
 
@@ -46,6 +50,9 @@ namespace iStick2War_V2
         private bool _usesUiClickPath;
         private bool _isWorldPointerDown;
         private int _lastHandledClickFrame = -1;
+        private RectTransform _labelRect;
+        private Vector2 _labelRestAnchoredPosition;
+        private bool _labelRestCached;
 
         private void Awake()
         {
@@ -59,6 +66,7 @@ namespace iStick2War_V2
 
         private void OnEnable()
         {
+            _labelRestCached = false;
             ConfigureDecorativeLabelPassthrough();
             RegisterListenerIfNeeded();
             ResolveVisualPairIfNeeded();
@@ -76,6 +84,7 @@ namespace iStick2War_V2
         {
             _shopPanel = shopPanel;
             _direction = direction;
+            _labelRestCached = false;
             _behavior = direction == ShopNavArrow_V2.ArrowDirection.Previous
                 ? ShopTextButtonBehavior.CarouselPrevious
                 : ShopTextButtonBehavior.CarouselNext;
@@ -94,6 +103,7 @@ namespace iStick2War_V2
             _shopPanel = shopPanel;
             _waveManager = waveManager;
             _behavior = behavior;
+            _labelRestCached = false;
             if (behavior == ShopTextButtonBehavior.CarouselPrevious)
             {
                 _direction = ShopNavArrow_V2.ArrowDirection.Previous;
@@ -116,6 +126,7 @@ namespace iStick2War_V2
         // Re-fit collider after ShopPanel reparents to the camera (Show()).
         internal void RefitHitTarget()
         {
+            _labelRestCached = false;
             _usesUiClickPath = HasRaycastableGraphic();
             EnsureWorldSpaceHitTargetIfNeeded();
             TMP_Text label = FindAssociatedShopLabel();
@@ -737,6 +748,7 @@ namespace iStick2War_V2
         private void ShowPressedVisual()
         {
             ResolveVisualPairIfNeeded();
+            ApplyLabelPressedOffset();
             if (_pressedVisual == null)
             {
                 return;
@@ -780,6 +792,55 @@ namespace iStick2War_V2
         {
             SetVisualRootActive(_pressedVisual, false);
             SetVisualRootActive(_normalVisual, true);
+            RestoreLabelPosition();
+        }
+
+        private void ResolveAssociatedLabelIfNeeded()
+        {
+            if (_associatedLabel != null)
+            {
+                _labelRect = _associatedLabel.rectTransform;
+                return;
+            }
+
+            _associatedLabel = FindAssociatedShopLabel();
+            if (_associatedLabel != null)
+            {
+                _labelRect = _associatedLabel.rectTransform;
+            }
+        }
+
+        private void CacheLabelRestPositionIfNeeded()
+        {
+            ResolveAssociatedLabelIfNeeded();
+            if (_labelRect == null || _labelRestCached)
+            {
+                return;
+            }
+
+            _labelRestAnchoredPosition = _labelRect.anchoredPosition;
+            _labelRestCached = true;
+        }
+
+        private void ApplyLabelPressedOffset()
+        {
+            CacheLabelRestPositionIfNeeded();
+            if (_labelRect == null)
+            {
+                return;
+            }
+
+            _labelRect.anchoredPosition = _labelRestAnchoredPosition + _labelPressedOffset;
+        }
+
+        private void RestoreLabelPosition()
+        {
+            if (_labelRect == null || !_labelRestCached)
+            {
+                return;
+            }
+
+            _labelRect.anchoredPosition = _labelRestAnchoredPosition;
         }
 
         private void SyncPressedTransformToNormal()

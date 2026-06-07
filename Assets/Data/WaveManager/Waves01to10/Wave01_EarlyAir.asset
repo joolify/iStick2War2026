@@ -24,6 +24,6 @@ MonoBehaviour:
   _bombDroneCount: 0
   _mechRobotBossCount: 0
   _waveRewardCurrency: 410
-  _startAtMainMenuOnSceneLoad: 0
+  _startAtMainMenuOnSceneLoad: 1
   _openShopDirectly: 0
-  _openLifeOverDirectly: 1
+  _openLifeOverDirectly: 0

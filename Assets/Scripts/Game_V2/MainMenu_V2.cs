@@ -265,6 +265,45 @@ namespace iStick2War_V2
                     Destroy(strayContinue);
                 }
             }
+
+            EnsureSettingsGoBackLabelClean();
+        }
+
+        // txt_settings_goBack was copied from life-over UI; strip stray click handlers on the label.
+        private void EnsureSettingsGoBackLabelClean()
+        {
+            TMP_Text label = FindTmpLabelInScene("txt_settings_goBack");
+            if (label == null)
+            {
+                return;
+            }
+
+            label.raycastTarget = false;
+            LifeOverLabelUiButton_V2 strayLabelHandler = label.GetComponent<LifeOverLabelUiButton_V2>();
+            if (strayLabelHandler != null)
+            {
+                Destroy(strayLabelHandler);
+            }
+        }
+
+        private static TMP_Text FindTmpLabelInScene(string objectName)
+        {
+            if (string.IsNullOrWhiteSpace(objectName))
+            {
+                return null;
+            }
+
+            TMP_Text[] texts = UnityEngine.Object.FindObjectsByType<TMP_Text>(FindObjectsInactive.Include);
+            for (int i = 0; i < texts.Length; i++)
+            {
+                TMP_Text text = texts[i];
+                if (text != null && text.gameObject.name.Equals(objectName, StringComparison.Ordinal))
+                {
+                    return text;
+                }
+            }
+
+            return null;
         }
 
         private GameObject FindNamedObjectInScene(string objectName)

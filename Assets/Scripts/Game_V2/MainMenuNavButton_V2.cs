@@ -100,7 +100,9 @@ namespace iStick2War_V2
         internal void Configure(MainMenu_V2 mainMenu, MenuAction action)
         {
             _mainMenu = mainMenu;
-            _action = action;
+            _action = TryResolveActionFromButtonName(ResolveButtonObjectName(), out MenuAction mapped)
+                ? mapped
+                : action;
             ResolveVisualPairIfNeeded();
             ShowNormalVisual();
         }
@@ -143,7 +145,9 @@ namespace iStick2War_V2
             _isPointerDown = true;
             ShowPressedVisual();
 
-            if (_action == MenuAction.ReturnToMainMenu)
+            MenuAction action = GetEffectiveAction();
+
+            if (action == MenuAction.ReturnToMainMenu)
             {
                 AudioManager_V2.PlayMenuClick();
                 if (_debugLogs)
@@ -170,24 +174,74 @@ namespace iStick2War_V2
                 Debug.Log($"[MainMenuNavButton_V2] '{name}' OnMouseDown -> {_action}");
             }
 
-            if (_action == MenuAction.Play)
+            if (action == MenuAction.Play)
             {
                 _mainMenu.HandlePlay();
             }
-            else if (_action == MenuAction.Continue)
+            else if (action == MenuAction.Continue)
             {
                 _mainMenu.HandleContinue();
             }
-            else if (_action == MenuAction.Settings)
+            else if (action == MenuAction.Settings)
             {
                 _latchPressedVisual = true;
                 _mainMenu.HandleShowSettings();
             }
-            else if (_action == MenuAction.CloseSettings)
+            else if (action == MenuAction.CloseSettings)
             {
                 _latchPressedVisual = true;
                 _mainMenu.HandleHideSettings();
             }
+        }
+
+        private MenuAction GetEffectiveAction()
+        {
+            return TryResolveActionFromButtonName(ResolveButtonObjectName(), out MenuAction mapped)
+                ? mapped
+                : _action;
+        }
+
+        private string ResolveButtonObjectName()
+        {
+            return _normalVisual != null ? _normalVisual.name : gameObject.name;
+        }
+
+        // Scene overrides often leave _action at Play (0); map known TextBTN names to the correct menu action.
+        private static bool TryResolveActionFromButtonName(string buttonName, out MenuAction action)
+        {
+            action = MenuAction.Play;
+            if (string.IsNullOrWhiteSpace(buttonName))
+            {
+                return false;
+            }
+
+            if (buttonName.Equals("TextBTN_MediumStartGame", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("btn_main_menu_play", StringComparison.OrdinalIgnoreCase))
+            {
+                action = MenuAction.Play;
+                return true;
+            }
+
+            if (buttonName.Equals("TextBTN_MediumContinue", StringComparison.OrdinalIgnoreCase))
+            {
+                action = MenuAction.Continue;
+                return true;
+            }
+
+            if (buttonName.Equals("TextBTN_MediumSettings", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("btn_main_menu_settings", StringComparison.OrdinalIgnoreCase))
+            {
+                action = MenuAction.Settings;
+                return true;
+            }
+
+            if (buttonName.Equals("TextBTN_MediumGoBack", StringComparison.OrdinalIgnoreCase))
+            {
+                action = MenuAction.CloseSettings;
+                return true;
+            }
+
+            return false;
         }
 
         private void OnMouseUp()

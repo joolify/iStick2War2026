@@ -500,6 +500,11 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_RenderingLayers: 1
   m_ShadowRenderingLayers: 1
+--- !u!1 &90628155 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 495628631038052154, guid: 3c5e1e2cae7833a44b5a5bc1f2ae30b3, type: 3}
+  m_PrefabInstance: {fileID: 1199164649}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &94604670
 GameObject:
   m_ObjectHideFlags: 0
@@ -1427,30 +1432,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &300972284 stripped
+--- !u!1 &293769871 stripped
 GameObject:
-  m_CorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-  m_PrefabInstance: {fileID: 345806179}
+  m_CorrespondingSourceObject: {fileID: 495628631038052154, guid: 3c5e1e2cae7833a44b5a5bc1f2ae30b3, type: 3}
+  m_PrefabInstance: {fileID: 132104930}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &300838449 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 495628631038052154, guid: 3c5e1e2cae7833a44b5a5bc1f2ae30b3, type: 3}
+  m_PrefabInstance: {fileID: 1733806442}
   m_PrefabAsset: {fileID: 0}
 --- !u!4 &300972285 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2819617076099847035, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
   m_PrefabInstance: {fileID: 345806179}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &300972286
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 300972284}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b68f4caf490aeca4192819ef27e2bc88, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.LifeOverContinueButton_V2
-  _waveManager: {fileID: 796613714}
-  _debugLogs: 0
 --- !u!1001 &304527656
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1882,7 +1878,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 1, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 1714380459}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &330585547
@@ -1937,6 +1934,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1173427490}
     m_Modifications:
+    - target: {fileID: 992543095468201829, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _waveManager
+      value: 
+      objectReference: {fileID: 796613714}
     - target: {fileID: 2819617076099847035, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
       propertyPath: m_LocalPosition.x
       value: 5.28
@@ -1977,18 +1978,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingLayer
-      value: 18
-      objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingOrder
-      value: 205
-      objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingLayerID
-      value: 1862622779
-      objectReference: {fileID: 0}
+    - target: {fileID: 4555322803877653221, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _waveManager
+      value: 
+      objectReference: {fileID: 796613714}
+    - target: {fileID: 4555322803877653221, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _pressedVisual
+      value: 
+      objectReference: {fileID: 1368244606}
+    - target: {fileID: 4555322803877653221, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _associatedLabel
+      value: 
+      objectReference: {fileID: 1861764410}
     - target: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
       propertyPath: m_Name
       value: TextBTN_MediumStartNewGame
@@ -1996,10 +1997,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 944067569}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
 --- !u!1001 &345806179
 PrefabInstance:
@@ -2049,18 +2047,22 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingLayer
-      value: 18
-      objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingOrder
-      value: 205
-      objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingLayerID
-      value: 1862622779
-      objectReference: {fileID: 0}
+    - target: {fileID: 4555322803877653221, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _waveManager
+      value: 
+      objectReference: {fileID: 796613714}
+    - target: {fileID: 4555322803877653221, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _pressedVisual
+      value: 
+      objectReference: {fileID: 300838449}
+    - target: {fileID: 4555322803877653221, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _associatedLabel
+      value: 
+      objectReference: {fileID: 1144104711}
+    - target: {fileID: 8292751433403569143, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _waveManager
+      value: 
+      objectReference: {fileID: 796613714}
     - target: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
       propertyPath: m_Name
       value: TextBTN_MediumGoToShop
@@ -2068,10 +2070,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 300972286}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
 --- !u!1 &347428890
 GameObject:
@@ -2179,18 +2178,22 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingLayer
-      value: 15
-      objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingOrder
-      value: 205
-      objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingLayerID
-      value: 2029628213
-      objectReference: {fileID: 0}
+    - target: {fileID: 3188465275424874085, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _shopPanel
+      value: 
+      objectReference: {fileID: 1714380458}
+    - target: {fileID: 3188465275424874085, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _waveManager
+      value: 
+      objectReference: {fileID: 796613714}
+    - target: {fileID: 3188465275424874085, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _pressedVisual
+      value: 
+      objectReference: {fileID: 293769871}
+    - target: {fileID: 3188465275424874085, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _associatedLabel
+      value: 
+      objectReference: {fileID: 1208086215}
     - target: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
       propertyPath: m_Name
       value: TextBTN_MediumNext
@@ -2198,10 +2201,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 898150280}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
 --- !u!4 &358467609 stripped
 Transform:
@@ -2256,18 +2256,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingLayer
-      value: 18
-      objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingOrder
-      value: 205
-      objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingLayerID
-      value: 1862622779
-      objectReference: {fileID: 0}
+    - target: {fileID: 4555322803877653221, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _waveManager
+      value: 
+      objectReference: {fileID: 796613714}
+    - target: {fileID: 4555322803877653221, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _pressedVisual
+      value: 
+      objectReference: {fileID: 1841757744}
+    - target: {fileID: 4555322803877653221, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _associatedLabel
+      value: 
+      objectReference: {fileID: 1777331581}
     - target: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
       propertyPath: m_Name
       value: TextBTN_MediumGoToMainMenu
@@ -2275,35 +2275,13 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 368628086}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
 --- !u!4 &368628084 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2819617076099847035, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
   m_PrefabInstance: {fileID: 368628083}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &368628085 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-  m_PrefabInstance: {fileID: 368628083}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &368628086
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 368628085}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b68f4caf490aeca4192819ef27e2bc88, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.LifeOverContinueButton_V2
-  _waveManager: {fileID: 796613714}
-  _debugLogs: 0
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -3735,18 +3713,22 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingLayer
-      value: 15
-      objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingOrder
-      value: 205
-      objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingLayerID
-      value: 2029628213
-      objectReference: {fileID: 0}
+    - target: {fileID: 4155657209707416470, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _shopPanel
+      value: 
+      objectReference: {fileID: 1714380458}
+    - target: {fileID: 4155657209707416470, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _waveManager
+      value: 
+      objectReference: {fileID: 796613714}
+    - target: {fileID: 4155657209707416470, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _pressedVisual
+      value: 
+      objectReference: {fileID: 2001520563}
+    - target: {fileID: 4155657209707416470, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _associatedLabel
+      value: 
+      objectReference: {fileID: 606058596}
     - target: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
       propertyPath: m_Name
       value: TextBTN_MediumBuy
@@ -3754,10 +3736,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1803669280}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
 --- !u!1 &678943499
 GameObject:
@@ -4121,7 +4100,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2122603153829877524, guid: c71b2760b2a86074cacfdbaa07188c41, type: 3}
       propertyPath: m_Name
-      value: ShopPanel V2 background
+      value: LifeOver V2 background
       objectReference: {fileID: 0}
     - target: {fileID: 4443346168986697882, guid: c71b2760b2a86074cacfdbaa07188c41, type: 3}
       propertyPath: m_SortingLayer
@@ -5218,18 +5197,22 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingLayer
-      value: 15
-      objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingOrder
-      value: 205
-      objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingLayerID
-      value: 2029628213
-      objectReference: {fileID: 0}
+    - target: {fileID: 4155657209707416470, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _shopPanel
+      value: 
+      objectReference: {fileID: 1714380458}
+    - target: {fileID: 4155657209707416470, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _waveManager
+      value: 
+      objectReference: {fileID: 796613714}
+    - target: {fileID: 4155657209707416470, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _pressedVisual
+      value: 
+      objectReference: {fileID: 90628155}
+    - target: {fileID: 4155657209707416470, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _associatedLabel
+      value: 
+      objectReference: {fileID: 324431761}
     - target: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
       propertyPath: m_Name
       value: TextBTN_MediumStartGame
@@ -5237,10 +5220,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1806680462}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
 --- !u!4 &820989936 stripped
 Transform:
@@ -5438,30 +5418,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 865957908}
   m_CullTransparentMesh: 1
---- !u!1 &898150279 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-  m_PrefabInstance: {fileID: 358467608}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &898150280
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 898150279}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 82121d85784fcbc44936f4c1fd377184, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.ShopNavArrowUiButton_V2
-  _shopPanel: {fileID: 1714380458}
-  _waveManager: {fileID: 0}
-  _behavior: 0
-  _direction: 1
-  _normalVisual: {fileID: 0}
-  _pressedVisual: {fileID: 0}
-  _debugLogs: 0
 --- !u!1001 &905505133
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5603,30 +5559,16 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f5c93085d7a90e649b1aea60ce495a0c, type: 3}
---- !u!1 &944067567 stripped
+--- !u!1 &929514028 stripped
 GameObject:
-  m_CorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-  m_PrefabInstance: {fileID: 337870901}
+  m_CorrespondingSourceObject: {fileID: 495628631038052154, guid: 3c5e1e2cae7833a44b5a5bc1f2ae30b3, type: 3}
+  m_PrefabInstance: {fileID: 1730151292}
   m_PrefabAsset: {fileID: 0}
 --- !u!4 &944067568 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2819617076099847035, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
   m_PrefabInstance: {fileID: 337870901}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &944067569
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 944067567}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b68f4caf490aeca4192819ef27e2bc88, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.LifeOverContinueButton_V2
-  _waveManager: {fileID: 796613714}
-  _debugLogs: 0
 --- !u!1001 &957655375
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6697,11 +6639,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8654968151492287728, guid: 3c5e1e2cae7833a44b5a5bc1f2ae30b3, type: 3}
   m_PrefabInstance: {fileID: 1733806442}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1244177659 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-  m_PrefabInstance: {fileID: 1931858142}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1296170497
 GameObject:
   m_ObjectHideFlags: 0
@@ -7008,6 +6945,11 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1354151802}
   m_CullTransparentMesh: 1
+--- !u!1 &1368244606 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 495628631038052154, guid: 3c5e1e2cae7833a44b5a5bc1f2ae30b3, type: 3}
+  m_PrefabInstance: {fileID: 2053235033}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1411841198
 GameObject:
   m_ObjectHideFlags: 0
@@ -7864,7 +7806,7 @@ Transform:
   m_GameObject: {fileID: 1714380457}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -7881,7 +7823,7 @@ Transform:
   - {fileID: 132104931}
   - {fileID: 785609680}
   - {fileID: 1757661985}
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 330585546}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1724279411
 GameObject:
@@ -9093,56 +9035,16 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1795541107}
   m_CullTransparentMesh: 1
---- !u!1 &1803669278 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-  m_PrefabInstance: {fileID: 658832714}
-  m_PrefabAsset: {fileID: 0}
 --- !u!4 &1803669279 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2819617076099847035, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
   m_PrefabInstance: {fileID: 658832714}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &1803669280
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1803669278}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe1414f8fee59164ea94648a5a792060, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.MainMenuNavButton_V2
-  _mainMenu: {fileID: 0}
-  _action: 0
-  _debugLogs: 1
---- !u!1 &1806680460 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-  m_PrefabInstance: {fileID: 810967347}
   m_PrefabAsset: {fileID: 0}
 --- !u!4 &1806680461 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2819617076099847035, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
   m_PrefabInstance: {fileID: 810967347}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1806680462
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1806680460}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe1414f8fee59164ea94648a5a792060, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.MainMenuNavButton_V2
-  _mainMenu: {fileID: 0}
-  _action: 0
-  _debugLogs: 0
 --- !u!1 &1822465361
 GameObject:
   m_ObjectHideFlags: 0
@@ -9280,6 +9182,11 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1822465361}
   m_CullTransparentMesh: 1
+--- !u!1 &1841757744 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 495628631038052154, guid: 3c5e1e2cae7833a44b5a5bc1f2ae30b3, type: 3}
+  m_PrefabInstance: {fileID: 9590690}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1856437969
 GameObject:
   m_ObjectHideFlags: 0
@@ -9585,18 +9492,22 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingLayer
-      value: 15
-      objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingOrder
-      value: 205
-      objectReference: {fileID: 0}
-    - target: {fileID: 5138671209414897213, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      propertyPath: m_SortingLayerID
-      value: 2029628213
-      objectReference: {fileID: 0}
+    - target: {fileID: 4155657209707416470, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _shopPanel
+      value: 
+      objectReference: {fileID: 1714380458}
+    - target: {fileID: 4155657209707416470, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _waveManager
+      value: 
+      objectReference: {fileID: 796613714}
+    - target: {fileID: 4155657209707416470, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _pressedVisual
+      value: 
+      objectReference: {fileID: 929514028}
+    - target: {fileID: 4155657209707416470, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
+      propertyPath: _associatedLabel
+      value: 
+      objectReference: {fileID: 2145692755}
     - target: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
       propertyPath: m_Name
       value: TextBTN_MediumPrev
@@ -9604,35 +9515,13 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 8620983417269468788, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1931858144}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
 --- !u!4 &1931858143 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2819617076099847035, guid: 553acf12a263b0a4d8253660417d3c85, type: 3}
   m_PrefabInstance: {fileID: 1931858142}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1931858144
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1244177659}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 82121d85784fcbc44936f4c1fd377184, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.ShopNavArrowUiButton_V2
-  _shopPanel: {fileID: 1714380458}
-  _waveManager: {fileID: 0}
-  _behavior: 0
-  _direction: 0
-  _normalVisual: {fileID: 0}
-  _pressedVisual: {fileID: 0}
-  _debugLogs: 0
 --- !u!1 &1991422063
 GameObject:
   m_ObjectHideFlags: 0
@@ -9784,6 +9673,11 @@ Transform:
   m_Children: []
   m_Father: {fileID: 652812391}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2001520563 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 495628631038052154, guid: 3c5e1e2cae7833a44b5a5bc1f2ae30b3, type: 3}
+  m_PrefabInstance: {fileID: 2021114423}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &2010675308
 GameObject:
   m_ObjectHideFlags: 0
@@ -12637,7 +12531,6 @@ SceneRoots:
   - {fileID: 977369561}
   - {fileID: 1550648995142526425}
   - {fileID: 796613715}
-  - {fileID: 1714380459}
   - {fileID: 1173427490}
   - {fileID: 1504774667}
   - {fileID: 612689696}

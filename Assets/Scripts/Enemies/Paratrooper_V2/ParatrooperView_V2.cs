@@ -306,10 +306,21 @@ public class ParatrooperView_V2 : MonoBehaviour
             _bloodHitTowardShooterMeters);
     }
 
-    /// <summary>
-    /// Electrocute timelines set <c>skeleton-electro</c>; other clips often do not key that slot, so the attachment can stick
-    /// until we reset the slot to setup (matches legacy ParatrooperView clear).
-    /// </summary>
+    // Infantry setup keys a huge crosshair attachment for aim IK; the bone stays active but the mesh must stay hidden
+    // (legacy BaseView clears it in Awake). SetToSetupPose / pooled reuse otherwise shows a blue square behind the unit.
+    private void ClearCrosshairSkeletonSlot()
+    {
+        if (_skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
+        {
+            return;
+        }
+
+        string slotName = string.IsNullOrWhiteSpace(crossHairBoneName) ? "crosshair" : crossHairBoneName;
+        _skeletonAnimation.Skeleton.SetAttachment(slotName, null);
+    }
+
+    // Electrocute timelines set skeleton-electro; other clips often do not key that slot, so the attachment can stick
+    // until we reset the slot to setup (matches legacy ParatrooperView clear).
     private void ClearTeslaElectrocuteSkeletonSlot()
     {
         if (_skeletonAnimation == null || _skeletonAnimation.Skeleton == null)
@@ -346,6 +357,7 @@ public class ParatrooperView_V2 : MonoBehaviour
         _skeletonAnimation.AnimationState.Update(0f);
         _skeletonAnimation.AnimationState.Apply(_skeletonAnimation.Skeleton);
         _skeletonAnimation.LateUpdate();
+        ClearCrosshairSkeletonSlot();
         ApplyHelmetAttachment();
     }
 
@@ -421,6 +433,7 @@ public class ParatrooperView_V2 : MonoBehaviour
             _skeletonAnimation.Update(0f);
             _skeletonAnimation.LateUpdate();
             ClearTeslaElectrocuteSkeletonSlot();
+            ClearCrosshairSkeletonSlot();
             ApplyHelmetAttachment();
 
             SkeletonRenderer renderer = _skeletonAnimation.GetComponent<SkeletonRenderer>();
@@ -867,6 +880,8 @@ public class ParatrooperView_V2 : MonoBehaviour
             ClearTeslaElectrocuteSkeletonSlot();
         }
 
+        ClearCrosshairSkeletonSlot();
+
         LogAnimation($"[ParatrooperView_V2] SetAnimation track={trackIndex}, state={state}, clip={nextAnimation.Name}, loop={loop}");
         LogActiveTracks($"after SetAnimation ({state})");
     }
@@ -1285,6 +1300,7 @@ public class ParatrooperView_V2 : MonoBehaviour
         //track.AttachmentThreshold = 1f;
         track.MixDuration = 0f;
         ClearTeslaElectrocuteSkeletonSlot();
+        ClearCrosshairSkeletonSlot();
 
         //TODO Add sound
     }
