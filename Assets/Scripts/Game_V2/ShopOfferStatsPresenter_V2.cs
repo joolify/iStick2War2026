@@ -466,11 +466,10 @@ namespace iStick2War_V2
                 int current = hero.GetCurrentHealth();
                 int max = hero.GetMaxHealth();
                 int after = Mathf.Min(max, current + heal);
-                ShowRow(
+                ShowInfoRow(
                     _heroHealth,
                     "Health",
-                    $"{current} -> {after}",
-                    _tierResolver.GetHealthHealTier(heal));
+                    $"{current} -> {after}");
             }
 
             ShowRow(
@@ -520,7 +519,7 @@ namespace iStick2War_V2
 
             if (row.Value != null && row.Label != null)
             {
-                SetPlainText(row.Label, label);
+                SetLabelText(row.Label, label);
                 SetTierValue(row.Value, value, tier);
                 return;
             }
@@ -533,7 +532,37 @@ namespace iStick2War_V2
 
             if (row.Label != null)
             {
-                SetTierValue(row.Label, $"{label}: {value}", tier);
+                // No value TMP in scene: keep the label word black, tier-color only the stat value.
+                SetCombinedLabelValueText(row.Label, label, value, tier);
+            }
+        }
+
+        // Informational stat rows (hero HP before/after): black label + black value, no tier tint.
+        private static void ShowInfoRow(StatRow row, string label, string value)
+        {
+            if (row == null || !RowHasBinding(row))
+            {
+                return;
+            }
+
+            SetRowActive(row, true);
+
+            if (row.Value != null && row.Label != null)
+            {
+                SetLabelText(row.Label, label);
+                SetLabelText(row.Value, value);
+                return;
+            }
+
+            if (row.Value != null)
+            {
+                SetLabelText(row.Value, $"{label}: {value}");
+                return;
+            }
+
+            if (row.Label != null)
+            {
+                SetLabelText(row.Label, $"{label}: {value}");
             }
         }
 
@@ -661,6 +690,47 @@ namespace iStick2War_V2
             if (textField != null)
             {
                 textField.text = value ?? string.Empty;
+            }
+        }
+
+        private static readonly Color StatLabelColor = Color.black;
+
+        private static void SetLabelText(TMP_Text textField, string value)
+        {
+            if (textField == null)
+            {
+                return;
+            }
+
+            textField.text = value ?? string.Empty;
+            textField.color = StatLabelColor;
+            EnsureTmpFaceColorWhite(textField);
+        }
+
+        private static void SetCombinedLabelValueText(
+            TMP_Text textField,
+            string label,
+            string value,
+            ShopStatTier_V2 tier)
+        {
+            if (textField == null)
+            {
+                return;
+            }
+
+            Color tierColor = ShopStatTierColors_V2.GetColor(tier);
+            string tierHex = ColorUtility.ToHtmlStringRGB(tierColor);
+            textField.text = $"<color=#000000>{label}:</color> <color=#{tierHex}>{value}</color>";
+            textField.color = Color.white;
+            EnsureTmpFaceColorWhite(textField);
+        }
+
+        private static void EnsureTmpFaceColorWhite(TMP_Text textField)
+        {
+            Material material = textField.fontMaterial;
+            if (material != null && material.HasProperty(ShaderUtilities.ID_FaceColor))
+            {
+                material.SetColor(ShaderUtilities.ID_FaceColor, Color.white);
             }
         }
 

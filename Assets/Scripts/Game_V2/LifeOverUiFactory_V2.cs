@@ -187,6 +187,13 @@ namespace iStick2War_V2
             canvas.enabled = true;
             canvas.overrideSorting = true;
 
+            string canvasName = canvasGo.name;
+            if (canvasName.Equals("Shop-canvas", System.StringComparison.OrdinalIgnoreCase) ||
+                canvasName.Equals("ShopActionLabels-canvas", System.StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
             Canvas shopCanvas = FindShopCanvasReference();
             if (canvas.renderMode == RenderMode.ScreenSpaceCamera && canvas.worldCamera == null && shopCanvas != null)
             {

@@ -2329,6 +2329,11 @@ namespace iStick2War_V2
                     continue;
                 }
 
+                if (IsShopActionUiTransform(text.transform))
+                {
+                    continue;
+                }
+
                 if (HasLifeOverAncestor(text.transform) || IsUnderLifeOverCanvas(text.transform))
                 {
                     return text;
@@ -3018,6 +3023,11 @@ namespace iStick2War_V2
                         continue;
                     }
 
+                    if (IsShopActionUiTransform(text.transform))
+                    {
+                        continue;
+                    }
+
                     bool lifeOverOnlyName =
                         objectName.Equals("txt_lifeOver_startNewGame", StringComparison.Ordinal) ||
                         objectName.Equals("txt_lifeOver_goToShop", StringComparison.Ordinal) ||
@@ -3084,6 +3094,11 @@ namespace iStick2War_V2
                          objectName.Equals("txt_shop_info", StringComparison.Ordinal)) &&
                         !string.IsNullOrEmpty(_lifeOverInfoMessage) &&
                         !text.text.Equals(_lifeOverInfoMessage, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    if (IsShopActionUiTransform(text.transform))
                     {
                         continue;
                     }
@@ -3192,6 +3207,27 @@ namespace iStick2War_V2
             if (_lifeOverRoot != null && node.IsChildOf(_lifeOverRoot.transform))
             {
                 return true;
+            }
+
+            return false;
+        }
+
+        // Shop action labels (e.g. ShopActionButtons-canvas) must not be toggled by life-over hide/show sweeps.
+        private static bool IsShopActionUiTransform(Transform node)
+        {
+            Transform walk = node;
+            while (walk != null)
+            {
+                string name = walk.gameObject.name;
+                if (name.Equals("Shop-canvas", StringComparison.OrdinalIgnoreCase) ||
+                    name.Equals("ShopActionButtons-canvas", StringComparison.OrdinalIgnoreCase) ||
+                    name.Equals("ShopActionLabels-canvas", StringComparison.OrdinalIgnoreCase) ||
+                    name.IndexOf("ShopPanel", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return true;
+                }
+
+                walk = walk.parent;
             }
 
             return false;

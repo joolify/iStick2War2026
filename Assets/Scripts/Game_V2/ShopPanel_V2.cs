@@ -122,6 +122,13 @@ namespace iStick2War_V2
         [SerializeField] private string _shopPreviewSortingLayerName = "Shop";
         [Tooltip("Above ShopPanel background (~200) and TextBTN (~205). Values at or below 200 are clamped at runtime.")]
         [SerializeField] private int _shopPreviewSortingOrder = 220;
+        [Tooltip("Shop-canvas must sort above TextBTN sprites (~205) or txt_shop_* labels draw under buttons.")]
+        [SerializeField] private int _shopUiCanvasSortingOrder = 210;
+        [Header("Shop action label typography")]
+        [Tooltip("Font size for txt_shop_buy/prev/next/startGame. Adjust on ShopPanel V2 or per-label in the TMP component.")]
+        [SerializeField] private float _shopActionLabelFontSize = 22f;
+        [Tooltip("RectTransform size (width x height) for shop action labels.")]
+        [SerializeField] private Vector2 _shopActionLabelRectSize = new Vector2(180f, 44f);
         [Tooltip("Local position under Items where weapon previews are shown (matches shop_teslaGun slot).")]
         [SerializeField] private Vector3 _previewDisplayLocalPosition = new Vector3(0.79f, 2.71f, 0f);
         [Header("Shop stat warnings")]
@@ -336,11 +343,6 @@ namespace iStick2War_V2
 
         private void OnEnable()
         {
-            if (Application.isPlaying)
-            {
-                return;
-            }
-
             EnsureShopUiCanvasesLayout();
         }
 
@@ -367,6 +369,7 @@ namespace iStick2War_V2
             ApplySelectedOfferPreviewVisibility(
                 ResolveCarouselPreviewObjectsRoot(),
                 GetSelectedOffer());
+            EnsureShopActionLabelsVisible();
         }
 
         public void Hide()
@@ -397,7 +400,6 @@ namespace iStick2War_V2
                 "txt_lifeOver_goToShop",
                 "txt_lifeOver_goToMainMenu",
                 "txt_shop_info",
-                "txt_shop_startNewGame",
                 "TextBTN_MediumStartNewGame",
                 "TextBTN_MediumStartGame",
                 "TextBTN_MediumGoToShop",
@@ -697,6 +699,11 @@ namespace iStick2War_V2
                 {
                     navButton.RefitHitTarget();
                 }
+            }
+
+            if (_shopIsVisible)
+            {
+                EnsureShopActionLabelsVisible();
             }
         }
 
@@ -3146,12 +3153,31 @@ namespace iStick2War_V2
         // Screen Space Camera canvases (Shop-canvas) often serialize scale 0; Scene view gizmos then diverge from Game view.
         private void EnsureShopUiCanvasesLayout()
         {
-            Canvas[] canvases = GetComponentsInChildren<Canvas>(true);
-            Camera camera = ResolveCamera();
-            for (int i = 0; i < canvases.Length; i++)
+            ResolveShopUiCanvasesIfNeeded();
+
+            var canvases = new HashSet<Canvas>();
+            Canvas[] underRoot = GetComponentsInChildren<Canvas>(true);
+            for (int i = 0; i < underRoot.Length; i++)
             {
-                Canvas canvas = canvases[i];
-                if (canvas == null)
+                if (underRoot[i] != null)
+                {
+                    canvases.Add(underRoot[i]);
+                }
+            }
+
+            for (int i = 0; i < _resolvedShopUiCanvases.Count; i++)
+            {
+                Canvas canvas = _resolvedShopUiCanvases[i];
+                if (canvas != null)
+                {
+                    canvases.Add(canvas);
+                }
+            }
+
+            Camera camera = ResolveCamera();
+            foreach (Canvas canvas in canvases)
+            {
+                if (canvas == null || IsLifeOverShopCanvas(canvas))
                 {
                     continue;
                 }
@@ -3167,6 +3193,271 @@ namespace iStick2War_V2
                 }
 
                 canvas.enabled = true;
+                if (IsShopPanelManagedUiCanvas(canvas))
+                {
+                    ApplyShopPanelCanvasVisibleLayout(canvas);
+                }
+                else
+                {
+                    LifeOverUiFactory_V2.ApplyVisibleCanvasLayout(canvas.gameObject);
+                }
+
+                EnsureShopCanvasRendersAboveTextButtons(canvas);
+            }
+        }
+
+        private static void ApplyShopPanelCanvasVisibleLayout(Canvas canvas)
+        {
+            if (canvas == null)
+            {
+                return;
+            }
+
+            if (canvas.transform is RectTransform rect && rect.localScale.sqrMagnitude < 0.001f)
+            {
+                rect.localScale = Vector3.one;
+            }
+
+            canvas.enabled = true;
+            canvas.overrideSorting = true;
+        }
+
+        private static bool IsShopPanelManagedUiCanvas(Canvas canvas)
+        {
+            if (canvas == null)
+            {
+                return false;
+            }
+
+            string name = canvas.gameObject.name;
+            return name.Equals("Shop-canvas", System.StringComparison.OrdinalIgnoreCase) ||
+                   name.Equals("ShopActionButtons-canvas", System.StringComparison.OrdinalIgnoreCase) ||
+                   name.Equals("ShopActionLabels-canvas", System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void EnsureShopCanvasRendersAboveTextButtons(Canvas canvas)
+        {
+            if (canvas == null || IsLifeOverShopCanvas(canvas))
+            {
+                return;
+            }
+
+            int targetOrder = Mathf.Max(_shopUiCanvasSortingOrder, 206);
+            canvas.overrideSorting = true;
+
+            int shopLayerId = SortingLayer.NameToID("Shop");
+            if (shopLayerId != 0)
+            {
+                canvas.sortingLayerID = shopLayerId;
+            }
+
+            canvas.sortingOrder = targetOrder;
+        }
+
+        private void ApplyShopActionLabelTypography(TMP_Text label)
+        {
+            if (label == null)
+            {
+                return;
+            }
+
+            label.enableAutoSizing = false;
+            label.fontSize = Mathf.Max(8f, _shopActionLabelFontSize);
+            label.rectTransform.sizeDelta = _shopActionLabelRectSize;
+        }
+
+        private Vector2 ResolveShopActionLabelRectSize()
+        {
+            return new Vector2(
+                Mathf.Max(40f, _shopActionLabelRectSize.x),
+                Mathf.Max(16f, _shopActionLabelRectSize.y));
+        }
+
+        private Canvas ResolvePrimaryShopCanvas()
+        {
+            Transform[] underPanel = GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < underPanel.Length; i++)
+            {
+                Transform candidate = underPanel[i];
+                if (candidate != null &&
+                    candidate.gameObject.name.Equals("Shop-canvas", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    Canvas canvas = candidate.GetComponent<Canvas>();
+                    if (canvas != null && !IsLifeOverShopCanvas(canvas))
+                    {
+                        return canvas;
+                    }
+                }
+            }
+
+            ResolveShopUiCanvasesIfNeeded();
+            for (int i = 0; i < _resolvedShopUiCanvases.Count; i++)
+            {
+                Canvas canvas = _resolvedShopUiCanvases[i];
+                if (canvas != null && !IsLifeOverShopCanvas(canvas))
+                {
+                    return canvas;
+                }
+            }
+
+            return null;
+        }
+
+        private void EnsureShopActionLabelsVisible()
+        {
+            if (!Application.isPlaying)
+            {
+                return;
+            }
+
+            AlignShopActionLabelToButton(
+                "txt_shop_prev",
+                _uiPreviousOfferButtonObjectName,
+                _uiPreviousOfferButtonAlternateNames);
+            AlignShopActionLabelToButton(
+                "txt_shop_previous",
+                _uiPreviousOfferButtonObjectName,
+                _uiPreviousOfferButtonAlternateNames);
+            AlignShopActionLabelToButton(
+                "txt_shop_next",
+                _uiNextOfferButtonObjectName,
+                _uiNextOfferButtonAlternateNames);
+            AlignShopActionLabelToButton(
+                "txt_shop_buy",
+                _uiBuyButtonObjectName,
+                _uiBuyButtonAlternateNames);
+            AlignShopActionLabelToButton(
+                "txt_shop_startGame",
+                _uiStartGameButtonObjectName,
+                _uiStartGameButtonAlternateNames);
+        }
+
+        private void AlignShopActionLabelToButton(
+            string labelObjectName,
+            string buttonObjectName,
+            string[] buttonAlternateNames)
+        {
+            TMP_Text label = FindShopTmpByObjectName(labelObjectName);
+            if (label == null)
+            {
+                return;
+            }
+
+            EnsureShopLabelTmpVisible(label);
+            ApplyShopActionLabelTypography(label);
+
+            GameObject buttonRoot = FindShopObjectByNames(buttonObjectName, buttonAlternateNames);
+            if (buttonRoot == null || !TryGetButtonLabelWorldPoint(buttonRoot, out Vector3 worldPoint))
+            {
+                return;
+            }
+
+            TryAlignTmpToWorldPoint(label, worldPoint, ResolveShopActionLabelRectSize());
+        }
+
+        private static bool TryGetButtonLabelWorldPoint(GameObject buttonRoot, out Vector3 worldPoint)
+        {
+            worldPoint = default;
+            if (buttonRoot == null)
+            {
+                return false;
+            }
+
+            SpriteRenderer spriteRenderer = buttonRoot.GetComponent<SpriteRenderer>();
+            if (spriteRenderer == null)
+            {
+                spriteRenderer = buttonRoot.GetComponentInChildren<SpriteRenderer>(true);
+            }
+
+            if (spriteRenderer != null)
+            {
+                worldPoint = spriteRenderer.bounds.center;
+                return true;
+            }
+
+            worldPoint = buttonRoot.transform.position;
+            return true;
+        }
+
+        private bool TryAlignTmpToWorldPoint(TMP_Text label, Vector3 worldPoint, Vector2 sizeDelta)
+        {
+            if (label == null)
+            {
+                return false;
+            }
+
+            Canvas canvas = label.GetComponentInParent<Canvas>();
+            if (canvas == null || canvas.transform is not RectTransform canvasRect)
+            {
+                return false;
+            }
+
+            RectTransform parentRect = label.rectTransform.parent as RectTransform;
+            if (parentRect == null)
+            {
+                parentRect = canvasRect;
+            }
+
+            Camera worldCamera = ResolveCamera();
+            if (worldCamera == null)
+            {
+                return false;
+            }
+
+            Camera canvasCamera = canvas.renderMode == RenderMode.ScreenSpaceOverlay
+                ? null
+                : canvas.worldCamera != null ? canvas.worldCamera : worldCamera;
+            if (canvas.renderMode == RenderMode.ScreenSpaceCamera && canvasCamera == null)
+            {
+                return false;
+            }
+
+            Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(worldCamera, worldPoint);
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                    canvasRect,
+                    screenPoint,
+                    canvasCamera,
+                    out Vector2 canvasLocalPoint))
+            {
+                return false;
+            }
+
+            Vector2 localPoint = canvasLocalPoint;
+            if (parentRect != canvasRect)
+            {
+                Vector3 worldPos = canvasRect.TransformPoint(canvasLocalPoint);
+                localPoint = parentRect.InverseTransformPoint(worldPos);
+            }
+
+            RectTransform labelRect = label.rectTransform;
+            labelRect.anchorMin = new Vector2(0.5f, 0.5f);
+            labelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            labelRect.pivot = new Vector2(0.5f, 0.5f);
+            labelRect.anchoredPosition = localPoint;
+            labelRect.sizeDelta = sizeDelta;
+            labelRect.localScale = Vector3.one;
+            return true;
+        }
+
+        private static void EnsureShopLabelTmpVisible(TMP_Text textField)
+        {
+            if (textField == null)
+            {
+                return;
+            }
+
+            textField.gameObject.SetActive(true);
+            textField.enabled = true;
+
+            if (textField.color.a < 0.01f)
+            {
+                textField.color = Color.black;
+            }
+
+            Material material = textField.fontMaterial;
+            if (material != null && material.HasProperty(ShaderUtilities.ID_FaceColor))
+            {
+                material.SetColor(ShaderUtilities.ID_FaceColor, Color.white);
             }
         }
 

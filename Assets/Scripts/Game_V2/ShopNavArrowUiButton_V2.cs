@@ -9,7 +9,7 @@ namespace iStick2War_V2
     /*
      * TextBTN_Medium* shop controls: carousel prev/next, BUY, and start-game.
      * Supports canvas UI (Button + raycast Graphic) and world-space sprites (Collider2D + mouse overlap).
-     * Sibling TextBTN_Medium*_Pressed shows while held; paired txt_shop_* labels nudge (-5, -5).
+     * Sibling TextBTN_Medium*_Pressed shows while held; paired txt_shop_* labels nudge on press (default y -20).
      */
     public enum ShopTextButtonBehavior
     {
@@ -39,7 +39,7 @@ namespace iStick2War_V2
 
         [Header("Label nudge when pressed")]
         [SerializeField] private TMP_Text _associatedLabel;
-        [SerializeField] private Vector2 _labelPressedOffset = new Vector2(-5f, -5f);
+        [SerializeField] private Vector2 _labelPressedOffset = new Vector2(0f, -20f);
 
         [Header("Debug")]
         [SerializeField] private bool _debugLogs;
@@ -560,22 +560,26 @@ namespace iStick2War_V2
 
         private static readonly string[] CarouselPreviousLabelNames =
         {
+            "txt_shop_previousItem",
             "txt_shop_previous",
             "txt_shop_prev",
         };
 
         private static readonly string[] CarouselNextLabelNames =
         {
+            "txt_shop_nextItem",
             "txt_shop_next",
         };
 
         private static readonly string[] BuyLabelNames =
         {
+            "txt_shop_buyItem",
             "txt_shop_buy",
         };
 
         private static readonly string[] StartGameLabelNames =
         {
+            "txt_shop_startNewGame",
             "txt_shop_startGame",
         };
 
@@ -684,17 +688,38 @@ namespace iStick2War_V2
 
         private static bool IsDecorativeShopButtonLabel(GameObject target)
         {
-            if (target == null)
+            return IsKnownShopActionLabelName(target != null ? target.name : null);
+        }
+
+        private static bool IsKnownShopActionLabelName(string name)
+        {
+            if (string.IsNullOrEmpty(name))
             {
                 return false;
             }
 
-            string name = target.name;
-            return name.Equals("txt_shop_previous", System.StringComparison.OrdinalIgnoreCase) ||
-                   name.Equals("txt_shop_prev", System.StringComparison.OrdinalIgnoreCase) ||
-                   name.Equals("txt_shop_next", System.StringComparison.OrdinalIgnoreCase) ||
-                   name.Equals("txt_shop_buy", System.StringComparison.OrdinalIgnoreCase) ||
-                   name.Equals("txt_shop_startGame", System.StringComparison.OrdinalIgnoreCase);
+            return NameInShopActionLabelList(name, CarouselPreviousLabelNames) ||
+                   NameInShopActionLabelList(name, CarouselNextLabelNames) ||
+                   NameInShopActionLabelList(name, BuyLabelNames) ||
+                   NameInShopActionLabelList(name, StartGameLabelNames);
+        }
+
+        private static bool NameInShopActionLabelList(string name, string[] labelNames)
+        {
+            if (labelNames == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < labelNames.Length; i++)
+            {
+                if (name.Equals(labelNames[i], System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void ResolveVisualPairIfNeeded()

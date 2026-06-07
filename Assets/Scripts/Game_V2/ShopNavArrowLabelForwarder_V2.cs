@@ -4,7 +4,7 @@ using UnityEngine.EventSystems;
 namespace iStick2War_V2
 {
     /*
-     * Forwards canvas label clicks (txt_shop_previous / txt_shop_prev / txt_shop_next) to ShopNavArrowUiButton_V2.
+     * Forwards canvas label clicks (txt_shop_*Item / txt_shop_startNewGame) to ShopNavArrowUiButton_V2.
      * Pressed visual only when a canvas Button also handles the click (avoids double carousel steps).
      */
     [AddComponentMenu("iStick2War/Shop Nav Arrow Label Forwarder V2")]
