@@ -124,10 +124,12 @@ namespace iStick2War_V2
         [SerializeField] private int _shopPreviewSortingOrder = 220;
         [Tooltip("Shop-canvas must sort above TextBTN sprites (~205) or txt_shop_* labels draw under buttons.")]
         [SerializeField] private int _shopUiCanvasSortingOrder = 210;
+        [Tooltip("Sorting layer for ShopLabels-canvas (action button labels above Shop TextBTN sprites).")]
+        [SerializeField] private string _shopLabelsCanvasSortingLayerName = "LifeOver";
         [Header("Shop action label typography")]
-        [Tooltip("Font size for txt_shop_buy/prev/next/startGame. Adjust on ShopPanel V2 or per-label in the TMP component.")]
+        [Tooltip("Font size for legacy shop action labels (not ShopLabels-canvas — those keep scene/TMP settings).")]
         [SerializeField] private float _shopActionLabelFontSize = 22f;
-        [Tooltip("RectTransform size (width x height) for shop action labels.")]
+        [Tooltip("RectTransform size for legacy shop action labels (ignored on ShopLabels-canvas).")]
         [SerializeField] private Vector2 _shopActionLabelRectSize = new Vector2(180f, 44f);
         [Tooltip("Local position under Items where weapon previews are shown (matches shop_teslaGun slot).")]
         [SerializeField] private Vector3 _previewDisplayLocalPosition = new Vector3(0.79f, 2.71f, 0f);
@@ -3231,8 +3233,38 @@ namespace iStick2War_V2
 
             string name = canvas.gameObject.name;
             return name.Equals("Shop-canvas", System.StringComparison.OrdinalIgnoreCase) ||
+                   name.Equals("ShopLabels-canvas", System.StringComparison.OrdinalIgnoreCase) ||
                    name.Equals("ShopActionButtons-canvas", System.StringComparison.OrdinalIgnoreCase) ||
                    name.Equals("ShopActionLabels-canvas", System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsShopLabelsCanvas(Canvas canvas)
+        {
+            return canvas != null &&
+                   canvas.gameObject.name.Equals("ShopLabels-canvas", System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsUnderShopLabelsCanvas(TMP_Text label)
+        {
+            if (label == null)
+            {
+                return false;
+            }
+
+            Canvas canvas = label.GetComponentInParent<Canvas>(true);
+            return IsShopLabelsCanvas(canvas);
+        }
+
+        private void ApplyShopActionLabelTypography(TMP_Text label)
+        {
+            if (label == null || IsUnderShopLabelsCanvas(label))
+            {
+                return;
+            }
+
+            label.enableAutoSizing = false;
+            label.fontSize = Mathf.Max(8f, _shopActionLabelFontSize);
+            label.rectTransform.sizeDelta = _shopActionLabelRectSize;
         }
 
         private void EnsureShopCanvasRendersAboveTextButtons(Canvas canvas)
@@ -3245,6 +3277,21 @@ namespace iStick2War_V2
             int targetOrder = Mathf.Max(_shopUiCanvasSortingOrder, 206);
             canvas.overrideSorting = true;
 
+            if (IsShopLabelsCanvas(canvas))
+            {
+                if (!string.IsNullOrWhiteSpace(_shopLabelsCanvasSortingLayerName))
+                {
+                    int labelsLayerId = SortingLayer.NameToID(_shopLabelsCanvasSortingLayerName);
+                    if (labelsLayerId != 0)
+                    {
+                        canvas.sortingLayerID = labelsLayerId;
+                    }
+                }
+
+                canvas.sortingOrder = targetOrder;
+                return;
+            }
+
             int shopLayerId = SortingLayer.NameToID("Shop");
             if (shopLayerId != 0)
             {
@@ -3252,18 +3299,6 @@ namespace iStick2War_V2
             }
 
             canvas.sortingOrder = targetOrder;
-        }
-
-        private void ApplyShopActionLabelTypography(TMP_Text label)
-        {
-            if (label == null)
-            {
-                return;
-            }
-
-            label.enableAutoSizing = false;
-            label.fontSize = Mathf.Max(8f, _shopActionLabelFontSize);
-            label.rectTransform.sizeDelta = _shopActionLabelRectSize;
         }
 
         private Vector2 ResolveShopActionLabelRectSize()
@@ -3344,6 +3379,11 @@ namespace iStick2War_V2
             }
 
             EnsureShopLabelTmpVisible(label);
+            if (IsUnderShopLabelsCanvas(label))
+            {
+                return;
+            }
+
             ApplyShopActionLabelTypography(label);
 
             GameObject buttonRoot = FindShopObjectByNames(buttonObjectName, buttonAlternateNames);

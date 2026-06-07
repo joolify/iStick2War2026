@@ -88,6 +88,9 @@ TagManager:
   - name: Shop
     uniqueID: 2029628213
     locked: 0
+  - name: ShopButtons
+    uniqueID: 1212324343
+    locked: 0
   - name: MainMenu
     uniqueID: 1515298761
     locked: 0

@@ -189,6 +189,7 @@ namespace iStick2War_V2
 
             string canvasName = canvasGo.name;
             if (canvasName.Equals("Shop-canvas", System.StringComparison.OrdinalIgnoreCase) ||
+                canvasName.Equals("ShopLabels-canvas", System.StringComparison.OrdinalIgnoreCase) ||
                 canvasName.Equals("ShopActionLabels-canvas", System.StringComparison.OrdinalIgnoreCase))
             {
                 return;

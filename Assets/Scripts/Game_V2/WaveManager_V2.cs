@@ -3220,6 +3220,7 @@ namespace iStick2War_V2
             {
                 string name = walk.gameObject.name;
                 if (name.Equals("Shop-canvas", StringComparison.OrdinalIgnoreCase) ||
+                    name.Equals("ShopLabels-canvas", StringComparison.OrdinalIgnoreCase) ||
                     name.Equals("ShopActionButtons-canvas", StringComparison.OrdinalIgnoreCase) ||
                     name.Equals("ShopActionLabels-canvas", StringComparison.OrdinalIgnoreCase) ||
                     name.IndexOf("ShopPanel", StringComparison.OrdinalIgnoreCase) >= 0)

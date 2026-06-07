@@ -19,7 +19,7 @@ namespace iStick2War_V2
     {
         // Bad / Normal / Good / Epic / Legendary
         private static readonly Color Bad = new Color(0.8f, 0.2f, 0.2f, 1f);
-        private static readonly Color Normal = new Color(0.91f, 0.78f, 0.36f, 1f);
+        private static readonly Color Normal = new Color(0.95f, 0.55f, 0.12f, 1f);
         private static readonly Color Good = new Color(0.3f, 0.69f, 0.31f, 1f);
         private static readonly Color Epic = new Color(0.29f, 0.56f, 0.85f, 1f);
         private static readonly Color Legendary = new Color(0.64f, 0.21f, 0.93f, 1f);

@@ -469,7 +469,7 @@ namespace iStick2War_V2
                 ShowInfoRow(
                     _heroHealth,
                     "Health",
-                    $"{current} -> {after}");
+                    $"{current} > {after}");
             }
 
             ShowRow(
@@ -487,7 +487,7 @@ namespace iStick2War_V2
             ShowRow(
                 _bunkerMax,
                 "Bunker Max HP",
-                $"{before} -> {after}",
+                $"{before} > {after}",
                 _tierResolver.GetBunkerMaxTier(delta));
         }
 
@@ -499,7 +499,7 @@ namespace iStick2War_V2
             ShowRow(
                 _bunkerRepair,
                 "Bunker Repair",
-                $"{before} -> {after}",
+                $"{before} > {after}",
                 _tierResolver.GetBunkerRepairTier(repair));
         }
 
