@@ -74,6 +74,26 @@ namespace iStick2War_V2
             }
         }
 
+        public void Hide()
+        {
+            ResolveReferencesIfNeeded();
+
+            if (_titleText != null)
+            {
+                _titleText.gameObject.SetActive(false);
+            }
+
+            if (_continueText != null)
+            {
+                _continueText.gameObject.SetActive(false);
+            }
+
+            if (_root != null)
+            {
+                _root.SetActive(false);
+            }
+        }
+
         private void ResolveReferencesIfNeeded()
         {
             if (_root == null)

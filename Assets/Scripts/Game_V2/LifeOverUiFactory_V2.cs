@@ -34,6 +34,11 @@ namespace iStick2War_V2
 
         public static bool EnsureLabelsExist(string infoMessage, string goToShopLabel, bool logWhenChanged)
         {
+            if (LifeOverRuntimeLayout_V2.IsInspectorLayoutAuthoritative())
+            {
+                return false;
+            }
+
             Transform chromeRoot = FindChromeRoot();
             if (chromeRoot == null)
             {
@@ -167,7 +172,7 @@ namespace iStick2War_V2
         // Shop-canvas often uses scale 0; LifeOver text must stay visible. Preserve scene/editor rect + label positions.
         public static void ApplyVisibleCanvasLayout(GameObject canvasGo)
         {
-            if (canvasGo == null)
+            if (canvasGo == null || LifeOverRuntimeLayout_V2.IsInspectorLayoutAuthoritativeForCanvas(canvasGo))
             {
                 return;
             }
@@ -274,7 +279,7 @@ namespace iStick2War_V2
         // Only repair legacy shop-duplicated labels parked far off-screen; never overwrite hand-placed scene layout.
         public static bool RepairOffScreenLifeOverLabels(Transform canvasRoot)
         {
-            if (canvasRoot == null)
+            if (canvasRoot == null || LifeOverRuntimeLayout_V2.IsInspectorLayoutAuthoritativeForCanvas(canvasRoot.gameObject))
             {
                 return false;
             }

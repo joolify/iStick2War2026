@@ -3199,7 +3199,7 @@ namespace iStick2War_V2
                 {
                     ApplyShopPanelCanvasVisibleLayout(canvas);
                 }
-                else
+                else if (!LifeOverRuntimeLayout_V2.IsInspectorLayoutAuthoritativeForCanvas(canvas.gameObject))
                 {
                     LifeOverUiFactory_V2.ApplyVisibleCanvasLayout(canvas.gameObject);
                 }

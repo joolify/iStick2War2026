@@ -1150,6 +1150,7 @@ namespace iStick2War_V2
 
             CancelGameOverRevealRoutine();
             CancelLifeOverRevealRoutine();
+            SetHeroDeathGameOverUiVisible(false);
             float delay = Mathf.Max(0f, _lifeOverShowDelaySeconds);
             if (delay <= 0f)
             {
@@ -1637,6 +1638,7 @@ namespace iStick2War_V2
         private void EnterPreparingState()
         {
             HideLifeOverUiCompletely();
+            HideGameOverChromeCompletely();
             SetState(WaveLoopState_V2.Preparing);
             WaveConfig_V2 wave = GetCurrentWaveConfig();
             float prepare = 0f;
@@ -1661,8 +1663,13 @@ namespace iStick2War_V2
 
         private void EnterLifeOverState()
         {
+            SetHeroDeathGameOverUiVisible(false);
             InvalidateLifeOverUiCache();
-            LifeOverUiFactory_V2.EnsureLabelsExist(_lifeOverInfoMessage, _lifeOverGoToShopLabel, _debugWaveLogs);
+            if (!LifeOverRuntimeLayout_V2.IsInspectorLayoutAuthoritative())
+            {
+                LifeOverUiFactory_V2.EnsureLabelsExist(_lifeOverInfoMessage, _lifeOverGoToShopLabel, _debugWaveLogs);
+            }
+
             ResolveLifeOverUiIfNeeded();
 
             if (_shopPanel != null)
@@ -1713,6 +1720,7 @@ namespace iStick2War_V2
             }
 
             PersistRunSaveIfPossible();
+            HideGameOverChromeCompletely();
         }
 
         private void ApplyBetweenWavePressureReset()
@@ -1742,6 +1750,7 @@ namespace iStick2War_V2
         private void EnterInWaveState(bool allowDevWaveShortcuts = true)
         {
             HideLifeOverUiCompletely();
+            SetHeroDeathGameOverUiVisible(false);
             WaveConfig_V2 wave = GetCurrentWaveConfig();
             if (wave == null)
             {
@@ -2007,12 +2016,6 @@ namespace iStick2War_V2
             if (heroDeath)
             {
                 SetHeroDeathGameOverUiVisible(true);
-                if (_gameOverUi == null)
-                {
-                    _gameOverUi = FindAnyObjectByType<GameOverUI_V2>(FindObjectsInactive.Include);
-                }
-
-                _gameOverUi?.Show();
                 RefreshGameOverContinuePrompt();
             }
             else
@@ -2245,18 +2248,13 @@ namespace iStick2War_V2
         {
             if (_heroDeathGameOverRoot == null)
             {
-                Transform[] transforms = FindObjectsByType<Transform>(FindObjectsInactive.Include);
-                for (int i = 0; i < transforms.Length; i++)
+                string[] rootNames = { "GameOver V2", "GameOver" };
+                for (int n = 0; n < rootNames.Length; n++)
                 {
-                    Transform t = transforms[i];
-                    if (t == null || t.parent != null)
+                    GameObject found = FindGameObjectInLoadedScenes(rootNames[n]);
+                    if (found != null)
                     {
-                        continue;
-                    }
-
-                    if (t.gameObject.name.Equals("GameOver", StringComparison.Ordinal))
-                    {
-                        _heroDeathGameOverRoot = t.gameObject;
+                        _heroDeathGameOverRoot = found;
                         break;
                     }
                 }
@@ -2490,14 +2488,50 @@ namespace iStick2War_V2
             return null;
         }
 
+        private static bool IsExcludedDeathMenuChromeName(string name)
+        {
+            return name.Equals("GameOver", StringComparison.OrdinalIgnoreCase) ||
+                   name.Equals("GameOver V2", StringComparison.OrdinalIgnoreCase) ||
+                   name.Equals("LifeOver V2 old", StringComparison.OrdinalIgnoreCase);
+        }
+
         private static bool IsUnderLifeOverCanvas(Transform node)
         {
             Transform walk = node;
             while (walk != null)
             {
-                if (walk.gameObject.name.Equals("LifeOver-canvas", StringComparison.OrdinalIgnoreCase))
+                string name = walk.gameObject.name;
+                if (IsExcludedDeathMenuChromeName(name))
+                {
+                    return false;
+                }
+
+                if (name.Equals("LifeOver-canvas", StringComparison.OrdinalIgnoreCase))
+                {
+                    return HasLifeOverChromeRootAncestor(walk);
+                }
+
+                walk = walk.parent;
+            }
+
+            return false;
+        }
+
+        private static bool HasLifeOverChromeRootAncestor(Transform fromNode)
+        {
+            Transform walk = fromNode != null ? fromNode.parent : null;
+            while (walk != null)
+            {
+                string name = walk.gameObject.name;
+                if (name.Equals("LifeOver V2", StringComparison.OrdinalIgnoreCase) ||
+                    name.Equals("LifeOver", StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
+                }
+
+                if (IsExcludedDeathMenuChromeName(name))
+                {
+                    return false;
                 }
 
                 walk = walk.parent;
@@ -2512,9 +2546,15 @@ namespace iStick2War_V2
             while (walk != null)
             {
                 string name = walk.gameObject.name;
-                if (name.IndexOf("LifeOver", StringComparison.OrdinalIgnoreCase) >= 0)
+                if (name.Equals("LifeOver V2", StringComparison.OrdinalIgnoreCase) ||
+                    name.Equals("LifeOver", StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
+                }
+
+                if (IsExcludedDeathMenuChromeName(name))
+                {
+                    return false;
                 }
 
                 walk = walk.parent;
@@ -2592,9 +2632,14 @@ namespace iStick2War_V2
                 return;
             }
 
+            SetHeroDeathGameOverUiVisible(false);
             ResolveLifeOverUiIfNeeded();
             EnsureLifeOverUiRootsVisible();
-            ShowLifeOverNamedObjectsInScene();
+            if (!LifeOverRuntimeLayout_V2.IsInspectorLayoutAuthoritative())
+            {
+                ShowLifeOverNamedObjectsInScene();
+            }
+
             ActivateLifeOverTextHierarchy();
 
             PrepareLifeOverTmp(_lifeOverInfoText, _lifeOverInfoMessage);
@@ -2627,6 +2672,8 @@ namespace iStick2War_V2
             {
                 EnsureLifeOverControlVisible(_lifeOverGoToMainMenuButton);
             }
+
+            HideGameOverChromeCompletely();
         }
 
         private void EnsureLifeOverLabelUiClickTargets()
@@ -2695,9 +2742,13 @@ namespace iStick2War_V2
                 canvasComponent.enabled = true;
             }
 
-            LifeOverUiFactory_V2.ApplyVisibleCanvasLayout(canvas.gameObject);
-            LifeOverUiFactory_V2.RepairOffScreenLifeOverLabels(canvas);
             DeactivateDuplicateLifeOverCanvases(canvas);
+
+            if (!LifeOverRuntimeLayout_V2.IsInspectorLayoutAuthoritative(chrome))
+            {
+                LifeOverUiFactory_V2.ApplyVisibleCanvasLayout(canvas.gameObject);
+                LifeOverUiFactory_V2.RepairOffScreenLifeOverLabels(canvas);
+            }
 
             TMP_Text[] texts = canvas.GetComponentsInChildren<TMP_Text>(true);
             for (int i = 0; i < texts.Length; i++)
@@ -2726,6 +2777,16 @@ namespace iStick2War_V2
                 LifeOverNavButton_V2.LifeOverAction.GoToShop);
             EnsureLifeOverNavButtonOnTarget(
                 FindLifeOverNamedControl("TextBTN_MediumGoToMainMenu"),
+                LifeOverNavButton_V2.LifeOverAction.GoToMainMenu);
+
+            EnsureLifeOverNavUiButtonOnTarget(
+                FindLifeOverNamedControl("LifeOver_Btn_Continue"),
+                LifeOverNavButton_V2.LifeOverAction.Continue);
+            EnsureLifeOverNavUiButtonOnTarget(
+                FindLifeOverNamedControl("LifeOver_Btn_Shop"),
+                LifeOverNavButton_V2.LifeOverAction.GoToShop);
+            EnsureLifeOverNavUiButtonOnTarget(
+                FindLifeOverNamedControl("LifeOver_Btn_MainMenu"),
                 LifeOverNavButton_V2.LifeOverAction.GoToMainMenu);
         }
 
@@ -2791,7 +2852,10 @@ namespace iStick2War_V2
             string name = target.name;
             return name.Equals("TextBTN_MediumStartNewGame", StringComparison.OrdinalIgnoreCase) ||
                    name.Equals("TextBTN_MediumGoToShop", StringComparison.OrdinalIgnoreCase) ||
-                   name.Equals("TextBTN_MediumGoToMainMenu", StringComparison.OrdinalIgnoreCase);
+                   name.Equals("TextBTN_MediumGoToMainMenu", StringComparison.OrdinalIgnoreCase) ||
+                   name.Equals("LifeOver_Btn_Continue", StringComparison.OrdinalIgnoreCase) ||
+                   name.Equals("LifeOver_Btn_Shop", StringComparison.OrdinalIgnoreCase) ||
+                   name.Equals("LifeOver_Btn_MainMenu", StringComparison.OrdinalIgnoreCase);
         }
 
         private static GameObject FindLifeOverNamedControl(string exactName)
@@ -2857,6 +2921,32 @@ namespace iStick2War_V2
             }
 
             RefitLifeOverButtonCollider(target, collider);
+        }
+
+        private static void EnsureLifeOverNavUiButtonOnTarget(
+            GameObject target,
+            LifeOverNavButton_V2.LifeOverAction action)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            MainMenuNavUiButton_V2 mainMenuUi = target.GetComponent<MainMenuNavUiButton_V2>();
+            if (mainMenuUi != null)
+            {
+                global::UnityEngine.Object.Destroy(mainMenuUi);
+            }
+
+            LifeOverNavUiButton_V2 nav = target.GetComponent<LifeOverNavUiButton_V2>();
+            if (nav == null)
+            {
+                nav = target.AddComponent<LifeOverNavUiButton_V2>();
+            }
+
+            WaveManager_V2 waveManager =
+                UnityEngine.Object.FindAnyObjectByType<WaveManager_V2>(FindObjectsInactive.Exclude);
+            nav.Configure(waveManager, action);
         }
 
         private static void StripLegacyLifeOverButtonComponents(GameObject target)
@@ -3586,49 +3676,91 @@ namespace iStick2War_V2
 
         private void SetHeroDeathGameOverUiVisible(bool visible)
         {
-            if (_lifeOverRoot != null && visible && _state != WaveLoopState_V2.LifeOver)
+            if (visible && (_state == WaveLoopState_V2.LifeOver || _lifeOverRevealPending))
+            {
+                return;
+            }
+
+            ResolveHeroDeathGameOverUiIfNeeded();
+
+            if (!visible)
+            {
+                HideGameOverChromeCompletely();
+                return;
+            }
+
+            if (_lifeOverRoot != null && _state != WaveLoopState_V2.LifeOver)
             {
                 _lifeOverRoot.SetActive(false);
             }
 
-            if (visible)
-            {
-                EnsureGameOverWorldContentIfNeeded();
-            }
+            EnsureGameOverWorldContentIfNeeded();
 
             if (_heroDeathGameOverRoot != null)
             {
-                _heroDeathGameOverRoot.SetActive(visible);
-                if (visible)
-                {
-                    SetTransformHierarchyActive(_heroDeathGameOverRoot.transform, true);
-                }
+                _heroDeathGameOverRoot.SetActive(true);
+                SetTransformHierarchyActive(_heroDeathGameOverRoot.transform, true);
             }
 
             if (_heroDeathContinueButton != null)
             {
-                _heroDeathContinueButton.SetActive(visible);
+                _heroDeathContinueButton.SetActive(true);
             }
 
             if (_heroDeathTopBarTitle != null)
             {
-                if (visible)
-                {
-                    EnsureGameplayOverlayBranchActive(_heroDeathTopBarTitle.transform);
-                }
-
-                _heroDeathTopBarTitle.gameObject.SetActive(visible);
+                EnsureGameplayOverlayBranchActive(_heroDeathTopBarTitle.transform);
+                _heroDeathTopBarTitle.gameObject.SetActive(true);
             }
 
             if (_heroDeathTopBarContinue != null)
             {
-                if (visible)
-                {
-                    EnsureGameplayOverlayBranchActive(_heroDeathTopBarContinue.transform);
-                }
-
-                _heroDeathTopBarContinue.gameObject.SetActive(visible);
+                EnsureGameplayOverlayBranchActive(_heroDeathTopBarContinue.transform);
+                _heroDeathTopBarContinue.gameObject.SetActive(true);
             }
+
+            if (_gameOverUi == null)
+            {
+                _gameOverUi = FindAnyObjectByType<GameOverUI_V2>(FindObjectsInactive.Include);
+            }
+
+            _gameOverUi?.Show();
+        }
+
+        private void HideGameOverChromeCompletely()
+        {
+            LifeOverRuntimeLayout_V2.SuppressGameOverChrome();
+            HideResolvedGameOverUi();
+
+            if (_heroDeathGameOverRoot != null)
+            {
+                _heroDeathGameOverRoot.SetActive(false);
+            }
+
+            if (_heroDeathContinueButton != null)
+            {
+                _heroDeathContinueButton.SetActive(false);
+            }
+
+            if (_heroDeathTopBarTitle != null)
+            {
+                _heroDeathTopBarTitle.gameObject.SetActive(false);
+            }
+
+            if (_heroDeathTopBarContinue != null)
+            {
+                _heroDeathTopBarContinue.gameObject.SetActive(false);
+            }
+        }
+
+        private void HideResolvedGameOverUi()
+        {
+            if (_gameOverUi == null)
+            {
+                _gameOverUi = FindAnyObjectByType<GameOverUI_V2>(FindObjectsInactive.Include);
+            }
+
+            _gameOverUi?.Hide();
         }
 
         private void EnsureGameOverWorldContentIfNeeded()
