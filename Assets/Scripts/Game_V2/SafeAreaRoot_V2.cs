@@ -28,6 +28,11 @@ public sealed class SafeAreaFitter : MonoBehaviour
         }
     }
 
+    public void Refresh()
+    {
+        Apply();
+    }
+
     private void Apply()
     {
         if (target == null)

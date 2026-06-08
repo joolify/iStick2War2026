@@ -26,4 +26,5 @@ MonoBehaviour:
   _waveRewardCurrency: 410
   _startAtMainMenuOnSceneLoad: 0
   _openShopDirectly: 0
-  _openLifeOverDirectly: 0
+  _openLifeOverDirectly: 1
+  _openGameOverDirectly: 0

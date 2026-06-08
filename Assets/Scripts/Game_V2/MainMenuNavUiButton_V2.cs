@@ -1,110 +1,92 @@
 using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace iStick2War_V2
 {
     /*
- * MainMenuNavButton_V2 (World-space menu hit target)
+ * MainMenuNavUiButton_V2 (Canvas UI Button menu hit target)
  *
  * PURPOSE:
- * Collider2D + OnMouseDown handler for main menu actions (Play, Settings, ReturnToMainMenu) when UI Buttons cannot
- * raycast SpriteRenderer-based art. Delegates to MainMenu_V2 when assigned.
- * Sibling TextBTN_Medium*_Pressed shows while held (same pattern as shop text buttons).
- * Paired txt_mainMenu_* labels nudge down/left while pressed.
- *
- * ---------------------------------------------------------
- * ❌ MUST NOT
- *
- * - Pause Time.timeScale itself (MainMenu_V2 owns freeze policy).
+ * Routes Play / Continue / Settings / CloseSettings / ReturnToMainMenu to MainMenu_V2 via Unity UI Button.
+ * Optional sibling *_Pressed root while held; otherwise rely on Button Sprite Swap.
+ * Paired txt_mainMenu_* labels nudge on press.
  *
  * ---------------------------------------------------------
  * NAVIGATION (Game_V2)
  *
  * Menu owner → MainMenu_V2.cs
- * Canvas UI menu hits → MainMenuNavUiButton_V2.cs
- * Shop world hits → ShopBuyButton_V2.cs, ShopNavArrow_V2.cs (same Collider2D pattern)
- *
- * ---------------------------------------------------------
- * DESIGN PRINCIPLE
- *
- * Mirrors ShopNavArrow_V2 / ShopBuyButton_V2: thin input surface for world-space canvas stacks.
+ * World-space menu hits → MainMenuNavButton_V2.cs
  */
-    [AddComponentMenu("iStick2War/Main Menu Nav Button V2")]
-    [RequireComponent(typeof(Collider2D))]
-    public sealed class MainMenuNavButton_V2 : MonoBehaviour
+    [AddComponentMenu("iStick2War/Main Menu Nav UI Button V2")]
+    [RequireComponent(typeof(Button))]
+    public sealed class MainMenuNavUiButton_V2 :
+        MonoBehaviour,
+        IPointerDownHandler,
+        IPointerUpHandler,
+        IPointerExitHandler
     {
-        public enum MenuAction
-        {
-            Play,
-            Continue,
-            Settings,
-            CloseSettings,
-            // Load dedicated main menu scene.
-            ReturnToMainMenu
-        }
-
         [SerializeField] private MainMenu_V2 _mainMenu;
-        [SerializeField] private MenuAction _action = MenuAction.Play;
-        [Header("Pressed visual (TextBTN siblings)")]
+        [SerializeField] private MainMenuNavButton_V2.MenuAction _action = MainMenuNavButton_V2.MenuAction.Play;
+        [Header("Pressed visual (optional sibling)")]
         [SerializeField] private GameObject _normalVisual;
         [SerializeField] private GameObject _pressedVisual;
         [Header("Label nudge when pressed")]
         [SerializeField] private TMP_Text _associatedLabel;
-        [SerializeField] private Vector2 _labelPressedOffset = new Vector2(-5f, -5f);
+        [SerializeField] private Vector2 _labelPressedOffset = new Vector2(0f, -10f);
         [SerializeField] private bool _debugLogs;
 
+        private Button _button;
+        private bool _listenerRegistered;
         private bool _isPointerDown;
         private bool _latchPressedVisual;
+        private int _lastHandledClickFrame = -1;
         private RectTransform _labelRect;
         private Vector2 _labelRestAnchoredPosition;
         private bool _labelRestCached;
 
-        internal bool IsReturnToMainMenuAction() => _action == MenuAction.ReturnToMainMenu;
-        internal bool IsPlayAction() => _action == MenuAction.Play;
+        internal bool IsReturnToMainMenuAction() => _action == MainMenuNavButton_V2.MenuAction.ReturnToMainMenu;
+
+        internal bool IsCloseSettingsAction() =>
+            GetEffectiveAction() == MainMenuNavButton_V2.MenuAction.CloseSettings;
 
         private void Awake()
         {
+            _button = GetComponent<Button>();
             ResolveVisualPairIfNeeded();
             ShowNormalVisual();
         }
 
         private void OnEnable()
         {
+            _labelRestCached = false;
+            _button = GetComponent<Button>();
             ResolveVisualPairIfNeeded();
+            RegisterListenerIfNeeded();
             ShowNormalVisual();
         }
 
         private void OnDisable()
         {
+            UnregisterListener();
             _isPointerDown = false;
             _latchPressedVisual = false;
             ShowNormalVisual();
         }
 
-        private void Update()
-        {
-            if (!_isPointerDown || Input.GetMouseButton(0))
-            {
-                return;
-            }
-
-            _isPointerDown = false;
-            if (!_latchPressedVisual)
-            {
-                ShowNormalVisual();
-            }
-        }
-
-        internal void Configure(MainMenu_V2 mainMenu, MenuAction action)
+        internal void Configure(MainMenu_V2 mainMenu, MainMenuNavButton_V2.MenuAction action)
         {
             _mainMenu = mainMenu;
-            _action = TryResolveActionFromButtonName(ResolveButtonObjectName(), out MenuAction mapped)
+            _action = TryResolveActionFromButtonName(ResolveButtonObjectName(), out MainMenuNavButton_V2.MenuAction mapped)
                 ? mapped
                 : action;
+            _labelRestCached = false;
             ResolveVisualPairIfNeeded();
+            UnregisterListener();
+            RegisterListenerIfNeeded();
             ShowNormalVisual();
         }
 
@@ -115,137 +97,18 @@ namespace iStick2War_V2
             ShowNormalVisual();
         }
 
-        // Automation helper for tests/agents.
         public void TriggerAutomationClick()
         {
-            OnMouseDown();
+            HandleClick();
         }
 
-        private void OnMouseDown()
+        public void OnPointerDown(PointerEventData eventData)
         {
-            WaveManager_V2 waveManager = UnityEngine.Object.FindAnyObjectByType<WaveManager_V2>();
-            if (waveManager != null)
-            {
-                WaveLoopState_V2 state = waveManager.State;
-                bool gameplayOwnsInput =
-                    state == WaveLoopState_V2.Preparing ||
-                    state == WaveLoopState_V2.InWave ||
-                    state == WaveLoopState_V2.Shop;
-                if (gameplayOwnsInput)
-                {
-                    if (_debugLogs)
-                    {
-                        Debug.Log(
-                            $"[MainMenuNavButton_V2] Ignored click on '{name}' while gameplay state is {state}.");
-                    }
-
-                    return;
-                }
-            }
-
             _isPointerDown = true;
             ShowPressedVisual();
-
-            MenuAction action = GetEffectiveAction();
-
-            if (action == MenuAction.ReturnToMainMenu)
-            {
-                AudioManager_V2.PlayMenuClick();
-                if (_debugLogs)
-                {
-                    Debug.Log($"[MainMenuNavButton_V2] '{name}' OnMouseDown -> {_action} (reload active scene, pause first)");
-                }
-
-                LoadMainMenuScene();
-                return;
-            }
-
-            if (_mainMenu == null)
-            {
-                if (_debugLogs)
-                {
-                    Debug.LogWarning($"[MainMenuNavButton_V2] '{name}': assign MainMenu_V2.");
-                }
-
-                return;
-            }
-
-            if (_debugLogs)
-            {
-                Debug.Log($"[MainMenuNavButton_V2] '{name}' OnMouseDown -> {_action}");
-            }
-
-            if (action == MenuAction.Play)
-            {
-                _mainMenu.HandlePlay();
-            }
-            else if (action == MenuAction.Continue)
-            {
-                _mainMenu.HandleContinue();
-            }
-            else if (action == MenuAction.Settings)
-            {
-                _latchPressedVisual = true;
-                _mainMenu.HandleShowSettings();
-            }
-            else if (action == MenuAction.CloseSettings)
-            {
-                _latchPressedVisual = true;
-                _mainMenu.HandleHideSettings();
-            }
         }
 
-        private MenuAction GetEffectiveAction()
-        {
-            return TryResolveActionFromButtonName(ResolveButtonObjectName(), out MenuAction mapped)
-                ? mapped
-                : _action;
-        }
-
-        private string ResolveButtonObjectName()
-        {
-            return _normalVisual != null ? _normalVisual.name : gameObject.name;
-        }
-
-        // Scene overrides often leave _action at Play (0); map known TextBTN names to the correct menu action.
-        private static bool TryResolveActionFromButtonName(string buttonName, out MenuAction action)
-        {
-            action = MenuAction.Play;
-            if (string.IsNullOrWhiteSpace(buttonName))
-            {
-                return false;
-            }
-
-            if (buttonName.Equals("TextBTN_MediumStartGame", StringComparison.OrdinalIgnoreCase) ||
-                buttonName.Equals("btn_main_menu_play", StringComparison.OrdinalIgnoreCase))
-            {
-                action = MenuAction.Play;
-                return true;
-            }
-
-            if (buttonName.Equals("TextBTN_MediumContinue", StringComparison.OrdinalIgnoreCase))
-            {
-                action = MenuAction.Continue;
-                return true;
-            }
-
-            if (buttonName.Equals("TextBTN_MediumSettings", StringComparison.OrdinalIgnoreCase) ||
-                buttonName.Equals("btn_main_menu_settings", StringComparison.OrdinalIgnoreCase))
-            {
-                action = MenuAction.Settings;
-                return true;
-            }
-
-            if (buttonName.Equals("TextBTN_MediumGoBack", StringComparison.OrdinalIgnoreCase))
-            {
-                action = MenuAction.CloseSettings;
-                return true;
-            }
-
-            return false;
-        }
-
-        private void OnMouseUp()
+        public void OnPointerUp(PointerEventData eventData)
         {
             _isPointerDown = false;
             if (!_latchPressedVisual)
@@ -254,7 +117,7 @@ namespace iStick2War_V2
             }
         }
 
-        private void OnMouseExit()
+        public void OnPointerExit(PointerEventData eventData)
         {
             if (!_isPointerDown)
             {
@@ -268,7 +131,180 @@ namespace iStick2War_V2
             }
         }
 
-        // Freeze time before scene load so boot state always starts paused in menu.
+        private void RegisterListenerIfNeeded()
+        {
+            if (_button == null)
+            {
+                _button = GetComponent<Button>();
+            }
+
+            if (_button == null || _listenerRegistered)
+            {
+                return;
+            }
+
+            _button.onClick.AddListener(HandleClick);
+            _listenerRegistered = true;
+        }
+
+        private void UnregisterListener()
+        {
+            if (_button == null || !_listenerRegistered)
+            {
+                return;
+            }
+
+            _button.onClick.RemoveListener(HandleClick);
+            _listenerRegistered = false;
+        }
+
+        private void HandleClick()
+        {
+            if (_lastHandledClickFrame == Time.frameCount)
+            {
+                return;
+            }
+
+            if (!TryBeginClick())
+            {
+                return;
+            }
+
+            _lastHandledClickFrame = Time.frameCount;
+
+            MainMenuNavButton_V2.MenuAction action = GetEffectiveAction();
+
+            if (action == MainMenuNavButton_V2.MenuAction.ReturnToMainMenu)
+            {
+                AudioManager_V2.PlayMenuClick();
+                if (_debugLogs)
+                {
+                    Debug.Log($"[MainMenuNavUiButton_V2] '{name}' -> ReturnToMainMenu");
+                }
+
+                LoadMainMenuScene();
+                return;
+            }
+
+            if (_mainMenu == null)
+            {
+                if (_debugLogs)
+                {
+                    Debug.LogWarning($"[MainMenuNavUiButton_V2] '{name}': assign MainMenu_V2.");
+                }
+
+                return;
+            }
+
+            if (_debugLogs)
+            {
+                Debug.Log($"[MainMenuNavUiButton_V2] '{name}' click -> {action}");
+            }
+
+            if (action == MainMenuNavButton_V2.MenuAction.Play)
+            {
+                _mainMenu.HandlePlay();
+            }
+            else if (action == MainMenuNavButton_V2.MenuAction.Continue)
+            {
+                _mainMenu.HandleContinue();
+            }
+            else if (action == MainMenuNavButton_V2.MenuAction.Settings)
+            {
+                _latchPressedVisual = true;
+                _mainMenu.HandleShowSettings();
+            }
+            else if (action == MainMenuNavButton_V2.MenuAction.CloseSettings)
+            {
+                _latchPressedVisual = true;
+                _mainMenu.HandleHideSettings();
+            }
+        }
+
+        private bool TryBeginClick()
+        {
+            WaveManager_V2 waveManager = UnityEngine.Object.FindAnyObjectByType<WaveManager_V2>();
+            if (waveManager == null)
+            {
+                return true;
+            }
+
+            WaveLoopState_V2 state = waveManager.State;
+            bool gameplayOwnsInput =
+                state == WaveLoopState_V2.Preparing ||
+                state == WaveLoopState_V2.InWave ||
+                state == WaveLoopState_V2.Shop;
+            if (!gameplayOwnsInput)
+            {
+                return true;
+            }
+
+            if (_debugLogs)
+            {
+                Debug.Log(
+                    $"[MainMenuNavUiButton_V2] Ignored click on '{name}' while gameplay state is {state}.");
+            }
+
+            return false;
+        }
+
+        private MainMenuNavButton_V2.MenuAction GetEffectiveAction()
+        {
+            return TryResolveActionFromButtonName(ResolveButtonObjectName(), out MainMenuNavButton_V2.MenuAction mapped)
+                ? mapped
+                : _action;
+        }
+
+        private string ResolveButtonObjectName()
+        {
+            return _normalVisual != null ? _normalVisual.name : gameObject.name;
+        }
+
+        private static bool TryResolveActionFromButtonName(string buttonName, out MainMenuNavButton_V2.MenuAction action)
+        {
+            action = MainMenuNavButton_V2.MenuAction.Play;
+            if (string.IsNullOrWhiteSpace(buttonName))
+            {
+                return false;
+            }
+
+            if (buttonName.Equals("TextBTN_MediumStartGame", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("btn_main_menu_play", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("TestButton_Play", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("MainMenu_Btn_StartGame", StringComparison.OrdinalIgnoreCase))
+            {
+                action = MainMenuNavButton_V2.MenuAction.Play;
+                return true;
+            }
+
+            if (buttonName.Equals("TextBTN_MediumContinue", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("TestButton_Continue", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("MainMenu_Btn_Continue", StringComparison.OrdinalIgnoreCase))
+            {
+                action = MainMenuNavButton_V2.MenuAction.Continue;
+                return true;
+            }
+
+            if (buttonName.Equals("TextBTN_MediumSettings", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("btn_main_menu_settings", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("TestButton_Settings", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("MainMenu_Btn_Settings", StringComparison.OrdinalIgnoreCase))
+            {
+                action = MainMenuNavButton_V2.MenuAction.Settings;
+                return true;
+            }
+
+            if (buttonName.Equals("TextBTN_MediumGoBack", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("TestButton_GoBack", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("Settings_Btn_GoBack", StringComparison.OrdinalIgnoreCase))
+            {
+                action = MainMenuNavButton_V2.MenuAction.CloseSettings;
+                return true;
+            }
+
+            return false;
+        }
+
         private static void LoadMainMenuScene()
         {
             GameplayPauseButton_V2.ReturnToMainMenuScene();
@@ -296,8 +332,12 @@ namespace iStick2War_V2
         private void ShowNormalVisual()
         {
             ResolveVisualPairIfNeeded();
-            SetVisualRootActive(_pressedVisual, false);
-            SetVisualRootActive(_normalVisual, true);
+            if (_pressedVisual != null)
+            {
+                SetVisualRootActive(_pressedVisual, false);
+                SetVisualRootActive(_normalVisual, true);
+            }
+
             RestoreLabelPosition();
         }
 
@@ -311,7 +351,6 @@ namespace iStick2War_V2
             }
 
             SyncPressedTransformToNormal();
-            SyncPressedRenderingFromNormal();
             SetVisualRootActive(_normalVisual, false);
             SetVisualRootActive(_pressedVisual, true);
         }
@@ -332,10 +371,30 @@ namespace iStick2War_V2
             }
 
             _associatedLabel = FindTmpLabelInScene(labelNames);
+            if (_associatedLabel == null)
+            {
+                _associatedLabel = FindTmpLabelInChildren();
+            }
+
             if (_associatedLabel != null)
             {
                 _labelRect = _associatedLabel.rectTransform;
             }
+        }
+
+        private TMP_Text FindTmpLabelInChildren()
+        {
+            TMP_Text[] texts = GetComponentsInChildren<TMP_Text>(true);
+            for (int i = 0; i < texts.Length; i++)
+            {
+                TMP_Text text = texts[i];
+                if (text != null)
+                {
+                    return text;
+                }
+            }
+
+            return null;
         }
 
         private void CacheLabelRestPositionIfNeeded()
@@ -404,23 +463,31 @@ namespace iStick2War_V2
             }
 
             if (buttonName.Equals("TextBTN_MediumStartGame", StringComparison.OrdinalIgnoreCase) ||
-                buttonName.Equals("btn_main_menu_play", StringComparison.OrdinalIgnoreCase))
+                buttonName.Equals("btn_main_menu_play", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("TestButton_Play", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("MainMenu_Btn_StartGame", StringComparison.OrdinalIgnoreCase))
             {
                 return new[] { "txt_mainMenu_startGame", "txt_mainmenu_play" };
             }
 
             if (buttonName.Equals("TextBTN_MediumSettings", StringComparison.OrdinalIgnoreCase) ||
-                buttonName.Equals("btn_main_menu_settings", StringComparison.OrdinalIgnoreCase))
+                buttonName.Equals("btn_main_menu_settings", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("TestButton_Settings", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("MainMenu_Btn_Settings", StringComparison.OrdinalIgnoreCase))
             {
                 return new[] { "txt_mainMenu_settings", "txt_mainmenu_settings" };
             }
 
-            if (buttonName.Equals("TextBTN_MediumContinue", StringComparison.OrdinalIgnoreCase))
+            if (buttonName.Equals("TextBTN_MediumContinue", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("TestButton_Continue", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("MainMenu_Btn_Continue", StringComparison.OrdinalIgnoreCase))
             {
                 return new[] { "txt_mainMenu_continue", "txt_mainmenu_continue" };
             }
 
-            if (buttonName.Equals("TextBTN_MediumGoBack", StringComparison.OrdinalIgnoreCase))
+            if (buttonName.Equals("TextBTN_MediumGoBack", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("TestButton_GoBack", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("Settings_Btn_GoBack", StringComparison.OrdinalIgnoreCase))
             {
                 return new[] { "txt_settings_goBack" };
             }
@@ -437,37 +504,24 @@ namespace iStick2War_V2
 
             Transform normalTransform = _normalVisual.transform;
             Transform pressedTransform = _pressedVisual.transform;
+
+            RectTransform normalRect = normalTransform as RectTransform;
+            RectTransform pressedRect = pressedTransform as RectTransform;
+            if (normalRect != null && pressedRect != null)
+            {
+                pressedRect.anchorMin = normalRect.anchorMin;
+                pressedRect.anchorMax = normalRect.anchorMax;
+                pressedRect.pivot = normalRect.pivot;
+                pressedRect.anchoredPosition = normalRect.anchoredPosition;
+                pressedRect.sizeDelta = normalRect.sizeDelta;
+                pressedRect.localRotation = normalRect.localRotation;
+                pressedRect.localScale = normalRect.localScale;
+                return;
+            }
+
             pressedTransform.localPosition = normalTransform.localPosition;
             pressedTransform.localRotation = normalTransform.localRotation;
             pressedTransform.localScale = normalTransform.localScale;
-        }
-
-        private void SyncPressedRenderingFromNormal()
-        {
-            if (_normalVisual == null || _pressedVisual == null)
-            {
-                return;
-            }
-
-            SpriteRenderer normalSprite = _normalVisual.GetComponent<SpriteRenderer>();
-            if (normalSprite == null)
-            {
-                normalSprite = _normalVisual.GetComponentInChildren<SpriteRenderer>(true);
-            }
-
-            SpriteRenderer pressedSprite = _pressedVisual.GetComponent<SpriteRenderer>();
-            if (pressedSprite == null)
-            {
-                pressedSprite = _pressedVisual.GetComponentInChildren<SpriteRenderer>(true);
-            }
-
-            if (normalSprite == null || pressedSprite == null)
-            {
-                return;
-            }
-
-            pressedSprite.sortingLayerID = normalSprite.sortingLayerID;
-            pressedSprite.sortingOrder = normalSprite.sortingOrder;
         }
 
         private void SetVisualRootActive(GameObject visualRoot, bool visible)
@@ -477,7 +531,6 @@ namespace iStick2War_V2
                 return;
             }
 
-            // Keep this host alive so mouse up / pointer exit still fire.
             if (ReferenceEquals(visualRoot, gameObject))
             {
                 SetVisualArtifactsVisible(visualRoot.transform, visible);
@@ -501,16 +554,6 @@ namespace iStick2War_V2
                 if (graphic != null)
                 {
                     graphic.enabled = visible;
-                }
-            }
-
-            SpriteRenderer[] spriteRenderers = root.GetComponentsInChildren<SpriteRenderer>(true);
-            for (int i = 0; i < spriteRenderers.Length; i++)
-            {
-                SpriteRenderer spriteRenderer = spriteRenderers[i];
-                if (spriteRenderer != null)
-                {
-                    spriteRenderer.enabled = visible;
                 }
             }
         }

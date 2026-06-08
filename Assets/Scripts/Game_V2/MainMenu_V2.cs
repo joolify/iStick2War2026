@@ -13,7 +13,7 @@ namespace iStick2War_V2
  *
  * PURPOSE:
  * Pauses the simulation with Time.timeScale until Play, wires optional UI Buttons and/or world-space
- * MainMenuNavButton_V2 colliders (same Collider2D + OnMouseDown pattern as ShopNavArrow_V2), and hides configured
+ * MainMenuNavButton_V2 (world) / MainMenuNavUiButton_V2 (canvas UI), and hides configured
  * menu roots when the player starts the run.
  *
  * ---------------------------------------------------------
@@ -25,6 +25,10 @@ namespace iStick2War_V2
  * NAVIGATION (Game_V2)
  *
  * World-space menu hits → MainMenuNavButton_V2.cs
+ * Canvas UI menu hits → MainMenuNavUiButton_V2.cs
+ * Narrow-aspect menu camera → OrthographicCameraAspectFitter_V2.cs
+ * Main menu UI canvas layout → MainMenuCanvasLayout_V2.cs
+ * Settings panel layout → SettingsPanelLayout_V2.cs
  * After Play → WaveManager_V2.cs (gameplay scene), not this file
  *
  * ---------------------------------------------------------
@@ -47,6 +51,9 @@ namespace iStick2War_V2
         private const string DefaultSettingsPanelName = "Settings V2";
         private const string DefaultSettingsBackButtonName = "TextBTN_MediumGoBack";
         private const string MainMenuBackgroundObjectName = "bkg_main_menu";
+        private const string MainMenuCanvasName = "MainMenu-canvas";
+        private const string MainMenuSafeAreaRootName = "SafeAreaRoot";
+        private const string MainMenuSafeAreaStateKey = "MainMenu-canvas/SafeAreaRoot";
         private static readonly string[] MenuButtonsHiddenWhileSettingsOpen =
         {
             DefaultWorldPlayButtonName,
@@ -60,7 +67,12 @@ namespace iStick2War_V2
             TmpStartGameAltName,
             TmpSettingsAltName,
             TmpContinueName,
-            TmpContinueAltName
+            TmpContinueAltName,
+            "TestButton_Settings",
+            "TestButton_Settings_Pressed",
+            "MainMenu_Btn_Continue",
+            "MainMenu_Btn_StartGame",
+            "MainMenu_Btn_Settings"
         };
         private static readonly string[] DefaultMenuObjectNames =
         {
@@ -109,6 +121,7 @@ namespace iStick2War_V2
         private Coroutine _showSettingsRoutine;
         private Coroutine _hideSettingsRoutine;
         private readonly Dictionary<string, bool> _menuButtonActiveBeforeSettings = new Dictionary<string, bool>();
+        private bool _settingsMenuButtonsHideStateCaptured;
 
         // True when the menu is active and HandlePlay has not run this session
         // (automation / tests: use with WaveManager_V2 Preparing, not only Time.timeScale).
@@ -127,6 +140,42 @@ namespace iStick2War_V2
             }
 
             AudioManager_V2.SetMenuMusic();
+            EnsureMenuCameraAspectFitter();
+            EnsureMainMenuCanvasLayout();
+        }
+
+        private static void EnsureMainMenuCanvasLayout()
+        {
+            GameObject canvasGo = GameObject.Find("MainMenu-canvas");
+            if (canvasGo == null)
+            {
+                return;
+            }
+
+            MainMenuCanvasLayout_V2 layout = canvasGo.GetComponent<MainMenuCanvasLayout_V2>();
+            if (layout == null)
+            {
+                layout = canvasGo.AddComponent<MainMenuCanvasLayout_V2>();
+            }
+
+            layout.ApplyIfNeeded();
+        }
+
+        private static void EnsureMenuCameraAspectFitter()
+        {
+            Camera camera = Camera.main;
+            if (camera == null || !camera.orthographic)
+            {
+                return;
+            }
+
+            OrthographicCameraAspectFitter_V2 fitter = camera.GetComponent<OrthographicCameraAspectFitter_V2>();
+            if (fitter == null)
+            {
+                fitter = camera.gameObject.AddComponent<OrthographicCameraAspectFitter_V2>();
+            }
+
+            fitter.Configure(referenceOrthographicSize: 5f, referenceAspectWidth: 16f, referenceAspectHeight: 9f);
         }
 
         private void Start()
@@ -210,6 +259,7 @@ namespace iStick2War_V2
                 _settingsPanel.SetActive(false);
             }
 
+            _settingsMenuButtonsHideStateCaptured = false;
             RestoreMainMenuButtonsAfterSettings();
         }
 
@@ -222,6 +272,43 @@ namespace iStick2War_V2
             // Legacy sprite names from early main-menu prefabs.
             EnsureWorldNavButton("btn_main_menu_play", MainMenuNavButton_V2.MenuAction.Play);
             EnsureWorldNavButton("btn_main_menu_settings", MainMenuNavButton_V2.MenuAction.Settings);
+            WireUiNavButtonsIfNeeded();
+        }
+
+        private void WireUiNavButtonsIfNeeded()
+        {
+            EnsureUiNavButton("MainMenu_Btn_StartGame", MainMenuNavButton_V2.MenuAction.Play);
+            EnsureUiNavButton("MainMenu_Btn_Continue", MainMenuNavButton_V2.MenuAction.Continue);
+            EnsureUiNavButton("MainMenu_Btn_Settings", MainMenuNavButton_V2.MenuAction.Settings);
+            EnsureUiNavButton("TestButton_Settings", MainMenuNavButton_V2.MenuAction.Settings);
+            EnsureUiNavButton("Settings_Btn_GoBack", MainMenuNavButton_V2.MenuAction.CloseSettings);
+        }
+
+        private void EnsureUiNavButton(string objectName, MainMenuNavButton_V2.MenuAction action)
+        {
+            if (string.IsNullOrWhiteSpace(objectName))
+            {
+                return;
+            }
+
+            GameObject target = FindNamedObjectInScene(objectName);
+            if (target == null)
+            {
+                return;
+            }
+
+            MainMenuNavUiButton_V2 nav = target.GetComponent<MainMenuNavUiButton_V2>();
+            if (nav == null)
+            {
+                if (target.GetComponent<Button>() == null)
+                {
+                    return;
+                }
+
+                nav = target.AddComponent<MainMenuNavUiButton_V2>();
+            }
+
+            nav.Configure(this, action);
         }
 
         private void EnsureWorldNavButton(string objectName, MainMenuNavButton_V2.MenuAction action)
@@ -309,19 +396,36 @@ namespace iStick2War_V2
         private GameObject FindNamedObjectInScene(string objectName)
         {
             Scene scene = gameObject.scene;
-            GameObject[] objects = FindObjectsByType<GameObject>(FindObjectsInactive.Include);
-            for (int i = 0; i < objects.Length; i++)
+            Transform[] transforms = FindObjectsByType<Transform>(FindObjectsInactive.Include);
+            for (int i = 0; i < transforms.Length; i++)
             {
-                GameObject candidate = objects[i];
+                Transform candidate = transforms[i];
                 if (candidate != null &&
-                    candidate.scene == scene &&
+                    candidate.gameObject.scene == scene &&
                     candidate.name.Equals(objectName, StringComparison.Ordinal))
                 {
-                    return candidate;
+                    return candidate.gameObject;
                 }
             }
 
             return null;
+        }
+
+        private GameObject ResolveMenuButtonStateTarget(string objectKey)
+        {
+            if (objectKey.Equals(MainMenuSafeAreaStateKey, StringComparison.Ordinal))
+            {
+                GameObject canvas = FindNamedObjectInScene(MainMenuCanvasName);
+                if (canvas == null)
+                {
+                    return null;
+                }
+
+                Transform safeArea = canvas.transform.Find(MainMenuSafeAreaRootName);
+                return safeArea != null ? safeArea.gameObject : null;
+            }
+
+            return FindNamedObjectInScene(objectKey);
         }
 
         private void ResolveButtonsIfNeeded()
@@ -581,6 +685,7 @@ namespace iStick2War_V2
             }
 
             AudioManager_V2.PlayMenuClick();
+            ApplyMainMenuButtonsHiddenForSettings(saveState: true);
             _showSettingsRoutine = StartCoroutine(ShowSettingsAfterDelay());
         }
 
@@ -606,7 +711,26 @@ namespace iStick2War_V2
             _settingsPanel.SetActive(true);
             HideMainMenuButtonsForSettings();
             EnsureSettingsUiCanvasesVisible();
+            EnsureSettingsPanelLayout();
+            EnsureUiNavButton("Settings_Btn_GoBack", MainMenuNavButton_V2.MenuAction.CloseSettings);
             AudioManager_V2.PlaySettingsSuccess();
+        }
+
+        private void EnsureSettingsPanelLayout()
+        {
+            if (_settingsPanel == null)
+            {
+                return;
+            }
+
+            // Inspector layout is authoritative when SettingsPanelLayout_V2 is disabled on Settings V2.
+            SettingsPanelLayout_V2 layout = _settingsPanel.GetComponent<SettingsPanelLayout_V2>();
+            if (layout == null || !layout.isActiveAndEnabled)
+            {
+                return;
+            }
+
+            layout.ApplyIfNeeded();
         }
 
         private void HideMainMenuButtonsForSettings()
@@ -616,13 +740,21 @@ namespace iStick2War_V2
 
         private void ApplyMainMenuButtonsHiddenForSettings(bool saveState)
         {
-            if (saveState)
+            if (saveState && _settingsMenuButtonsHideStateCaptured)
+            {
+                // HandleShowSettings hides before the panel opens; OpenSettingsPanelNow must not re-record inactive state.
+                saveState = false;
+            }
+            else if (saveState)
             {
                 _menuButtonActiveBeforeSettings.Clear();
+                _settingsMenuButtonsHideStateCaptured = true;
             }
 
             HideMainMenuButtonChildrenUnderBackground(saveState);
+            HideMainMenuUiColumnForSettings(saveState);
             HideMainMenuButtonsByConfiguredNames(saveState);
+            HideMainMenuUiNavButtonsForSettings(saveState);
         }
 
         private void HideMainMenuButtonChildrenUnderBackground(bool saveState)
@@ -649,6 +781,57 @@ namespace iStick2War_V2
                 }
 
                 childObject.SetActive(false);
+            }
+        }
+
+        private void HideMainMenuUiColumnForSettings(bool saveState)
+        {
+            GameObject canvas = FindNamedObjectInScene(MainMenuCanvasName);
+            if (canvas == null)
+            {
+                return;
+            }
+
+            Transform safeArea = canvas.transform.Find(MainMenuSafeAreaRootName);
+            if (safeArea == null)
+            {
+                return;
+            }
+
+            GameObject safeAreaRoot = safeArea.gameObject;
+            if (saveState)
+            {
+                RememberMenuButtonStateBeforeHide(MainMenuSafeAreaStateKey, safeAreaRoot.activeSelf);
+            }
+
+            safeAreaRoot.SetActive(false);
+        }
+
+        private void HideMainMenuUiNavButtonsForSettings(bool saveState)
+        {
+            Scene scene = gameObject.scene;
+            MainMenuNavUiButton_V2[] navButtons =
+                FindObjectsByType<MainMenuNavUiButton_V2>(FindObjectsInactive.Include);
+            for (int i = 0; i < navButtons.Length; i++)
+            {
+                MainMenuNavUiButton_V2 nav = navButtons[i];
+                if (nav == null || nav.IsReturnToMainMenuAction() || nav.IsCloseSettingsAction())
+                {
+                    continue;
+                }
+
+                GameObject target = nav.gameObject;
+                if (target == null || target.scene != scene)
+                {
+                    continue;
+                }
+
+                if (saveState)
+                {
+                    RememberMenuButtonStateBeforeHide(target.name, target.activeSelf);
+                }
+
+                target.SetActive(false);
             }
         }
 
@@ -727,6 +910,32 @@ namespace iStick2War_V2
             }
 
             RestoreMainMenuButtonsAfterSettings();
+            ResetMenuNavButtonVisuals();
+        }
+
+        private static void ResetMenuNavButtonVisuals()
+        {
+            MainMenuNavButton_V2[] worldNavButtons =
+                FindObjectsByType<MainMenuNavButton_V2>(FindObjectsInactive.Include);
+            for (int i = 0; i < worldNavButtons.Length; i++)
+            {
+                MainMenuNavButton_V2 nav = worldNavButtons[i];
+                if (nav != null)
+                {
+                    nav.ResetToNormalVisual();
+                }
+            }
+
+            MainMenuNavUiButton_V2[] uiNavButtons =
+                FindObjectsByType<MainMenuNavUiButton_V2>(FindObjectsInactive.Include);
+            for (int i = 0; i < uiNavButtons.Length; i++)
+            {
+                MainMenuNavUiButton_V2 nav = uiNavButtons[i];
+                if (nav != null)
+                {
+                    nav.ResetToNormalVisual();
+                }
+            }
         }
 
         // LifeOver-canvas under Settings V2 was copied with scale 0 and no camera; UI shows in Scene view but not Game view.
@@ -886,7 +1095,7 @@ namespace iStick2War_V2
             Scene scene = gameObject.scene;
             foreach (KeyValuePair<string, bool> entry in _menuButtonActiveBeforeSettings)
             {
-                GameObject target = FindNamedObjectInScene(entry.Key);
+                GameObject target = ResolveMenuButtonStateTarget(entry.Key);
                 if (target == null || target.scene != scene)
                 {
                     continue;
@@ -896,6 +1105,9 @@ namespace iStick2War_V2
             }
 
             _menuButtonActiveBeforeSettings.Clear();
+            _settingsMenuButtonsHideStateCaptured = false;
+            RestoreMainMenuUiColumnVisibleByDefault();
+            RestoreMainMenuUiNavButtonsVisibleByDefault();
         }
 
         // Fallback when no cached state exists (e.g. stale hide pass overwrote active flags).
@@ -913,6 +1125,44 @@ namespace iStick2War_V2
 
                 bool shouldBeActive = !objectName.EndsWith("_Pressed", StringComparison.Ordinal);
                 target.SetActive(shouldBeActive);
+            }
+
+            RestoreMainMenuUiColumnVisibleByDefault();
+            RestoreMainMenuUiNavButtonsVisibleByDefault();
+        }
+
+        private void RestoreMainMenuUiNavButtonsVisibleByDefault()
+        {
+            Scene scene = gameObject.scene;
+            string[] uiButtonNames =
+            {
+                "MainMenu_Btn_Continue",
+                "MainMenu_Btn_StartGame",
+                "MainMenu_Btn_Settings",
+            };
+
+            for (int i = 0; i < uiButtonNames.Length; i++)
+            {
+                GameObject target = FindNamedObjectInScene(uiButtonNames[i]);
+                if (target != null && target.scene == scene)
+                {
+                    target.SetActive(true);
+                }
+            }
+        }
+
+        private void RestoreMainMenuUiColumnVisibleByDefault()
+        {
+            GameObject canvas = FindNamedObjectInScene(MainMenuCanvasName);
+            if (canvas == null)
+            {
+                return;
+            }
+
+            Transform safeArea = canvas.transform.Find(MainMenuSafeAreaRootName);
+            if (safeArea != null)
+            {
+                safeArea.gameObject.SetActive(true);
             }
         }
 
