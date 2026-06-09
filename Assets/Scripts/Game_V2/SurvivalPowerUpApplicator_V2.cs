@@ -21,7 +21,7 @@ namespace iStick2War_V2
                 case SurvivalPowerUpKind_V2.WeaponUnlock:
                     return TryApplyWeaponUnlock(hero, offer.weaponDefinition, autoEquip: true);
                 case SurvivalPowerUpKind_V2.AmmoRefill:
-                    return TryApplyAmmoRefill(hero);
+                    return TryApplyAmmoRefill(hero, offer.weaponDefinition);
                 default:
                     return false;
             }
@@ -40,7 +40,7 @@ namespace iStick2War_V2
                 return true;
             }
 
-            if (TryApplyAmmoRefill(hero))
+            if (TryApplyAmmoRefill(hero, offer != null ? offer.weaponDefinition : null))
             {
                 return true;
             }
@@ -102,20 +102,20 @@ namespace iStick2War_V2
             return hero.UnlockWeapon(definition, autoEquip);
         }
 
-        private static bool TryApplyAmmoRefill(Hero_V2 hero)
+        private static bool TryApplyAmmoRefill(Hero_V2 hero, HeroWeaponDefinition_V2 weaponDefinition)
         {
             if (hero == null)
             {
                 return false;
             }
 
-            HeroWeaponDefinition_V2 active = hero.GetActiveWeaponDefinition();
-            if (active == null)
+            HeroWeaponDefinition_V2 target = weaponDefinition ?? hero.GetActiveWeaponDefinition();
+            if (target == null || !hero.HasWeaponUnlocked(target))
             {
                 return false;
             }
 
-            return hero.TryRefillWeaponMagazine(active);
+            return hero.TryRefillWeaponMagazine(target);
         }
     }
 }

@@ -92,7 +92,8 @@ namespace iStick2War_V2
                 gameplayCamera = _gameplayCamera != null ? _gameplayCamera : Camera.main,
                 dropsThisPass = Mathf.Max(1, _dropsPerPass),
                 onPassComplete = HandlePlanePassComplete,
-                survivalCoordinator = this
+                survivalCoordinator = this,
+                hero = _hero
             };
 
             plane.BeginSupplyRun(config);

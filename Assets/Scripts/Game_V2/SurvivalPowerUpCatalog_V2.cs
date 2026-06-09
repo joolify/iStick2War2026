@@ -42,6 +42,11 @@ namespace iStick2War_V2
 
         public bool TryRollOffer(out SurvivalPowerUpOffer_V2 offer)
         {
+            return TryRollOffer(hero: null, out offer);
+        }
+
+        public bool TryRollOffer(Hero_V2 hero, out SurvivalPowerUpOffer_V2 offer)
+        {
             offer = null;
             if (_entries == null || _entries.Length == 0)
             {
@@ -52,7 +57,7 @@ namespace iStick2War_V2
             for (int i = 0; i < _entries.Length; i++)
             {
                 Entry entry = _entries[i];
-                if (!IsEntryRollable(entry))
+                if (!IsEntryRollable(entry, hero))
                 {
                     continue;
                 }
@@ -70,18 +75,13 @@ namespace iStick2War_V2
             for (int i = 0; i < _entries.Length; i++)
             {
                 Entry entry = _entries[i];
-                if (!IsEntryRollable(entry))
+                if (!IsEntryRollable(entry, hero))
                 {
                     continue;
                 }
 
                 cumulative += entry.weight;
                 if (roll >= cumulative)
-                {
-                    continue;
-                }
-
-                if (!IsEntryRollable(entry))
                 {
                     continue;
                 }
@@ -150,7 +150,7 @@ namespace iStick2War_V2
             }
         }
 
-        private static bool IsEntryRollable(Entry entry)
+        private static bool IsEntryRollable(Entry entry, Hero_V2 hero)
         {
             if (entry == null || entry.weight <= 0)
             {
@@ -160,6 +160,19 @@ namespace iStick2War_V2
             if (entry.kind == SurvivalPowerUpKind_V2.WeaponUnlock && entry.weaponDefinition == null)
             {
                 return false;
+            }
+
+            if (entry.kind == SurvivalPowerUpKind_V2.AmmoRefill)
+            {
+                if (entry.weaponDefinition == null)
+                {
+                    return false;
+                }
+
+                if (hero != null && !hero.HasWeaponUnlocked(entry.weaponDefinition))
+                {
+                    return false;
+                }
             }
 
             return true;

@@ -4720,6 +4720,7 @@ namespace iStick2War_V2
         private void NotifySwedishPlaneSupplyIntermissionChanged()
         {
             RefreshHeroWaveLoopCombatGate();
+            ApplyGameplayHudVisibility();
         }
 
         private void SetCameraFollowEnabled(bool isEnabled)
@@ -4941,6 +4942,12 @@ namespace iStick2War_V2
 
         private bool ShouldShowGameplayHud()
         {
+            // Survival supply pass uses Shop state but should keep gameplay HUD visible (health, ammo, wave).
+            if (_swedishPlaneSupplyIntermissionActive)
+            {
+                return true;
+            }
+
             if (_state == WaveLoopState_V2.Shop)
             {
                 return false;

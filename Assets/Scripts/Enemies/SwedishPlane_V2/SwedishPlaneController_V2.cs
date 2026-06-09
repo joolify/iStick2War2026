@@ -158,7 +158,8 @@ namespace iStick2War_V2
             }
 
             SurvivalPowerUpCatalog_V2 catalog = _runConfig != null ? _runConfig.catalog : null;
-            if (catalog == null || !catalog.TryRollOffer(out SurvivalPowerUpOffer_V2 offer))
+            Hero_V2 hero = _runConfig != null ? _runConfig.hero : null;
+            if (catalog == null || !catalog.TryRollOffer(hero, out SurvivalPowerUpOffer_V2 offer))
             {
                 return;
             }

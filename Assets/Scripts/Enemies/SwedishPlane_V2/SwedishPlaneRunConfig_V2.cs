@@ -13,5 +13,6 @@ namespace iStick2War_V2
         public Action onPassComplete;
         public int dropsThisPass = 1;
         public SwedishPlaneSurvivalCoordinator_V2 survivalCoordinator;
+        public Hero_V2 hero;
     }
 }
