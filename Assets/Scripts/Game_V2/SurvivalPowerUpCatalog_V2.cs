@@ -19,7 +19,18 @@ namespace iStick2War_V2
             [Min(1)] public int healthAmount = 50;
             [Min(1)] public int bunkerRepairAmount = 25;
             public HeroWeaponDefinition_V2 weaponDefinition;
+            // Optional UI override; empty displayName uses kind-based fallback at roll time.
+            public string displayName;
+            public string pickupTitle;
+            public Sprite previewSprite;
+            [Tooltip("Optional shop_* prefab or sprite root used for PowerUpImage on the crate.")]
+            public GameObject previewObject;
         }
+
+        [Header("Default previews when an entry leaves preview empty")]
+        [SerializeField] private GameObject _defaultHealthPreviewObject;
+        [SerializeField] private GameObject _defaultBunkerRepairPreviewObject;
+        [SerializeField] private GameObject _defaultAmmoRefillPreviewObject;
 
         [SerializeField] private Entry[] _entries =
         {
@@ -80,12 +91,63 @@ namespace iStick2War_V2
                     kind = entry.kind,
                     healthAmount = Mathf.Max(1, entry.healthAmount),
                     bunkerRepairAmount = Mathf.Max(1, entry.bunkerRepairAmount),
-                    weaponDefinition = entry.weaponDefinition
+                    weaponDefinition = entry.weaponDefinition,
+                    displayName = ResolveDisplayName(entry),
+                    pickupTitle = entry.pickupTitle,
+                    previewSprite = entry.previewSprite,
+                    previewObject = ResolvePreviewObject(entry)
                 };
                 return true;
             }
 
             return false;
+        }
+
+        private string ResolveDisplayName(Entry entry)
+        {
+            if (entry == null)
+            {
+                return string.Empty;
+            }
+
+            if (!string.IsNullOrWhiteSpace(entry.displayName))
+            {
+                return entry.displayName;
+            }
+
+            var rolled = new SurvivalPowerUpOffer_V2
+            {
+                kind = entry.kind,
+                healthAmount = entry.healthAmount,
+                bunkerRepairAmount = entry.bunkerRepairAmount,
+                weaponDefinition = entry.weaponDefinition
+            };
+            return SurvivalPowerUpPreviewResolver_V2.ResolveDisplayName(rolled);
+        }
+
+        private GameObject ResolvePreviewObject(Entry entry)
+        {
+            if (entry == null)
+            {
+                return null;
+            }
+
+            if (entry.previewObject != null)
+            {
+                return entry.previewObject;
+            }
+
+            switch (entry.kind)
+            {
+                case SurvivalPowerUpKind_V2.HealthPack:
+                    return _defaultHealthPreviewObject;
+                case SurvivalPowerUpKind_V2.BunkerRepair:
+                    return _defaultBunkerRepairPreviewObject;
+                case SurvivalPowerUpKind_V2.AmmoRefill:
+                    return _defaultAmmoRefillPreviewObject;
+                default:
+                    return null;
+            }
         }
 
         private static bool IsEntryRollable(Entry entry)

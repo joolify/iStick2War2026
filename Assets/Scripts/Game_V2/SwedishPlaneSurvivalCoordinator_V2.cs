@@ -52,6 +52,8 @@ namespace iStick2War_V2
             {
                 _gameplayCamera = Camera.main;
             }
+
+            SurvivalPowerUpRewardHud_V2.EnsureInitializedFromScene();
         }
 
         public void BeginSupplyPassAfterWave(Action onSupplyComplete)

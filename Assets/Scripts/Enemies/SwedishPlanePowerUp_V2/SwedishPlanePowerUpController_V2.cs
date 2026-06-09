@@ -31,6 +31,7 @@ namespace iStick2War_V2
         private SwedishPlanePowerUpModel_V2 _model;
         private SwedishPlanePowerUpStateMachine_V2 _stateMachine;
         private SwedishPlanePowerUpView_V2 _view;
+        private SwedishPlanePowerUpRewardPreview_V2 _rewardPreview;
         private WaveManager_V2 _waveManager;
         private Hero_V2 _hero;
         private Rigidbody2D _pickupRigidbody;
@@ -50,11 +51,13 @@ namespace iStick2War_V2
         public void Initialize(
             SwedishPlanePowerUpModel_V2 model,
             SwedishPlanePowerUpStateMachine_V2 stateMachine,
-            SwedishPlanePowerUpView_V2 view)
+            SwedishPlanePowerUpView_V2 view,
+            SwedishPlanePowerUpRewardPreview_V2 rewardPreview = null)
         {
             _model = model;
             _stateMachine = stateMachine;
             _view = view;
+            _rewardPreview = rewardPreview;
 
             if (_view != null)
             {
@@ -66,6 +69,22 @@ namespace iStick2War_V2
 
             EnsurePickupPhysics();
             ResolveGroundLayerMask();
+            ResolveRewardPreviewIfNeeded();
+        }
+
+        internal void BindRewardPreview(SwedishPlanePowerUpRewardPreview_V2 rewardPreview)
+        {
+            _rewardPreview = rewardPreview;
+        }
+
+        private void ResolveRewardPreviewIfNeeded()
+        {
+            if (_rewardPreview != null)
+            {
+                return;
+            }
+
+            _rewardPreview = GetComponentInChildren<SwedishPlanePowerUpRewardPreview_V2>(true);
         }
 
         public void BeginDrop(SurvivalPowerUpOffer_V2 offer, WaveManager_V2 waveManager, Hero_V2 hero)
@@ -105,6 +124,8 @@ namespace iStick2War_V2
 
             _stateMachine.ChangeState(SwedishPlanePowerUpState_V2.Deploy);
             transform.position = new Vector3(transform.position.x, _spawnY, transform.position.z);
+            SurvivalPowerUpRewardHud_V2.EnsureInitializedFromScene();
+            _rewardPreview?.ClearForSpawn();
         }
 
         internal void NotifyPickupTrigger(Collider2D other)
@@ -414,12 +435,20 @@ namespace iStick2War_V2
 
         private void TryPickupHero(Hero_V2 hero)
         {
-            if (!SurvivalPowerUpApplicator_V2.TryApplyForPickup(_waveManager, hero, _model.rolledOffer))
+            if (hero == null || hero.IsDead())
             {
                 return;
             }
 
+            if (_model.rolledOffer == null)
+            {
+                return;
+            }
+
+            SurvivalPowerUpApplicator_V2.TryApplyForPickup(_waveManager, hero, _model.rolledOffer);
             AudioManager_V2.PlayPurchaseSuccess();
+            SurvivalPowerUpRewardHud_V2.ShowPickupReward(_model.rolledOffer);
+            _rewardPreview?.ClearForSpawn();
             _stateMachine.ChangeState(SwedishPlanePowerUpState_V2.PickedUp);
             DespawnSelf();
         }

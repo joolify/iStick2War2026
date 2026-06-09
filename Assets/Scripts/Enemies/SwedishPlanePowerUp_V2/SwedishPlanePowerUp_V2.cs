@@ -16,19 +16,21 @@ namespace iStick2War_V2
         private SwedishPlanePowerUpStateMachine_V2 _stateMachine;
         private SwedishPlanePowerUpController_V2 _controller;
         private SwedishPlanePowerUpView_V2 _view;
+        private SwedishPlanePowerUpRewardPreview_V2 _rewardPreview;
         private bool _initialized;
 
         public void InitializeForSpawn()
         {
             EnsureReferences();
             _stateMachine.Initialize(_model);
-            _controller.Initialize(_model, _stateMachine, _view);
+            _controller.Initialize(_model, _stateMachine, _view, _rewardPreview);
 
             SkeletonAnimation skeletonAnimation = _view != null ? _view.SkeletonAnimation : null;
             ForceSpineMeshRebuild(skeletonAnimation);
 
             _view.Initialize(_stateMachine);
             _view.ResetVisualStateForSpawn();
+            _rewardPreview?.ClearForSpawn();
             _initialized = true;
         }
 
@@ -39,6 +41,7 @@ namespace iStick2War_V2
 
         public void BeginDrop(SurvivalPowerUpOffer_V2 offer, WaveManager_V2 waveManager, Hero_V2 hero)
         {
+            EnsureReferences();
             if (!_initialized)
             {
                 InitializeForSpawn();
@@ -91,6 +94,17 @@ namespace iStick2War_V2
             if (_view == null)
             {
                 _view = gameObject.AddComponent<SwedishPlanePowerUpView_V2>();
+            }
+
+            _rewardPreview = GetComponentInChildren<SwedishPlanePowerUpRewardPreview_V2>(true);
+            if (_rewardPreview == null)
+            {
+                _rewardPreview = GetComponent<SwedishPlanePowerUpRewardPreview_V2>();
+            }
+
+            if (_initialized && _controller != null)
+            {
+                _controller.BindRewardPreview(_rewardPreview);
             }
         }
 
