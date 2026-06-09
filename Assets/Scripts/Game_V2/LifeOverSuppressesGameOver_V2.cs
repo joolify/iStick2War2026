@@ -19,7 +19,8 @@ namespace iStick2War_V2
     {
         private void OnEnable()
         {
-            if (Application.isPlaying)
+            if (Application.isPlaying &&
+                gameObject.name.Equals("LifeOver V2", System.StringComparison.OrdinalIgnoreCase))
             {
                 LifeOverRuntimeLayout_V2.SuppressGameOverChrome();
             }

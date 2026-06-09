@@ -1,175 +1,71 @@
 using System.Collections.Generic;
 using iStick2War;
 using UnityEngine;
-using UnityEngine.Rendering;
 using UnityEngine.UI;
 using TMPro;
 
 namespace iStick2War_V2
 {
     /*
- * ShopPanel_V2 (Between-wave shop UI + purchases)
- *
- * PURPOSE:
- * Shows currency, bunker/health offer copy, carousel of ShopOfferConfig_V2 entries, and wires BUY / arrow navigation
- * from world-space buttons. Calls into WaveManager_V2 for pricing, purchases, and visibility when the shop phase is active.
- *
- * ---------------------------------------------------------
- * INPUT SOURCES
- *
- * - WaveManager_V2 (meta text, purchase execution, show/hide hooks).
- * - Serialized TMP labels, optional camera parenting for scaled canvases.
- *
- * ---------------------------------------------------------
- * ❌ MUST NOT
- *
- * - Spawn enemies or advance InWave timers (WaveManager_V2 / EnemySpawner_V2).
- *
- * ---------------------------------------------------------
- * NAVIGATION (Game_V2)
- *
- * Purchases + currency rules executed here but priced by → WaveManager_V2.cs
- * Offer rows data → ShopOfferConfig_V2.cs (+ ShopOfferKind_V2 in same file)
- * World BUY / arrows / continue → ShopBuyButton_V2.cs, ShopNavArrow_V2.cs, ShopNavArrowUiButton_V2.cs, ShopStartWaveButton_V2.cs
- *
- * ---------------------------------------------------------
- * DESIGN PRINCIPLE
- *
- * Presentation-focused MonoBehaviour with explicit methods WaveManager invokes; keeps economy rules centralized.
- */
-    [ExecuteAlways]
+     * ShopPanel_V2 (Shop V2 — canvas UI + purchases)
+     *
+     * PURPOSE:
+     * Drives the resolution-adapted Shop V2 chrome (Shop-canvas): offer carousel, stat grid TMP rows,
+     * ShopItemImage preview, and Shop_Btn_* navigation. Economy stays in WaveManager_V2.
+     *
+     * ---------------------------------------------------------
+     * NAVIGATION (Game_V2)
+     *
+     * Purchases → WaveManager_V2.cs
+     * Offer rows → ShopOfferConfig_V2.cs
+     * Stat grid → ShopOfferStatsPresenter_V2.cs
+     * Button hits → ShopNavArrowUiButton_V2.cs on Shop_Btn_Previous / Buy / StartGame / Next
+     * Legacy world shop → ShopPanelLegacy_V2.cs
+     */
     public sealed class ShopPanel_V2 : MonoBehaviour
     {
-        [Header("UI (optional)")]
-        [SerializeField] private TMP_Text _waveText;
-        [SerializeField] private TMP_Text _currencyText;
-        [SerializeField] private TMP_Text _bunkerText;
-        [SerializeField] private TMP_Text _healthCostText;
-        [SerializeField] private TMP_Text _bunkerCostText;
+        private const string ShopChromeRootName = "Shop V2";
+        private const string ShopCanvasName = "Shop-canvas";
+
         [Header("Shop carousel")]
-        [Tooltip("Ordered list: use arrow buttons to cycle. Wire BUY to OnPurchaseSelectedOfferClicked.")]
+        [Tooltip("Ordered carousel rows. Wire BUY to purchase the selected row.")]
         [SerializeField] private List<ShopOfferConfig_V2> _shopOffers = new List<ShopOfferConfig_V2>();
-        [SerializeField] private TMP_Text _offerTitleText;
-        [SerializeField] private TMP_Text _offerSubtitleText;
-        [Tooltip("Shows the selected carousel offer name (e.g. canvas txt_shop_item). Auto-bound by name when empty.")]
+
+        [Header("Shop V2 UI (optional — auto-bound under chrome root)")]
+        [SerializeField] private TMP_Text _titleText;
+        [SerializeField] private TMP_Text _currencyText;
         [SerializeField] private TMP_Text _selectedOfferItemText;
+        [SerializeField] private Image _shopItemImage;
+        [SerializeField] private TMP_Text _buyButtonLabelText;
         [SerializeField] private string _selectedOfferItemTextObjectName = "txt_shop_item";
-        [Header("Button Labels")]
-        [SerializeField] private TMP_Text _buyButtonText;
         [SerializeField] private string _buyButtonDefaultLabel = "BUY";
+        [Tooltip("ShopItemImage size multiplier for wide weapon previews that read too small at base size.")]
+        [SerializeField] private float _largeWeaponPreviewImageScale = 2f;
+
         [Header("Visibility")]
-        [SerializeField] private bool _toggleVisualComponentsOnShowHide = true;
-        [SerializeField] private Transform _visualRoot;
-        [SerializeField] private bool _toggleCanvases = false;
-        [SerializeField] private bool _toggleGraphics = false;
-        [SerializeField] private bool _lockVisualRootTransformOnShow = true;
-        [SerializeField] private bool _detachFromScaledParentOnInitialize = true;
-        [SerializeField] private Camera _lockCamera;
-        [SerializeField] private bool _parentToCameraWhileVisible = true;
-        [SerializeField] private bool _useFixedCameraLocalPlacement = true;
-        [SerializeField] private Vector3 _fixedCameraLocalPosition = new Vector3(0f, 0f, 10f);
-        [SerializeField] private Vector3 _fixedCameraLocalScale = Vector3.one;
-        [SerializeField] private bool _useCachedVisualScaleWhenParentedToCamera = true;
-        [SerializeField] private bool _debugShopPanelLogs = false;
-        [SerializeField] private bool _debugShopNavigationLogs = true;
-        [Header("UI carousel navigation (optional)")]
-        [Tooltip("Canvas/TextBTN previous offer control. Auto-bound by name when empty.")]
-        [SerializeField] private Button _uiPreviousOfferButton;
-        [Tooltip("Canvas/TextBTN next offer control. Auto-bound by name when empty.")]
-        [SerializeField] private Button _uiNextOfferButton;
-        [SerializeField] private string _uiPreviousOfferButtonObjectName = "TextBTN_MediumPrev";
-        [SerializeField] private string[] _uiPreviousOfferButtonAlternateNames =
-        {
-            "TextBTN_MediumPrevious",
-            "TextBTN_Medium_Prev",
-            "TextBTN_MediumBack",
-        };
-        [SerializeField] private string _uiNextOfferButtonObjectName = "TextBTN_MediumNext";
-        [SerializeField] private string[] _uiNextOfferButtonAlternateNames =
-        {
-            "TextBTN_Medium_Next",
-            "TextBTN_MediumForward",
-        };
-        [Header("Shop carousel navigation visuals (optional)")]
-        [Tooltip("Spawned under Visual Root when TextBTN_MediumPrev/Next are missing from the scene.")]
-        [SerializeField] private GameObject _textBtnMediumNormalPrefab;
-        [SerializeField] private GameObject _textBtnMediumPressedPrefab;
-        [SerializeField] private Vector3 _textBtnMediumPrevLocalPosition = new Vector3(-10.71f, -0.52f, 0f);
-        [SerializeField] private Vector3 _textBtnMediumNextLocalPosition = new Vector3(10.78f, -0.24f, 0f);
-        [SerializeField] private string _uiBuyButtonObjectName = "TextBTN_MediumBuy";
-        [SerializeField] private string[] _uiBuyButtonAlternateNames =
-        {
-            "btn_shop_buy",
-            "bkg_shop_buy",
-        };
-        [SerializeField] private string _uiStartGameButtonObjectName = "TextBTN_MediumStartGame";
-        [SerializeField] private string[] _uiStartGameButtonAlternateNames =
-        {
-            "btn_shop_startGame",
-        };
-        [SerializeField] private Vector3 _textBtnMediumBuyLocalPosition = new Vector3(5.5f, -3f, 0f);
-        [SerializeField] private Vector3 _textBtnMediumStartGameLocalPosition = new Vector3(0f, -3f, 0f);
-        [Header("Offer previews (carousel)")]
-        [Tooltip(
-            "Parent transform for shop_* weapon preview sprites. Only resolved PreviewObject entries are toggled; " +
-            "TextBTN nav controls under this root are left alone.")]
-        [SerializeField] private Transform _carouselPreviewObjectsRoot;
-        [Tooltip(
-            "If a scene object with this exact name sits at the root of a loaded scene (not parented under the carousel root), " +
-            "it is reparented under the carousel root once (typical: shop_bazookaRocket left as a loose instance). Leave empty to disable.")]
-        [SerializeField] private string _reparentLooseRootPreviewByExactName = "shop_bazookaRocket";
-        [Tooltip("Must match shop UI sprites (layer Shop). Previews on other layers render behind ShopPanel background.")]
-        [SerializeField] private string _shopPreviewSortingLayerName = "Shop";
-        [Tooltip("Above ShopPanel background (~200) and TextBTN (~205). Values at or below 200 are clamped at runtime.")]
-        [SerializeField] private int _shopPreviewSortingOrder = 220;
-        [Tooltip("Shop-canvas must sort above TextBTN sprites (~205) or txt_shop_* labels draw under buttons.")]
-        [SerializeField] private int _shopUiCanvasSortingOrder = 210;
-        [Tooltip("Sorting layer for ShopLabels-canvas (action button labels above Shop TextBTN sprites).")]
-        [SerializeField] private string _shopLabelsCanvasSortingLayerName = "LifeOver";
-        [Header("Shop action label typography")]
-        [Tooltip("Font size for legacy shop action labels (not ShopLabels-canvas — those keep scene/TMP settings).")]
-        [SerializeField] private float _shopActionLabelFontSize = 22f;
-        [Tooltip("RectTransform size for legacy shop action labels (ignored on ShopLabels-canvas).")]
-        [SerializeField] private Vector2 _shopActionLabelRectSize = new Vector2(180f, 44f);
-        [Tooltip("Local position under Items where weapon previews are shown (matches shop_teslaGun slot).")]
-        [SerializeField] private Vector3 _previewDisplayLocalPosition = new Vector3(0.79f, 2.71f, 0f);
+        [Tooltip("When empty, uses this GameObject or the scene root named Shop V2.")]
+        [SerializeField] private GameObject _shopChromeRoot;
+
         [Header("Shop stat warnings")]
-        [Tooltip("Color for txt_shop_stat_warningText_label at runtime (Face on that TMP material is forced to white).")]
         [SerializeField] private Color _shopWarningTextColor = new Color(0.9f, 0.2f, 0.2f, 1f);
+        [SerializeField] private bool _debugShopNavigationLogs;
 
         private WaveManager_V2 _waveManager;
-        private bool _hasCachedVisualRootTransform;
-        private Vector3 _cachedVisualRootLocalPosition;
-        private Quaternion _cachedVisualRootLocalRotation;
-        private Vector3 _cachedVisualRootLocalScale;
-        private Vector3 _cachedVisualRootWorldPosition;
-        private Quaternion _cachedVisualRootWorldRotation;
-        private Transform _originalParent;
-        private int _originalSiblingIndex;
-        private bool _isParentedToCamera;
+        private Transform _uiScope;
+        private Transform _shopGridScope;
         private int _offerIndex;
-        private readonly List<ShopOfferConfig_V2> _visibleShopOffers = new List<ShopOfferConfig_V2>();
-        private readonly List<Canvas> _resolvedShopUiCanvases = new List<Canvas>();
-        private bool _didResolveShopUiCanvases;
-        private bool _didReparentLooseShopPreview;
-        private readonly Dictionary<int, GameObject> _resolvedPreviewByOfferIndex = new Dictionary<int, GameObject>();
-        private readonly Dictionary<int, GameObject> _runtimeInstantiatedPreviewsBySourceId = new Dictionary<int, GameObject>();
-        private bool _didEnsureShopNavButtons;
-        private bool _didBuildPreviewCatalog;
-        private int _shopOfferCountWhenCatalogBuilt = -1;
         private bool _shopIsVisible;
-        public bool IsShopVisible => _shopIsVisible;
-        private bool _lifeOverCanvasIsDetached;
-        private Transform _lifeOverCanvasParentBeforeDetach;
-        private Vector3 _lifeOverCanvasLocalPositionBeforeDetach;
-        private Quaternion _lifeOverCanvasLocalRotationBeforeDetach;
-        private Vector3 _lifeOverCanvasLocalScaleBeforeDetach;
-        private readonly ShopOfferStatsPresenter_V2 _offerStatsPresenter = new ShopOfferStatsPresenter_V2();
+        private bool _didResolveUi;
         private bool _didResolveOfferStats;
         private bool _didRebuildOfferStatBaselines;
+        private bool _didCacheShopItemImageBaseSize;
+        private Vector2 _shopItemImageBaseSize = new Vector2(200f, 200f);
+
+        private readonly List<ShopOfferConfig_V2> _visibleShopOffers = new List<ShopOfferConfig_V2>();
+        private readonly ShopOfferStatsPresenter_V2 _offerStatsPresenter = new ShopOfferStatsPresenter_V2();
         private readonly HashSet<TMP_Text> _statTmpBindingUsed = new HashSet<TMP_Text>();
 
-        // Carousel rows shown in shop (excludes legacy AmmoRefill-only rows; ammo is bought on the weapon row).
+        public bool IsShopVisible => _shopIsVisible;
         public IReadOnlyList<ShopOfferConfig_V2> ConfiguredShopOffers => _visibleShopOffers;
 
         public bool TryGetWeaponRowOffer(HeroWeaponDefinition_V2 weapon, out ShopOfferConfig_V2 weaponRow)
@@ -217,67 +113,6 @@ namespace iStick2War_V2
             return 29;
         }
 
-        private bool TryGetLegacyAmmoRowCost(HeroWeaponDefinition_V2 weapon, out int cost)
-        {
-            cost = 0;
-            if (weapon == null || _shopOffers == null)
-            {
-                return false;
-            }
-
-            for (int i = 0; i < _shopOffers.Count; i++)
-            {
-                ShopOfferConfig_V2 row = _shopOffers[i];
-                if (row != null &&
-                    row.Kind == ShopOfferKind_V2.AmmoRefill &&
-                    row.Weapon == weapon)
-                {
-                    cost = row.Cost;
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private void RebuildVisibleShopOffersIfNeeded()
-        {
-            _visibleShopOffers.Clear();
-            if (_shopOffers == null)
-            {
-                return;
-            }
-
-            for (int i = 0; i < _shopOffers.Count; i++)
-            {
-                ShopOfferConfig_V2 row = _shopOffers[i];
-                if (row != null &&
-                    row.Kind != ShopOfferKind_V2.AmmoRefill &&
-                    !IsShopExcludedWeaponRow(row))
-                {
-                    _visibleShopOffers.Add(row);
-                }
-            }
-        }
-
-        private static bool IsShopExcludedWeaponRow(ShopOfferConfig_V2 row)
-        {
-            return row.Kind == ShopOfferKind_V2.WeaponUnlock &&
-                   row.Weapon != null &&
-                   row.Weapon.WeaponType == WeaponType.Colt45;
-        }
-
-        private ShopOfferConfig_V2 GetSelectedOffer()
-        {
-            if (_visibleShopOffers.Count == 0)
-            {
-                return null;
-            }
-
-            _offerIndex = Mathf.Clamp(_offerIndex, 0, _visibleShopOffers.Count - 1);
-            return _visibleShopOffers[_offerIndex];
-        }
-
         public int GetCarouselOfferIndex() => _offerIndex;
 
         public void SetCarouselOfferIndex(int offerIndex)
@@ -319,20 +154,13 @@ namespace iStick2War_V2
                 _waveManager.OnMetaChanged += HandleMetaChanged;
             }
 
-            MaybeDetachFromScaledParent();
-            CacheVisualRootTransform();
-            EnsureShopUiCanvasesLayout();
+            ResolveUiReferencesIfNeeded();
             RebuildVisibleShopOffersIfNeeded();
-            _resolvedCarouselPreviewRoot = null;
-            InvalidatePreviewCatalog();
-            EnsureLooseShopPreviewReparentedOnce();
-            EnsureShopNavButtonsReady();
+            BindCanvasShopButtons();
             ResolveOfferStatsIfNeeded();
             RebuildOfferStatBaselinesIfNeeded();
-            BindUiCarouselNavigationButtons();
-            BindShopActionTextButtons();
             Refresh();
-            HideShopCarouselPreviews();
+            Hide();
         }
 
         private void OnDestroy()
@@ -343,11 +171,6 @@ namespace iStick2War_V2
             }
         }
 
-        private void OnEnable()
-        {
-            EnsureShopUiCanvasesLayout();
-        }
-
         public void Show()
         {
             if (_waveManager != null)
@@ -356,130 +179,39 @@ namespace iStick2War_V2
             }
 
             _shopIsVisible = true;
-            gameObject.SetActive(true);
             _offerIndex = 0;
+            ResolveUiReferencesIfNeeded();
             RebuildVisibleShopOffersIfNeeded();
-            RestoreVisualRootTransformIfNeeded();
-            AttachToCameraIfNeeded();
-            EnsureShopUiCanvasesLayout();
-            SetVisualComponentsVisible(true);
-            SetShopTextButtonsVisible(true);
-            EnsureShopNavButtonsReady();
-            BindUiCarouselNavigationButtons();
-            BindShopActionTextButtons();
+            SetChromeVisible(true);
+            // Re-bind stat TMPs after chrome is active so ShopGrid rows resolve reliably.
+            _statTmpBindingUsed.Clear();
+            _didResolveOfferStats = false;
+            BindCanvasShopButtons();
             Refresh();
-            ApplySelectedOfferPreviewVisibility(
-                ResolveCarouselPreviewObjectsRoot(),
-                GetSelectedOffer());
-            EnsureShopActionLabelsVisible();
         }
 
         public void Hide()
         {
             _shopIsVisible = false;
-            SetShopTextButtonsVisible(false);
-            ResetShopNavPressedVisuals();
             _offerStatsPresenter.HideAll();
-            HideShopCarouselPreviews();
-            DetachFromCameraIfNeeded();
-            SetVisualComponentsVisible(false);
-            gameObject.SetActive(false);
+            ResetShopNavPressedVisuals();
+            SetChromeVisible(false);
         }
 
-        // Hides LifeOver-canvas and life-over labels even when that canvas is excluded from shop show/hide.
         public void SuppressLifeOverUiElements()
         {
-            Transform lifeOver = FindLifeOverCanvasTransform();
-            if (lifeOver != null)
-            {
-                lifeOver.gameObject.SetActive(false);
-            }
-
-            string[] objectNames =
-            {
-                "txt_lifeOver_info",
-                "txt_lifeOver_startNewGame",
-                "txt_lifeOver_goToShop",
-                "txt_lifeOver_goToMainMenu",
-                "txt_shop_info",
-                "TextBTN_MediumStartNewGame",
-                "TextBTN_MediumStartGame",
-                "TextBTN_MediumGoToShop",
-                "TextBTN_MediumGoToShop_Pressed",
-                "TextBTN_MediumGoToMainMenu",
-                "TextBTN_MediumGoToMainMenu_Pressed",
-            };
-
-            Transform[] transforms = GetComponentsInChildren<Transform>(true);
-            for (int i = 0; i < transforms.Length; i++)
-            {
-                Transform candidate = transforms[i];
-                if (candidate == null)
-                {
-                    continue;
-                }
-
-                for (int n = 0; n < objectNames.Length; n++)
-                {
-                    if (candidate.gameObject.name.Equals(objectNames[n], System.StringComparison.Ordinal))
-                    {
-                        candidate.gameObject.SetActive(false);
-                        break;
-                    }
-                }
-            }
+            // LifeOver V2 owns its chrome; nothing under Shop V2 should mirror life-over labels.
         }
 
-        // Activates LifeOver-canvas for display. Detach only when the canvas lives under ShopPanel (not under LifeOver V2).
         public GameObject PrepareLifeOverCanvasForDisplay()
         {
-            Transform lifeOver = FindLifeOverCanvasTransform();
-            if (lifeOver == null)
-            {
-                return null;
-            }
-
-            bool underLifeOverChrome =
-                lifeOver.parent != null &&
-                lifeOver.parent.gameObject.name.IndexOf("LifeOver V2", System.StringComparison.OrdinalIgnoreCase) >= 0;
-
-            if (!underLifeOverChrome && !_lifeOverCanvasIsDetached)
-            {
-                _lifeOverCanvasParentBeforeDetach = lifeOver.parent;
-                _lifeOverCanvasLocalPositionBeforeDetach = lifeOver.localPosition;
-                _lifeOverCanvasLocalRotationBeforeDetach = lifeOver.localRotation;
-                _lifeOverCanvasLocalScaleBeforeDetach = lifeOver.localScale;
-
-                Transform anchor = transform.parent != null ? transform.parent : transform;
-                lifeOver.SetParent(anchor, false);
-                _lifeOverCanvasIsDetached = true;
-            }
-
-            lifeOver.gameObject.SetActive(true);
-            return lifeOver.gameObject;
+            return null;
         }
 
-        // Back-compat alias for older call sites.
         public GameObject DetachLifeOverCanvasForDisplay() => PrepareLifeOverCanvasForDisplay();
 
         public void RestoreLifeOverCanvasAfterDisplay()
         {
-            if (!_lifeOverCanvasIsDetached)
-            {
-                return;
-            }
-
-            Transform lifeOver = FindLifeOverCanvasTransform();
-            if (lifeOver != null && _lifeOverCanvasParentBeforeDetach != null)
-            {
-                lifeOver.SetParent(_lifeOverCanvasParentBeforeDetach, false);
-                lifeOver.localPosition = _lifeOverCanvasLocalPositionBeforeDetach;
-                lifeOver.localRotation = _lifeOverCanvasLocalRotationBeforeDetach;
-                lifeOver.localScale = _lifeOverCanvasLocalScaleBeforeDetach;
-            }
-
-            _lifeOverCanvasIsDetached = false;
-            _lifeOverCanvasParentBeforeDetach = null;
         }
 
         public void Refresh()
@@ -489,403 +221,18 @@ namespace iStick2War_V2
                 return;
             }
 
-            SetText(_waveText, $"Wave: {_waveManager.CurrentWaveNumber}");
+            ResolveUiReferencesIfNeeded();
+            SetText(_titleText, "Shop");
             SetText(_currencyText, $"Balance: {ShopMoneyFormat_V2.Format(_waveManager.Currency)}");
-            SetText(
-                _bunkerText,
-                $"Bunker HP: {_waveManager.BunkerHealth}/{_waveManager.BunkerMaxHealth}");
-            SetText(_buyButtonText, _buyButtonDefaultLabel);
-            SetText(
-                _healthCostText,
-                $"Heal: {ShopMoneyFormat_V2.Format(_waveManager.GetHealthPurchaseCost())}");
-            SetText(
-                _bunkerCostText,
-                $"Repair: {ShopMoneyFormat_V2.Format(_waveManager.GetScaledBunkerRepairCost())}");
-            EnsureLooseShopPreviewReparentedOnce();
-            Transform carouselRoot = ResolveCarouselPreviewObjectsRoot();
-            ReparentLooseShopPreviewsUnderCarousel(carouselRoot);
-            EnsureShopNavButtonsReady();
+            SetText(_buyButtonLabelText, _buyButtonDefaultLabel);
             RefreshOfferSelection();
         }
 
-        private void BindUiCarouselNavigationButtons()
-        {
-            _uiPreviousOfferButton = ResolveUiCarouselButton(
-                _uiPreviousOfferButtonObjectName,
-                _uiPreviousOfferButtonAlternateNames,
-                _uiPreviousOfferButton);
-            _uiNextOfferButton = ResolveUiCarouselButton(
-                _uiNextOfferButtonObjectName,
-                _uiNextOfferButtonAlternateNames,
-                _uiNextOfferButton);
-
-            if (_uiPreviousOfferButton != null)
-            {
-                EnsureUiNavComponent(_uiPreviousOfferButton, ShopNavArrow_V2.ArrowDirection.Previous);
-            }
-
-            if (_uiNextOfferButton != null)
-            {
-                EnsureUiNavComponent(_uiNextOfferButton, ShopNavArrow_V2.ArrowDirection.Next);
-            }
-
-            ShopNavArrowUiButton_V2 previousNav = EnsureNamedShopNavButton(
-                _uiPreviousOfferButtonObjectName,
-                _uiPreviousOfferButtonAlternateNames,
-                ShopNavArrow_V2.ArrowDirection.Previous);
-            ShopNavArrowUiButton_V2 nextNav = EnsureNamedShopNavButton(
-                _uiNextOfferButtonObjectName,
-                _uiNextOfferButtonAlternateNames,
-                ShopNavArrow_V2.ArrowDirection.Next);
-
-            RefitShopNavButtonHitTargets();
-            DisableLegacyWorldCarouselArrows();
-
-            if (_debugShopNavigationLogs)
-            {
-                Debug.Log(
-                    $"[ShopPanel_V2] UI carousel nav bound: previous='{DescribeShopNavButton(previousNav)}', " +
-                    $"next='{DescribeShopNavButton(nextNav)}', uiButtonPrev='{DescribeUiButton(_uiPreviousOfferButton)}', " +
-                    $"uiButtonNext='{DescribeUiButton(_uiNextOfferButton)}'.");
-            }
-
-            if (previousNav == null)
-            {
-                Debug.LogWarning(
-                    $"[ShopPanel_V2] TextBTN previous offer control not found. Expected '{_uiPreviousOfferButtonObjectName}' " +
-                    "under ShopPanel or Visual Root.");
-            }
-
-            if (nextNav == null)
-            {
-                Debug.LogWarning(
-                    $"[ShopPanel_V2] TextBTN next offer control not found. Expected '{_uiNextOfferButtonObjectName}' " +
-                    "under ShopPanel or Visual Root.");
-            }
-        }
-
-        private void BindShopActionTextButtons()
-        {
-            ShopNavArrowUiButton_V2 buyButton = EnsureNamedShopTextButton(
-                _uiBuyButtonObjectName,
-                _uiBuyButtonAlternateNames,
-                ShopTextButtonBehavior.Buy);
-            ShopNavArrowUiButton_V2 startButton = EnsureNamedShopTextButton(
-                _uiStartGameButtonObjectName,
-                _uiStartGameButtonAlternateNames,
-                ShopTextButtonBehavior.StartNextWave);
-
-            RefitShopNavButtonHitTargets();
-
-            if (_debugShopNavigationLogs)
-            {
-                Debug.Log(
-                    $"[ShopPanel_V2] Shop action TextBTN bound: buy='{DescribeShopNavButton(buyButton)}', " +
-                    $"start='{DescribeShopNavButton(startButton)}'.");
-            }
-
-            if (buyButton == null)
-            {
-                Debug.LogWarning(
-                    $"[ShopPanel_V2] TextBTN buy control not found. Expected '{_uiBuyButtonObjectName}' " +
-                    "under ShopPanel or Visual Root.");
-            }
-
-            if (startButton == null)
-            {
-                Debug.LogWarning(
-                    $"[ShopPanel_V2] TextBTN start-game control not found. Expected '{_uiStartGameButtonObjectName}' " +
-                    "under ShopPanel or Visual Root.");
-            }
-        }
-
-        private ShopNavArrowUiButton_V2 EnsureNamedShopTextButton(
-            string primaryObjectName,
-            string[] alternateObjectNames,
-            ShopTextButtonBehavior behavior)
-        {
-            GameObject namedRoot = FindShopObjectByNames(primaryObjectName, alternateObjectNames);
-            if (namedRoot == null)
-            {
-                return null;
-            }
-
-            DisableLegacyShopClickHandlersOn(namedRoot, behavior);
-
-            ShopNavArrowUiButton_V2 textButton = namedRoot.GetComponent<ShopNavArrowUiButton_V2>();
-            if (textButton == null)
-            {
-                textButton = namedRoot.AddComponent<ShopNavArrowUiButton_V2>();
-            }
-
-            textButton.Configure(this, behavior, _waveManager);
-            return textButton;
-        }
-
-        private static void DisableLegacyShopClickHandlersOn(
-            GameObject root,
-            ShopTextButtonBehavior behavior)
-        {
-            if (root == null)
-            {
-                return;
-            }
-
-            if (behavior == ShopTextButtonBehavior.Buy)
-            {
-                ShopBuyButton_V2 legacyBuy = root.GetComponent<ShopBuyButton_V2>();
-                if (legacyBuy != null)
-                {
-                    legacyBuy.enabled = false;
-                }
-            }
-            else if (behavior == ShopTextButtonBehavior.StartNextWave)
-            {
-                ShopStartWaveButton_V2 legacyStart = root.GetComponent<ShopStartWaveButton_V2>();
-                if (legacyStart != null)
-                {
-                    legacyStart.enabled = false;
-                }
-            }
-        }
-
-        private ShopNavArrowUiButton_V2 EnsureNamedShopNavButton(
-            string primaryObjectName,
-            string[] alternateObjectNames,
-            ShopNavArrow_V2.ArrowDirection direction)
-        {
-            GameObject namedRoot = FindShopObjectByNames(primaryObjectName, alternateObjectNames);
-            if (namedRoot == null)
-            {
-                return null;
-            }
-
-            ShopNavArrowUiButton_V2 nav = namedRoot.GetComponent<ShopNavArrowUiButton_V2>();
-            if (nav == null)
-            {
-                nav = namedRoot.AddComponent<ShopNavArrowUiButton_V2>();
-            }
-
-            nav.Configure(this, direction);
-            DisableLegacyCarouselArrowOn(namedRoot);
-            return nav;
-        }
-
-        private static void DisableLegacyCarouselArrowOn(GameObject root)
-        {
-            if (root == null)
-            {
-                return;
-            }
-
-            ShopNavArrow_V2 legacyArrow = root.GetComponent<ShopNavArrow_V2>();
-            if (legacyArrow != null)
-            {
-                legacyArrow.enabled = false;
-            }
-        }
-
-        private void DisableLegacyWorldCarouselArrows()
-        {
-            DisableLegacyCarouselArrowOn(FindShopObjectByName("btn_shop_arrow_left"));
-            DisableLegacyCarouselArrowOn(FindShopObjectByName("btn_shop_arrow_right"));
-        }
-
-        private void RefitShopNavButtonHitTargets()
-        {
-            ShopNavArrowUiButton_V2[] navButtons = GetComponentsInChildren<ShopNavArrowUiButton_V2>(true);
-            for (int i = 0; i < navButtons.Length; i++)
-            {
-                ShopNavArrowUiButton_V2 navButton = navButtons[i];
-                if (navButton != null)
-                {
-                    navButton.RefitHitTarget();
-                }
-            }
-
-            if (_shopIsVisible)
-            {
-                EnsureShopActionLabelsVisible();
-            }
-        }
-
-        private GameObject FindShopObjectByNames(string primaryObjectName, string[] alternateObjectNames)
-        {
-            if (!string.IsNullOrWhiteSpace(primaryObjectName))
-            {
-                GameObject primary = FindShopObjectByName(primaryObjectName);
-                if (primary != null)
-                {
-                    return primary;
-                }
-            }
-
-            if (alternateObjectNames == null)
-            {
-                return null;
-            }
-
-            for (int i = 0; i < alternateObjectNames.Length; i++)
-            {
-                string alternate = alternateObjectNames[i];
-                if (string.IsNullOrWhiteSpace(alternate))
-                {
-                    continue;
-                }
-
-                GameObject alternateMatch = FindShopObjectByName(alternate);
-                if (alternateMatch != null)
-                {
-                    return alternateMatch;
-                }
-            }
-
-            return null;
-        }
-
-        private static string DescribeShopNavButton(ShopNavArrowUiButton_V2 navButton)
-        {
-            return navButton != null ? navButton.name : "none";
-        }
-
-        private Button ResolveUiCarouselButton(
-            string primaryObjectName,
-            string[] alternateObjectNames,
-            Button serializedFallback)
-        {
-            Button resolved = FindUiButtonByNames(primaryObjectName, alternateObjectNames);
-            return resolved != null ? resolved : serializedFallback;
-        }
-
-        private Button FindUiButtonByNames(string primaryObjectName, string[] alternateObjectNames)
-        {
-            if (!string.IsNullOrWhiteSpace(primaryObjectName))
-            {
-                Button primary = FindUiButtonUnderShopHierarchy(primaryObjectName);
-                if (primary != null)
-                {
-                    return primary;
-                }
-            }
-
-            if (alternateObjectNames == null)
-            {
-                return null;
-            }
-
-            for (int i = 0; i < alternateObjectNames.Length; i++)
-            {
-                string alternate = alternateObjectNames[i];
-                if (string.IsNullOrWhiteSpace(alternate))
-                {
-                    continue;
-                }
-
-                Button alternateMatch = FindUiButtonUnderShopHierarchy(alternate);
-                if (alternateMatch != null)
-                {
-                    return alternateMatch;
-                }
-            }
-
-            return null;
-        }
-
-        private Button FindUiButtonUnderShopHierarchy(string objectName)
-        {
-            if (string.IsNullOrWhiteSpace(objectName))
-            {
-                return null;
-            }
-
-            Transform[] searchRoots =
-            {
-                _visualRoot,
-                transform,
-            };
-
-            for (int rootIndex = 0; rootIndex < searchRoots.Length; rootIndex++)
-            {
-                Transform searchRoot = searchRoots[rootIndex];
-                if (searchRoot == null)
-                {
-                    continue;
-                }
-
-                Button match = FindUiButtonUnderRoot(searchRoot, objectName);
-                if (match != null)
-                {
-                    return match;
-                }
-            }
-
-            return null;
-        }
-
-        private static Button FindUiButtonUnderRoot(Transform searchRoot, string objectName)
-        {
-            Transform[] transforms = searchRoot.GetComponentsInChildren<Transform>(true);
-            for (int i = 0; i < transforms.Length; i++)
-            {
-                Transform candidate = transforms[i];
-                if (candidate == null ||
-                    !string.Equals(candidate.name, objectName, System.StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                Button button = candidate.GetComponent<Button>();
-                if (button == null)
-                {
-                    button = candidate.GetComponentInChildren<Button>(true);
-                }
-
-                if (button == null)
-                {
-                    button = candidate.GetComponentInParent<Button>();
-                }
-
-                if (button != null)
-                {
-                    return button;
-                }
-            }
-
-            return null;
-        }
-
-        private void EnsureUiNavComponent(Button button, ShopNavArrow_V2.ArrowDirection direction)
-        {
-            if (button == null)
-            {
-                return;
-            }
-
-            ShopNavArrowUiButton_V2 nav = button.GetComponent<ShopNavArrowUiButton_V2>();
-            if (nav == null)
-            {
-                nav = button.gameObject.AddComponent<ShopNavArrowUiButton_V2>();
-            }
-
-            nav.Configure(this, direction);
-        }
-
-        private static string DescribeUiButton(Button button)
-        {
-            return button != null ? button.name : "none";
-        }
-
-        // Wire left arrow (e.g. btn_shop_arrow_left OnClick).
         public void OnShopArrowPreviousClicked()
         {
             RebuildVisibleShopOffersIfNeeded();
             if (_visibleShopOffers.Count == 0)
             {
-                if (_debugShopNavigationLogs)
-                {
-                    Debug.Log("[ShopPanel_V2] OnShopArrowPrevious: no shop offers configured.");
-                }
-
                 return;
             }
 
@@ -894,24 +241,17 @@ namespace iStick2War_V2
             if (_debugShopNavigationLogs)
             {
                 Debug.Log(
-                    $"[ShopPanel_V2] Shop arrow PREVIOUS: index {before} -> {_offerIndex} / {_visibleShopOffers.Count} " +
-                    $"(current='{_visibleShopOffers[_offerIndex].DisplayName}')");
+                    $"[ShopPanel_V2] PREVIOUS: {before} -> {_offerIndex} / {_visibleShopOffers.Count}");
             }
 
             RefreshOfferSelection();
         }
 
-        // Wire right arrow (e.g. btn_shop_arrow_right OnClick).
         public void OnShopArrowNextClicked()
         {
             RebuildVisibleShopOffersIfNeeded();
             if (_visibleShopOffers.Count == 0)
             {
-                if (_debugShopNavigationLogs)
-                {
-                    Debug.Log("[ShopPanel_V2] OnShopArrowNext: no shop offers configured.");
-                }
-
                 return;
             }
 
@@ -920,34 +260,21 @@ namespace iStick2War_V2
             if (_debugShopNavigationLogs)
             {
                 Debug.Log(
-                    $"[ShopPanel_V2] Shop arrow NEXT: index {before} -> {_offerIndex} / {_visibleShopOffers.Count} " +
-                    $"(current='{_visibleShopOffers[_offerIndex].DisplayName}')");
+                    $"[ShopPanel_V2] NEXT: {before} -> {_offerIndex} / {_visibleShopOffers.Count}");
             }
 
             RefreshOfferSelection();
         }
 
-        // Wire main BUY button to purchase the currently selected carousel offer.
         public void OnPurchaseSelectedOfferClicked()
         {
             RebuildVisibleShopOffersIfNeeded();
             if (_waveManager == null || _visibleShopOffers.Count == 0)
             {
-                if (_debugShopNavigationLogs)
-                {
-                    Debug.Log("[ShopPanel_V2] OnPurchaseSelectedOffer: missing manager or offers.");
-                }
-
                 return;
             }
 
             ShopOfferConfig_V2 offer = GetSelectedOffer();
-            if (_debugShopNavigationLogs)
-            {
-                Debug.Log(
-                    $"[ShopPanel_V2] BUY clicked: offer='{offer.DisplayName}', kind={offer.Kind}, cost={offer.Cost}");
-            }
-
             bool ok = _waveManager.TryPurchaseOffer(offer);
             if (ok)
             {
@@ -956,11 +283,6 @@ namespace iStick2War_V2
             else
             {
                 AudioManager_V2.PlayFailure();
-            }
-
-            if (_debugShopNavigationLogs)
-            {
-                Debug.Log($"[ShopPanel_V2] TryPurchaseOffer -> {ok}");
             }
 
             Refresh();
@@ -987,102 +309,178 @@ namespace iStick2War_V2
         public void SetBuyButtonLabel(string label)
         {
             string nextLabel = string.IsNullOrWhiteSpace(label) ? _buyButtonDefaultLabel : label;
-            SetText(_buyButtonText, nextLabel);
+            SetText(_buyButtonLabelText, nextLabel);
+        }
+
+        private void HandleMetaChanged(int wave, int currency, int bunkerHp)
+        {
+            Refresh();
+        }
+
+        private void RebuildVisibleShopOffersIfNeeded()
+        {
+            _visibleShopOffers.Clear();
+            if (_shopOffers == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _shopOffers.Count; i++)
+            {
+                ShopOfferConfig_V2 row = _shopOffers[i];
+                if (row != null &&
+                    row.Kind != ShopOfferKind_V2.AmmoRefill &&
+                    !IsShopExcludedWeaponRow(row))
+                {
+                    _visibleShopOffers.Add(row);
+                }
+            }
+        }
+
+        private static bool IsShopExcludedWeaponRow(ShopOfferConfig_V2 row)
+        {
+            return row.Kind == ShopOfferKind_V2.WeaponUnlock &&
+                   row.Weapon != null &&
+                   row.Weapon.WeaponType == WeaponType.Colt45;
+        }
+
+        private ShopOfferConfig_V2 GetSelectedOffer()
+        {
+            if (_visibleShopOffers.Count == 0)
+            {
+                return null;
+            }
+
+            _offerIndex = Mathf.Clamp(_offerIndex, 0, _visibleShopOffers.Count - 1);
+            return _visibleShopOffers[_offerIndex];
+        }
+
+        private bool TryGetLegacyAmmoRowCost(HeroWeaponDefinition_V2 weapon, out int cost)
+        {
+            cost = 0;
+            if (weapon == null || _shopOffers == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < _shopOffers.Count; i++)
+            {
+                ShopOfferConfig_V2 row = _shopOffers[i];
+                if (row != null &&
+                    row.Kind == ShopOfferKind_V2.AmmoRefill &&
+                    row.Weapon == weapon)
+                {
+                    cost = row.Cost;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void RefreshOfferSelection()
         {
-            ResolveSelectedOfferItemTextIfNeeded();
-
             RebuildVisibleShopOffersIfNeeded();
             if (_waveManager == null || _visibleShopOffers.Count == 0)
             {
                 SetText(_selectedOfferItemText, string.Empty);
+                ApplyOfferPreviewImage(null);
+                _offerStatsPresenter.HideAll();
                 return;
             }
 
             ShopOfferConfig_V2 offer = GetSelectedOffer();
-
-            SetText(_offerTitleText, offer.DisplayName);
-            SetText(_offerSubtitleText, BuildOfferSubtitle(offer));
             SetText(_selectedOfferItemText, offer.DisplayName);
-
-            Transform carouselRoot = ResolveCarouselPreviewObjectsRoot();
-            EnsurePreviewCatalogReady(carouselRoot);
-
-            if (!_shopIsVisible)
-            {
-                HideShopCarouselPreviews();
-            }
-            else
-            {
-                ApplySelectedOfferPreviewVisibility(carouselRoot, offer);
-            }
-
-            if (_debugShopPanelLogs)
-            {
-                string selectedPreviewName = ResolvePreviewObjectName(offer.PreviewObject);
-                GameObject visiblePreview = FindPreviewUnderCarousel(carouselRoot, selectedPreviewName);
-                Debug.Log(
-                    $"[ShopPanel_V2] RefreshOfferSelection index={_offerIndex}, offer='{offer.DisplayName}', " +
-                    $"previewName='{selectedPreviewName}', visiblePreview='{DescribeGameObject(visiblePreview)}', " +
-                    $"carouselRoot='{DescribeTransform(carouselRoot)}', catalogCount={_resolvedPreviewByOfferIndex.Count}.");
-            }
-
-            EnsureShopNavButtonsActive();
+            ApplyOfferPreviewImage(offer);
             SetBuyButtonLabel(ResolveBuyButtonLabel(offer));
             RefreshOfferStats(offer);
         }
 
-        private void ResolveOfferStatsIfNeeded()
+        private void ApplyOfferPreviewImage(ShopOfferConfig_V2 offer)
         {
-            if (_didResolveOfferStats)
+            if (_shopItemImage == null)
             {
                 return;
             }
 
-            _statTmpBindingUsed.Clear();
-            _offerStatsPresenter.ResolveBindings(
-                FindShopStatLabelTmpForBinding,
-                FindShopStatValueTmpForBinding,
-                FindShopObjectByName,
-                FindShopStatLabelNearValue);
-            TMP_Text warningText = FindShopTmpByObjectName(
-                "txt_shop_stat_warningText_label",
-                allowTextContentFallback: true,
-                slot: ShopStatTmpBindingSlot.Any);
-            if (warningText == null)
+            CacheShopItemImageBaseSizeIfNeeded();
+            float previewScale = ResolveShopPreviewImageScale(offer != null ? offer.PreviewObject : null);
+            _shopItemImage.rectTransform.sizeDelta = _shopItemImageBaseSize * previewScale;
+
+            if (offer == null || offer.PreviewObject == null)
             {
-                warningText = FindShopTmpByObjectName(
-                    "txt_shop_stat_warning_text",
-                    allowTextContentFallback: true,
-                    slot: ShopStatTmpBindingSlot.Any);
+                _shopItemImage.enabled = false;
+                return;
             }
 
-            if (warningText != null)
+            Sprite sprite = ResolvePreviewSprite(offer.PreviewObject);
+            if (sprite == null)
             {
-                _statTmpBindingUsed.Add(warningText);
-                _offerStatsPresenter.SetWarningText(warningText, _shopWarningTextColor);
+                _shopItemImage.enabled = false;
+                return;
             }
 
-            SuppressUnboundDuplicateShopStatTmps();
-            _didResolveOfferStats = true;
-
-            if (_debugShopPanelLogs)
-            {
-                Debug.Log("[ShopPanel_V2] Resolved shop offer stat TMP bindings.");
-            }
+            _shopItemImage.enabled = true;
+            _shopItemImage.sprite = sprite;
+            _shopItemImage.preserveAspect = true;
         }
 
-        private void RebuildOfferStatBaselinesIfNeeded()
+        private void CacheShopItemImageBaseSizeIfNeeded()
         {
-            if (_didRebuildOfferStatBaselines)
+            if (_didCacheShopItemImageBaseSize || _shopItemImage == null)
             {
                 return;
             }
 
-            _offerStatsPresenter.RebuildBaselines(_visibleShopOffers, _waveManager);
-            _didRebuildOfferStatBaselines = true;
+            Vector2 size = _shopItemImage.rectTransform.sizeDelta;
+            if (size.x > 0f && size.y > 0f)
+            {
+                _shopItemImageBaseSize = size;
+            }
+
+            _didCacheShopItemImageBaseSize = true;
+        }
+
+        private float ResolveShopPreviewImageScale(GameObject previewRoot)
+        {
+            if (previewRoot == null || _largeWeaponPreviewImageScale <= 1f)
+            {
+                return 1f;
+            }
+
+            string normalizedName = NormalizeShopUiName(previewRoot.name);
+            if (normalizedName == "shop_bazooka" ||
+                normalizedName == "shop_flamethrower" ||
+                normalizedName == "shop_shotgun" ||
+                normalizedName == "shop_teslagun" ||
+                normalizedName == "shop_thompson")
+            {
+                return _largeWeaponPreviewImageScale;
+            }
+
+            return 1f;
+        }
+
+        private static Sprite ResolvePreviewSprite(GameObject previewRoot)
+        {
+            if (previewRoot == null)
+            {
+                return null;
+            }
+
+            SpriteRenderer spriteRenderer = previewRoot.GetComponentInChildren<SpriteRenderer>(true);
+            if (spriteRenderer != null && spriteRenderer.sprite != null)
+            {
+                return spriteRenderer.sprite;
+            }
+
+            Image image = previewRoot.GetComponentInChildren<Image>(true);
+            if (image != null && image.sprite != null)
+            {
+                return image.sprite;
+            }
+
+            return null;
         }
 
         private void RefreshOfferStats(ShopOfferConfig_V2 offer)
@@ -1098,1071 +496,49 @@ namespace iStick2War_V2
             _offerStatsPresenter.Refresh(offer, _waveManager);
         }
 
-        private void EnsureShopNavButtonsReady()
+        private void ResolveOfferStatsIfNeeded()
         {
-            if (_didEnsureShopNavButtons)
-            {
-                EnsureShopNavButtonsActive();
-                return;
-            }
-
-            Transform parent = _visualRoot != null ? _visualRoot : transform;
-            EnsureShopNavButtonPair(
-                parent,
-                _uiPreviousOfferButtonObjectName,
-                _uiPreviousOfferButtonObjectName + "_Pressed",
-                _textBtnMediumPrevLocalPosition);
-            EnsureShopNavButtonPair(
-                parent,
-                _uiNextOfferButtonObjectName,
-                _uiNextOfferButtonObjectName + "_Pressed",
-                _textBtnMediumNextLocalPosition);
-            EnsureShopNavButtonPair(
-                parent,
-                _uiBuyButtonObjectName,
-                _uiBuyButtonObjectName + "_Pressed",
-                _textBtnMediumBuyLocalPosition);
-            EnsureShopNavButtonPair(
-                parent,
-                _uiStartGameButtonObjectName,
-                _uiStartGameButtonObjectName + "_Pressed",
-                _textBtnMediumStartGameLocalPosition);
-
-            _didEnsureShopNavButtons = true;
-            if (_shopIsVisible)
-            {
-                EnsureShopNavButtonsActive();
-            }
-
-            ResetShopNavPressedVisuals();
-        }
-
-        private void SetShopTextButtonsVisible(bool visible)
-        {
-            SetShopNavButtonVisible(_uiPreviousOfferButtonObjectName, visible);
-            SetShopNavButtonVisible(_uiNextOfferButtonObjectName, visible);
-            SetShopNavButtonVisible(_uiBuyButtonObjectName, visible);
-            SetShopNavButtonVisible(_uiStartGameButtonObjectName, visible);
-            SetShopNavButtonVisible(_uiPreviousOfferButtonObjectName + "_Pressed", false);
-            SetShopNavButtonVisible(_uiNextOfferButtonObjectName + "_Pressed", false);
-            SetShopNavButtonVisible(_uiBuyButtonObjectName + "_Pressed", false);
-            SetShopNavButtonVisible(_uiStartGameButtonObjectName + "_Pressed", false);
-
-            if (!visible)
-            {
-                ShopNavArrowUiButton_V2[] navButtons = GetComponentsInChildren<ShopNavArrowUiButton_V2>(true);
-                for (int i = 0; i < navButtons.Length; i++)
-                {
-                    ShopNavArrowUiButton_V2 navButton = navButtons[i];
-                    if (navButton != null)
-                    {
-                        navButton.ResetToNormalVisual();
-                    }
-                }
-            }
-        }
-
-        private void EnsureShopNavButtonPair(
-            Transform parent,
-            string normalName,
-            string pressedName,
-            Vector3 localPosition)
-        {
-            if (parent == null)
+            if (_didResolveOfferStats)
             {
                 return;
             }
 
-            if (FindShopObjectByName(normalName) == null && _textBtnMediumNormalPrefab != null)
+            _statTmpBindingUsed.Clear();
+            _offerStatsPresenter.ResolveBindings(
+                FindShopStatLabelTmpForBinding,
+                FindShopStatValueTmpForBinding,
+                FindShopObjectByName,
+                FindShopStatLabelNearValue);
+            TMP_Text warningText = FindShopTmpByObjectName("txt_shop_stat_warningText_label");
+            if (warningText == null)
             {
-                GameObject normal = Instantiate(_textBtnMediumNormalPrefab, parent);
-                normal.name = normalName;
-                normal.transform.localPosition = localPosition;
-                normal.transform.localRotation = Quaternion.identity;
-                normal.transform.localScale = Vector3.one;
-                SetLayerRecursively(normal, parent.gameObject.layer);
+                warningText = FindShopTmpByObjectName("txt_shop_stat_warning_text");
             }
 
-            if (FindShopObjectByName(pressedName) == null && _textBtnMediumPressedPrefab != null)
+            if (warningText != null)
             {
-                GameObject pressed = Instantiate(_textBtnMediumPressedPrefab, parent);
-                pressed.name = pressedName;
-                pressed.transform.localPosition = localPosition;
-                pressed.transform.localRotation = Quaternion.identity;
-                pressed.transform.localScale = Vector3.one;
-                SetLayerRecursively(pressed, parent.gameObject.layer);
+                _statTmpBindingUsed.Add(warningText);
+                _offerStatsPresenter.SetWarningText(warningText, _shopWarningTextColor);
             }
+
+            SuppressUnboundDuplicateShopStatTmps();
+            _didResolveOfferStats = true;
         }
 
-        // Keeps normal TextBTN roots alive during carousel refresh without clearing an in-progress pressed visual.
-        private void EnsureShopNavButtonsActive()
+        private void RebuildOfferStatBaselinesIfNeeded()
         {
-            if (!_shopIsVisible)
+            if (_didRebuildOfferStatBaselines)
             {
                 return;
             }
 
-            EnsureNormalShopNavButtonActive(_uiPreviousOfferButtonObjectName);
-            EnsureNormalShopNavButtonActive(_uiNextOfferButtonObjectName);
-            EnsureNormalShopNavButtonActive(_uiBuyButtonObjectName);
-            EnsureNormalShopNavButtonActive(_uiStartGameButtonObjectName);
-            SyncShopNavPressedSiblingTransform(_uiPreviousOfferButtonObjectName);
-            SyncShopNavPressedSiblingTransform(_uiNextOfferButtonObjectName);
-            SyncShopNavPressedSiblingTransform(_uiBuyButtonObjectName);
-            SyncShopNavPressedSiblingTransform(_uiStartGameButtonObjectName);
-        }
-
-        private void EnsureNormalShopNavButtonActive(string objectName)
-        {
-            GameObject target = FindShopObjectByName(objectName);
-            if (target == null || target.activeSelf)
-            {
-                return;
-            }
-
-            target.SetActive(true);
-            EnsurePreviewRenderersVisible(target);
-        }
-
-        private void ResetShopNavPressedVisuals()
-        {
-            SetShopNavButtonVisible(_uiPreviousOfferButtonObjectName + "_Pressed", false);
-            SetShopNavButtonVisible(_uiNextOfferButtonObjectName + "_Pressed", false);
-            SetShopNavButtonVisible(_uiBuyButtonObjectName + "_Pressed", false);
-            SetShopNavButtonVisible(_uiStartGameButtonObjectName + "_Pressed", false);
-
-            ShopNavArrowUiButton_V2[] navButtons = GetComponentsInChildren<ShopNavArrowUiButton_V2>(true);
-            for (int i = 0; i < navButtons.Length; i++)
-            {
-                ShopNavArrowUiButton_V2 navButton = navButtons[i];
-                if (navButton != null)
-                {
-                    navButton.ResetToNormalVisual();
-                }
-            }
-        }
-
-        private void SyncShopNavPressedSiblingTransform(string normalObjectName)
-        {
-            if (string.IsNullOrWhiteSpace(normalObjectName))
-            {
-                return;
-            }
-
-            GameObject normal = FindShopObjectByName(normalObjectName);
-            GameObject pressed = FindShopObjectByName(normalObjectName + "_Pressed");
-            if (normal == null || pressed == null)
-            {
-                return;
-            }
-
-            Transform normalTransform = normal.transform;
-            Transform pressedTransform = pressed.transform;
-            pressedTransform.localPosition = normalTransform.localPosition;
-            pressedTransform.localRotation = normalTransform.localRotation;
-            pressedTransform.localScale = normalTransform.localScale;
-        }
-
-        private void SetShopNavButtonVisible(string objectName, bool visible)
-        {
-            GameObject target = FindShopObjectByName(objectName);
-            if (target == null)
-            {
-                return;
-            }
-
-            target.SetActive(visible);
-            if (visible)
-            {
-                EnsurePreviewRenderersVisible(target);
-            }
-        }
-
-        private GameObject FindShopObjectByName(string objectName)
-        {
-            if (string.IsNullOrWhiteSpace(objectName))
-            {
-                return null;
-            }
-
-            Transform[] searchRoots =
-            {
-                _visualRoot,
-                transform,
-            };
-
-            for (int rootIndex = 0; rootIndex < searchRoots.Length; rootIndex++)
-            {
-                Transform searchRoot = searchRoots[rootIndex];
-                if (searchRoot == null)
-                {
-                    continue;
-                }
-
-                Transform[] transforms = searchRoot.GetComponentsInChildren<Transform>(true);
-                for (int i = 0; i < transforms.Length; i++)
-                {
-                    Transform candidate = transforms[i];
-                    if (candidate != null &&
-                        candidate.gameObject.name.Equals(objectName, System.StringComparison.OrdinalIgnoreCase))
-                    {
-                        return candidate.gameObject;
-                    }
-                }
-            }
-
-            return null;
-        }
-
-        private static void SetLayerRecursively(GameObject root, int layer)
-        {
-            if (root == null)
-            {
-                return;
-            }
-
-            root.layer = layer;
-            Transform transform = root.transform;
-            for (int i = 0; i < transform.childCount; i++)
-            {
-                Transform child = transform.GetChild(i);
-                if (child != null)
-                {
-                    SetLayerRecursively(child.gameObject, layer);
-                }
-            }
-        }
-
-        private static bool IsShopNavButtonObjectName(string objectName)
-        {
-            return !string.IsNullOrWhiteSpace(objectName) &&
-                   objectName.StartsWith("TextBTN_Medium", System.StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool IsShopTextButtonSprite(SpriteRenderer spriteRenderer)
-        {
-            if (spriteRenderer == null)
-            {
-                return false;
-            }
-
-            Transform walk = spriteRenderer.transform;
-            while (walk != null)
-            {
-                if (IsShopNavButtonObjectName(walk.name) ||
-                    (walk.name.EndsWith("_Pressed", System.StringComparison.OrdinalIgnoreCase) &&
-                     IsShopNavButtonObjectName(
-                         walk.name.Substring(0, walk.name.Length - "_Pressed".Length))))
-                {
-                    return true;
-                }
-
-                walk = walk.parent;
-            }
-
-            return false;
-        }
-
-        private void InvalidatePreviewCatalog()
-        {
-            _didBuildPreviewCatalog = false;
-            _shopOfferCountWhenCatalogBuilt = -1;
-            _resolvedPreviewByOfferIndex.Clear();
-        }
-
-        private void EnsurePreviewCatalogReady(Transform carouselRoot)
-        {
-            RebuildVisibleShopOffersIfNeeded();
-            int offerCount = _visibleShopOffers.Count;
-            if (_didBuildPreviewCatalog && _shopOfferCountWhenCatalogBuilt == offerCount)
-            {
-                return;
-            }
-
-            EnsureCarouselPreviewCatalogReady(carouselRoot);
-            _didBuildPreviewCatalog = true;
-            _shopOfferCountWhenCatalogBuilt = offerCount;
-        }
-
-        private void EnsureCarouselPreviewCatalogReady(Transform carouselRoot)
-        {
-            if (carouselRoot == null || _visibleShopOffers.Count == 0)
-            {
-                return;
-            }
-
-            ReparentLooseShopPreviewsUnderCarousel(carouselRoot);
-            _resolvedPreviewByOfferIndex.Clear();
-
-            for (int i = 0; i < _visibleShopOffers.Count; i++)
-            {
-                ShopOfferConfig_V2 offer = _visibleShopOffers[i];
-                GameObject resolved = ResolvePreviewForOffer(i, offer, carouselRoot);
-
-                if (resolved != null)
-                {
-                    _resolvedPreviewByOfferIndex[i] = resolved;
-                }
-                else if (_debugShopPanelLogs && offer.PreviewObject != null)
-                {
-                    Debug.LogWarning(
-                        $"[ShopPanel_V2] No preview resolved for offer[{i}] '{offer.DisplayName}' " +
-                        $"(previewRef='{DescribeGameObject(offer.PreviewObject)}').");
-                }
-            }
-        }
-
-        private GameObject ResolvePreviewForOffer(int offerIndex, ShopOfferConfig_V2 offer, Transform carouselRoot)
-        {
-            if (offer == null || offer.PreviewObject == null || carouselRoot == null)
-            {
-                return null;
-            }
-
-            if (offerIndex >= 0 &&
-                _resolvedPreviewByOfferIndex.TryGetValue(offerIndex, out GameObject cached) &&
-                cached != null)
-            {
-                return cached;
-            }
-
-            string previewName = ResolvePreviewObjectName(offer.PreviewObject);
-            GameObject sceneMatch = FindPreviewUnderCarousel(carouselRoot, previewName);
-            if (sceneMatch == null)
-            {
-                sceneMatch = FindLoadedScenePreviewByName(previewName);
-                if (sceneMatch != null)
-                {
-                    EnsurePreviewUnderCarouselRoot(sceneMatch.transform, carouselRoot);
-                }
-            }
-
-            if (sceneMatch != null)
-            {
-                return sceneMatch;
-            }
-
-            return ResolveOrCreatePreviewInstance(offer.PreviewObject, carouselRoot);
-        }
-
-        private void ApplySelectedOfferPreviewVisibility(Transform carouselRoot, ShopOfferConfig_V2 selectedOffer)
-        {
-            if (carouselRoot == null || selectedOffer == null)
-            {
-                return;
-            }
-
-            EnsureActiveHierarchy(carouselRoot.gameObject);
-
-            GameObject selectedPreview = ResolvePreviewForOffer(_offerIndex, selectedOffer, carouselRoot);
-            string selectedPreviewName = ResolvePreviewObjectName(selectedOffer.PreviewObject);
-
-            HideAllShopPreviewsUnder(carouselRoot);
-
-            if (selectedPreview != null)
-            {
-                ShowShopPreview(selectedPreview);
-            }
-            else if (_debugShopPanelLogs)
-            {
-                Debug.LogWarning(
-                    $"[ShopPanel_V2] Selected preview not found for '{selectedOffer.DisplayName}' " +
-                    $"(expected name '{selectedPreviewName}').");
-            }
-        }
-
-        private void HideShopCarouselPreviews()
-        {
-            HideAllShopPreviewsUnder(ResolveCarouselPreviewObjectsRoot());
-        }
-
-        private void HideAllShopPreviewsUnder(Transform carouselRoot)
-        {
-            if (carouselRoot == null)
-            {
-                return;
-            }
-
-            Transform[] transforms = carouselRoot.GetComponentsInChildren<Transform>(true);
-            for (int i = 0; i < transforms.Length; i++)
-            {
-                Transform candidate = transforms[i];
-                if (candidate == null || candidate == carouselRoot)
-                {
-                    continue;
-                }
-
-                if (!IsShopPreviewObjectName(candidate.name))
-                {
-                    continue;
-                }
-
-                candidate.gameObject.SetActive(false);
-            }
-
-            DisableUnnamedCarouselPreviewSprites(carouselRoot);
-        }
-
-        // Covers editor names like Thompson-preview-bild / thompson_temp that do not use shop_* yet.
-        private void DisableUnnamedCarouselPreviewSprites(Transform carouselRoot)
-        {
-            if (carouselRoot == null)
-            {
-                return;
-            }
-
-            SpriteRenderer[] spriteRenderers = carouselRoot.GetComponentsInChildren<SpriteRenderer>(true);
-            for (int i = 0; i < spriteRenderers.Length; i++)
-            {
-                SpriteRenderer spriteRenderer = spriteRenderers[i];
-                if (spriteRenderer == null ||
-                    IsShopTextButtonSprite(spriteRenderer) ||
-                    IsShopPreviewSprite(spriteRenderer))
-                {
-                    continue;
-                }
-
-                spriteRenderer.enabled = false;
-            }
-        }
-
-        private void ShowShopPreview(GameObject preview)
-        {
-            if (preview == null)
-            {
-                return;
-            }
-
-            Transform carouselRoot = ResolveCarouselPreviewObjectsRoot();
-            if (carouselRoot != null)
-            {
-                preview.transform.SetParent(carouselRoot, false);
-                preview.transform.localPosition = _previewDisplayLocalPosition;
-                preview.transform.SetAsLastSibling();
-            }
-
-            EnsureActiveHierarchy(preview);
-            preview.SetActive(true);
-            EnsurePreviewRenderersVisible(preview);
-            ApplyPreviewSorting(preview);
-
-            if (_debugShopPanelLogs)
-            {
-                SpriteRenderer spriteRenderer = preview.GetComponentInChildren<SpriteRenderer>(true);
-                string spriteName = spriteRenderer != null && spriteRenderer.sprite != null
-                    ? spriteRenderer.sprite.name
-                    : "none";
-                int appliedOrder = ResolveShopPreviewSortingOrder();
-                Debug.Log(
-                    $"[ShopPanel_V2] ShowShopPreview '{preview.name}' layer={spriteRenderer?.sortingLayerName} " +
-                    $"order={spriteRenderer?.sortingOrder} (target={appliedOrder}) sprite={spriteName} " +
-                    $"active={preview.activeSelf} worldPos={preview.transform.position}.");
-            }
-        }
-
-        private void ApplyPreviewSorting(GameObject previewRoot)
-        {
-            if (previewRoot == null)
-            {
-                return;
-            }
-
-            int shopLayerId = ResolveShopPreviewSortingLayerId();
-            int sortingOrder = ResolveShopPreviewSortingOrder();
-
-            SortingGroup staleSortingGroup = previewRoot.GetComponent<SortingGroup>();
-            if (staleSortingGroup != null)
-            {
-                Destroy(staleSortingGroup);
-            }
-
-            SpriteRenderer[] spriteRenderers = previewRoot.GetComponentsInChildren<SpriteRenderer>(true);
-            for (int i = 0; i < spriteRenderers.Length; i++)
-            {
-                SpriteRenderer spriteRenderer = spriteRenderers[i];
-                if (spriteRenderer != null)
-                {
-                    spriteRenderer.sortingLayerID = shopLayerId;
-                    spriteRenderer.sortingOrder = sortingOrder;
-                }
-            }
-        }
-
-        private int ResolveShopPreviewSortingOrder()
-        {
-            // ShopPanel background uses ~200 on layer Shop; TextBTN ~205. Previews must sit above both.
-            const int shopBackgroundOrder = 200;
-            const int minimumPreviewOrder = 220;
-            if (_shopPreviewSortingOrder <= shopBackgroundOrder + 5)
-            {
-                return minimumPreviewOrder;
-            }
-
-            return _shopPreviewSortingOrder;
-        }
-
-        private int ResolveShopPreviewSortingLayerId()
-        {
-            if (!string.IsNullOrWhiteSpace(_shopPreviewSortingLayerName))
-            {
-                int namedLayerId = SortingLayer.NameToID(_shopPreviewSortingLayerName);
-                if (namedLayerId != 0)
-                {
-                    return namedLayerId;
-                }
-            }
-
-            return SortingLayer.NameToID("Shop");
-        }
-
-        private static void EnsureActiveHierarchy(GameObject target)
-        {
-            if (target == null)
-            {
-                return;
-            }
-
-            Transform walk = target.transform;
-            while (walk != null)
-            {
-                if (!walk.gameObject.activeSelf)
-                {
-                    walk.gameObject.SetActive(true);
-                }
-
-                walk = walk.parent;
-            }
-        }
-
-        private GameObject FindPreviewUnderCarousel(Transform carouselRoot, string previewName)
-        {
-            if (carouselRoot == null || string.IsNullOrWhiteSpace(previewName))
-            {
-                return null;
-            }
-
-            return FindPreviewChildByName(carouselRoot, previewName);
-        }
-
-        private static string ResolvePreviewObjectName(GameObject previewRef)
-        {
-            if (previewRef == null)
-            {
-                return string.Empty;
-            }
-
-            string name = previewRef.name;
-            const string cloneSuffix = "(Clone)";
-            if (name.EndsWith(cloneSuffix, System.StringComparison.Ordinal))
-            {
-                name = name.Substring(0, name.Length - cloneSuffix.Length).Trim();
-            }
-
-            return name;
-        }
-
-        private static string DescribeGameObject(GameObject target)
-        {
-            return target != null ? target.name : "none";
-        }
-
-        private void ReparentLooseShopPreviewsUnderCarousel(Transform carouselRoot)
-        {
-            if (carouselRoot == null)
-            {
-                return;
-            }
-
-            Transform[] transforms = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include);
-            for (int i = 0; i < transforms.Length; i++)
-            {
-                Transform candidate = transforms[i];
-                if (candidate == null ||
-                    candidate.parent != null ||
-                    !IsShopPreviewObjectName(candidate.name))
-                {
-                    continue;
-                }
-
-                if (IsDescendantOf(candidate, carouselRoot))
-                {
-                    continue;
-                }
-
-                candidate.SetParent(carouselRoot, true);
-                candidate.gameObject.SetActive(false);
-
-                if (_debugShopPanelLogs)
-                {
-                    Debug.Log(
-                        $"[ShopPanel_V2] Reparented loose shop preview '{candidate.name}' under '{carouselRoot.name}'.");
-                }
-            }
-        }
-
-        private GameObject ResolveOrCreatePreviewInstance(GameObject previewRef, Transform carouselRoot)
-        {
-            if (previewRef == null || carouselRoot == null)
-            {
-                return null;
-            }
-
-            if (IsLoadedSceneObject(previewRef))
-            {
-                if (IsShopNavButtonObjectName(previewRef.name))
-                {
-                    return null;
-                }
-
-                EnsurePreviewUnderCarouselRoot(previewRef.transform, carouselRoot);
-                return previewRef;
-            }
-
-            string previewName = ResolvePreviewObjectName(previewRef);
-            GameObject sceneMatch = FindPreviewChildByName(carouselRoot, previewName);
-            if (sceneMatch == null)
-            {
-                sceneMatch = FindLoadedScenePreviewByName(previewName);
-                if (sceneMatch != null)
-                {
-                    EnsurePreviewUnderCarouselRoot(sceneMatch.transform, carouselRoot);
-                }
-            }
-
-            if (sceneMatch != null)
-            {
-                return sceneMatch;
-            }
-
-            int sourceId = previewRef.GetInstanceID();
-            if (_runtimeInstantiatedPreviewsBySourceId.TryGetValue(sourceId, out GameObject cachedInstance) &&
-                cachedInstance != null)
-            {
-                return cachedInstance;
-            }
-
-            GameObject instance = Instantiate(previewRef, carouselRoot);
-            instance.name = previewName;
-            instance.SetActive(false);
-            _runtimeInstantiatedPreviewsBySourceId[sourceId] = instance;
-
-            if (_debugShopPanelLogs)
-            {
-                Debug.Log(
-                    $"[ShopPanel_V2] Instantiated shop preview '{previewName}' under '{carouselRoot.name}'.");
-            }
-
-            return instance;
-        }
-
-        private static bool IsLoadedSceneObject(GameObject target)
-        {
-            return target != null && target.scene.IsValid() && target.scene.isLoaded;
-        }
-
-        private static bool IsShopPreviewObjectName(string objectName)
-        {
-            if (string.IsNullOrWhiteSpace(objectName))
-            {
-                return false;
-            }
-
-            if (objectName.StartsWith("shop_", System.StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            if (objectName.Contains("preview", System.StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            return objectName.Equals("thompson_temp", System.StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static void EnsurePreviewUnderCarouselRoot(Transform previewTransform, Transform carouselRoot)
-        {
-            if (previewTransform == null || carouselRoot == null)
-            {
-                return;
-            }
-
-            if (previewTransform.parent == carouselRoot || previewTransform.IsChildOf(carouselRoot))
-            {
-                return;
-            }
-
-            previewTransform.SetParent(carouselRoot, true);
-        }
-
-        private static GameObject FindPreviewChildByName(Transform carouselRoot, string objectName)
-        {
-            if (carouselRoot == null || string.IsNullOrWhiteSpace(objectName))
-            {
-                return null;
-            }
-
-            Transform[] transforms = carouselRoot.GetComponentsInChildren<Transform>(true);
-            for (int i = 0; i < transforms.Length; i++)
-            {
-                Transform candidate = transforms[i];
-                if (candidate != null &&
-                    !IsShopNavButtonObjectName(candidate.gameObject.name) &&
-                    candidate.gameObject.name.Equals(objectName, System.StringComparison.OrdinalIgnoreCase))
-                {
-                    return candidate.gameObject;
-                }
-            }
-
-            return null;
-        }
-
-        private static GameObject FindLoadedScenePreviewByName(string previewName)
-        {
-            if (string.IsNullOrWhiteSpace(previewName))
-            {
-                return null;
-            }
-
-            Transform[] transforms = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include);
-            for (int i = 0; i < transforms.Length; i++)
-            {
-                Transform candidate = transforms[i];
-                if (candidate == null ||
-                    !IsShopPreviewObjectName(candidate.name) ||
-                    IsShopNavButtonObjectName(candidate.name) ||
-                    !candidate.name.Equals(previewName, System.StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                GameObject sceneObject = candidate.gameObject;
-                if (IsLoadedSceneObject(sceneObject))
-                {
-                    return sceneObject;
-                }
-            }
-
-            return null;
-        }
-
-        private static void EnsurePreviewRenderersVisible(GameObject previewRoot)
-        {
-            if (previewRoot == null)
-            {
-                return;
-            }
-
-            SpriteRenderer[] spriteRenderers = previewRoot.GetComponentsInChildren<SpriteRenderer>(true);
-            for (int i = 0; i < spriteRenderers.Length; i++)
-            {
-                SpriteRenderer spriteRenderer = spriteRenderers[i];
-                if (spriteRenderer == null)
-                {
-                    continue;
-                }
-
-                spriteRenderer.enabled = true;
-                Color color = spriteRenderer.color;
-                color.a = 1f;
-                spriteRenderer.color = color;
-            }
-        }
-
-        private static string DescribeTransform(Transform target)
-        {
-            return target != null ? target.name : "none";
-        }
-
-        private Transform _resolvedCarouselPreviewRoot;
-
-        private Transform ResolveCarouselPreviewObjectsRoot()
-        {
-            if (_carouselPreviewObjectsRoot != null)
-            {
-                return _carouselPreviewObjectsRoot;
-            }
-
-            if (_resolvedCarouselPreviewRoot != null)
-            {
-                return _resolvedCarouselPreviewRoot;
-            }
-
-            Transform searchRoot = _visualRoot != null ? _visualRoot : transform;
-            if (searchRoot == null)
-            {
-                return null;
-            }
-
-            Transform weapons = FindChildTransformByName(searchRoot, "Weapons");
-            if (weapons != null)
-            {
-                _resolvedCarouselPreviewRoot = weapons;
-                return weapons;
-            }
-
-            Transform items = FindChildTransformByName(searchRoot, "Items");
-            if (items != null)
-            {
-                _resolvedCarouselPreviewRoot = items;
-                return items;
-            }
-
-            Transform previewContainer = FindShopPreviewContainerUnder(searchRoot);
-            _resolvedCarouselPreviewRoot = previewContainer != null ? previewContainer : searchRoot;
-            return _resolvedCarouselPreviewRoot;
-        }
-
-        private static Transform FindChildTransformByName(Transform searchRoot, string objectName)
-        {
-            if (searchRoot == null || string.IsNullOrWhiteSpace(objectName))
-            {
-                return null;
-            }
-
-            if (searchRoot.name.Equals(objectName, System.StringComparison.OrdinalIgnoreCase))
-            {
-                return searchRoot;
-            }
-
-            Transform[] transforms = searchRoot.GetComponentsInChildren<Transform>(true);
-            for (int i = 0; i < transforms.Length; i++)
-            {
-                Transform candidate = transforms[i];
-                if (candidate != null &&
-                    candidate.name.Equals(objectName, System.StringComparison.OrdinalIgnoreCase))
-                {
-                    return candidate;
-                }
-            }
-
-            return null;
-        }
-
-        private static Transform FindShopPreviewContainerUnder(Transform searchRoot)
-        {
-            if (searchRoot == null)
-            {
-                return null;
-            }
-
-            for (int i = 0; i < searchRoot.childCount; i++)
-            {
-                Transform child = searchRoot.GetChild(i);
-                if (child != null && HasDirectShopPreviewChild(child))
-                {
-                    return child;
-                }
-            }
-
-            return null;
-        }
-
-        private static bool HasDirectShopPreviewChild(Transform parent)
-        {
-            if (parent == null)
-            {
-                return false;
-            }
-
-            for (int i = 0; i < parent.childCount; i++)
-            {
-                Transform child = parent.GetChild(i);
-                if (child != null && IsShopPreviewObjectName(child.name))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private void EnsureLooseShopPreviewReparentedOnce()
-        {
-            if (_didReparentLooseShopPreview)
-            {
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(_reparentLooseRootPreviewByExactName))
-            {
-                _didReparentLooseShopPreview = true;
-                return;
-            }
-
-            Transform carouselRoot = ResolveCarouselPreviewObjectsRoot();
-            if (carouselRoot == null)
-            {
-                _didReparentLooseShopPreview = true;
-                return;
-            }
-
-            Transform loose = FindLoadedSceneRootTransformByExactName(_reparentLooseRootPreviewByExactName.Trim());
-            if (loose == null || loose == carouselRoot || IsDescendantOf(loose, carouselRoot))
-            {
-                _didReparentLooseShopPreview = true;
-                return;
-            }
-
-            loose.SetParent(carouselRoot, true);
-            loose.gameObject.SetActive(false);
-            _didReparentLooseShopPreview = true;
-
-            if (_debugShopPanelLogs)
-            {
-                Debug.Log(
-                    $"[ShopPanel_V2] Reparented loose preview '{loose.name}' under '{carouselRoot.name}' for carousel exclusivity.");
-            }
-        }
-
-        private static Transform FindLoadedSceneRootTransformByExactName(string exactName)
-        {
-            Transform[] transforms = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include);
-            for (int i = 0; i < transforms.Length; i++)
-            {
-                Transform t = transforms[i];
-                if (t == null || t.name != exactName || t.parent != null)
-                {
-                    continue;
-                }
-
-                if (!t.gameObject.scene.IsValid() || !t.gameObject.scene.isLoaded)
-                {
-                    continue;
-                }
-
-                return t;
-            }
-
-            return null;
-        }
-
-        private static bool IsDescendantOf(Transform node, Transform ancestor)
-        {
-            for (Transform walk = node; walk != null; walk = walk.parent)
-            {
-                if (walk == ancestor)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private bool TryBuildOwnedWeaponAmmoSubtitle(HeroWeaponDefinition_V2 weapon, out string subtitle)
-        {
-            subtitle = string.Empty;
-            if (_waveManager == null || weapon == null)
-            {
-                return false;
-            }
-
-            Hero_V2 hero = _waveManager.Hero;
-            if (hero == null || !hero.TryGetOwnedWeaponAmmo(
-                    weapon,
-                    out int mag,
-                    out int maxMag,
-                    out int reserve,
-                    out int maxReserve))
-            {
-                return false;
-            }
-
-            subtitle = ShopOfferStatsPresenter_V2.FormatOwnedWeaponAmmoDisplay(
-                weapon.WeaponType,
-                mag,
-                maxMag,
-                reserve,
-                maxReserve);
-            return true;
-        }
-
-        private string BuildOfferSubtitle(ShopOfferConfig_V2 offer)
-        {
-            if (_waveManager == null)
-            {
-                return string.Empty;
-            }
-
-            switch (offer.Kind)
-            {
-                case ShopOfferKind_V2.HealthPack:
-                    return _waveManager.IsHeroHealthFull()
-                        ? "HP full"
-                        : ShopMoneyFormat_V2.FormatCost(_waveManager.GetOfferEffectiveCost(offer));
-
-                case ShopOfferKind_V2.BunkerRepair:
-                    return _waveManager.IsBunkerFullHealth()
-                        ? "Bunker full"
-                        : ShopMoneyFormat_V2.FormatCost(_waveManager.GetOfferEffectiveCost(offer));
-
-                case ShopOfferKind_V2.BunkerMaxUpgrade:
-                    if (_waveManager.IsBunkerMaxAtCap())
-                    {
-                        return "Bunker max cap";
-                    }
-
-                    return $"{ShopMoneyFormat_V2.FormatCost(_waveManager.GetOfferEffectiveCost(offer))} (+max HP)";
-
-                case ShopOfferKind_V2.WeaponUnlock:
-                    if (offer.Weapon == null)
-                    {
-                        return string.Empty;
-                    }
-
-                    if (_waveManager.IsWeaponOwned(offer.Weapon))
-                    {
-                        if (TryBuildOwnedWeaponAmmoSubtitle(offer.Weapon, out string ammoSubtitle))
-                        {
-                            if (_waveManager.IsWeaponAmmoFull(offer.Weapon))
-                            {
-                                return $"{ammoSubtitle} · Full";
-                            }
-
-                            return $"{ammoSubtitle} · Refill {ShopMoneyFormat_V2.FormatCost(_waveManager.GetOfferEffectiveCost(offer))}";
-                        }
-
-                        if (_waveManager.IsWeaponAmmoFull(offer.Weapon))
-                        {
-                            return "Ammo full";
-                        }
-
-                        return $"Ammo {ShopMoneyFormat_V2.FormatCost(_waveManager.GetOfferEffectiveCost(offer))}";
-                    }
-
-                    string role = offer.Weapon != null && offer.Weapon.WeaponType == iStick2War.WeaponType.Minigun
-                        ? "Role: DPS"
-                        : offer.Weapon != null && offer.Weapon.WeaponType == iStick2War.WeaponType.Tesla
-                            ? "Role: Control"
-                            : "";
-                    return string.IsNullOrEmpty(role)
-                        ? ShopMoneyFormat_V2.FormatCost(offer.Cost)
-                        : $"{ShopMoneyFormat_V2.FormatCost(offer.Cost)} ({role})";
-
-                case ShopOfferKind_V2.AmmoRefill:
-                    if (offer.Weapon == null)
-                    {
-                        return "No weapon set";
-                    }
-
-                    if (!_waveManager.IsWeaponOwned(offer.Weapon))
-                    {
-                        return "Unlock weapon first";
-                    }
-
-                    return _waveManager.IsWeaponAmmoFull(offer.Weapon)
-                        ? "Ammo full"
-                        : ShopMoneyFormat_V2.FormatCost(offer.Cost);
-
-                default:
-                    return ShopMoneyFormat_V2.FormatCost(offer.Cost);
-            }
+            _offerStatsPresenter.RebuildBaselines(_visibleShopOffers, _waveManager);
+            _didRebuildOfferStatBaselines = true;
         }
 
         private string ResolveBuyButtonLabel(ShopOfferConfig_V2 offer)
         {
-            if (_waveManager == null)
+            if (_waveManager == null || offer == null)
             {
                 return _buyButtonDefaultLabel;
             }
@@ -2218,53 +594,175 @@ namespace iStick2War_V2
             }
         }
 
-        private void HandleMetaChanged(int wave, int currency, int bunkerHp)
+        private void BindCanvasShopButtons()
         {
-            Refresh();
+            EnsureShopNavUiButton("Shop_Btn_Previous", ShopTextButtonBehavior.CarouselPrevious);
+            EnsureShopNavUiButton("Shop_Btn_Next", ShopTextButtonBehavior.CarouselNext);
+            EnsureShopNavUiButton("Shop_Btn_Buy", ShopTextButtonBehavior.Buy);
+            EnsureShopNavUiButton("Shop_Btn_StartGame", ShopTextButtonBehavior.StartNextWave);
         }
 
-        private static void SetText(TMP_Text textField, string value)
+        private void EnsureShopNavUiButton(string exactName, ShopTextButtonBehavior behavior)
         {
-            if (textField != null)
-            {
-                textField.text = value;
-            }
-        }
-
-        private void ResolveSelectedOfferItemTextIfNeeded()
-        {
-            if (_selectedOfferItemText != null || string.IsNullOrWhiteSpace(_selectedOfferItemTextObjectName))
+            GameObject target = FindShopObjectByName(exactName);
+            if (target == null)
             {
                 return;
             }
 
-            _selectedOfferItemText = FindShopTmpByObjectName(_selectedOfferItemTextObjectName);
-
-            if (_selectedOfferItemText != null && _debugShopPanelLogs)
+            ShopNavArrowUiButton_V2 nav = target.GetComponent<ShopNavArrowUiButton_V2>();
+            if (nav == null)
             {
-                Debug.Log(
-                    $"[ShopPanel_V2] Bound selected offer item text '{_selectedOfferItemTextObjectName}' " +
-                    $"-> '{_selectedOfferItemText.name}'.");
+                nav = target.AddComponent<ShopNavArrowUiButton_V2>();
             }
+
+            if (behavior == ShopTextButtonBehavior.CarouselPrevious)
+            {
+                nav.Configure(this, ShopNavArrow_V2.ArrowDirection.Previous);
+            }
+            else if (behavior == ShopTextButtonBehavior.CarouselNext)
+            {
+                nav.Configure(this, ShopNavArrow_V2.ArrowDirection.Next);
+            }
+            else
+            {
+                nav.Configure(this, behavior, _waveManager);
+            }
+        }
+
+        private void ResetShopNavPressedVisuals()
+        {
+            ShopNavArrowUiButton_V2[] navButtons = GetComponentsInChildren<ShopNavArrowUiButton_V2>(true);
+            for (int i = 0; i < navButtons.Length; i++)
+            {
+                ShopNavArrowUiButton_V2 navButton = navButtons[i];
+                if (navButton != null)
+                {
+                    navButton.ResetToNormalVisual();
+                }
+            }
+        }
+
+        private void ResolveUiReferencesIfNeeded()
+        {
+            if (_didResolveUi)
+            {
+                return;
+            }
+
+            if (_shopChromeRoot == null)
+            {
+                if (gameObject.name.Equals(ShopChromeRootName, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    _shopChromeRoot = gameObject;
+                }
+                else
+                {
+                    _shopChromeRoot = FindSceneObjectByName(ShopChromeRootName);
+                }
+            }
+
+            Transform scopeRoot = _shopChromeRoot != null ? _shopChromeRoot.transform : transform;
+            _uiScope = FindNamedChildRecursive(scopeRoot, ShopCanvasName);
+            if (_uiScope == null)
+            {
+                _uiScope = scopeRoot;
+            }
+
+            _shopGridScope = FindNamedChildRecursive(_uiScope, "ShopGrid");
+
+            if (_titleText == null)
+            {
+                _titleText = FindShopTmpByObjectName("txt_shop_title");
+            }
+
+            if (_currencyText == null)
+            {
+                _currencyText = FindShopTmpByObjectName("txt_shop_money");
+            }
+
+            if (_selectedOfferItemText == null && !string.IsNullOrEmpty(_selectedOfferItemTextObjectName))
+            {
+                _selectedOfferItemText = FindShopTmpByObjectName(_selectedOfferItemTextObjectName);
+            }
+
+            if (_shopItemImage == null)
+            {
+                GameObject imageGo = FindShopObjectByName("ShopItemImage");
+                if (imageGo != null)
+                {
+                    _shopItemImage = imageGo.GetComponent<Image>();
+                }
+            }
+
+            CacheShopItemImageBaseSizeIfNeeded();
+
+            if (_buyButtonLabelText == null)
+            {
+                GameObject buyButton = FindShopObjectByName("Shop_Btn_Buy");
+                if (buyButton != null)
+                {
+                    _buyButtonLabelText = buyButton.GetComponentInChildren<TMP_Text>(true);
+                }
+            }
+
+            _didResolveUi = true;
+        }
+
+        private void SetChromeVisible(bool visible)
+        {
+            GameObject chrome = _shopChromeRoot != null ? _shopChromeRoot : gameObject;
+            chrome.SetActive(visible);
+            if (!visible)
+            {
+                return;
+            }
+
+            Canvas[] canvases = chrome.GetComponentsInChildren<Canvas>(true);
+            for (int i = 0; i < canvases.Length; i++)
+            {
+                Canvas canvas = canvases[i];
+                if (canvas != null)
+                {
+                    canvas.enabled = true;
+                }
+            }
+        }
+
+        private TMP_Text FindShopTmpByObjectName(string exactName)
+        {
+            if (string.IsNullOrEmpty(exactName) || _uiScope == null)
+            {
+                return null;
+            }
+
+            TMP_Text[] texts = _uiScope.GetComponentsInChildren<TMP_Text>(true);
+            for (int i = 0; i < texts.Length; i++)
+            {
+                TMP_Text text = texts[i];
+                if (text != null && text.gameObject.name.Equals(exactName, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return text;
+                }
+            }
+
+            return null;
         }
 
         private enum ShopStatTmpBindingSlot
         {
-            Any,
             Label,
             Value,
         }
 
-        private TMP_Text FindShopStatLabelTmpForBinding(string objectName)
+        private TMP_Text FindShopStatLabelTmpForBinding(string exactName)
         {
-            return RegisterShopStatTmpBinding(
-                FindShopTmpByObjectName(objectName, allowTextContentFallback: true, slot: ShopStatTmpBindingSlot.Label));
+            return RegisterShopStatTmpBinding(FindShopStatTmpForBinding(exactName, ShopStatTmpBindingSlot.Label));
         }
 
-        private TMP_Text FindShopStatValueTmpForBinding(string objectName)
+        private TMP_Text FindShopStatValueTmpForBinding(string exactName)
         {
-            return RegisterShopStatTmpBinding(
-                FindShopTmpByObjectName(objectName, allowTextContentFallback: true, slot: ShopStatTmpBindingSlot.Value));
+            return RegisterShopStatTmpBinding(FindShopStatTmpForBinding(exactName, ShopStatTmpBindingSlot.Value));
         }
 
         private TMP_Text RegisterShopStatTmpBinding(TMP_Text match)
@@ -2277,113 +775,94 @@ namespace iStick2War_V2
             return match;
         }
 
-        private TMP_Text FindShopStatLabelNearValue(TMP_Text valueText, string labelObjectName, string[] labelAlternateNames)
+        private TMP_Text FindShopStatTmpForBinding(string exactName, ShopStatTmpBindingSlot slot)
         {
-            if (valueText == null)
+            if (string.IsNullOrEmpty(exactName))
             {
                 return null;
             }
 
-            TMP_Text match = FindShopStatLabelNearValueOnParent(valueText.transform.parent, labelObjectName);
-            if (match != null)
-            {
-                return match;
-            }
-
-            if (labelAlternateNames == null)
+            Transform scope = _shopGridScope != null ? _shopGridScope : _uiScope;
+            if (scope == null)
             {
                 return null;
             }
 
-            for (int i = 0; i < labelAlternateNames.Length; i++)
+            string normalizedTarget = NormalizeShopUiName(exactName);
+            TMP_Text[] texts = scope.GetComponentsInChildren<TMP_Text>(true);
+            TMP_Text best = null;
+            int bestScore = int.MinValue;
+            for (int i = 0; i < texts.Length; i++)
             {
-                match = FindShopStatLabelNearValueOnParent(valueText.transform.parent, labelAlternateNames[i]);
-                if (match != null)
+                TMP_Text text = texts[i];
+                if (text == null ||
+                    _statTmpBindingUsed.Contains(text) ||
+                    !text.gameObject.name.Equals(exactName, System.StringComparison.OrdinalIgnoreCase) ||
+                    !MatchesBindingSlot(text, slot))
                 {
-                    return match;
+                    continue;
+                }
+
+                int score = ScoreShopStatTmpCandidate(text, normalizedTarget);
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = text;
                 }
             }
 
-            return null;
+            return best;
         }
 
-        private TMP_Text FindShopStatLabelNearValueOnParent(Transform parent, string labelObjectName)
+        private static int ScoreShopStatTmpCandidate(TMP_Text candidate, string normalizedTarget)
         {
-            if (parent == null || string.IsNullOrWhiteSpace(labelObjectName))
+            int score = 0;
+            if (candidate.gameObject.activeInHierarchy)
             {
-                return null;
+                score += 8;
             }
 
-            string normalizedTarget = NormalizeShopUiName(labelObjectName);
-            Transform[] transforms = parent.GetComponentsInChildren<Transform>(true);
-            for (int i = 0; i < transforms.Length; i++)
+            string normalizedObjectName = NormalizeShopUiName(candidate.gameObject.name);
+            if (normalizedObjectName.Equals(normalizedTarget, System.StringComparison.Ordinal))
             {
-                Transform candidate = transforms[i];
-                if (candidate == null)
-                {
-                    continue;
-                }
-
-                string normalizedCandidateName = NormalizeShopUiName(candidate.name);
-                bool nameMatches = normalizedCandidateName.Equals(normalizedTarget, System.StringComparison.Ordinal) ||
-                                   MatchesArmorPenLabelFuzzy(normalizedTarget, normalizedCandidateName);
-                if (!nameMatches)
-                {
-                    continue;
-                }
-
-                TMP_Text labelText = GetTmpOnTransform(candidate);
-                if (labelText == null ||
-                    _statTmpBindingUsed.Contains(labelText) ||
-                    !MatchesBindingSlot(labelText, ShopStatTmpBindingSlot.Label))
-                {
-                    continue;
-                }
-
-                _statTmpBindingUsed.Add(labelText);
-                return labelText;
+                score += 200;
             }
 
-            return null;
+            string normalizedText = NormalizeShopUiName(candidate.text);
+            if (normalizedText.Equals(normalizedTarget, System.StringComparison.Ordinal))
+            {
+                // Scene placeholders often copy the object name into m_text — prefer another match.
+                score -= 80;
+            }
+
+            return score;
         }
 
-        private TMP_Text FindShopTmpByObjectName(
-            string objectName,
-            bool allowTextContentFallback = false,
-            ShopStatTmpBindingSlot slot = ShopStatTmpBindingSlot.Any)
+        private static bool MatchesBindingSlot(TMP_Text text, ShopStatTmpBindingSlot slot)
         {
-            if (string.IsNullOrWhiteSpace(objectName))
+            if (text == null)
             {
-                return null;
+                return false;
             }
 
-            string normalizedTarget = NormalizeShopUiName(objectName);
-            if (string.IsNullOrEmpty(normalizedTarget))
+            string objectName = NormalizeShopUiName(text.gameObject.name);
+            bool looksLikeValue = objectName.Contains("value", System.StringComparison.Ordinal);
+            bool looksLikeLabel =
+                objectName.Contains("label", System.StringComparison.Ordinal) ||
+                objectName.Contains("labael", System.StringComparison.Ordinal) ||
+                objectName.Contains("labeal", System.StringComparison.Ordinal);
+
+            if (slot == ShopStatTmpBindingSlot.Label)
             {
-                return null;
+                return !looksLikeValue || looksLikeLabel;
             }
 
-            List<TMP_Text> matches = new List<TMP_Text>();
-            CollectShopStatTmpMatches(normalizedTarget, matches, matchTextContent: false, slot);
-            TMP_Text best = PickBestShopStatTmp(matches, normalizedTarget);
-            if (best != null)
-            {
-                return best;
-            }
-
-            if (!allowTextContentFallback || !normalizedTarget.StartsWith("txt_shop_stat", System.StringComparison.Ordinal))
-            {
-                return null;
-            }
-
-            matches.Clear();
-            CollectShopStatTmpMatches(normalizedTarget, matches, matchTextContent: true, slot);
-            return PickBestShopStatTmp(matches, normalizedTarget);
+            return !looksLikeLabel || looksLikeValue;
         }
 
         private void SuppressUnboundDuplicateShopStatTmps()
         {
-            Transform statsRoot = ResolveShopStatsContainerRoot();
+            Transform statsRoot = _shopGridScope != null ? _shopGridScope : _uiScope;
             if (statsRoot == null)
             {
                 return;
@@ -2404,18 +883,6 @@ namespace iStick2War_V2
             }
         }
 
-        private Transform ResolveShopStatsContainerRoot()
-        {
-            GameObject panel = FindShopObjectByName("panel_shop_stats");
-            if (panel != null)
-            {
-                return panel.transform;
-            }
-
-            panel = FindShopObjectByName("ShopStatsContainer");
-            return panel != null ? panel.transform : null;
-        }
-
         private static bool IsShopStatObjectName(string objectName)
         {
             if (string.IsNullOrWhiteSpace(objectName))
@@ -2430,348 +897,6 @@ namespace iStick2War_V2
             }
 
             return normalized.StartsWith("txt_shop_stat", System.StringComparison.Ordinal);
-        }
-
-        private void CollectShopStatTmpMatches(
-            string normalizedTarget,
-            List<TMP_Text> matches,
-            bool matchTextContent,
-            ShopStatTmpBindingSlot slot)
-        {
-            if (matches == null || string.IsNullOrEmpty(normalizedTarget))
-            {
-                return;
-            }
-
-            Transform[] searchRoots =
-            {
-                _visualRoot,
-                transform,
-            };
-
-            for (int rootIndex = 0; rootIndex < searchRoots.Length; rootIndex++)
-            {
-                Transform searchRoot = searchRoots[rootIndex];
-                if (searchRoot == null)
-                {
-                    continue;
-                }
-
-                CollectShopStatTmpMatchesUnderRoot(searchRoot, normalizedTarget, matches, matchTextContent, slot);
-            }
-
-            TMP_Text[] allTexts = Object.FindObjectsByType<TMP_Text>(FindObjectsInactive.Include);
-            for (int i = 0; i < allTexts.Length; i++)
-            {
-                TryAddShopStatTmpMatchFromText(allTexts[i], normalizedTarget, matches, matchTextContent, slot);
-            }
-        }
-
-        private void CollectShopStatTmpMatchesUnderRoot(
-            Transform searchRoot,
-            string normalizedTarget,
-            List<TMP_Text> matches,
-            bool matchTextContent,
-            ShopStatTmpBindingSlot slot)
-        {
-            Transform[] transforms = searchRoot.GetComponentsInChildren<Transform>(true);
-            for (int i = 0; i < transforms.Length; i++)
-            {
-                TryAddShopStatTmpMatch(transforms[i], normalizedTarget, matches, matchTextContent, slot);
-            }
-        }
-
-        private void TryAddShopStatTmpMatch(
-            Transform candidate,
-            string normalizedTarget,
-            List<TMP_Text> matches,
-            bool matchTextContent,
-            ShopStatTmpBindingSlot slot)
-        {
-            if (candidate == null)
-            {
-                return;
-            }
-
-            string normalizedCandidateName = NormalizeShopUiName(candidate.name);
-            bool transformNameMatches = normalizedCandidateName.Equals(normalizedTarget, System.StringComparison.Ordinal);
-            bool fuzzyArmorPenLabelMatch =
-                slot == ShopStatTmpBindingSlot.Label &&
-                MatchesArmorPenLabelFuzzy(normalizedTarget, normalizedCandidateName);
-            TMP_Text text = GetTmpOnTransform(candidate);
-            if (text == null || _statTmpBindingUsed.Contains(text) || matches.Contains(text))
-            {
-                return;
-            }
-
-            if (!MatchesBindingSlot(text, slot))
-            {
-                return;
-            }
-
-            if (transformNameMatches || fuzzyArmorPenLabelMatch)
-            {
-                matches.Add(text);
-                return;
-            }
-
-            if (matchTextContent &&
-                NormalizeShopUiName(text.text).Equals(normalizedTarget, System.StringComparison.Ordinal) &&
-                MatchesStatObjectIdentity(text, normalizedTarget))
-            {
-                matches.Add(text);
-            }
-        }
-
-        private void TryAddShopStatTmpMatchFromText(
-            TMP_Text text,
-            string normalizedTarget,
-            List<TMP_Text> matches,
-            bool matchTextContent,
-            ShopStatTmpBindingSlot slot)
-        {
-            if (text == null || _statTmpBindingUsed.Contains(text) || matches.Contains(text))
-            {
-                return;
-            }
-
-            if (!MatchesBindingSlot(text, slot))
-            {
-                return;
-            }
-
-            if (NormalizeShopUiName(text.gameObject.name).Equals(normalizedTarget, System.StringComparison.Ordinal) ||
-                HasAncestorWithNormalizedName(text.transform, normalizedTarget) ||
-                (slot == ShopStatTmpBindingSlot.Label &&
-                 MatchesArmorPenLabelFuzzy(normalizedTarget, NormalizeShopUiName(text.gameObject.name))))
-            {
-                matches.Add(text);
-                return;
-            }
-
-            if (matchTextContent &&
-                NormalizeShopUiName(text.text).Equals(normalizedTarget, System.StringComparison.Ordinal) &&
-                MatchesStatObjectIdentity(text, normalizedTarget))
-            {
-                matches.Add(text);
-            }
-        }
-
-        private static bool MatchesStatObjectIdentity(TMP_Text text, string normalizedTarget)
-        {
-            if (text == null || string.IsNullOrEmpty(normalizedTarget))
-            {
-                return false;
-            }
-
-            string normalizedObjectName = NormalizeShopUiName(text.gameObject.name);
-            if (normalizedObjectName.Equals(normalizedTarget, System.StringComparison.Ordinal))
-            {
-                return true;
-            }
-
-            if (HasAncestorWithNormalizedName(text.transform, normalizedTarget))
-            {
-                return true;
-            }
-
-            return MatchesArmorPenLabelFuzzy(normalizedTarget, normalizedObjectName);
-        }
-
-        private static bool MatchesArmorPenLabelFuzzy(string normalizedTarget, string normalizedCandidateName)
-        {
-            if (!normalizedTarget.Contains("armor_pen_label", System.StringComparison.Ordinal))
-            {
-                return false;
-            }
-
-            if (!normalizedCandidateName.Contains("armor", System.StringComparison.Ordinal))
-            {
-                return false;
-            }
-
-            if (!normalizedCandidateName.Contains("pen", System.StringComparison.Ordinal) &&
-                !normalizedCandidateName.Contains("pe_n", System.StringComparison.Ordinal))
-            {
-                return false;
-            }
-
-            if (normalizedCandidateName.Contains("value", System.StringComparison.Ordinal))
-            {
-                return false;
-            }
-
-            return normalizedCandidateName.Contains("label", System.StringComparison.Ordinal) ||
-                   normalizedCandidateName.Contains("labael", System.StringComparison.Ordinal) ||
-                   normalizedCandidateName.Contains("labeal", System.StringComparison.Ordinal);
-        }
-
-        private static bool MatchesBindingSlot(TMP_Text text, ShopStatTmpBindingSlot slot)
-        {
-            if (text == null || slot == ShopStatTmpBindingSlot.Any)
-            {
-                return true;
-            }
-
-            string objectName = NormalizeShopUiName(text.gameObject.name);
-            string hierarchyNames = GetNormalizedHierarchyNames(text.transform);
-            bool looksLikeValue =
-                objectName.Contains("value", System.StringComparison.Ordinal) ||
-                hierarchyNames.Contains("value", System.StringComparison.Ordinal);
-            bool looksLikeLabel =
-                objectName.Contains("label", System.StringComparison.Ordinal) ||
-                objectName.Contains("labael", System.StringComparison.Ordinal) ||
-                objectName.Contains("labeal", System.StringComparison.Ordinal) ||
-                hierarchyNames.Contains("label", System.StringComparison.Ordinal) ||
-                hierarchyNames.Contains("labael", System.StringComparison.Ordinal) ||
-                hierarchyNames.Contains("labeal", System.StringComparison.Ordinal);
-
-            if (slot == ShopStatTmpBindingSlot.Label)
-            {
-                return !looksLikeValue || looksLikeLabel;
-            }
-
-            return !looksLikeLabel || looksLikeValue;
-        }
-
-        private static string GetNormalizedHierarchyNames(Transform node)
-        {
-            if (node == null)
-            {
-                return string.Empty;
-            }
-
-            System.Text.StringBuilder builder = new System.Text.StringBuilder();
-            Transform walk = node;
-            while (walk != null)
-            {
-                builder.Append(NormalizeShopUiName(walk.name));
-                walk = walk.parent;
-            }
-
-            return builder.ToString();
-        }
-
-        private static bool HasAncestorWithNormalizedName(Transform node, string normalizedTarget)
-        {
-            Transform walk = node != null ? node.parent : null;
-            while (walk != null)
-            {
-                if (NormalizeShopUiName(walk.name).Equals(normalizedTarget, System.StringComparison.Ordinal))
-                {
-                    return true;
-                }
-
-                walk = walk.parent;
-            }
-
-            return false;
-        }
-
-        private TMP_Text PickBestShopStatTmp(List<TMP_Text> matches, string normalizedTarget)
-        {
-            if (matches == null || matches.Count == 0)
-            {
-                return null;
-            }
-
-            Transform preferredRoot = _visualRoot != null ? _visualRoot : transform;
-            TMP_Text best = null;
-            int bestScore = int.MinValue;
-            for (int i = 0; i < matches.Count; i++)
-            {
-                TMP_Text candidate = matches[i];
-                if (candidate == null)
-                {
-                    continue;
-                }
-
-                int score = ScoreShopStatTmpCandidate(candidate, normalizedTarget, preferredRoot);
-                if (score > bestScore)
-                {
-                    bestScore = score;
-                    best = candidate;
-                }
-            }
-
-            return best;
-        }
-
-        private static int ScoreShopStatTmpCandidate(TMP_Text candidate, string normalizedTarget, Transform preferredRoot)
-        {
-            int score = 0;
-            if (candidate.gameObject.activeInHierarchy)
-            {
-                score += 8;
-            }
-
-            if (preferredRoot != null && candidate.transform.IsChildOf(preferredRoot))
-            {
-                score += 16;
-            }
-
-            string normalizedObjectName = NormalizeShopUiName(candidate.gameObject.name);
-            if (!string.IsNullOrEmpty(normalizedTarget) &&
-                normalizedObjectName.Equals(normalizedTarget, System.StringComparison.Ordinal))
-            {
-                score += 200;
-            }
-            else if (!string.IsNullOrEmpty(normalizedTarget) &&
-                     MatchesArmorPenLabelFuzzy(normalizedTarget, normalizedObjectName))
-            {
-                score += 180;
-            }
-            else if (HasAncestorWithNormalizedName(candidate.transform, normalizedTarget))
-            {
-                score += 150;
-            }
-
-            if (candidate.rectTransform != null)
-            {
-                Vector2 size = candidate.rectTransform.sizeDelta;
-                if (size.x > 4f || size.y > 4f)
-                {
-                    score += 24;
-                }
-
-                if (Mathf.Abs(candidate.rectTransform.anchoredPosition.x) > 0.5f ||
-                    Mathf.Abs(candidate.rectTransform.anchoredPosition.y) > 0.5f)
-                {
-                    score += 12;
-                }
-            }
-
-            string normalizedText = NormalizeShopUiName(candidate.text);
-            if (!string.IsNullOrEmpty(normalizedTarget) &&
-                normalizedText.Equals(normalizedTarget, System.StringComparison.Ordinal))
-            {
-                score += 6;
-            }
-            else if (!string.IsNullOrEmpty(normalizedTarget) &&
-                     !string.IsNullOrEmpty(normalizedText) &&
-                     !normalizedText.Equals(normalizedTarget, System.StringComparison.Ordinal) &&
-                     normalizedText.Contains("txt_shop_stat", System.StringComparison.Ordinal))
-            {
-                score -= 80;
-            }
-
-            return score;
-        }
-
-        private static TMP_Text GetTmpOnTransform(Transform transformNode)
-        {
-            if (transformNode == null)
-            {
-                return null;
-            }
-
-            TMP_Text text = transformNode.GetComponent<TMP_Text>();
-            if (text != null)
-            {
-                return text;
-            }
-
-            return transformNode.GetComponentInChildren<TMP_Text>(true);
         }
 
         private static string NormalizeShopUiName(string name)
@@ -2802,767 +927,101 @@ namespace iStick2War_V2
                 builder.Append(char.ToLowerInvariant(character));
             }
 
-            while (builder.Length > 0 && builder[builder.Length - 1] == '_')
-            {
-                builder.Length--;
-            }
-
             return builder.ToString();
         }
 
-        private static bool IsShopPreviewSprite(SpriteRenderer spriteRenderer)
+        private TMP_Text FindShopStatLabelNearValue(TMP_Text valueText, string primaryLabelName, string[] alternateNames)
         {
-            if (spriteRenderer == null)
+            TMP_Text match = FindShopStatLabelTmpForBinding(primaryLabelName);
+            if (match != null)
             {
-                return false;
+                return match;
             }
 
-            Transform walk = spriteRenderer.transform;
-            while (walk != null)
+            if (alternateNames == null)
             {
-                if (IsShopPreviewObjectName(walk.name))
+                return null;
+            }
+
+            for (int i = 0; i < alternateNames.Length; i++)
+            {
+                match = FindShopStatLabelTmpForBinding(alternateNames[i]);
+                if (match != null)
                 {
-                    return true;
+                    return match;
                 }
-
-                walk = walk.parent;
             }
 
-            return false;
+            return null;
         }
 
-        private void SetVisualComponentsVisible(bool visible)
+        private GameObject FindShopObjectByName(string exactName)
         {
-            ResolveShopUiCanvasesIfNeeded();
-
-            if (!_toggleVisualComponentsOnShowHide)
+            if (string.IsNullOrEmpty(exactName) || _uiScope == null)
             {
-                for (int i = 0; i < _resolvedShopUiCanvases.Count; i++)
-                {
-                    Canvas canvas = _resolvedShopUiCanvases[i];
-                    if (canvas != null)
-                    {
-                        SetShopCanvasHierarchyVisible(canvas, visible);
-                    }
-                }
-
-                return;
+                return null;
             }
 
-            Transform root = _visualRoot != null ? _visualRoot : transform;
-            SpriteRenderer[] spriteRenderers = root.GetComponentsInChildren<SpriteRenderer>(true);
-            for (int i = 0; i < spriteRenderers.Length; i++)
+            Transform[] transforms = _uiScope.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < transforms.Length; i++)
             {
-                SpriteRenderer spriteRenderer = spriteRenderers[i];
-                if (spriteRenderer == null || IsShopTextButtonSprite(spriteRenderer))
-                {
-                    continue;
-                }
-
-                if (IsShopPreviewSprite(spriteRenderer))
-                {
-                    if (visible)
-                    {
-                        spriteRenderer.gameObject.SetActive(true);
-                    }
-
-                    spriteRenderer.enabled = visible;
-                    if (!visible)
-                    {
-                        spriteRenderer.gameObject.SetActive(false);
-                    }
-
-                    continue;
-                }
-
-                spriteRenderer.enabled = visible;
-            }
-
-            if (_toggleCanvases)
-            {
-                Canvas[] canvases = root.GetComponentsInChildren<Canvas>(true);
-                for (int i = 0; i < canvases.Length; i++)
-                {
-                    if (canvases[i] != null)
-                    {
-                        canvases[i].enabled = visible;
-                    }
-                }
-            }
-
-            if (_toggleGraphics)
-            {
-                Graphic[] graphics = root.GetComponentsInChildren<Graphic>(true);
-                for (int i = 0; i < graphics.Length; i++)
-                {
-                    if (graphics[i] != null)
-                    {
-                        graphics[i].enabled = visible;
-                    }
-                }
-            }
-
-            for (int i = 0; i < _resolvedShopUiCanvases.Count; i++)
-            {
-                Canvas canvas = _resolvedShopUiCanvases[i];
-                if (canvas != null)
-                {
-                    SetShopCanvasHierarchyVisible(canvas, visible);
-                }
-            }
-
-            if (_debugShopPanelLogs)
-            {
-                Debug.Log($"[ShopPanel_V2] SetVisualComponentsVisible={visible}");
-            }
-        }
-
-        private void ResolveShopUiCanvasesIfNeeded()
-        {
-            if (_didResolveShopUiCanvases)
-            {
-                return;
-            }
-
-            _resolvedShopUiCanvases.Clear();
-
-            string[] names =
-            {
-                "txt_shop_money",
-                "txt_shop_buy",
-                "txt_shop_startGame",
-                "txt_shop_previous",
-                "txt_shop_prev",
-                "txt_shop_next",
-                "txt_shop_item",
-            };
-
-            TMP_Text[] allTexts = UnityEngine.Object.FindObjectsByType<TMP_Text>(FindObjectsInactive.Include);
-            HashSet<Canvas> unique = new HashSet<Canvas>();
-
-            for (int n = 0; n < names.Length; n++)
-            {
-                string targetName = names[n];
-                for (int i = 0; i < allTexts.Length; i++)
-                {
-                    TMP_Text text = allTexts[i];
-                    if (text == null)
-                    {
-                        continue;
-                    }
-
-                    if (!text.gameObject.name.Equals(targetName, System.StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
-
-                    Canvas canvas = text.GetComponentInParent<Canvas>(true);
-                    if (canvas != null && !IsLifeOverShopCanvas(canvas))
-                    {
-                        unique.Add(canvas);
-                    }
-
-                    break;
-                }
-            }
-
-            foreach (Canvas canvas in unique)
-            {
-                _resolvedShopUiCanvases.Add(canvas);
-            }
-
-            _didResolveShopUiCanvases = true;
-
-            if (_debugShopPanelLogs)
-            {
-                Debug.Log($"[ShopPanel_V2] Resolved shop UI canvases: {_resolvedShopUiCanvases.Count}");
-            }
-        }
-
-        private Transform FindLifeOverCanvasTransform()
-        {
-            const string canvasName = "LifeOver-canvas";
-            Transform underLifeOverChrome = FindLifeOverCanvasUnderChromeRoot(canvasName);
-            if (underLifeOverChrome != null)
-            {
-                return underLifeOverChrome;
-            }
-
-            Transform[] underShop = transform.GetComponentsInChildren<Transform>(true);
-            for (int i = 0; i < underShop.Length; i++)
-            {
-                Transform candidate = underShop[i];
+                Transform candidate = transforms[i];
                 if (candidate != null &&
-                    candidate.gameObject.name.Equals(canvasName, System.StringComparison.OrdinalIgnoreCase))
+                    candidate.gameObject.name.Equals(exactName, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return candidate.gameObject;
+                }
+            }
+
+            return null;
+        }
+
+        private static GameObject FindSceneObjectByName(string exactName)
+        {
+            GameObject[] objects = Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include);
+            for (int i = 0; i < objects.Length; i++)
+            {
+                GameObject candidate = objects[i];
+                if (candidate != null &&
+                    candidate.name.Equals(exactName, System.StringComparison.OrdinalIgnoreCase))
                 {
                     return candidate;
                 }
             }
 
-            GameObject[] roots = UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects();
-            for (int r = 0; r < roots.Length; r++)
+            return null;
+        }
+
+        private static Transform FindNamedChildRecursive(Transform root, string exactName)
+        {
+            if (root == null || string.IsNullOrEmpty(exactName))
             {
-                Transform[] inRoot = roots[r].GetComponentsInChildren<Transform>(true);
-                for (int i = 0; i < inRoot.Length; i++)
+                return null;
+            }
+
+            if (root.name.Equals(exactName, System.StringComparison.OrdinalIgnoreCase))
+            {
+                return root;
+            }
+
+            for (int i = 0; i < root.childCount; i++)
+            {
+                Transform child = root.GetChild(i);
+                Transform found = FindNamedChildRecursive(child, exactName);
+                if (found != null)
                 {
-                    Transform candidate = inRoot[i];
-                    if (candidate != null &&
-                        candidate.gameObject.name.Equals(canvasName, System.StringComparison.OrdinalIgnoreCase))
-                    {
-                        return candidate;
-                    }
+                    return found;
                 }
             }
 
             return null;
         }
 
-        private static Transform FindLifeOverCanvasUnderChromeRoot(string canvasName)
+        private static void SetText(TMP_Text textField, string value)
         {
-            GameObject[] roots = UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects();
-            for (int r = 0; r < roots.Length; r++)
+            if (textField != null)
             {
-                Transform[] inRoot = roots[r].GetComponentsInChildren<Transform>(true);
-                for (int i = 0; i < inRoot.Length; i++)
-                {
-                    Transform candidate = inRoot[i];
-                    if (candidate == null ||
-                        !candidate.gameObject.name.Equals(canvasName, System.StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
-
-                    Transform walk = candidate.parent;
-                    while (walk != null)
-                    {
-                        if (walk.gameObject.name.IndexOf("LifeOver V2", System.StringComparison.OrdinalIgnoreCase) >= 0)
-                        {
-                            return candidate;
-                        }
-
-                        walk = walk.parent;
-                    }
-                }
-            }
-
-            return null;
-        }
-
-        private static bool IsLifeOverShopCanvas(Canvas canvas)
-        {
-            if (canvas == null)
-            {
-                return false;
-            }
-
-            string name = canvas.gameObject.name;
-            return name.Equals("LifeOver-canvas", System.StringComparison.OrdinalIgnoreCase) ||
-                   name.IndexOf("LifeOver", System.StringComparison.OrdinalIgnoreCase) >= 0;
-        }
-
-        private static void SetShopCanvasHierarchyVisible(Canvas canvas, bool visible)
-        {
-            if (canvas == null || IsLifeOverShopCanvas(canvas))
-            {
-                return;
-            }
-
-            GameObject root = canvas.gameObject;
-            if (root.activeSelf != visible)
-            {
-                root.SetActive(visible);
-            }
-
-            canvas.enabled = visible;
-        }
-
-        private void CacheVisualRootTransform()
-        {
-            Transform root = _visualRoot != null ? _visualRoot : transform;
-            _cachedVisualRootLocalPosition = root.localPosition;
-            _cachedVisualRootLocalRotation = root.localRotation;
-            _cachedVisualRootLocalScale = root.localScale;
-            _cachedVisualRootWorldPosition = root.position;
-            _cachedVisualRootWorldRotation = root.rotation;
-            _hasCachedVisualRootTransform = true;
-        }
-
-        private void RestoreVisualRootTransformIfNeeded()
-        {
-            if (!_lockVisualRootTransformOnShow)
-            {
-                return;
-            }
-
-            Transform root = _visualRoot != null ? _visualRoot : transform;
-            if (!_hasCachedVisualRootTransform)
-            {
-                CacheVisualRootTransform();
-            }
-
-            root.SetPositionAndRotation(_cachedVisualRootWorldPosition, _cachedVisualRootWorldRotation);
-            root.localPosition = _cachedVisualRootLocalPosition;
-            root.localRotation = _cachedVisualRootLocalRotation;
-            root.localScale = _cachedVisualRootLocalScale;
-
-            if (_debugShopPanelLogs)
-            {
-                Debug.Log($"[ShopPanel_V2] Restored visual root transform. localPos={root.localPosition}");
-            }
-        }
-
-        private void MaybeDetachFromScaledParent()
-        {
-            if (!_detachFromScaledParentOnInitialize)
-            {
-                return;
-            }
-
-            Transform root = _visualRoot != null ? _visualRoot : transform;
-            Transform parent = root.parent;
-            if (parent == null)
-            {
-                return;
-            }
-
-            Vector3 s = parent.lossyScale;
-            bool parentScaleIsNormal =
-                Mathf.Approximately(s.x, 1f) &&
-                Mathf.Approximately(s.y, 1f) &&
-                Mathf.Approximately(s.z, 1f);
-            if (parentScaleIsNormal)
-            {
-                return;
-            }
-
-            root.SetParent(null, true);
-            if (_debugShopPanelLogs)
-            {
-                Debug.Log($"[ShopPanel_V2] Detached visual root from scaled parent '{parent.name}' (lossyScale={s}).");
-            }
-        }
-
-        private Camera ResolveCamera()
-        {
-            if (_lockCamera != null)
-            {
-                return _lockCamera;
-            }
-
-            return Camera.main;
-        }
-
-        // Screen Space Camera canvases (Shop-canvas) often serialize scale 0; Scene view gizmos then diverge from Game view.
-        private void EnsureShopUiCanvasesLayout()
-        {
-            ResolveShopUiCanvasesIfNeeded();
-
-            var canvases = new HashSet<Canvas>();
-            Canvas[] underRoot = GetComponentsInChildren<Canvas>(true);
-            for (int i = 0; i < underRoot.Length; i++)
-            {
-                if (underRoot[i] != null)
-                {
-                    canvases.Add(underRoot[i]);
-                }
-            }
-
-            for (int i = 0; i < _resolvedShopUiCanvases.Count; i++)
-            {
-                Canvas canvas = _resolvedShopUiCanvases[i];
-                if (canvas != null)
-                {
-                    canvases.Add(canvas);
-                }
-            }
-
-            Camera camera = ResolveCamera();
-            foreach (Canvas canvas in canvases)
-            {
-                if (canvas == null || IsLifeOverShopCanvas(canvas))
-                {
-                    continue;
-                }
-
-                if (canvas.transform is RectTransform rect && rect.localScale.sqrMagnitude < 0.001f)
-                {
-                    rect.localScale = Vector3.one;
-                }
-
-                if (canvas.renderMode == RenderMode.ScreenSpaceCamera && canvas.worldCamera == null && camera != null)
-                {
-                    canvas.worldCamera = camera;
-                }
-
-                canvas.enabled = true;
-                if (IsShopPanelManagedUiCanvas(canvas))
-                {
-                    ApplyShopPanelCanvasVisibleLayout(canvas);
-                }
-                else if (!LifeOverRuntimeLayout_V2.IsInspectorLayoutAuthoritativeForCanvas(canvas.gameObject))
-                {
-                    LifeOverUiFactory_V2.ApplyVisibleCanvasLayout(canvas.gameObject);
-                }
-
-                EnsureShopCanvasRendersAboveTextButtons(canvas);
-            }
-        }
-
-        private static void ApplyShopPanelCanvasVisibleLayout(Canvas canvas)
-        {
-            if (canvas == null)
-            {
-                return;
-            }
-
-            if (canvas.transform is RectTransform rect && rect.localScale.sqrMagnitude < 0.001f)
-            {
-                rect.localScale = Vector3.one;
-            }
-
-            canvas.enabled = true;
-            canvas.overrideSorting = true;
-        }
-
-        private static bool IsShopPanelManagedUiCanvas(Canvas canvas)
-        {
-            if (canvas == null)
-            {
-                return false;
-            }
-
-            string name = canvas.gameObject.name;
-            return name.Equals("Shop-canvas", System.StringComparison.OrdinalIgnoreCase) ||
-                   name.Equals("ShopLabels-canvas", System.StringComparison.OrdinalIgnoreCase) ||
-                   name.Equals("ShopActionButtons-canvas", System.StringComparison.OrdinalIgnoreCase) ||
-                   name.Equals("ShopActionLabels-canvas", System.StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool IsShopLabelsCanvas(Canvas canvas)
-        {
-            return canvas != null &&
-                   canvas.gameObject.name.Equals("ShopLabels-canvas", System.StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool IsUnderShopLabelsCanvas(TMP_Text label)
-        {
-            if (label == null)
-            {
-                return false;
-            }
-
-            Canvas canvas = label.GetComponentInParent<Canvas>(true);
-            return IsShopLabelsCanvas(canvas);
-        }
-
-        private void ApplyShopActionLabelTypography(TMP_Text label)
-        {
-            if (label == null || IsUnderShopLabelsCanvas(label))
-            {
-                return;
-            }
-
-            label.enableAutoSizing = false;
-            label.fontSize = Mathf.Max(8f, _shopActionLabelFontSize);
-            label.rectTransform.sizeDelta = _shopActionLabelRectSize;
-        }
-
-        private void EnsureShopCanvasRendersAboveTextButtons(Canvas canvas)
-        {
-            if (canvas == null || IsLifeOverShopCanvas(canvas))
-            {
-                return;
-            }
-
-            int targetOrder = Mathf.Max(_shopUiCanvasSortingOrder, 206);
-            canvas.overrideSorting = true;
-
-            if (IsShopLabelsCanvas(canvas))
-            {
-                if (!string.IsNullOrWhiteSpace(_shopLabelsCanvasSortingLayerName))
-                {
-                    int labelsLayerId = SortingLayer.NameToID(_shopLabelsCanvasSortingLayerName);
-                    if (labelsLayerId != 0)
-                    {
-                        canvas.sortingLayerID = labelsLayerId;
-                    }
-                }
-
-                canvas.sortingOrder = targetOrder;
-                return;
-            }
-
-            int shopLayerId = SortingLayer.NameToID("Shop");
-            if (shopLayerId != 0)
-            {
-                canvas.sortingLayerID = shopLayerId;
-            }
-
-            canvas.sortingOrder = targetOrder;
-        }
-
-        private Vector2 ResolveShopActionLabelRectSize()
-        {
-            return new Vector2(
-                Mathf.Max(40f, _shopActionLabelRectSize.x),
-                Mathf.Max(16f, _shopActionLabelRectSize.y));
-        }
-
-        private Canvas ResolvePrimaryShopCanvas()
-        {
-            Transform[] underPanel = GetComponentsInChildren<Transform>(true);
-            for (int i = 0; i < underPanel.Length; i++)
-            {
-                Transform candidate = underPanel[i];
-                if (candidate != null &&
-                    candidate.gameObject.name.Equals("Shop-canvas", System.StringComparison.OrdinalIgnoreCase))
-                {
-                    Canvas canvas = candidate.GetComponent<Canvas>();
-                    if (canvas != null && !IsLifeOverShopCanvas(canvas))
-                    {
-                        return canvas;
-                    }
-                }
-            }
-
-            ResolveShopUiCanvasesIfNeeded();
-            for (int i = 0; i < _resolvedShopUiCanvases.Count; i++)
-            {
-                Canvas canvas = _resolvedShopUiCanvases[i];
-                if (canvas != null && !IsLifeOverShopCanvas(canvas))
-                {
-                    return canvas;
-                }
-            }
-
-            return null;
-        }
-
-        private void EnsureShopActionLabelsVisible()
-        {
-            if (!Application.isPlaying)
-            {
-                return;
-            }
-
-            AlignShopActionLabelToButton(
-                "txt_shop_prev",
-                _uiPreviousOfferButtonObjectName,
-                _uiPreviousOfferButtonAlternateNames);
-            AlignShopActionLabelToButton(
-                "txt_shop_previous",
-                _uiPreviousOfferButtonObjectName,
-                _uiPreviousOfferButtonAlternateNames);
-            AlignShopActionLabelToButton(
-                "txt_shop_next",
-                _uiNextOfferButtonObjectName,
-                _uiNextOfferButtonAlternateNames);
-            AlignShopActionLabelToButton(
-                "txt_shop_buy",
-                _uiBuyButtonObjectName,
-                _uiBuyButtonAlternateNames);
-            AlignShopActionLabelToButton(
-                "txt_shop_startGame",
-                _uiStartGameButtonObjectName,
-                _uiStartGameButtonAlternateNames);
-        }
-
-        private void AlignShopActionLabelToButton(
-            string labelObjectName,
-            string buttonObjectName,
-            string[] buttonAlternateNames)
-        {
-            TMP_Text label = FindShopTmpByObjectName(labelObjectName);
-            if (label == null)
-            {
-                return;
-            }
-
-            EnsureShopLabelTmpVisible(label);
-            if (IsUnderShopLabelsCanvas(label))
-            {
-                return;
-            }
-
-            ApplyShopActionLabelTypography(label);
-
-            GameObject buttonRoot = FindShopObjectByNames(buttonObjectName, buttonAlternateNames);
-            if (buttonRoot == null || !TryGetButtonLabelWorldPoint(buttonRoot, out Vector3 worldPoint))
-            {
-                return;
-            }
-
-            TryAlignTmpToWorldPoint(label, worldPoint, ResolveShopActionLabelRectSize());
-        }
-
-        private static bool TryGetButtonLabelWorldPoint(GameObject buttonRoot, out Vector3 worldPoint)
-        {
-            worldPoint = default;
-            if (buttonRoot == null)
-            {
-                return false;
-            }
-
-            SpriteRenderer spriteRenderer = buttonRoot.GetComponent<SpriteRenderer>();
-            if (spriteRenderer == null)
-            {
-                spriteRenderer = buttonRoot.GetComponentInChildren<SpriteRenderer>(true);
-            }
-
-            if (spriteRenderer != null)
-            {
-                worldPoint = spriteRenderer.bounds.center;
-                return true;
-            }
-
-            worldPoint = buttonRoot.transform.position;
-            return true;
-        }
-
-        private bool TryAlignTmpToWorldPoint(TMP_Text label, Vector3 worldPoint, Vector2 sizeDelta)
-        {
-            if (label == null)
-            {
-                return false;
-            }
-
-            Canvas canvas = label.GetComponentInParent<Canvas>();
-            if (canvas == null || canvas.transform is not RectTransform canvasRect)
-            {
-                return false;
-            }
-
-            RectTransform parentRect = label.rectTransform.parent as RectTransform;
-            if (parentRect == null)
-            {
-                parentRect = canvasRect;
-            }
-
-            Camera worldCamera = ResolveCamera();
-            if (worldCamera == null)
-            {
-                return false;
-            }
-
-            Camera canvasCamera = canvas.renderMode == RenderMode.ScreenSpaceOverlay
-                ? null
-                : canvas.worldCamera != null ? canvas.worldCamera : worldCamera;
-            if (canvas.renderMode == RenderMode.ScreenSpaceCamera && canvasCamera == null)
-            {
-                return false;
-            }
-
-            Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(worldCamera, worldPoint);
-            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                    canvasRect,
-                    screenPoint,
-                    canvasCamera,
-                    out Vector2 canvasLocalPoint))
-            {
-                return false;
-            }
-
-            Vector2 localPoint = canvasLocalPoint;
-            if (parentRect != canvasRect)
-            {
-                Vector3 worldPos = canvasRect.TransformPoint(canvasLocalPoint);
-                localPoint = parentRect.InverseTransformPoint(worldPos);
-            }
-
-            RectTransform labelRect = label.rectTransform;
-            labelRect.anchorMin = new Vector2(0.5f, 0.5f);
-            labelRect.anchorMax = new Vector2(0.5f, 0.5f);
-            labelRect.pivot = new Vector2(0.5f, 0.5f);
-            labelRect.anchoredPosition = localPoint;
-            labelRect.sizeDelta = sizeDelta;
-            labelRect.localScale = Vector3.one;
-            return true;
-        }
-
-        private static void EnsureShopLabelTmpVisible(TMP_Text textField)
-        {
-            if (textField == null)
-            {
-                return;
-            }
-
-            textField.gameObject.SetActive(true);
-            textField.enabled = true;
-
-            if (textField.color.a < 0.01f)
-            {
-                textField.color = Color.black;
-            }
-
-            Material material = textField.fontMaterial;
-            if (material != null && material.HasProperty(ShaderUtilities.ID_FaceColor))
-            {
-                material.SetColor(ShaderUtilities.ID_FaceColor, Color.white);
-            }
-        }
-
-        private void AttachToCameraIfNeeded()
-        {
-            if (!_parentToCameraWhileVisible || _isParentedToCamera)
-            {
-                return;
-            }
-
-            Transform root = _visualRoot != null ? _visualRoot : transform;
-            Camera cam = ResolveCamera();
-            if (root == null || cam == null)
-            {
-                return;
-            }
-
-            _originalParent = root.parent;
-            _originalSiblingIndex = root.GetSiblingIndex();
-            root.SetParent(cam.transform, true);
-
-            if (_useFixedCameraLocalPlacement)
-            {
-                // Force deterministic on-screen placement instead of inheriting stale scene transforms.
-                root.localPosition = _fixedCameraLocalPosition;
-                root.localRotation = Quaternion.identity;
-                bool canUseCachedScale = _useCachedVisualScaleWhenParentedToCamera && _hasCachedVisualRootTransform;
-                root.localScale = canUseCachedScale ? _cachedVisualRootLocalScale : _fixedCameraLocalScale;
-            }
-
-            _isParentedToCamera = true;
-
-            if (_debugShopPanelLogs)
-            {
-                Debug.Log(
-                    $"[ShopPanel_V2] Parented visual root to camera '{cam.name}'. " +
-                    $"localPos={root.localPosition}, localScale={root.localScale}, fixedPlacement={_useFixedCameraLocalPlacement}");
-            }
-        }
-
-        private void DetachFromCameraIfNeeded()
-        {
-            if (!_isParentedToCamera)
-            {
-                return;
-            }
-
-            Transform root = _visualRoot != null ? _visualRoot : transform;
-            if (root == null)
-            {
-                _isParentedToCamera = false;
-                return;
-            }
-
-            root.SetParent(_originalParent, true);
-            if (_originalParent != null)
-            {
-                int clampedIndex = Mathf.Clamp(_originalSiblingIndex, 0, _originalParent.childCount - 1);
-                root.SetSiblingIndex(clampedIndex);
-            }
-
-            _isParentedToCamera = false;
-            if (_debugShopPanelLogs)
-            {
-                Debug.Log("[ShopPanel_V2] Restored visual root parent after hide.");
+                textField.text = value;
             }
         }
     }

@@ -537,7 +537,8 @@ namespace iStick2War_V2
             }
         }
 
-        // Informational stat rows (hero HP before/after): black label + black value, no tier tint.
+        // Informational stat rows (hero HP before/after): one combined black line on the label TMP.
+        // Shop V2 ShopGrid uses one cell per TMP; a separate value cell would land on another row.
         private static void ShowInfoRow(StatRow row, string label, string value)
         {
             if (row == null || !RowHasBinding(row))
@@ -545,24 +546,25 @@ namespace iStick2War_V2
                 return;
             }
 
-            SetRowActive(row, true);
-
-            if (row.Value != null && row.Label != null)
+            if (row.LabelRoot != null)
             {
-                SetLabelText(row.Label, label);
-                SetLabelText(row.Value, value);
-                return;
-            }
-
-            if (row.Value != null)
-            {
-                SetLabelText(row.Value, $"{label}: {value}");
-                return;
+                row.LabelRoot.SetActive(true);
             }
 
             if (row.Label != null)
             {
                 SetLabelText(row.Label, $"{label}: {value}");
+            }
+            else if (row.Value != null)
+            {
+                row.ValueRoot?.SetActive(true);
+                SetLabelText(row.Value, $"{label}: {value}");
+                return;
+            }
+
+            if (row.ValueRoot != null && row.ValueRoot != row.LabelRoot)
+            {
+                row.ValueRoot.SetActive(false);
             }
         }
 

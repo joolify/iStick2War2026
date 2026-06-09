@@ -2016,6 +2016,7 @@ namespace iStick2War_V2
             if (heroDeath)
             {
                 SetHeroDeathGameOverUiVisible(true);
+                EnsureGameOverNavUiButtonClickTargets();
                 RefreshGameOverContinuePrompt();
             }
             else
@@ -2246,18 +2247,14 @@ namespace iStick2War_V2
 
         private void ResolveHeroDeathGameOverUiIfNeeded()
         {
-            if (_heroDeathGameOverRoot == null)
+            GameObject gameOverV2 = FindGameObjectInLoadedScenes("GameOver V2");
+            if (gameOverV2 != null)
             {
-                string[] rootNames = { "GameOver V2", "GameOver" };
-                for (int n = 0; n < rootNames.Length; n++)
-                {
-                    GameObject found = FindGameObjectInLoadedScenes(rootNames[n]);
-                    if (found != null)
-                    {
-                        _heroDeathGameOverRoot = found;
-                        break;
-                    }
-                }
+                _heroDeathGameOverRoot = gameOverV2;
+            }
+            else if (_heroDeathGameOverRoot == null)
+            {
+                _heroDeathGameOverRoot = FindGameObjectInLoadedScenes("GameOver");
             }
 
             if (_heroDeathTopBarTitle == null)
@@ -3695,12 +3692,15 @@ namespace iStick2War_V2
             }
 
             EnsureGameOverWorldContentIfNeeded();
+            HideLegacyGameOverRoot();
 
             if (_heroDeathGameOverRoot != null)
             {
                 _heroDeathGameOverRoot.SetActive(true);
                 SetTransformHierarchyActive(_heroDeathGameOverRoot.transform, true);
             }
+
+            EnsureGameOverNavUiButtonClickTargets();
 
             if (_heroDeathContinueButton != null)
             {
@@ -3725,6 +3725,94 @@ namespace iStick2War_V2
             }
 
             _gameOverUi?.Show();
+        }
+
+        private static void HideLegacyGameOverRoot()
+        {
+            GameObject legacy = FindGameObjectInLoadedScenes("GameOver");
+            if (legacy != null)
+            {
+                legacy.SetActive(false);
+            }
+        }
+
+        private static GameObject FindGameOverChromeRoot()
+        {
+            return FindGameObjectInLoadedScenes("GameOver V2");
+        }
+
+        private static GameObject FindGameOverNamedControl(string exactName)
+        {
+            if (string.IsNullOrEmpty(exactName))
+            {
+                return null;
+            }
+
+            GameObject chromeRoot = FindGameOverChromeRoot();
+            if (chromeRoot != null)
+            {
+                Transform underChrome = FindNamedChildRecursive(chromeRoot.transform, exactName);
+                if (underChrome != null)
+                {
+                    return underChrome.gameObject;
+                }
+            }
+
+            return null;
+        }
+
+        private static void EnsureGameOverNavUiButtonClickTargets()
+        {
+            EnsureGameOverNavUiButtonOnTarget(
+                FindGameOverNamedControl("LifeOver_Btn_StartGame"),
+                GameOverNavUiButton_V2.GameOverAction.RestartRun);
+            EnsureGameOverNavUiButtonOnTarget(
+                FindGameOverNamedControl("GameOver_Btn_StartGame"),
+                GameOverNavUiButton_V2.GameOverAction.RestartRun);
+            EnsureGameOverNavUiButtonOnTarget(
+                FindGameOverNamedControl("TextBTN_GameOver_MediumStartNewGame"),
+                GameOverNavUiButton_V2.GameOverAction.RestartRun);
+            EnsureGameOverNavUiButtonOnTarget(
+                FindGameOverNamedControl("LifeOver_Btn_MainMenu"),
+                GameOverNavUiButton_V2.GameOverAction.ReturnToMainMenu);
+            EnsureGameOverNavUiButtonOnTarget(
+                FindGameOverNamedControl("GameOver_Btn_MainMenu"),
+                GameOverNavUiButton_V2.GameOverAction.ReturnToMainMenu);
+            EnsureGameOverNavUiButtonOnTarget(
+                FindGameOverNamedControl("TextBTN_GameOver_MediumGoToMainMenu"),
+                GameOverNavUiButton_V2.GameOverAction.ReturnToMainMenu);
+        }
+
+        private static void EnsureGameOverNavUiButtonOnTarget(
+            GameObject target,
+            GameOverNavUiButton_V2.GameOverAction action)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            LifeOverNavUiButton_V2 lifeOverUi = target.GetComponent<LifeOverNavUiButton_V2>();
+            if (lifeOverUi != null)
+            {
+                global::UnityEngine.Object.Destroy(lifeOverUi);
+            }
+
+            MainMenuNavUiButton_V2 mainMenuUi = target.GetComponent<MainMenuNavUiButton_V2>();
+            if (mainMenuUi != null)
+            {
+                global::UnityEngine.Object.Destroy(mainMenuUi);
+            }
+
+            GameOverNavUiButton_V2 nav = target.GetComponent<GameOverNavUiButton_V2>();
+            if (nav == null)
+            {
+                nav = target.AddComponent<GameOverNavUiButton_V2>();
+            }
+
+            WaveManager_V2 waveManager =
+                UnityEngine.Object.FindAnyObjectByType<WaveManager_V2>(FindObjectsInactive.Exclude);
+            nav.Configure(waveManager, action);
         }
 
         private void HideGameOverChromeCompletely()
