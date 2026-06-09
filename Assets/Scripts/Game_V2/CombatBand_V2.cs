@@ -195,7 +195,7 @@ namespace iStick2War_V2
             {
                 return;
             }
-        {
+
             s_applyingVisibility = true;
             try
             {
