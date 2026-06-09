@@ -229,9 +229,9 @@ namespace iStick2War_V2
         [Header("Combat band (paratrooper drops / bomber release)")]
         [Tooltip(
             "Optional scene guide with BoxCollider2D (CombatBand_V2). When set and enforcing, paratrooper drops and bomber bombs " +
-            "clamp to the band X interval (intersected with the camera). Size/move the box to match your blue safe-area guide.")]
+            "clamp to the band X interval (intersected with the camera). Leave empty to use the aspect-matched ActiveInstance.")]
         [SerializeField] private CombatBand_V2 _combatBand;
-        [Tooltip("Auto-assign CombatBand_V2 from the scene when this reference is empty.")]
+        [Tooltip("Auto-assign the aspect-selected CombatBand_V2 when this reference is empty.")]
         [SerializeField] private bool _autoFindCombatBand = true;
         [SerializeField] private bool _useCombatBandForParatrooperDrops = true;
         [SerializeField] private bool _useCombatBandForBomberReleases = true;
@@ -1321,14 +1321,8 @@ namespace iStick2War_V2
                 return null;
             }
 
-            _combatBand = CombatBand_V2.ActiveInstance;
-            if (_combatBand != null)
-            {
-                return _combatBand;
-            }
-
-            _combatBand = FindAnyObjectByType<CombatBand_V2>(FindObjectsInactive.Include);
-            return _combatBand;
+            CombatBand_V2.RefreshActiveSelection(force: false);
+            return CombatBand_V2.ActiveInstance;
         }
 
         private void OnEnable()

@@ -92,8 +92,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::iStick2War_V2.CombatBand_V2
   _enforceAtRuntime: 1
+  _includeInAspectSelection: 1
+  _profileAspectWidth: 16
+  _profileAspectHeight: 9
+  _profileLabel: 16:9
   _applyToParatrooperDrops: 1
   _applyToBomberReleases: 1
   _drawSelectedGizmo: 1
+  _drawActiveRuntimeGizmo: 1
   _gizmoFillColor: {r: 0.2, g: 0.55, b: 1, a: 0.22}
   _gizmoOutlineColor: {r: 0.15, g: 0.45, b: 1, a: 0.95}

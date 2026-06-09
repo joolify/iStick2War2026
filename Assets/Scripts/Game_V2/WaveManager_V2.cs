@@ -554,7 +554,7 @@ namespace iStick2War_V2
             }
 
             EmitMetaChanged();
-            EnsureGameplayHudVisible();
+            ApplyGameplayHudVisibility();
             RefreshTopBar();
         }
 
@@ -1610,6 +1610,8 @@ namespace iStick2War_V2
                 _enemySpawner.StopWave();
             }
 
+            EnemyLootCleanup_V2.DespawnAllActiveGroundLoot();
+
             bool clearedLastWave = _waves != null && _waves.Count > 0 && _waveIndex >= _waves.Count - 1;
             if (clearedLastWave)
             {
@@ -1796,7 +1798,7 @@ namespace iStick2War_V2
             }
 
             SetState(WaveLoopState_V2.InWave);
-            EnsureGameplayHudVisible();
+            ApplyGameplayHudVisibility();
             SetCameraFollowEnabled(true);
             _stateEndTime = Time.time + wave.WaveDurationSeconds;
             float failSafeBasis = Mathf.Max(
@@ -4492,7 +4494,7 @@ namespace iStick2War_V2
 
         private void RefreshTopBar()
         {
-            EnsureGameplayHudVisible();
+            ApplyGameplayHudVisibility();
             ResolveTopBarReferencesIfNeeded();
 
             if (_topBarBunkerHealthText != null)
@@ -4634,6 +4636,34 @@ namespace iStick2War_V2
             EnsureGameplayOverlayBranchActive(_topBarWaveText.transform);
         }
 
+        // Keeps HUD-Canvas / HUD-Sprites-Canvas in sync with loop state (hidden while shop is open).
+        public void ApplyGameplayHudVisibility()
+        {
+            if (ShouldShowGameplayHud())
+            {
+                EnsureGameplayHudVisible();
+            }
+            else
+            {
+                HideGameplayHudChrome();
+            }
+        }
+
+        private bool ShouldShowGameplayHud()
+        {
+            if (_state == WaveLoopState_V2.Shop)
+            {
+                return false;
+            }
+
+            if (_shopPanel != null && _shopPanel.IsShopVisible)
+            {
+                return false;
+            }
+
+            return _state == WaveLoopState_V2.Preparing || _state == WaveLoopState_V2.InWave;
+        }
+
         private void EnsureGameplayHudVisible()
         {
             Transform hudCanvas = FindSceneTransformByName("HUD-Canvas");
@@ -4662,6 +4692,21 @@ namespace iStick2War_V2
             }
 
             Canvas.ForceUpdateCanvases();
+        }
+
+        private static void HideGameplayHudChrome()
+        {
+            Transform hudCanvas = FindSceneTransformByName("HUD-Canvas");
+            if (hudCanvas != null)
+            {
+                hudCanvas.gameObject.SetActive(false);
+            }
+
+            Transform spritesCanvas = FindSceneTransformByName("HUD-Sprites-Canvas");
+            if (spritesCanvas != null)
+            {
+                spritesCanvas.gameObject.SetActive(false);
+            }
         }
 
         private static void EnsureGameplayHudCanvasVisible(Transform hudCanvas)

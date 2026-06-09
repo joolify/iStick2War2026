@@ -6,9 +6,9 @@ namespace iStick2War_V2
  * EnemyLootCleanup_V2 (Ground loot despawn helper)
  *
  * PURPOSE:
- * Removes dropped mp40 / naziHelmet props when a life-loss retry needs a clean combat field.
+ * Removes dropped mp40 / naziHelmet props when a wave ends or a life-loss retry needs a clean field.
  *
- * NAVIGATION: called from EnemySpawner_V2.ClearActiveWaveCombatForLifeRetry and WaveManager_V2 life retry.
+ * NAVIGATION: WaveManager_V2.CompleteWave, life retry, EnemySpawner_V2.ClearActiveWaveCombatForLifeRetry.
  */
     public static class EnemyLootCleanup_V2
     {

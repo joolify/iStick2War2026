@@ -193,6 +193,7 @@ namespace iStick2War_V2
             _didResolveOfferStats = false;
             BindCanvasShopButtons();
             Refresh();
+            _waveManager?.ApplyGameplayHudVisibility();
         }
 
         public void Hide()
@@ -201,6 +202,7 @@ namespace iStick2War_V2
             _offerStatsPresenter.HideAll();
             ResetShopNavPressedVisuals();
             SetChromeVisible(false);
+            _waveManager?.ApplyGameplayHudVisibility();
         }
 
         public void SuppressLifeOverUiElements()
