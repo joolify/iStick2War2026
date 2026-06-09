@@ -1,11 +1,11 @@
 {
 "skeleton": {
-	"hash": "lWL+0+Rb3Eo",
+	"hash": "zH/1X92pOMc",
 	"spine": "4.2.43",
 	"x": -871,
-	"y": -894.96,
+	"y": -908.79,
 	"width": 1742,
-	"height": 570.2,
+	"height": 584.03,
 	"images": "./images/",
 	"audio": "./audio"
 },
@@ -16,7 +16,7 @@
 "slots": [
 	{ "name": "Deploy", "bone": "ParachuteBone" },
 	{ "name": "Land", "bone": "ParachuteBone", "attachment": "land8" },
-	{ "name": "powerup", "bone": "root", "attachment": "powerup" },
+	{ "name": "powerup", "bone": "root", "attachment": "powerup_no_parachute" },
 	{ "name": "powerup-bb", "bone": "root", "attachment": "powerup-bb" }
 ],
 "skins": [
@@ -44,7 +44,8 @@
 				"land8": { "y": -508.26, "width": 1742, "height": 367 }
 			},
 			"powerup": {
-				"powerup": { "x": -17.34, "y": -751.46, "width": 333, "height": 287 }
+				"powerup": { "x": -17.34, "y": -751.46, "width": 333, "height": 287 },
+				"powerup_no_parachute": { "x": -14.26, "y": -791.68, "scaleX": 1.0893, "scaleY": 1.0893, "width": 347, "height": 215 }
 			},
 			"powerup-bb": {
 				"powerup-bb": {
@@ -72,6 +73,11 @@
 					{ "time": 1.2, "name": "dep7" },
 					{ "time": 1.4, "name": "dep8" }
 				]
+			},
+			"powerup": {
+				"attachment": [
+					{ "name": "powerup" }
+				]
 			}
 		}
 	},
@@ -86,7 +92,15 @@
 					{ "time": 0.2667, "name": "land5" },
 					{ "time": 0.3333, "name": "land6" },
 					{ "time": 0.4, "name": "land7" },
-					{ "time": 0.4667, "name": "land8" }
+					{ "time": 0.4667, "name": "land8" },
+					{ "time": 0.6 }
+				]
+			},
+			"powerup": {
+				"attachment": [
+					{ "name": "powerup" },
+					{ "time": 0.6, "name": "powerup_no_parachute" },
+					{ "time": 0.6333, "name": "powerup_no_parachute" }
 				]
 			}
 		},

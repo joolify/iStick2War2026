@@ -29,3 +29,5 @@ MonoBehaviour:
   _openLifeOverDirectly: 0
   _openGameOverDirectly: 0
   _openGameWonDirectly: 0
+  _openGameErrorDirectly: 0
+  _openSwedishPlaneSupplyDirectly: 1
