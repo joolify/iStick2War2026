@@ -1,0 +1,13 @@
+skeleton.png
+size:932,380
+filter:Linear,Linear
+pma:true
+scale:1.2
+bombPlaneRotorLeft
+bounds:914,227,15,151
+offsets:26,35,911,290
+bombPlaneRotorRight
+bounds:914,74,15,151
+offsets:26,35,911,290
+swedishPlaneBody
+bounds:2,2,910,376

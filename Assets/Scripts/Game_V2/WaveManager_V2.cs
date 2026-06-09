@@ -99,6 +99,7 @@ namespace iStick2War_V2
         [SerializeField] private Hero_V2 _hero;
         [SerializeField] private ShopPanel_V2 _shopPanel;
         [SerializeField] private EnemySpawner_V2 _enemySpawner;
+        [SerializeField] private SwedishPlaneSurvivalCoordinator_V2 _survivalSupplyCoordinator;
         [SerializeField] private FollowCamera _followCamera;
         [Header("Bunker hero protection")]
         [Tooltip("Optional trigger: hero inside takes no HP damage (enemy shots may still damage the bunker).")]
@@ -288,6 +289,10 @@ namespace iStick2War_V2
         private Canvas _shopCanvasActivatedForLifeOver;
         // When true, leaving shop resumes the same wave (life lost -> shop -> retry) instead of advancing.
         private bool _shopExitRetriesSameWave;
+        // Campaign QA: OpenSwedishPlaneSupplyDirectly uses AdvanceToNextWaveAfterSupplyPass instead of shop.
+        private bool _devSwedishPlaneSupplyAwaitingAdvance;
+        // True while Swedish plane supply pass runs (Shop state but hero may move to collect drops).
+        private bool _swedishPlaneSupplyIntermissionActive;
 
         public event Action<WaveLoopState_V2> OnStateChanged;
         public event Action<int, int> OnLivesChanged;
@@ -316,6 +321,7 @@ namespace iStick2War_V2
         public GameRunMode_V2 GameRunMode => _gameRunMode;
         public bool IsSurvivalMode => _gameRunMode == GameRunMode_V2.Survival;
         public bool IsCampaignMode => _gameRunMode == GameRunMode_V2.Campaign;
+        public bool IsSwedishPlaneSupplyIntermissionActive => _swedishPlaneSupplyIntermissionActive;
         public int TotalEnemiesKilledRun => _totalEnemiesKilledRun;
         public int CheckpointContinueCost => Mathf.Max(0, _checkpointContinueCost);
         public int ClutchSaveCost => Mathf.Max(0, _clutchSaveCost);
@@ -776,7 +782,7 @@ namespace iStick2War_V2
 
             // Dev wave shortcuts need SampleScene to stay loaded (shop / LifeOver testing).
             if (wave.OpenShopDirectly || wave.OpenLifeOverDirectly || wave.OpenGameOverDirectly ||
-                wave.OpenGameWonDirectly || wave.OpenGameErrorDirectly)
+                wave.OpenGameWonDirectly || wave.OpenGameErrorDirectly || wave.OpenSwedishPlaneSupplyDirectly)
             {
                 Log(
                     "[WaveManager_V2] StartAtMainMenuOnSceneLoad ignored: a dev wave shortcut is enabled on wave 1.");
@@ -825,7 +831,18 @@ namespace iStick2War_V2
                 case WaveLoopState_V2.Shop:
                     if (Input.GetKeyDown(_nextWaveDebugKey) || Input.GetKeyDown(KeyCode.N))
                     {
-                        StartNextWaveFromShop();
+                        if (IsSurvivalMode)
+                        {
+                            StartNextWaveAfterSurvivalSupply();
+                        }
+                        else if (_devSwedishPlaneSupplyAwaitingAdvance)
+                        {
+                            AdvanceToNextWaveAfterSupplyPass();
+                        }
+                        else
+                        {
+                            StartNextWaveFromShop();
+                        }
                     }
                     break;
             }
@@ -1319,6 +1336,26 @@ namespace iStick2War_V2
             _shopExitRetriesSameWave = true;
             SetState(WaveLoopState_V2.Shop);
             SetCameraFollowEnabled(false);
+
+            if (IsSurvivalMode)
+            {
+                if (_shopPanel != null)
+                {
+                    _shopPanel.Hide();
+                }
+
+                if (_survivalSupplyCoordinator != null)
+                {
+                    _survivalSupplyCoordinator.BeginSupplyPassAfterWave(StartNextWaveAfterSurvivalSupply);
+                }
+                else
+                {
+                    StartNextWaveAfterSurvivalSupply();
+                }
+
+                return true;
+            }
+
             if (_shopPanel != null)
             {
                 _shopPanel.Show();
@@ -1645,6 +1682,12 @@ namespace iStick2War_V2
                 return;
             }
 
+            if (IsSurvivalMode)
+            {
+                BeginSurvivalSupplyIntermission(wave);
+                return;
+            }
+
             ApplyBetweenWavePressureReset();
             AudioManager_V2.PlayWaveComplete();
 
@@ -1665,6 +1708,97 @@ namespace iStick2War_V2
             PersistRunSaveIfPossible();
         }
 
+        private void BeginSurvivalSupplyIntermission(WaveConfig_V2 wave, Action onPassComplete = null)
+        {
+            ApplyBetweenWavePressureReset();
+            AudioManager_V2.PlayWaveComplete();
+
+            int reward = _hasScalingForActiveWave
+                ? _scalingForActiveWave.EffectiveWaveRewardCurrency
+                : wave.WaveRewardCurrency;
+            _currency += reward;
+            HideLifeOverUiCompletely();
+            _swedishPlaneSupplyIntermissionActive = true;
+            SetState(WaveLoopState_V2.Shop);
+            SetCameraFollowEnabled(true);
+            if (_shopPanel != null)
+            {
+                _shopPanel.Hide();
+            }
+
+            Log($"Survival wave {CurrentWaveNumber} cleared. reward={reward}, currency={_currency}");
+            EmitMetaChanged();
+            PersistRunSaveIfPossible();
+            RefreshHeroWaveLoopCombatGate();
+            NotifySwedishPlaneSupplyIntermissionChanged();
+
+            Action passComplete = onPassComplete ?? StartNextWaveAfterSurvivalSupply;
+            if (_survivalSupplyCoordinator != null)
+            {
+                _survivalSupplyCoordinator.BeginSupplyPassAfterWave(passComplete);
+            }
+            else
+            {
+                Log("[WaveManager_V2] Survival supply coordinator missing; starting next wave immediately.");
+                passComplete?.Invoke();
+            }
+        }
+
+        public void StartNextWaveAfterSurvivalSupply()
+        {
+            if (!IsSurvivalMode || _state != WaveLoopState_V2.Shop)
+            {
+                return;
+            }
+
+            AdvanceToNextWaveAfterSupplyPass();
+        }
+
+        private void AdvanceToNextWaveAfterSupplyPass()
+        {
+            _devSwedishPlaneSupplyAwaitingAdvance = false;
+            _swedishPlaneSupplyIntermissionActive = false;
+            NotifySwedishPlaneSupplyIntermissionChanged();
+
+            if (_shopPanel != null)
+            {
+                _shopPanel.Hide();
+            }
+
+            if (TryStartRetryWaveFromShopAfterLifeLost())
+            {
+                RefreshHeroWaveLoopCombatGate();
+                return;
+            }
+
+            SetCameraFollowEnabled(true);
+            _waveIndex++;
+            EnterPreparingState();
+            RefreshHeroWaveLoopCombatGate();
+            EmitMetaChanged();
+            if (_deferredTopBarWaveIntroRoutine != null)
+            {
+                StopCoroutine(_deferredTopBarWaveIntroRoutine);
+                _deferredTopBarWaveIntroRoutine = null;
+            }
+
+            _deferredTopBarWaveIntroRoutine = StartCoroutine(DeferredTopBarWaveTextIntroNextFrame());
+        }
+
+        public bool ApplySurvivalBunkerRepair(int amount)
+        {
+            if (amount <= 0 || _bunkerHealth >= _bunkerMaxHealthRuntime)
+            {
+                return false;
+            }
+
+            int before = _bunkerHealth;
+            _bunkerHealth = Mathf.Min(_bunkerMaxHealthRuntime, _bunkerHealth + amount);
+            Log($"Survival bunker repair +{amount}: {before}->{_bunkerHealth}/{_bunkerMaxHealthRuntime}");
+            EmitMetaChanged();
+            return _bunkerHealth > before;
+        }
+
         private void EnterPreparingState()
         {
             HideLifeOverUiCompletely();
@@ -1673,7 +1807,8 @@ namespace iStick2War_V2
             WaveConfig_V2 wave = GetCurrentWaveConfig();
             float prepare = 0f;
             if (wave == null || (!wave.OpenShopDirectly && !wave.OpenLifeOverDirectly && !wave.OpenGameOverDirectly &&
-                                 !wave.OpenGameWonDirectly && !wave.OpenGameErrorDirectly))
+                                 !wave.OpenGameWonDirectly && !wave.OpenGameErrorDirectly &&
+                                 !wave.OpenSwedishPlaneSupplyDirectly))
             {
                 if (s_skipPrepareDelayAfterMainMenuPlay)
                 {
@@ -1814,6 +1949,11 @@ namespace iStick2War_V2
                 return;
             }
 
+            if (allowDevWaveShortcuts && TryOpenSwedishPlaneSupplyDirectlyFromWave(wave))
+            {
+                return;
+            }
+
             if (wave.MechRobotBossCount > 0)
             {
                 AudioManager_V2.SetBossMusic();
@@ -1873,6 +2013,22 @@ namespace iStick2War_V2
             _inWaveEnteredUnscaledTime = Time.unscaledTime;
             Log($"Wave {CurrentWaveNumber} skipped (OpenShopDirectly). Opening shop.");
             CompleteWave();
+            return true;
+        }
+
+        private bool TryOpenSwedishPlaneSupplyDirectlyFromWave(WaveConfig_V2 wave)
+        {
+            if (wave == null || !wave.OpenSwedishPlaneSupplyDirectly)
+            {
+                return false;
+            }
+
+            _scalingForActiveWave = BuildScalingSnapshot(wave, CurrentWaveNumber);
+            _hasScalingForActiveWave = true;
+            _inWaveEnteredUnscaledTime = Time.unscaledTime;
+            Log($"Wave {CurrentWaveNumber} skipped (OpenSwedishPlaneSupplyDirectly). Starting Swedish plane supply pass.");
+            _devSwedishPlaneSupplyAwaitingAdvance = !IsSurvivalMode;
+            BeginSurvivalSupplyIntermission(wave, AdvanceToNextWaveAfterSupplyPass);
             return true;
         }
 
@@ -4549,6 +4705,21 @@ namespace iStick2War_V2
             {
                 Debug.LogWarning("[WaveManager_V2] Camera.main is null; cannot resolve FollowCamera.");
             }
+        }
+
+        private void RefreshHeroWaveLoopCombatGate()
+        {
+            if (_hero == null)
+            {
+                _hero = FindAnyObjectByType<Hero_V2>(FindObjectsInactive.Include);
+            }
+
+            _hero?.RefreshWaveLoopCombatGate();
+        }
+
+        private void NotifySwedishPlaneSupplyIntermissionChanged()
+        {
+            RefreshHeroWaveLoopCombatGate();
         }
 
         private void SetCameraFollowEnabled(bool isEnabled)

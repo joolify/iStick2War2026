@@ -114,6 +114,12 @@ namespace iStick2War_V2
             "Skip playing this wave: after Prepare, open the GameError menu immediately. " +
             "Useful for testing GameError UI. Turn off before shipping.")]
         [SerializeField] private bool _openGameErrorDirectly;
+        [InspectorName("Open Swedish Plane Supply Directly")]
+        [Tooltip(
+            "Skip playing this wave: after Prepare, run the Survival Swedish-plane supply pass immediately " +
+            "(wave reward still granted; shop stays hidden). Works in Campaign or Survival for QA. " +
+            "Assign SwedishPlaneSurvivalCoordinator_V2 on WaveManager. Turn off before shipping.")]
+        [SerializeField] private bool _openSwedishPlaneSupplyDirectly;
 
         public int EnemyCount => Mathf.Max(0, _enemyCount);
         public int GroundTrooperCount => Mathf.Max(0, _groundTrooperCount);
@@ -133,5 +139,6 @@ namespace iStick2War_V2
         public bool OpenGameOverDirectly => _openGameOverDirectly;
         public bool OpenGameWonDirectly => _openGameWonDirectly;
         public bool OpenGameErrorDirectly => _openGameErrorDirectly;
+        public bool OpenSwedishPlaneSupplyDirectly => _openSwedishPlaneSupplyDirectly;
     }
 }

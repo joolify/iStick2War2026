@@ -324,6 +324,8 @@ namespace iStick2War_V2
         {
             float dt = Time.deltaTime;
 
+            EnsureMovementEnabledDuringSwedishPlaneSupply();
+
             if (_autoHero != null && _autoHero.isActiveAndEnabled)
             {
                 _autoHero.TickBeforeHeroFrame(dt);
@@ -332,6 +334,20 @@ namespace iStick2War_V2
             _input.Tick();
 
             _controller.Tick(dt);
+        }
+
+        private void EnsureMovementEnabledDuringSwedishPlaneSupply()
+        {
+            if (IsDead() || _movementSystem == null)
+            {
+                return;
+            }
+
+            WaveManager_V2 waveManager = ResolveWaveManagerForCombatGate();
+            if (waveManager != null && waveManager.IsSwedishPlaneSupplyIntermissionActive)
+            {
+                _movementSystem.Enable();
+            }
         }
 
         private void TrySubscribeWaveLoopCombatGate()
@@ -361,10 +377,31 @@ namespace iStick2War_V2
             ApplyWaveLoopCombatGate(state);
         }
 
+        private WaveManager_V2 ResolveWaveManagerForCombatGate()
+        {
+            if (_cachedWaveManager == null)
+            {
+                _cachedWaveManager = FindAnyObjectByType<WaveManager_V2>(FindObjectsInactive.Include);
+            }
+
+            return _cachedWaveManager;
+        }
+
         private void ApplyWaveLoopCombatGate(WaveLoopState_V2 state)
         {
             if (_weaponSystem == null || _controller == null)
             {
+                return;
+            }
+
+            WaveManager_V2 waveManager = ResolveWaveManagerForCombatGate();
+            if (waveManager != null &&
+                waveManager.IsSwedishPlaneSupplyIntermissionActive &&
+                !IsDead())
+            {
+                _movementSystem?.Enable();
+                _weaponSystem.Disable();
+                _controller.SetCombatPaused(true);
                 return;
             }
 
@@ -545,6 +582,11 @@ namespace iStick2War_V2
         public bool HasWeaponUnlocked(HeroWeaponDefinition_V2 definition)
         {
             return _weaponSystem != null && definition != null && _weaponSystem.HasWeaponUnlocked(definition);
+        }
+
+        public HeroWeaponDefinition_V2 GetActiveWeaponDefinition()
+        {
+            return _model != null ? _model.currentWeaponDefinition : null;
         }
 
         public bool TryRefillWeaponMagazine(HeroWeaponDefinition_V2 definition)
@@ -743,6 +785,16 @@ namespace iStick2War_V2
         public bool TrySwitchToAnyWeaponWithAmmo()
         {
             return _weaponSystem != null && _weaponSystem.TrySwitchToAnyWeaponWithAmmo();
+        }
+
+        public bool HasRoundsReadyToFire()
+        {
+            return _weaponSystem != null && _weaponSystem.HasRoundsReadyToFire();
+        }
+
+        public bool IsReloadingWeapon()
+        {
+            return _weaponSystem != null && _weaponSystem.IsReloading();
         }
 
         /// <summary>Used by <see cref="GameplaySceneProfileApplier_V2"/> (e.g. Colt-only runs) after hero systems exist.</summary>

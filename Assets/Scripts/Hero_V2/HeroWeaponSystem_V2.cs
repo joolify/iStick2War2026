@@ -900,6 +900,7 @@ namespace iStick2War_V2
                 active.CurrentReserveAmmo,
                 active.Definition.FireRate,
                 active.Definition.ReloadDuration);
+            TryChamberFromReserveIfNeeded();
             LogWeapon($"[HeroWeaponSystem_V2] Active weapon: {active.Definition.WeaponType} ({active.CurrentAmmo}/{active.Definition.MaxAmmo}).");
         }
 

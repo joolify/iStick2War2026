@@ -1,0 +1,46 @@
+{
+"skeleton": {
+	"hash": "xrk895gz66M",
+	"spine": "4.2.43",
+	"x": -379.5,
+	"y": -156.5,
+	"width": 759,
+	"height": 338.5,
+	"images": "./images/",
+	"audio": "./audio"
+},
+"bones": [
+	{ "name": "root" }
+],
+"slots": [
+	{ "name": "swedishPlaneBody", "bone": "root", "attachment": "swedishPlaneBody" },
+	{ "name": "BombPlaneRotor", "bone": "root", "attachment": "bombPlaneRotorRight" }
+],
+"skins": [
+	{
+		"name": "default",
+		"attachments": {
+			"BombPlaneRotor": {
+				"bombPlaneRotorLeft": { "y": 25, "width": 759, "height": 242 },
+				"bombPlaneRotorRight": { "y": 61, "width": 759, "height": 242 }
+			},
+			"swedishPlaneBody": {
+				"swedishPlaneBody": { "width": 758, "height": 313 }
+			}
+		}
+	}
+],
+"animations": {
+	"fly": {
+		"slots": {
+			"BombPlaneRotor": {
+				"attachment": [
+					{ "name": "bombPlaneRotorLeft" },
+					{ "time": 0.0667, "name": "bombPlaneRotorRight" },
+					{ "time": 0.1333, "name": "bombPlaneRotorLeft" }
+				]
+			}
+		}
+	}
+}
+}

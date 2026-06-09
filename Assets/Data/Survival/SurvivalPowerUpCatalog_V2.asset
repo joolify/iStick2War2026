@@ -1,0 +1,75 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53d49a8ab26a1ec42800a22a434ca6c0, type: 3}
+  m_Name: SurvivalPowerUpCatalog_V2
+  m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.SurvivalPowerUpCatalog_V2
+  _entries:
+  - kind: 0
+    weight: 30
+    healthAmount: 50
+    bunkerRepairAmount: 25
+    weaponDefinition: {fileID: 0}
+  - kind: 1
+    weight: 25
+    healthAmount: 50
+    bunkerRepairAmount: 25
+    weaponDefinition: {fileID: 0}
+  - kind: 2
+    weight: 25
+    healthAmount: 50
+    bunkerRepairAmount: 25
+    weaponDefinition: {fileID: 11400000, guid: 6e1e46ecfc98a3c44b4285a36431db4b, type: 2}
+  - kind: 3
+    weight: 20
+    healthAmount: 50
+    bunkerRepairAmount: 25
+    weaponDefinition: {fileID: 11400000, guid: 6e1e46ecfc98a3c44b4285a36431db4b, type: 2}
+  - kind: 2
+    weight: 20
+    healthAmount: 50
+    bunkerRepairAmount: 25
+    weaponDefinition: {fileID: 11400000, guid: 53d86043cc64445fb65ff8fccfd9f16f, type: 2}
+  - kind: 3
+    weight: 20
+    healthAmount: 50
+    bunkerRepairAmount: 25
+    weaponDefinition: {fileID: 11400000, guid: 53d86043cc64445fb65ff8fccfd9f16f, type: 2}
+  - kind: 2
+    weight: 20
+    healthAmount: 50
+    bunkerRepairAmount: 25
+    weaponDefinition: {fileID: 11400000, guid: f8e2a91c4b2d6e7f9a0b1c2d3e4f5a61, type: 2}
+  - kind: 3
+    weight: 20
+    healthAmount: 50
+    bunkerRepairAmount: 25
+    weaponDefinition: {fileID: 11400000, guid: f8e2a91c4b2d6e7f9a0b1c2d3e4f5a61, type: 2}
+  - kind: 2
+    weight: 20
+    healthAmount: 50
+    bunkerRepairAmount: 25
+    weaponDefinition: {fileID: 11400000, guid: c7a91f2e4b3d4e5f8061728394a5b0c1, type: 2}
+  - kind: 3
+    weight: 20
+    healthAmount: 50
+    bunkerRepairAmount: 25
+    weaponDefinition: {fileID: 11400000, guid: c7a91f2e4b3d4e5f8061728394a5b0c1, type: 2}
+  - kind: 2
+    weight: 20
+    healthAmount: 50
+    bunkerRepairAmount: 25
+    weaponDefinition: {fileID: 11400000, guid: 6558c37908f5c664f915fa7c826ae5c7, type: 2}
+  - kind: 3
+    weight: 20
+    healthAmount: 50
+    bunkerRepairAmount: 25
+    weaponDefinition: {fileID: 11400000, guid: 6558c37908f5c664f915fa7c826ae5c7, type: 2}

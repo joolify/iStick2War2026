@@ -94,6 +94,12 @@ namespace iStick2War_V2
             "For orthographic cameras, enemy visibility uses XY intersection with the camera view rect (plus this margin). " +
             "Full 3D frustum AABB tests often reject valid 2D hitboxes and cause no-target while enemies are on screen.")]
         [SerializeField] private float _shootVisibilityOrthographicMarginWorld = 1.25f;
+        [Tooltip("Minimum seconds between discretionary weapon swaps (stops Bazooka/Thompson flicker when targets change).")]
+        [SerializeField] private float _weaponSwitchMinIntervalSeconds = 0.45f;
+        [Tooltip("Prefer Ithaca shotgun vs grounded infantry within this horizontal distance.")]
+        [SerializeField] private float _ithacaPreferWithinHorizontal = 26f;
+        [Tooltip("Prefer flamethrower vs grounded infantry within this horizontal distance (after shotgun band).")]
+        [SerializeField] private float _flamethrowerPreferWithinHorizontal = 42f;
 
         [Header("Bomb run survival")]
         [Tooltip("When true, retreat toward bunker interior when falling bombs are likely to splash the hero (ignores low-HP bunker rule).")]
@@ -195,6 +201,7 @@ namespace iStick2War_V2
         private PendingAutomationAction _pendingAutomationAction = PendingAutomationAction.None;
         private float _lastAimAtEnemyUnscaledTime;
         private float _lastShootHeldUnscaledTime;
+        private float _lastWeaponSwitchUnscaledTime = -999f;
         private bool _heroHpTestOverrideApplied;
         private bool _lockedWeaponTestModeApplied;
         private HeroWeaponDefinition_V2 _resolvedLockedTestWeaponDefinition;
@@ -604,6 +611,14 @@ namespace iStick2War_V2
 
             if (state == WaveLoopState_V2.Shop)
             {
+                if (_waveManager.IsSwedishPlaneSupplyIntermissionActive)
+                {
+                    _shopExitScheduledThisVisit = false;
+                    _lastWaveState = state;
+                    TickSwedishPlaneSupplyIntermission();
+                    return;
+                }
+
                 if (_lastWaveState != WaveLoopState_V2.Shop)
                 {
                     _shopExitScheduledThisVisit = false;
@@ -1304,6 +1319,70 @@ namespace iStick2War_V2
             }
         }
 
+        private void TickSwedishPlaneSupplyIntermission()
+        {
+            _view.SetAutoAimWorldOverride(null);
+
+            bool manualMove =
+                Mathf.Abs(Input.GetAxisRaw("Horizontal")) > 0.05f ||
+                Mathf.Abs(Input.GetAxisRaw("Vertical")) > 0.05f;
+            if (manualMove)
+            {
+                _input.SetBotDriving(false);
+                return;
+            }
+
+            Vector2 heroPos = _model.transform.position;
+            if (!TryFindSwedishPlanePowerUpPickupTarget(heroPos, out Vector2 pickupPos))
+            {
+                _input.SetBotDriving(false);
+                return;
+            }
+
+            float dx = pickupPos.x - heroPos.x;
+            Vector2 move = new Vector2(
+                Mathf.Abs(dx) > 0.12f ? Mathf.Sign(dx) : 0f,
+                0f);
+            _input.SetBotDriving(true);
+            _input.SetBotFrame(move, false, false);
+        }
+
+        private static bool TryFindSwedishPlanePowerUpPickupTarget(Vector2 heroPos, out Vector2 pickupPos)
+        {
+            pickupPos = default;
+            SwedishPlanePowerUp_V2[] powerUps = Object.FindObjectsByType<SwedishPlanePowerUp_V2>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            if (powerUps == null || powerUps.Length == 0)
+            {
+                return false;
+            }
+
+            float bestDistSq = float.PositiveInfinity;
+            bool found = false;
+            for (int i = 0; i < powerUps.Length; i++)
+            {
+                SwedishPlanePowerUp_V2 powerUp = powerUps[i];
+                if (powerUp == null || !powerUp.isActiveAndEnabled || !powerUp.IsReadyForHeroPickup())
+                {
+                    continue;
+                }
+
+                Vector3 world = powerUp.GetPickupWorldCenter();
+                float distSq = ((Vector2)world - heroPos).sqrMagnitude;
+                if (distSq >= bestDistSq)
+                {
+                    continue;
+                }
+
+                bestDistSq = distSq;
+                pickupPos = world;
+                found = true;
+            }
+
+            return found;
+        }
+
         private void TickShop()
         {
             for (int i = 0; i < _maxShopPurchasesPerShopVisit; i++)
@@ -1864,6 +1943,115 @@ namespace iStick2War_V2
             return Time.unscaledTime >= _shootEngageAllowedAfterUnscaled;
         }
 
+        private bool CanAutoHeroDiscretionaryWeaponSwitch()
+        {
+            float minInterval = Mathf.Max(0.05f, _weaponSwitchMinIntervalSeconds);
+            return Time.unscaledTime - _lastWeaponSwitchUnscaledTime >= minInterval;
+        }
+
+        private bool ShouldAutoHeroEscapeCurrentWeaponForAmmo()
+        {
+            if (!_hero.HasUsableAmmoForWeaponType(_model.currentWeaponType))
+            {
+                return true;
+            }
+
+            if (_hero.HasRoundsReadyToFire() || _hero.IsReloadingWeapon() || _hero.ShouldShowReloadPrompt())
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool TryAutoHeroSwitchToAnyWeaponWithAmmo()
+        {
+            if (_hero == null || !_hero.TrySwitchToAnyWeaponWithAmmo())
+            {
+                return false;
+            }
+
+            _lastWeaponSwitchUnscaledTime = Time.unscaledTime;
+            return true;
+        }
+
+        private bool HasAutoHeroWeaponAmmo(WeaponType weaponType)
+        {
+            return _hero != null &&
+                   _hero.HasUnlockedWeaponOfType(weaponType) &&
+                   _hero.HasUsableAmmoForWeaponType(weaponType);
+        }
+
+        // Close infantry: shotgun → flamethrower → Thompson → Carbine → Bazooka.
+        private bool TrySelectInfantryWeaponByDistance(float horizDistance)
+        {
+            if (horizDistance <= _ithacaPreferWithinHorizontal &&
+                HasAutoHeroWeaponAmmo(WeaponType.Ithaca) &&
+                TryAutoHeroSwitchToWeaponType(WeaponType.Ithaca))
+            {
+                return true;
+            }
+
+            if (horizDistance <= _flamethrowerPreferWithinHorizontal &&
+                HasAutoHeroWeaponAmmo(WeaponType.Flamethrower) &&
+                TryAutoHeroSwitchToWeaponType(WeaponType.Flamethrower))
+            {
+                return true;
+            }
+
+            if (HasAutoHeroWeaponAmmo(WeaponType.Thompson) &&
+                TryAutoHeroSwitchToWeaponType(WeaponType.Thompson))
+            {
+                return true;
+            }
+
+            if (HasAutoHeroWeaponAmmo(WeaponType.Carbine) &&
+                TryAutoHeroSwitchToWeaponType(WeaponType.Carbine))
+            {
+                return true;
+            }
+
+            if (HasAutoHeroWeaponAmmo(WeaponType.Bazooka) &&
+                TryAutoHeroSwitchToWeaponType(WeaponType.Bazooka))
+            {
+                return true;
+            }
+
+            return TryAutoHeroSwitchToAnyWeaponWithAmmo();
+        }
+
+        private bool TryAutoHeroSwitchToWeaponType(WeaponType weaponType, bool force = false)
+        {
+            if (_hero == null || _model == null)
+            {
+                return false;
+            }
+
+            if (_model.currentWeaponType == weaponType)
+            {
+                return true;
+            }
+
+            if (!_hero.HasUnlockedWeaponOfType(weaponType) || !_hero.HasUsableAmmoForWeaponType(weaponType))
+            {
+                return false;
+            }
+
+            bool mustEscape = ShouldAutoHeroEscapeCurrentWeaponForAmmo();
+            if (!force && !mustEscape && !CanAutoHeroDiscretionaryWeaponSwitch())
+            {
+                return false;
+            }
+
+            if (!_hero.TrySwitchToWeaponType(weaponType))
+            {
+                return false;
+            }
+
+            _lastWeaponSwitchUnscaledTime = Time.unscaledTime;
+            return true;
+        }
+
         private void MaybeSelectWeaponForThreat(Vector2 heroPos, Vector2 enemyPos, bool hasTarget, Collider2D targetCollider)
         {
             if (!hasTarget)
@@ -1873,11 +2061,7 @@ namespace iStick2War_V2
 
             if (IsLockedWeaponTestModeActive() && _lockedWeaponTestModeApplied)
             {
-                if (_model.currentWeaponType != _lockedTestWeaponType)
-                {
-                    _hero.TrySwitchToWeaponType(_lockedTestWeaponType);
-                }
-
+                TryAutoHeroSwitchToWeaponType(_lockedTestWeaponType, force: true);
                 return;
             }
 
@@ -1885,14 +2069,23 @@ namespace iStick2War_V2
             {
                 if (_hero.HasUsableAmmoForWeaponType(WeaponType.Colt45))
                 {
-                    _hero.TrySwitchToWeaponType(WeaponType.Colt45);
+                    TryAutoHeroSwitchToWeaponType(WeaponType.Colt45, force: true);
                 }
                 else
                 {
-                    _hero.TrySwitchToAnyWeaponWithAmmo();
+                    TryAutoHeroSwitchToAnyWeaponWithAmmo();
                 }
 
                 return;
+            }
+
+            if (ShouldAutoHeroEscapeCurrentWeaponForAmmo())
+            {
+                TryAutoHeroSwitchToAnyWeaponWithAmmo();
+                if (ShouldAutoHeroEscapeCurrentWeaponForAmmo())
+                {
+                    return;
+                }
             }
 
             float skipOptimalWeaponChance = _testProfile == AutoHeroTestProfileKind_V2.Struggling
@@ -1926,95 +2119,87 @@ namespace iStick2War_V2
 
             bool wantBazookaRange = metric <= bazookaRangeBudget;
             bool wantCarbineRange = metric > bazookaRangeBudget * 1.15f;
+            bool vsInfantry = targetCollider != null && IsInfantryEnemyCollider(targetCollider);
 
-            bool bazookaAmmo =
-                _hero.HasUnlockedWeaponOfType(WeaponType.Bazooka) &&
-                _hero.HasUsableAmmoForWeaponType(WeaponType.Bazooka);
-            bool carbineAmmo =
-                _hero.HasUnlockedWeaponOfType(WeaponType.Carbine) &&
-                _hero.HasUsableAmmoForWeaponType(WeaponType.Carbine);
-            bool thompsonAmmo =
-                _hero.HasUnlockedWeaponOfType(WeaponType.Thompson) &&
-                _hero.HasUsableAmmoForWeaponType(WeaponType.Thompson);
+            bool bazookaAmmo = HasAutoHeroWeaponAmmo(WeaponType.Bazooka);
+            bool carbineAmmo = HasAutoHeroWeaponAmmo(WeaponType.Carbine);
+            bool thompsonAmmo = HasAutoHeroWeaponAmmo(WeaponType.Thompson);
 
-            // Grounded/combat-ready paratroopers can throw/shoot right after landing.
-            // Prefer high sustained DPS weapons over range heuristics in this case.
+            // Grounded/combat-ready infantry: distance bands (shotgun / flamethrower / SMG).
             if (targetCollider != null && IsGroundCombatInfantryTarget(targetCollider))
             {
-                if (thompsonAmmo)
-                {
-                    _hero.TrySwitchToWeaponType(WeaponType.Thompson);
-                    return;
-                }
-
-                if (carbineAmmo)
-                {
-                    _hero.TrySwitchToWeaponType(WeaponType.Carbine);
-                    return;
-                }
-
-                if (bazookaAmmo)
-                {
-                    _hero.TrySwitchToWeaponType(WeaponType.Bazooka);
-                    return;
-                }
-
-                _hero.TrySwitchToAnyWeaponWithAmmo();
+                TrySelectInfantryWeaponByDistance(horiz);
                 return;
             }
 
             if (wantBazookaRange)
             {
-                if (bazookaAmmo)
+                if (vsInfantry && !vsAircraft)
                 {
-                    _hero.TrySwitchToWeaponType(WeaponType.Bazooka);
+                    TrySelectInfantryWeaponByDistance(horiz);
                     return;
                 }
 
-                if (carbineAmmo)
+                if (bazookaAmmo && TryAutoHeroSwitchToWeaponType(WeaponType.Bazooka))
                 {
-                    _hero.TrySwitchToWeaponType(WeaponType.Carbine);
                     return;
                 }
 
-                if (thompsonAmmo)
+                if (carbineAmmo && TryAutoHeroSwitchToWeaponType(WeaponType.Carbine))
                 {
-                    _hero.TrySwitchToWeaponType(WeaponType.Thompson);
                     return;
                 }
 
-                _hero.TrySwitchToAnyWeaponWithAmmo();
+                if (thompsonAmmo && TryAutoHeroSwitchToWeaponType(WeaponType.Thompson))
+                {
+                    return;
+                }
+
+                TryAutoHeroSwitchToAnyWeaponWithAmmo();
                 return;
             }
 
             if (wantCarbineRange)
             {
-                if (carbineAmmo)
+                if (vsInfantry && !vsAircraft)
                 {
-                    _hero.TrySwitchToWeaponType(WeaponType.Carbine);
+                    if (carbineAmmo && TryAutoHeroSwitchToWeaponType(WeaponType.Carbine))
+                    {
+                        return;
+                    }
+
+                    if (thompsonAmmo && TryAutoHeroSwitchToWeaponType(WeaponType.Thompson))
+                    {
+                        return;
+                    }
+
+                    TrySelectInfantryWeaponByDistance(horiz);
                     return;
                 }
 
-                if (thompsonAmmo)
+                if (carbineAmmo && TryAutoHeroSwitchToWeaponType(WeaponType.Carbine))
                 {
-                    _hero.TrySwitchToWeaponType(WeaponType.Thompson);
                     return;
                 }
 
-                if (bazookaAmmo)
+                if (thompsonAmmo && TryAutoHeroSwitchToWeaponType(WeaponType.Thompson))
                 {
-                    _hero.TrySwitchToWeaponType(WeaponType.Bazooka);
                     return;
                 }
 
-                _hero.TrySwitchToAnyWeaponWithAmmo();
+                if (bazookaAmmo && TryAutoHeroSwitchToWeaponType(WeaponType.Bazooka))
+                {
+                    return;
+                }
+
+                TryAutoHeroSwitchToAnyWeaponWithAmmo();
                 return;
             }
 
-            // Hysteresis band: do not bounce weapons, but escape a totally dry current weapon.
-            if (!_hero.HasUsableAmmoForWeaponType(_model.currentWeaponType))
+            // Hysteresis band: pick infantry-appropriate weapon by distance when applicable.
+            if (vsInfantry && !vsAircraft)
             {
-                _hero.TrySwitchToAnyWeaponWithAmmo();
+                TrySelectInfantryWeaponByDistance(horiz);
             }
         }
 

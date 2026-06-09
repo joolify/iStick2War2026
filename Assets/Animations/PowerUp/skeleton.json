@@ -1,0 +1,105 @@
+{
+"skeleton": {
+	"hash": "lWL+0+Rb3Eo",
+	"spine": "4.2.43",
+	"x": -871,
+	"y": -894.96,
+	"width": 1742,
+	"height": 570.2,
+	"images": "./images/",
+	"audio": "./audio"
+},
+"bones": [
+	{ "name": "root" },
+	{ "name": "ParachuteBone", "parent": "root" }
+],
+"slots": [
+	{ "name": "Deploy", "bone": "ParachuteBone" },
+	{ "name": "Land", "bone": "ParachuteBone", "attachment": "land8" },
+	{ "name": "powerup", "bone": "root", "attachment": "powerup" },
+	{ "name": "powerup-bb", "bone": "root", "attachment": "powerup-bb" }
+],
+"skins": [
+	{
+		"name": "default",
+		"attachments": {
+			"Deploy": {
+				"dep1": { "x": -14.32, "y": -465.31, "width": 126, "height": 302 },
+				"dep2": { "y": -262.48, "width": 223, "height": 686 },
+				"dep3": { "y": 448.61, "width": 303, "height": 2150 },
+				"dep4": { "x": 21.48, "y": 448.61, "width": 748, "height": 2150 },
+				"dep5": { "x": 11.93, "y": 314.98, "width": 792, "height": 1850 },
+				"dep6": { "y": 229.08, "width": 997, "height": 1698 },
+				"dep7": { "y": 88.29, "width": 1200, "height": 1418 },
+				"dep8": { "width": 1384, "height": 1250 }
+			},
+			"Land": {
+				"land1": { "y": -35.79, "width": 1366, "height": 1157 },
+				"land2": { "y": -102.61, "width": 1364, "height": 1066 },
+				"land3": { "x": -42.95, "y": -193.28, "width": 1307, "height": 877 },
+				"land4": { "x": -21.48, "y": -209.99, "width": 1248, "height": 857 },
+				"land5": { "x": -35.79, "y": -334.07, "width": 1321, "height": 583 },
+				"land6": { "x": -81.13, "y": -288.73, "width": 1246, "height": 680 },
+				"land7": { "x": -16.7, "y": -391.34, "width": 1470, "height": 528 },
+				"land8": { "y": -508.26, "width": 1742, "height": 367 }
+			},
+			"powerup": {
+				"powerup": { "x": -17.34, "y": -751.46, "width": 333, "height": 287 }
+			},
+			"powerup-bb": {
+				"powerup-bb": {
+					"type": "boundingbox",
+					"vertexCount": 4,
+					"vertices": [ -185.21, -714.65, -178.62, -855.66, 147.1, -855.66, 147.1, -707.23 ]
+				}
+			}
+		}
+	}
+],
+"animations": {
+	"Deploy": {
+		"slots": {
+			"Deploy": {
+				"attachment": [
+					{ "name": "dep1" },
+					{ "time": 0.1, "name": "dep2" },
+					{ "time": 0.2, "name": "dep3" },
+					{ "time": 0.3, "name": "dep4" },
+					{ "time": 0.5, "name": "dep5" },
+					{ "time": 0.7, "name": "dep6" },
+					{ "time": 0.9, "name": "dep7" },
+					{ "time": 1.1, "name": "dep8" },
+					{ "time": 1.2, "name": "dep7" },
+					{ "time": 1.4, "name": "dep8" }
+				]
+			}
+		}
+	},
+	"Land": {
+		"slots": {
+			"Land": {
+				"attachment": [
+					{ "name": "land1" },
+					{ "time": 0.0667, "name": "land2" },
+					{ "time": 0.1333, "name": "land3" },
+					{ "time": 0.2, "name": "land4" },
+					{ "time": 0.2667, "name": "land5" },
+					{ "time": 0.3333, "name": "land6" },
+					{ "time": 0.4, "name": "land7" },
+					{ "time": 0.4667, "name": "land8" }
+				]
+			}
+		},
+		"bones": {
+			"ParachuteBone": {
+				"translate": [
+					{ "time": 0.3333, "y": -95.96 },
+					{ "time": 0.5, "y": -163.93 },
+					{ "time": 0.5333, "y": -227.9 },
+					{ "time": 0.5667, "y": -287.87 }
+				]
+			}
+		}
+	}
+}
+}
