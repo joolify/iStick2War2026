@@ -28,6 +28,7 @@ namespace iStick2War_V2
  * Canvas UI menu hits → MainMenuNavUiButton_V2.cs
  * Narrow-aspect menu camera → OrthographicCameraAspectFitter_V2.cs
  * Main menu UI canvas layout → MainMenuCanvasLayout_V2.cs
+ * Intro movie background → MainMenuIntroVideoBackground_V2.cs
  * Settings panel layout → SettingsPanelLayout_V2.cs
  * After Play → WaveManager_V2.cs (gameplay scene), not this file
  *
@@ -153,6 +154,42 @@ namespace iStick2War_V2
             AudioManager_V2.SetMenuMusic();
             EnsureMenuCameraAspectFitter();
             EnsureMainMenuCanvasLayout();
+            EnsureMainMenuIntroVideoBackground();
+        }
+
+        private static void EnsureMainMenuIntroVideoBackground()
+        {
+            MainMenuIntroVideoBackground_V2[] existing =
+                FindObjectsByType<MainMenuIntroVideoBackground_V2>(FindObjectsInactive.Include);
+            if (existing != null && existing.Length > 0)
+            {
+                for (int i = 0; i < existing.Length; i++)
+                {
+                    MainMenuIntroVideoBackground_V2 intro = existing[i];
+                    if (intro != null)
+                    {
+                        intro.EnsurePlayback();
+                        intro.PlayIntro();
+                    }
+                }
+
+                return;
+            }
+
+            GameObject host = GameObject.Find("MainMenu V2");
+            if (host == null)
+            {
+                return;
+            }
+
+            MainMenuIntroVideoBackground_V2 created = host.GetComponent<MainMenuIntroVideoBackground_V2>();
+            if (created == null)
+            {
+                created = host.AddComponent<MainMenuIntroVideoBackground_V2>();
+            }
+
+            created.EnsurePlayback();
+            created.PlayIntro();
         }
 
         private static void EnsureMainMenuCanvasLayout()

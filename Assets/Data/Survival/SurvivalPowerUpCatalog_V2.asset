@@ -12,64 +12,115 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53d49a8ab26a1ec42800a22a434ca6c0, type: 3}
   m_Name: SurvivalPowerUpCatalog_V2
   m_EditorClassIdentifier: iStick2War.Game::iStick2War_V2.SurvivalPowerUpCatalog_V2
+  _defaultHealthPreviewObject: {fileID: 0}
+  _defaultBunkerRepairPreviewObject: {fileID: 0}
+  _defaultAmmoRefillPreviewObject: {fileID: 0}
   _entries:
   - kind: 0
     weight: 30
     healthAmount: 50
     bunkerRepairAmount: 25
     weaponDefinition: {fileID: 0}
+    displayName: 
+    pickupTitle: 
+    previewSprite: {fileID: 0}
+    previewObject: {fileID: 430464571477458972, guid: ed5b1a19de8f42b478f80b846f46232f, type: 3}
   - kind: 1
     weight: 25
     healthAmount: 50
     bunkerRepairAmount: 25
     weaponDefinition: {fileID: 0}
+    displayName: 
+    pickupTitle: 
+    previewSprite: {fileID: 0}
+    previewObject: {fileID: 6125229543569532899, guid: ccf58fd5ff6ab824383aeb9b7f41dedb, type: 3}
   - kind: 2
     weight: 25
     healthAmount: 50
     bunkerRepairAmount: 25
     weaponDefinition: {fileID: 11400000, guid: 6e1e46ecfc98a3c44b4285a36431db4b, type: 2}
+    displayName: 
+    pickupTitle: 
+    previewSprite: {fileID: 0}
+    previewObject: {fileID: 4527408217414689515, guid: abbadf7d12e610746a1fb33eeb75d4a5, type: 3}
   - kind: 3
     weight: 20
     healthAmount: 50
     bunkerRepairAmount: 25
     weaponDefinition: {fileID: 11400000, guid: 6e1e46ecfc98a3c44b4285a36431db4b, type: 2}
+    displayName: 
+    pickupTitle: 
+    previewSprite: {fileID: 0}
+    previewObject: {fileID: 4527408217414689515, guid: abbadf7d12e610746a1fb33eeb75d4a5, type: 3}
   - kind: 2
     weight: 20
     healthAmount: 50
     bunkerRepairAmount: 25
     weaponDefinition: {fileID: 11400000, guid: 53d86043cc64445fb65ff8fccfd9f16f, type: 2}
+    displayName: 
+    pickupTitle: 
+    previewSprite: {fileID: 0}
+    previewObject: {fileID: 1093310800990955572, guid: 968df26ce55a0fd4e8674b0da882c2f9, type: 3}
   - kind: 3
     weight: 20
     healthAmount: 50
     bunkerRepairAmount: 25
     weaponDefinition: {fileID: 11400000, guid: 53d86043cc64445fb65ff8fccfd9f16f, type: 2}
+    displayName: 
+    pickupTitle: 
+    previewSprite: {fileID: 0}
+    previewObject: {fileID: 1093310800990955572, guid: 968df26ce55a0fd4e8674b0da882c2f9, type: 3}
   - kind: 2
     weight: 20
     healthAmount: 50
     bunkerRepairAmount: 25
     weaponDefinition: {fileID: 11400000, guid: f8e2a91c4b2d6e7f9a0b1c2d3e4f5a61, type: 2}
+    displayName: 
+    pickupTitle: 
+    previewSprite: {fileID: 0}
+    previewObject: {fileID: 5420907743602023193, guid: df958aac6e04da94bbb554bfaeb48046, type: 3}
   - kind: 3
     weight: 20
     healthAmount: 50
     bunkerRepairAmount: 25
     weaponDefinition: {fileID: 11400000, guid: f8e2a91c4b2d6e7f9a0b1c2d3e4f5a61, type: 2}
+    displayName: 
+    pickupTitle: 
+    previewSprite: {fileID: 0}
+    previewObject: {fileID: 5420907743602023193, guid: df958aac6e04da94bbb554bfaeb48046, type: 3}
   - kind: 2
     weight: 20
     healthAmount: 50
     bunkerRepairAmount: 25
     weaponDefinition: {fileID: 11400000, guid: c7a91f2e4b3d4e5f8061728394a5b0c1, type: 2}
+    displayName: 
+    pickupTitle: 
+    previewSprite: {fileID: 0}
+    previewObject: {fileID: 5205153334000988418, guid: a8feee918fd3ac24facd17fd272183f9, type: 3}
   - kind: 3
     weight: 20
     healthAmount: 50
     bunkerRepairAmount: 25
     weaponDefinition: {fileID: 11400000, guid: c7a91f2e4b3d4e5f8061728394a5b0c1, type: 2}
+    displayName: 
+    pickupTitle: 
+    previewSprite: {fileID: 0}
+    previewObject: {fileID: 5205153334000988418, guid: a8feee918fd3ac24facd17fd272183f9, type: 3}
   - kind: 2
     weight: 20
     healthAmount: 50
     bunkerRepairAmount: 25
     weaponDefinition: {fileID: 11400000, guid: 6558c37908f5c664f915fa7c826ae5c7, type: 2}
+    displayName: 
+    pickupTitle: 
+    previewSprite: {fileID: 0}
+    previewObject: {fileID: 8939778783826366660, guid: cf0529a23d8aec4429b6ec1a1906e7ea, type: 3}
   - kind: 3
     weight: 20
     healthAmount: 50
     bunkerRepairAmount: 25
     weaponDefinition: {fileID: 11400000, guid: 6558c37908f5c664f915fa7c826ae5c7, type: 2}
+    displayName: 
+    pickupTitle: 
+    previewSprite: {fileID: 0}
+    previewObject: {fileID: 8939778783826366660, guid: cf0529a23d8aec4429b6ec1a1906e7ea, type: 3}
