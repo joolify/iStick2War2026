@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -27,6 +28,9 @@ namespace iStick2War_V2
 
         private void Awake()
         {
+            EnsureOverlayCanvasVisible();
+            GameplayHudLayoutUtility_V2.EnsureGameplayHudLayoutReady(transform);
+
             if (_pauseButtonHost == null && _heartLifeBarHost == null)
             {
                 return;
@@ -53,6 +57,17 @@ namespace iStick2War_V2
 
         private void Start()
         {
+            EnsureOverlayCanvasVisible();
+            GameplayHudLayoutUtility_V2.EnsureGameplayHudLayoutReady(transform);
+            ApplySpriteLayout();
+            StartCoroutine(RebuildHudLayoutEndOfFrame());
+        }
+
+        private IEnumerator RebuildHudLayoutEndOfFrame()
+        {
+            yield return null;
+            EnsureOverlayCanvasVisible();
+            GameplayHudLayoutUtility_V2.EnsureGameplayHudLayoutReady(transform);
             ApplySpriteLayout();
         }
 
@@ -73,10 +88,30 @@ namespace iStick2War_V2
 
         private RectTransform EnsureSpritesCanvas()
         {
-            Transform sceneRoot = transform.parent != null ? transform.parent : transform;
-            Transform existing = sceneRoot.Find(SpritesCanvasName);
+            // Sibling at scene root — nested Screen Space Camera canvas under Overlay HUD breaks sprite rendering.
+            Transform existing = FindSpritesCanvasRoot();
             if (existing != null)
             {
+                if (existing.parent != null)
+                {
+                    existing.SetParent(null, false);
+                }
+
+                if (existing is RectTransform existingRect)
+                {
+                    StretchFull(existingRect);
+                }
+
+                Canvas existingCanvas = existing.GetComponent<Canvas>();
+                if (existingCanvas != null)
+                {
+                    existingCanvas.enabled = true;
+                    if (existingCanvas.worldCamera == null)
+                    {
+                        existingCanvas.worldCamera = ResolveCamera();
+                    }
+                }
+
                 SafeAreaFitter fitter = existing.GetComponentInChildren<SafeAreaFitter>();
                 if (fitter != null)
                 {
@@ -93,7 +128,7 @@ namespace iStick2War_V2
                 typeof(CanvasScaler),
                 typeof(GraphicRaycaster));
             canvasGo.layer = gameObject.layer;
-            canvasGo.transform.SetParent(sceneRoot, false);
+            canvasGo.transform.SetParent(null, false);
 
             Canvas canvas = canvasGo.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceCamera;
@@ -130,6 +165,22 @@ namespace iStick2War_V2
             safeArea.gameObject.AddComponent<SafeAreaFitter>();
 
             return safeArea;
+        }
+
+        private Transform FindSpritesCanvasRoot()
+        {
+            Transform[] transforms = FindObjectsByType<Transform>(FindObjectsInactive.Include);
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                Transform candidate = transforms[i];
+                if (candidate != null &&
+                    candidate.name.Equals(SpritesCanvasName, System.StringComparison.Ordinal))
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
         }
 
         private Camera ResolveCamera()
@@ -182,6 +233,23 @@ namespace iStick2War_V2
             to.sizeDelta = from.sizeDelta;
             to.localRotation = Quaternion.identity;
             to.localScale = Vector3.one;
+        }
+
+        // Scene often stores HUD-Canvas at scale 0 to hide it in editor; restore before gameplay HUD binds.
+        private void EnsureOverlayCanvasVisible()
+        {
+            if (transform is not RectTransform canvasRect)
+            {
+                return;
+            }
+
+            StretchFull(canvasRect);
+
+            Canvas canvas = GetComponent<Canvas>();
+            if (canvas != null)
+            {
+                canvas.enabled = true;
+            }
         }
 
         private static void StretchFull(RectTransform rect)

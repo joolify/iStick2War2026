@@ -28,4 +28,4 @@ MonoBehaviour:
   _openShopDirectly: 0
   _openLifeOverDirectly: 0
   _openGameOverDirectly: 0
-  _openGameWonDirectly: 1
+  _openGameWonDirectly: 0

@@ -554,6 +554,7 @@ namespace iStick2War_V2
             }
 
             EmitMetaChanged();
+            EnsureGameplayHudVisible();
             RefreshTopBar();
         }
 
@@ -1795,6 +1796,7 @@ namespace iStick2War_V2
             }
 
             SetState(WaveLoopState_V2.InWave);
+            EnsureGameplayHudVisible();
             SetCameraFollowEnabled(true);
             _stateEndTime = Time.time + wave.WaveDurationSeconds;
             float failSafeBasis = Mathf.Max(
@@ -4072,6 +4074,8 @@ namespace iStick2War_V2
                 return;
             }
 
+            EnsureGameplayHudCanvasVisible(hudCanvas);
+
             walk = leaf;
             while (walk != null)
             {
@@ -4488,6 +4492,7 @@ namespace iStick2War_V2
 
         private void RefreshTopBar()
         {
+            EnsureGameplayHudVisible();
             ResolveTopBarReferencesIfNeeded();
 
             if (_topBarBunkerHealthText != null)
@@ -4629,6 +4634,148 @@ namespace iStick2War_V2
             EnsureGameplayOverlayBranchActive(_topBarWaveText.transform);
         }
 
+        private void EnsureGameplayHudVisible()
+        {
+            Transform hudCanvas = FindSceneTransformByName("HUD-Canvas");
+            EnsureGameplayHudCanvasVisible(hudCanvas);
+            EnsureGameplayHudCanvasVisible(FindSceneTransformByName("HUD-Sprites-Canvas"));
+
+            Transform hudRoot = FindSceneTransformByName("HUDRoot");
+            if (hudRoot != null)
+            {
+                hudRoot.gameObject.SetActive(true);
+            }
+
+            if (hudCanvas != null)
+            {
+                GameplayHudLayoutUtility_V2.EnsureGameplayHudLayoutReady(hudCanvas);
+            }
+
+            SafeAreaFitter[] fitters = FindObjectsByType<SafeAreaFitter>(FindObjectsInactive.Include);
+            for (int i = 0; i < fitters.Length; i++)
+            {
+                SafeAreaFitter fitter = fitters[i];
+                if (fitter != null && IsUnderGameplayHudRoot(fitter.transform))
+                {
+                    fitter.Refresh();
+                }
+            }
+
+            Canvas.ForceUpdateCanvases();
+        }
+
+        private static void EnsureGameplayHudCanvasVisible(Transform hudCanvas)
+        {
+            if (hudCanvas == null)
+            {
+                return;
+            }
+
+            if (!hudCanvas.gameObject.activeSelf)
+            {
+                hudCanvas.gameObject.SetActive(true);
+            }
+
+            if (hudCanvas is RectTransform canvasRect)
+            {
+                if (canvasRect.localScale.sqrMagnitude < 0.001f)
+                {
+                    canvasRect.localScale = Vector3.one;
+                }
+
+                if (canvasRect.anchorMax.x <= canvasRect.anchorMin.x ||
+                    canvasRect.anchorMax.y <= canvasRect.anchorMin.y)
+                {
+                    canvasRect.anchorMin = Vector2.zero;
+                    canvasRect.anchorMax = Vector2.one;
+                    canvasRect.pivot = new Vector2(0.5f, 0.5f);
+                    canvasRect.anchoredPosition = Vector2.zero;
+                    canvasRect.sizeDelta = Vector2.zero;
+                }
+            }
+
+            Canvas canvas = hudCanvas.GetComponent<Canvas>();
+            if (canvas != null)
+            {
+                canvas.enabled = true;
+                if (canvas.renderMode == RenderMode.ScreenSpaceCamera && canvas.worldCamera == null)
+                {
+                    Camera mainCamera = Camera.main;
+                    if (mainCamera != null)
+                    {
+                        canvas.worldCamera = mainCamera;
+                    }
+                }
+            }
+        }
+
+        private static bool IsUnderGameplayHudRoot(Transform transform)
+        {
+            Transform walk = transform;
+            while (walk != null)
+            {
+                string name = walk.name;
+                if (name.Equals("HUD-Canvas", StringComparison.OrdinalIgnoreCase) ||
+                    name.Equals("HUD-Sprites-Canvas", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                walk = walk.parent;
+            }
+
+            return false;
+        }
+
+        private static Transform FindSceneTransformByName(string exactName)
+        {
+            if (string.IsNullOrWhiteSpace(exactName))
+            {
+                return null;
+            }
+
+            Transform[] transforms = FindObjectsByType<Transform>(FindObjectsInactive.Include);
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                Transform candidate = transforms[i];
+                if (candidate != null &&
+                    candidate.name.Equals(exactName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
+        private static int ScoreTopBarTextCandidate(TMP_Text candidate)
+        {
+            if (candidate == null)
+            {
+                return int.MinValue;
+            }
+
+            int score = candidate.gameObject.activeInHierarchy ? 100 : 0;
+            Transform walk = candidate.transform;
+            while (walk != null)
+            {
+                string name = walk.name;
+                if (name.Equals("HUD-Canvas", StringComparison.OrdinalIgnoreCase))
+                {
+                    return score + 200;
+                }
+
+                if (name.Equals("Topbar-canvas", StringComparison.OrdinalIgnoreCase))
+                {
+                    return score - 200;
+                }
+
+                walk = walk.parent;
+            }
+
+            return score;
+        }
+
         private static bool IsGameplayHudCanvasRoot(Transform transform)
         {
             if (transform == null)
@@ -4689,6 +4836,8 @@ namespace iStick2War_V2
 
             string wanted = objectName.Trim();
             TMP_Text[] allTexts = UnityEngine.Object.FindObjectsByType<TMP_Text>(FindObjectsInactive.Include);
+            TMP_Text best = null;
+            int bestScore = int.MinValue;
             for (int i = 0; i < allTexts.Length; i++)
             {
                 TMP_Text current = allTexts[i];
@@ -4698,13 +4847,20 @@ namespace iStick2War_V2
                 }
 
                 string n = current.gameObject.name.Trim();
-                if (n.Equals(wanted, StringComparison.OrdinalIgnoreCase))
+                if (!n.Equals(wanted, StringComparison.OrdinalIgnoreCase))
                 {
-                    return current;
+                    continue;
+                }
+
+                int score = ScoreTopBarTextCandidate(current);
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = current;
                 }
             }
 
-            return null;
+            return best;
         }
     }
 }

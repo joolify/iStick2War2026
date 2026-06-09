@@ -41,7 +41,14 @@ public sealed class SafeAreaFitter : MonoBehaviour
         }
 
         if (target == null)
+        {
             return;
+        }
+
+        if (Screen.width <= 0 || Screen.height <= 0)
+        {
+            return;
+        }
 
         Rect safeArea = Screen.safeArea;
 
@@ -55,6 +62,8 @@ public sealed class SafeAreaFitter : MonoBehaviour
 
         target.anchorMin = anchorMin;
         target.anchorMax = anchorMax;
+        target.anchoredPosition = Vector2.zero;
+        target.sizeDelta = Vector2.zero;
         target.offsetMin = Vector2.zero;
         target.offsetMax = Vector2.zero;
 
