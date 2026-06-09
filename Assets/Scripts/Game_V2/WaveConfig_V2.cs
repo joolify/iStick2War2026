@@ -87,7 +87,7 @@ namespace iStick2War_V2
         [Tooltip(
             "When this row is the active wave at gameplay scene boot (wave index 0), load MainMenuScene " +
             "instead of starting Prepare/InWave. Main menu Play loads the gameplay scene and skips this once. " +
-            "Useful when pressing Play in the editor on SampleScene. Ignored when Open Shop Directly, Open LifeOver Directly, or Open GameOver Directly is on. Turn off before shipping.")]
+            "Useful when pressing Play in the editor on SampleScene. Ignored when any Open * Directly dev shortcut is on. Turn off before shipping.")]
         [SerializeField] private bool _startAtMainMenuOnSceneLoad;
         [InspectorName("Open Shop Directly")]
         [Tooltip(
@@ -104,6 +104,16 @@ namespace iStick2War_V2
             "Skip playing this wave: after Prepare, open the GameOver menu immediately (lives set to 0). " +
             "Useful for testing GameOver UI. Turn off before shipping.")]
         [SerializeField] private bool _openGameOverDirectly;
+        [InspectorName("Open Game Won Directly")]
+        [Tooltip(
+            "Skip playing this wave: after Prepare, open the GameWon menu immediately. " +
+            "Useful for testing GameWon UI. Turn off before shipping.")]
+        [SerializeField] private bool _openGameWonDirectly;
+        [InspectorName("Open Game Error Directly")]
+        [Tooltip(
+            "Skip playing this wave: after Prepare, open the GameError menu immediately. " +
+            "Useful for testing GameError UI. Turn off before shipping.")]
+        [SerializeField] private bool _openGameErrorDirectly;
 
         public int EnemyCount => Mathf.Max(0, _enemyCount);
         public int GroundTrooperCount => Mathf.Max(0, _groundTrooperCount);
@@ -121,5 +131,7 @@ namespace iStick2War_V2
         public bool OpenShopDirectly => _openShopDirectly;
         public bool OpenLifeOverDirectly => _openLifeOverDirectly;
         public bool OpenGameOverDirectly => _openGameOverDirectly;
+        public bool OpenGameWonDirectly => _openGameWonDirectly;
+        public bool OpenGameErrorDirectly => _openGameErrorDirectly;
     }
 }

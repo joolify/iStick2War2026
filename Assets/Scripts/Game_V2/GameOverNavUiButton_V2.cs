@@ -11,7 +11,7 @@ namespace iStick2War_V2
      * GameOverNavUiButton_V2 (Run ended — canvas UI Button)
      *
      * PURPOSE:
-     * Routes GameOver V2 UI buttons (restart run, return to main menu) while WaveLoopState_V2.GameOver.
+     * Routes GameOver V2 / GameWon UI buttons (restart run, return to main menu) while terminal end states are active.
      *
      * ---------------------------------------------------------
      * NAVIGATION (Game_V2)
@@ -162,7 +162,7 @@ namespace iStick2War_V2
 
             _lastHandledClickFrame = Time.frameCount;
             ResolveWaveManagerIfNeeded();
-            if (_waveManager == null || _waveManager.State != WaveLoopState_V2.GameOver)
+            if (!IsNavAllowedForCurrentState())
             {
                 if (_debugLogs)
                 {
@@ -197,7 +197,7 @@ namespace iStick2War_V2
             _latchPressedVisual = false;
             ShowNormalVisual();
 
-            if (_waveManager == null || _waveManager.State != WaveLoopState_V2.GameOver)
+            if (!IsNavAllowedForCurrentState())
             {
                 return;
             }
@@ -226,6 +226,24 @@ namespace iStick2War_V2
                 : _action;
         }
 
+        private bool IsNavAllowedForCurrentState()
+        {
+            if (_waveManager == null)
+            {
+                return false;
+            }
+
+            GameOverAction action = GetEffectiveAction();
+            if (action == GameOverAction.ReturnToMainMenu)
+            {
+                return _waveManager.State == WaveLoopState_V2.GameOver ||
+                       _waveManager.State == WaveLoopState_V2.GameWon ||
+                       _waveManager.State == WaveLoopState_V2.GameError;
+            }
+
+            return _waveManager.State == WaveLoopState_V2.GameOver;
+        }
+
         private string ResolveButtonObjectName()
         {
             return _normalVisual != null ? _normalVisual.name : gameObject.name;
@@ -250,6 +268,8 @@ namespace iStick2War_V2
 
             if (buttonName.Equals("LifeOver_Btn_MainMenu", StringComparison.OrdinalIgnoreCase) ||
                 buttonName.Equals("GameOver_Btn_MainMenu", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("GameWon_Btn_MainMenu", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("GameError_Btn_MainMenu", StringComparison.OrdinalIgnoreCase) ||
                 buttonName.Equals("TextBTN_GameOver_MediumGoToMainMenu", StringComparison.OrdinalIgnoreCase) ||
                 buttonName.Equals("TextBTN_MediumGoToMainMenu", StringComparison.OrdinalIgnoreCase))
             {

@@ -82,6 +82,22 @@ namespace iStick2War.Tests.EditMode
         }
 
         [Test]
+        public void OpenGameWonDirectly_ReflectsSerializedFlag()
+        {
+            EditModeTestHelpers.SetPrivateField(_config, "_openGameWonDirectly", true);
+
+            Assert.That(_config.OpenGameWonDirectly, Is.True);
+        }
+
+        [Test]
+        public void OpenGameErrorDirectly_ReflectsSerializedFlag()
+        {
+            EditModeTestHelpers.SetPrivateField(_config, "_openGameErrorDirectly", true);
+
+            Assert.That(_config.OpenGameErrorDirectly, Is.True);
+        }
+
+        [Test]
         public void WaveRewardCurrency_IsNotNegative()
         {
             EditModeTestHelpers.SetPrivateField(_config, "_waveRewardCurrency", -50);

@@ -753,10 +753,11 @@ namespace iStick2War_V2
             }
 
             // Dev wave shortcuts need SampleScene to stay loaded (shop / LifeOver testing).
-            if (wave.OpenShopDirectly || wave.OpenLifeOverDirectly || wave.OpenGameOverDirectly)
+            if (wave.OpenShopDirectly || wave.OpenLifeOverDirectly || wave.OpenGameOverDirectly ||
+                wave.OpenGameWonDirectly || wave.OpenGameErrorDirectly)
             {
                 Log(
-                    "[WaveManager_V2] StartAtMainMenuOnSceneLoad ignored: OpenShopDirectly, OpenLifeOverDirectly, or OpenGameOverDirectly is enabled on wave 1.");
+                    "[WaveManager_V2] StartAtMainMenuOnSceneLoad ignored: a dev wave shortcut is enabled on wave 1.");
                 return false;
             }
 
@@ -1642,7 +1643,8 @@ namespace iStick2War_V2
             SetState(WaveLoopState_V2.Preparing);
             WaveConfig_V2 wave = GetCurrentWaveConfig();
             float prepare = 0f;
-            if (wave == null || (!wave.OpenShopDirectly && !wave.OpenLifeOverDirectly && !wave.OpenGameOverDirectly))
+            if (wave == null || (!wave.OpenShopDirectly && !wave.OpenLifeOverDirectly && !wave.OpenGameOverDirectly &&
+                                 !wave.OpenGameWonDirectly && !wave.OpenGameErrorDirectly))
             {
                 if (s_skipPrepareDelayAfterMainMenuPlay)
                 {
@@ -1764,6 +1766,16 @@ namespace iStick2War_V2
             }
 
             if (allowDevWaveShortcuts && TryOpenGameOverDirectlyFromWave(wave))
+            {
+                return;
+            }
+
+            if (allowDevWaveShortcuts && TryOpenGameWonDirectlyFromWave(wave))
+            {
+                return;
+            }
+
+            if (allowDevWaveShortcuts && TryOpenGameErrorDirectlyFromWave(wave))
             {
                 return;
             }
@@ -1899,6 +1911,46 @@ namespace iStick2War_V2
             _inWaveEnteredUnscaledTime = Time.unscaledTime;
             Log($"Wave {CurrentWaveNumber} skipped (OpenGameOverDirectly). Opening GameOver.");
             EnterGameOverState(forceHeroDeathPresentation: true);
+            return true;
+        }
+
+        private bool TryOpenGameWonDirectlyFromWave(WaveConfig_V2 wave)
+        {
+            if (wave == null || !wave.OpenGameWonDirectly)
+            {
+                return false;
+            }
+
+            CancelLifeOverRevealRoutine();
+            CancelGameOverRevealRoutine();
+            HideLifeOverUiCompletely();
+            ClearActiveCombatForDeathUi("OpenGameWonDirectly dev shortcut");
+
+            _scalingForActiveWave = BuildScalingSnapshot(wave, CurrentWaveNumber);
+            _hasScalingForActiveWave = true;
+            _inWaveEnteredUnscaledTime = Time.unscaledTime;
+            Log($"Wave {CurrentWaveNumber} skipped (OpenGameWonDirectly). Opening GameWon.");
+            EnterGameWonState();
+            return true;
+        }
+
+        private bool TryOpenGameErrorDirectlyFromWave(WaveConfig_V2 wave)
+        {
+            if (wave == null || !wave.OpenGameErrorDirectly)
+            {
+                return false;
+            }
+
+            CancelLifeOverRevealRoutine();
+            CancelGameOverRevealRoutine();
+            HideLifeOverUiCompletely();
+            ClearActiveCombatForDeathUi("OpenGameErrorDirectly dev shortcut");
+
+            _scalingForActiveWave = BuildScalingSnapshot(wave, CurrentWaveNumber);
+            _hasScalingForActiveWave = true;
+            _inWaveEnteredUnscaledTime = Time.unscaledTime;
+            Log($"Wave {CurrentWaveNumber} skipped (OpenGameErrorDirectly). Opening GameError.");
+            EnterGameErrorState("OpenGameErrorDirectly dev shortcut");
             return true;
         }
 
@@ -2044,6 +2096,7 @@ namespace iStick2War_V2
             SetGameErrorUiVisible(false);
             ResolveGameWonUiIfNeeded();
             SetGameWonUiVisible(true);
+            EnsureGameWonNavUiButtonClickTargets();
             Log($"WaveManager entered GameWon at wave {CurrentWaveNumber}.");
             ClearPersistedRunSave();
         }
@@ -2242,6 +2295,7 @@ namespace iStick2War_V2
             SetGameWonUiVisible(false);
             ResolveGameErrorUiIfNeeded();
             SetGameErrorUiVisible(true);
+            EnsureGameErrorNavUiButtonClickTargets();
             Log($"WaveManager entered GameError. reason={_lastGameErrorReason}");
         }
 
@@ -3761,6 +3815,82 @@ namespace iStick2War_V2
             return null;
         }
 
+        private static void EnsureGameWonNavUiButtonClickTargets()
+        {
+            EnsureGameOverNavUiButtonOnTarget(
+                FindGameWonNamedControl("GameWon_Btn_MainMenu"),
+                GameOverNavUiButton_V2.GameOverAction.ReturnToMainMenu);
+        }
+
+        private static void EnsureGameErrorNavUiButtonClickTargets()
+        {
+            EnsureGameOverNavUiButtonOnTarget(
+                FindGameErrorNamedControl("GameError_Btn_MainMenu"),
+                GameOverNavUiButton_V2.GameOverAction.ReturnToMainMenu);
+        }
+
+        private static GameObject FindGameErrorChromeRoot()
+        {
+            GameObject gameErrorV2 = FindGameObjectInLoadedScenes("GameError V2");
+            if (gameErrorV2 != null)
+            {
+                return gameErrorV2;
+            }
+
+            return FindGameObjectInLoadedScenes("GameError");
+        }
+
+        private static GameObject FindGameErrorNamedControl(string exactName)
+        {
+            if (string.IsNullOrEmpty(exactName))
+            {
+                return null;
+            }
+
+            GameObject chromeRoot = FindGameErrorChromeRoot();
+            if (chromeRoot != null)
+            {
+                Transform underChrome = FindNamedChildRecursive(chromeRoot.transform, exactName);
+                if (underChrome != null)
+                {
+                    return underChrome.gameObject;
+                }
+            }
+
+            return FindGameObjectInLoadedScenes(exactName);
+        }
+
+        private static GameObject FindGameWonChromeRoot()
+        {
+            GameObject gameWonV2 = FindGameObjectInLoadedScenes("GameWon V2");
+            if (gameWonV2 != null)
+            {
+                return gameWonV2;
+            }
+
+            return FindGameObjectInLoadedScenes("GameWon");
+        }
+
+        private static GameObject FindGameWonNamedControl(string exactName)
+        {
+            if (string.IsNullOrEmpty(exactName))
+            {
+                return null;
+            }
+
+            GameObject chromeRoot = FindGameWonChromeRoot();
+            if (chromeRoot != null)
+            {
+                Transform underChrome = FindNamedChildRecursive(chromeRoot.transform, exactName);
+                if (underChrome != null)
+                {
+                    return underChrome.gameObject;
+                }
+            }
+
+            return FindGameObjectInLoadedScenes(exactName);
+        }
+
         private static void EnsureGameOverNavUiButtonClickTargets()
         {
             EnsureGameOverNavUiButtonOnTarget(
@@ -3969,7 +4099,15 @@ namespace iStick2War_V2
         {
             if (_gameWonRoot == null)
             {
-                _gameWonRoot = FindGameObjectInLoadedScenes("GameWon");
+                GameObject gameWonV2 = FindGameObjectInLoadedScenes("GameWon V2");
+                if (gameWonV2 != null)
+                {
+                    _gameWonRoot = gameWonV2;
+                }
+                else
+                {
+                    _gameWonRoot = FindGameObjectInLoadedScenes("GameWon");
+                }
             }
 
             if (_gameWonContinueButton == null)
@@ -4015,7 +4153,15 @@ namespace iStick2War_V2
         {
             if (_gameErrorRoot == null)
             {
-                _gameErrorRoot = FindGameObjectInLoadedScenes("GameError");
+                GameObject gameErrorV2 = FindGameObjectInLoadedScenes("GameError V2");
+                if (gameErrorV2 != null)
+                {
+                    _gameErrorRoot = gameErrorV2;
+                }
+                else
+                {
+                    _gameErrorRoot = FindGameObjectInLoadedScenes("GameError");
+                }
             }
 
             if (_gameErrorContinueButton == null)
