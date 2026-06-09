@@ -11,6 +11,7 @@ namespace iStick2War_V2
     /// shop purchases, and starting the next wave. Add to the same GameObject as <see cref="Hero_V2"/> and enable it.
     /// </summary>
     [DisallowMultipleComponent]
+    [DefaultExecutionOrder(-100)]
     public sealed class AutoHero_V2 : MonoBehaviour
     {
         [Header("Test profile")]
@@ -119,6 +120,11 @@ namespace iStick2War_V2
             "Extra priority when Bazooka refill applies but the hero still has some Bazooka ammo (top-up before other buys).")]
         [SerializeField] private int _shopScoreBonusBazookaAmmoTopUp = 12_000;
 
+        [Header("Scheduled death (testing)")]
+        [Tooltip("When > 0, AutoHero stops shooting from this wave number onward and leaves the bunker to die.")]
+        [SerializeField] private int _scheduledDeathWaveNumber;
+        [SerializeField] private bool _logScheduledDeath;
+
         [Header("Telemetry (optional)")]
         [SerializeField] private bool _logShopAndWave;
         [Tooltip("While InWave, logs periodically when no EnemyBodyPart target is chosen (helps diagnose last-wave soft locks).")]
@@ -143,6 +149,7 @@ namespace iStick2War_V2
         [SerializeField] private AudioClip _gameErrorAutomationHaltClip;
 
         [Header("Automation loop (runs)")]
+        [SerializeField] private GameRunMode_V2 _automationGameRunMode = GameRunMode_V2.Campaign;
         [SerializeField] private bool _enableAutomationRunLoop = true;
         [Tooltip(
             "Antal avslutade spelrundor (GameOver, GameWon eller GameError) innan automation slutar klicka vidare. " +
@@ -210,6 +217,7 @@ namespace iStick2War_V2
         private bool _inWaveTelemetryAnyHadTarget;
         private string _inWaveTelemetryLastTargetKindWhenHadTarget = "";
         private string _inWaveTelemetryLastParatrooperStateWhenHadTarget = "";
+        private int _scheduledDeathActivatedOnWave;
 
         private enum PendingAutomationAction
         {
@@ -230,6 +238,9 @@ namespace iStick2War_V2
 
         /// <summary>Active preset for balance/telemetry runs (Inspector).</summary>
         public AutoHeroTestProfileKind_V2 TestProfile => _testProfile;
+
+        // Campaign vs Survival for automation batch runs (main menu start + SampleScene bootstrap).
+        public GameRunMode_V2 AutomationGameRunMode => _automationGameRunMode;
 
         // Locked single-weapon test mode with infinite ammo refill (see Weapon test mode block).
         public bool IsWeaponTestModeEnabledForUi => IsLockedWeaponTestModeActive();
@@ -269,6 +280,16 @@ namespace iStick2War_V2
         public string TelemetryInWaveLastTargetKindWhenHadTarget => _inWaveTelemetryLastTargetKindWhenHadTarget ?? "";
         public string TelemetryInWaveLastParatrooperStateWhenHadTarget => _inWaveTelemetryLastParatrooperStateWhenHadTarget ?? "";
 
+        // 0 = disabled; otherwise first wave where suicide mode can activate (1-based, matches CurrentWaveNumber).
+        public int TelemetryScheduledDeathWaveConfigured => Mathf.Max(0, _scheduledDeathWaveNumber);
+
+        public bool TelemetryScheduledDeathModeActive => _scheduledDeathModeActive;
+
+        // Wave number when suicide mode first engaged this run; 0 if never.
+        public int TelemetryScheduledDeathActivatedOnWave => _scheduledDeathActivatedOnWave;
+
+        private bool _scheduledDeathModeActive;
+
         private void Awake()
         {
             CacheReferences();
@@ -288,6 +309,17 @@ namespace iStick2War_V2
             _automationHaltedOnGameError = false;
             _resolvedTestRunDoneTopBarText = null;
             HideTestRunDoneTopBarBanner();
+            ApplyAutomationGameRunModeBootstrapIfNeeded();
+        }
+
+        private void ApplyAutomationGameRunModeBootstrapIfNeeded()
+        {
+            if (!_enableAutomationRunLoop)
+            {
+                return;
+            }
+
+            GameRunModeBootstrap_V2.SetPendingNewRunMode(_automationGameRunMode);
         }
 
         private void OnEnable()
@@ -607,6 +639,7 @@ namespace iStick2War_V2
             if (state == WaveLoopState_V2.InWave && _lastWaveState != WaveLoopState_V2.InWave)
             {
                 ResetInWaveTelemetryAggregates();
+                TryMarkScheduledDeathActivatedForWave(_waveManager.CurrentWaveNumber);
             }
 
             _lastWaveState = state;
@@ -618,6 +651,37 @@ namespace iStick2War_V2
             _inWaveTelemetryAnyHadTarget = false;
             _inWaveTelemetryLastTargetKindWhenHadTarget = "";
             _inWaveTelemetryLastParatrooperStateWhenHadTarget = "";
+        }
+
+        private void TryMarkScheduledDeathActivatedForWave(int waveNumber)
+        {
+            if (_scheduledDeathWaveNumber <= 0 || waveNumber < _scheduledDeathWaveNumber)
+            {
+                return;
+            }
+
+            if (_scheduledDeathActivatedOnWave > 0)
+            {
+                return;
+            }
+
+            _scheduledDeathActivatedOnWave = _scheduledDeathWaveNumber;
+            if (_logScheduledDeath || _logShopAndWave)
+            {
+                Debug.Log(
+                    $"[AutoHero_V2] Scheduled death active from wave {_scheduledDeathWaveNumber} " +
+                    $"(current wave={waveNumber}).");
+            }
+        }
+
+        private bool IsScheduledDeathModeActive()
+        {
+            return _scheduledDeathWaveNumber > 0 &&
+                   _waveManager != null &&
+                   _waveManager.State == WaveLoopState_V2.InWave &&
+                   _waveManager.CurrentWaveNumber >= _scheduledDeathWaveNumber &&
+                   _hero != null &&
+                   !_hero.IsDead();
         }
 
         private void TickAutomationRunLoop(WaveLoopState_V2 state)
@@ -880,15 +944,15 @@ namespace iStick2War_V2
                     break;
                 case PendingAutomationAction.ClickMainMenuPlay:
                     LogAutomation(
-                        "Trying click: MainMenu Play (btn_main_menu_play -> Nav Play -> MainMenu_V2.HandlePlay)");
-                    clicked =
-                        TryClickMainMenuButtonByObjectName("btn_main_menu_play", "mainMenu-play-primary") ||
-                        TryClickPlayButtonFallback("mainMenu-play-fallback") ||
-                        TryClickMainMenuV2PlayDirectly("mainMenu-play-handlePlay");
+                        $"Trying click: MainMenu start ({_automationGameRunMode}) " +
+                        "(canvas button -> Nav -> MainMenu_V2.HandlePlay*)");
+                    clicked = TryStartAutomationRunFromMainMenu("mainMenu-start");
                     if (clicked)
                     {
                         _sessionInProgress = true;
-                        LogAutomation($"Run {_completedRuns + 1}/{Mathf.Max(1, _automationTotalRuns)} started.");
+                        LogAutomation(
+                            $"Run {_completedRuns + 1}/{Mathf.Max(1, _automationTotalRuns)} started " +
+                            $"({_automationGameRunMode}).");
                     }
                     break;
             }
@@ -954,30 +1018,63 @@ namespace iStick2War_V2
             return false;
         }
 
-        private bool TryClickPlayButtonFallback(string reasonTag)
+        private bool TryStartAutomationRunFromMainMenu(string reasonTag)
         {
-            MainMenuNavButton_V2[] navButtons =
-                FindObjectsByType<MainMenuNavButton_V2>(FindObjectsInactive.Include);
-            for (int i = 0; i < navButtons.Length; i++)
+            GameRunModeBootstrap_V2.SetPendingNewRunMode(_automationGameRunMode);
+
+            if (_automationGameRunMode == GameRunMode_V2.Survival)
             {
-                MainMenuNavButton_V2 nav = navButtons[i];
-                if (nav != null && nav.gameObject.activeInHierarchy && nav.IsPlayAction())
+                if (TryClickMainMenuUiButtonByObjectName("MainMenu_Btn_StartSurvivalMode", reasonTag) ||
+                    TryClickMainMenuButtonByObjectName("TextBTN_MediumSurvival", reasonTag))
                 {
-                    nav.TriggerAutomationClick();
-                    LogAutomation($"Clicked fallback Play '{nav.gameObject.name}' [{reasonTag}]");
+                    return true;
+                }
+            }
+            else
+            {
+                if (TryClickMainMenuUiButtonByObjectName("MainMenu_Btn_StartCampaign", reasonTag) ||
+                    TryClickMainMenuUiButtonByObjectName("MainMenu_Btn_StartGame", reasonTag) ||
+                    TryClickMainMenuButtonByObjectName("btn_main_menu_play", reasonTag) ||
+                    TryClickMainMenuButtonByObjectName("TextBTN_MediumStartGame", reasonTag))
+                {
                     return true;
                 }
             }
 
-            LogAutomation($"No active Play button found [{reasonTag}]");
+            return TryClickMainMenuV2StartRunDirectly(reasonTag);
+        }
+
+        private bool TryClickMainMenuUiButtonByObjectName(string objectName, string reasonTag)
+        {
+            if (string.IsNullOrWhiteSpace(objectName))
+            {
+                return false;
+            }
+
+            MainMenuNavUiButton_V2[] navButtons =
+                FindObjectsByType<MainMenuNavUiButton_V2>(FindObjectsInactive.Include);
+            for (int i = 0; i < navButtons.Length; i++)
+            {
+                MainMenuNavUiButton_V2 nav = navButtons[i];
+                if (nav == null || nav.gameObject == null || !nav.gameObject.name.Equals(objectName))
+                {
+                    continue;
+                }
+
+                if (!nav.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                nav.TriggerAutomationClick();
+                LogAutomation($"Clicked UI '{nav.gameObject.name}' [{reasonTag}]");
+                return true;
+            }
+
             return false;
         }
 
-        /// <summary>
-        /// Main menu Play is often a UI <see cref="UnityEngine.UI.Button"/> on <c>txt_mainmenu_play</c> (see <see cref="MainMenu_V2"/>),
-        /// not a <see cref="MainMenuNavButton_V2"/> named <c>btn_main_menu_play</c>.
-        /// </summary>
-        private bool TryClickMainMenuV2PlayDirectly(string reasonTag)
+        private bool TryClickMainMenuV2StartRunDirectly(string reasonTag)
         {
             MainMenu_V2[] menus = FindObjectsByType<MainMenu_V2>(FindObjectsInactive.Include);
             for (int i = 0; i < menus.Length; i++)
@@ -988,17 +1085,19 @@ namespace iStick2War_V2
                     continue;
                 }
 
-                if (!menu.TryHandlePlayFromAutomation())
+                if (!menu.TryHandleStartRunFromAutomation(_automationGameRunMode))
                 {
-                    LogAutomation($"MainMenu_V2.TryHandlePlayFromAutomation no-op on '{menu.gameObject.name}' [{reasonTag}]");
+                    LogAutomation(
+                        $"MainMenu_V2.TryHandleStartRunFromAutomation no-op on '{menu.gameObject.name}' [{reasonTag}]");
                     continue;
                 }
 
-                LogAutomation($"MainMenu_V2.TryHandlePlayFromAutomation on '{menu.gameObject.name}' [{reasonTag}]");
+                LogAutomation(
+                    $"MainMenu_V2.TryHandleStartRunFromAutomation({_automationGameRunMode}) on '{menu.gameObject.name}' [{reasonTag}]");
                 return true;
             }
 
-            LogAutomation($"No active enabled MainMenu_V2 for HandlePlay [{reasonTag}]");
+            LogAutomation($"No active enabled MainMenu_V2 for start run [{reasonTag}]");
             return false;
         }
 
@@ -1380,6 +1479,13 @@ namespace iStick2War_V2
             Vector2 heroPos = _model.transform.position;
             Vector2? bunkerAnchor = TryGetBunkerInteriorWorldPoint();
 
+            _scheduledDeathModeActive = IsScheduledDeathModeActive();
+            if (_scheduledDeathModeActive)
+            {
+                TickScheduledDeathCombat(heroPos, bunkerAnchor);
+                return;
+            }
+
             bool inside = _waveManager != null && _waveManager.IsHeroInsideBunker(_hero);
             float hpRatio = _model.maxHealth > 0 ? (float)_model.currentHealth / _model.maxHealth : 1f;
             bool splashActive = IsBombSplashThreatActive(heroPos);
@@ -1589,6 +1695,53 @@ namespace iStick2War_V2
 
             _view.SetAutoAimWorldOverride(hasTarget ? aimPoint : heroPos + Vector2.right * 6f);
             _input.SetBotFrame(move, shootHeld, reload);
+        }
+
+        // Stop firing and leave bunker cover so enemies can kill the hero (balance / life-over testing).
+        private void TickScheduledDeathCombat(Vector2 heroPos, Vector2? bunkerAnchor)
+        {
+            bool inside = _waveManager != null && _waveManager.IsHeroInsideBunker(_hero);
+            Camera shootVisCam = _shootVisibilityCamera != null ? _shootVisibilityCamera : Camera.main;
+            Plane[] shootFrustumPlanes = TryGetShootVisibilityFrustumPlanes(shootVisCam);
+            Collider2D target = FindNearestEnemyCollider(heroPos, shootVisCam, shootFrustumPlanes, false);
+
+            Vector2 move = Vector2.zero;
+            if (inside && bunkerAnchor.HasValue)
+            {
+                float dx = heroPos.x - bunkerAnchor.Value.x;
+                move = new Vector2(dx > 0.08f ? 1f : dx < -0.08f ? -1f : 0f, 0f);
+                if (Mathf.Abs(dx) <= 0.08f)
+                {
+                    move = Vector2.right;
+                }
+            }
+            else if (target != null)
+            {
+                Vector2 targetCenter = target.bounds.center;
+                float dx = targetCenter.x - heroPos.x;
+                float dy = targetCenter.y - heroPos.y;
+                move = new Vector2(
+                    Mathf.Abs(dx) > 0.25f ? Mathf.Sign(dx) : 0f,
+                    Mathf.Abs(dy) > 0.4f ? Mathf.Sign(dy) * 0.65f : 0f);
+                if (move.sqrMagnitude > 1.0001f)
+                {
+                    move.Normalize();
+                }
+            }
+
+            _telemetryHasTarget = target != null;
+            _telemetryInRange = false;
+            _telemetryCanHoldFire = false;
+            _telemetryTargetShootableOnCamera = false;
+            _telemetryShootBlockedByBunkerMove = false;
+            _telemetryRawShootHeld = false;
+            _telemetryImmediateGroundParatrooperThreat = false;
+            _telemetryTargetKind = "scheduled_death";
+            _telemetryTargetParatrooperState = StickmanBodyState.Die;
+
+            Vector2 aimPoint = target != null ? (Vector2)target.bounds.center : heroPos + Vector2.right * 6f;
+            _view.SetAutoAimWorldOverride(aimPoint);
+            _input.SetBotFrame(move, false, false);
         }
 
         private void TickLowHpWarningSoundForDebug()

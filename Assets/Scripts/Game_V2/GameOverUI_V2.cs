@@ -74,6 +74,26 @@ namespace iStick2War_V2
             }
         }
 
+        // Survival Game Over: optional score lines on the title label.
+        public void ApplySurvivalScorePresentation(
+            int waveReached,
+            int totalKills,
+            int bestWave,
+            int bestKills,
+            bool newBestWave,
+            bool newBestKills)
+        {
+            ResolveReferencesIfNeeded();
+            if (_titleText == null)
+            {
+                return;
+            }
+
+            string headline = newBestWave || newBestKills ? "NEW BEST!" : "GAME OVER";
+            _titleText.text =
+                $"{headline}\nWave {waveReached} · {totalKills} kills\nBest: Wave {bestWave} · {bestKills} kills";
+        }
+
         public void Hide()
         {
             ResolveReferencesIfNeeded();

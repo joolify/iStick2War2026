@@ -97,19 +97,54 @@ namespace iStick2War_V2
 
             int idx = Mathf.Min(wave - 1, _rows.Count - 1);
             WaveBalanceWaveRow src = _rows[idx];
+            float hp = Mathf.Max(0.01f, src.enemyHpMultiplier);
+            float dmg = Mathf.Max(0.01f, src.enemyDamageMultiplier);
+            float spawn = Mathf.Max(0.01f, src.spawnRateMultiplier);
+            float reward = Mathf.Max(0f, src.waveRewardMultiplier);
+
+            if (wave > _rows.Count)
+            {
+                int extraWaves = wave - _rows.Count;
+                float postCapRamp = 1f + extraWaves * 0.04f;
+                hp *= postCapRamp;
+                dmg *= 1f + extraWaves * 0.035f;
+                spawn *= 1f + extraWaves * 0.025f;
+                reward *= 1f + extraWaves * 0.02f;
+            }
+
             return new WaveBalanceWaveRow
             {
-                enemyHpMultiplier = Mathf.Max(0.01f, src.enemyHpMultiplier),
-                enemyDamageMultiplier = Mathf.Max(0.01f, src.enemyDamageMultiplier),
-                spawnRateMultiplier = Mathf.Max(0.01f, src.spawnRateMultiplier),
-                waveRewardMultiplier = Mathf.Max(0f, src.waveRewardMultiplier)
+                enemyHpMultiplier = hp,
+                enemyDamageMultiplier = dmg,
+                spawnRateMultiplier = spawn,
+                waveRewardMultiplier = reward
             };
         }
 
         private static WaveBalanceWaveRow ResolveBuiltInCurveWaveRow(int wave)
         {
             // Mild ramp for waves 1-3, steeper pressure through wave 15 with matching reward.
-            float t = Mathf.Clamp01((wave - 1f) / 14f);
+            WaveBalanceWaveRow capped = ResolveBuiltInCurveWaveRowCappedAt15(wave);
+            if (wave <= 15)
+            {
+                return capped;
+            }
+
+            // Survival endless: extrapolate beyond campaign cap (~4% pressure per extra wave).
+            int extraWaves = wave - 15;
+            float postCapRamp = 1f + extraWaves * 0.04f;
+            return new WaveBalanceWaveRow
+            {
+                enemyHpMultiplier = capped.enemyHpMultiplier * postCapRamp,
+                enemyDamageMultiplier = capped.enemyDamageMultiplier * (1f + extraWaves * 0.035f),
+                spawnRateMultiplier = capped.spawnRateMultiplier * (1f + extraWaves * 0.025f),
+                waveRewardMultiplier = capped.waveRewardMultiplier * (1f + extraWaves * 0.02f)
+            };
+        }
+
+        private static WaveBalanceWaveRow ResolveBuiltInCurveWaveRowCappedAt15(int wave)
+        {
+            float t = Mathf.Clamp01((Mathf.Min(wave, 15) - 1f) / 14f);
             return new WaveBalanceWaveRow
             {
                 enemyHpMultiplier = Mathf.Lerp(1f, 1.42f, t),

@@ -18,7 +18,10 @@ namespace iStick2War_V2
     {
         public int formatVersion = RunSaveService_V2.CurrentFormatVersion;
         public string gameplaySceneName = "SampleScene";
+        // 0 = Campaign, 1 = Survival (GameRunMode_V2).
+        public int gameMode;
         public int waveIndex;
+        public int totalEnemiesKilledRun;
         public int loopState;
         public int currency;
         public int bunkerHealth;

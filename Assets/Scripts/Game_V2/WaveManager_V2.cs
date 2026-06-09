@@ -158,6 +158,10 @@ namespace iStick2War_V2
         [SerializeField] private bool _reloadPromptPulse = true;
         [SerializeField] private float _reloadPromptPulsePeriodSeconds = 0.85f;
         [SerializeField] private Color _reloadPromptPulseAccent = new Color(1f, 0.5f, 0.12f, 1f);
+        [SerializeField] private string _reloadPromptText = "Reload!";
+
+        [Header("Game mode")]
+        [SerializeField] private GameRunMode_V2 _gameRunMode = GameRunMode_V2.Campaign;
 
         [Header("Waves")]
         [SerializeField] private List<WaveConfig_V2> _waves = new List<WaveConfig_V2>();
@@ -208,6 +212,8 @@ namespace iStick2War_V2
         [SerializeField] private GameObject _lifeOverRoot;
         [Tooltip("Life lost message, e.g. txt_lifeOver_info on LifeOver-canvas.")]
         [SerializeField] private TMP_Text _lifeOverInfoText;
+        [Tooltip("Lives remaining label, e.g. txt_lifeOver_livesLeft on LifeOver-canvas.")]
+        [SerializeField] private TMP_Text _lifeOverLivesLeftText;
         [Tooltip("Start label on LifeOver, e.g. txt_lifeOver_startNewGame on LifeOver-canvas.")]
         [SerializeField] private TMP_Text _lifeOverStartNewGameText;
         [Tooltip("Continue control, e.g. TextBTN_MediumStartNewGame (LifeOverNavButton_V2).")]
@@ -224,6 +230,7 @@ namespace iStick2War_V2
         [SerializeField] private string _lifeOverGoToMainMenuLabel = "Main menu";
         [SerializeField] private string _lifeOverInfoMessage =
             "You died. Press \"Start Game\" to try the wave again";
+        [SerializeField] private string _lifeOverLivesLeftFormat = "Lives left: {0}/{1}";
         [Tooltip("Optional top-bar hold while LifeOver is visible.")]
         [SerializeField] private float _lifeLostTopBarHoldSeconds = 2.5f;
         [Tooltip("Seconds to wait after hero death before LifeOver UI appears (death animation beat).")]
@@ -249,6 +256,7 @@ namespace iStick2War_V2
         private int _bunkerRepairsThisRun;
         private int _bunkerMaxUpgradesThisRun;
         private int _enemiesKilledThisWave;
+        private int _totalEnemiesKilledRun;
         private Color _reloadPromptBaseColor = Color.white;
         private bool _reloadPromptBaseColorCached;
         private Transform _cachedBunkerRootTransform;
@@ -305,6 +313,10 @@ namespace iStick2War_V2
         public int DefaultBunkerMaxUpgradeAmount => _bunkerMaxUpgradeAmount;
         // Kill counter for the active wave (reset when a new wave starts).
         public int EnemiesKilledThisWave => _enemiesKilledThisWave;
+        public GameRunMode_V2 GameRunMode => _gameRunMode;
+        public bool IsSurvivalMode => _gameRunMode == GameRunMode_V2.Survival;
+        public bool IsCampaignMode => _gameRunMode == GameRunMode_V2.Campaign;
+        public int TotalEnemiesKilledRun => _totalEnemiesKilledRun;
         public int CheckpointContinueCost => Mathf.Max(0, _checkpointContinueCost);
         public int ClutchSaveCost => Mathf.Max(0, _clutchSaveCost);
         public float RestartRunPermanentDamageBonus01 => s_restartRunPermanentDamageBonus01;
@@ -363,7 +375,10 @@ namespace iStick2War_V2
         // Shows the top-bar wave label (hold + fade) using CurrentWaveNumber.
         private void BeginTopBarWaveTextIntro()
         {
-            BeginTopBarStatusIntro($"Wave {CurrentWaveNumber}", _topBarWaveTextVisibleSeconds);
+            string waveLabel = IsSurvivalMode
+                ? $"Survival · Wave {CurrentWaveNumber}"
+                : $"Wave {CurrentWaveNumber}";
+            BeginTopBarStatusIntro(waveLabel, _topBarWaveTextVisibleSeconds);
         }
 
         private void BeginTopBarStatusIntro(string message, float holdSeconds)
@@ -546,6 +561,8 @@ namespace iStick2War_V2
                 return;
             }
 
+            _gameRunMode = GameRunModeBootstrap_V2.ConsumePendingNewRunMode();
+            _totalEnemiesKilledRun = 0;
             EnterPreparingState();
             if (s_notifyGameplayFromMainMenuPending)
             {
@@ -600,6 +617,8 @@ namespace iStick2War_V2
 
         private void ApplyRunSave(RunSaveFile_V2 save)
         {
+            _gameRunMode = ParseSavedGameMode(save.gameMode);
+            _totalEnemiesKilledRun = Mathf.Max(0, save.totalEnemiesKilledRun);
             _waveIndex = Mathf.Max(0, save.waveIndex);
             _currency = Mathf.Max(0, save.currency);
             _bunkerMaxHealthRuntime = Mathf.Max(1, save.bunkerMaxHealth);
@@ -700,6 +719,8 @@ namespace iStick2War_V2
             RunSaveFile_V2 save = new RunSaveFile_V2
             {
                 gameplaySceneName = active.name,
+                gameMode = (int)_gameRunMode,
+                totalEnemiesKilledRun = _totalEnemiesKilledRun,
                 waveIndex = _waveIndex,
                 loopState = (int)_state,
                 currency = _currency,
@@ -820,6 +841,7 @@ namespace iStick2War_V2
             }
 
             _enemiesKilledThisWave++;
+            _totalEnemiesKilledRun++;
             WaveRunTelemetry_V2.NotifyEnemyKilledForFeelKpis();
 
             // Do not complete wave from kill-count while spawner-driven delayed spawns
@@ -1103,6 +1125,7 @@ namespace iStick2War_V2
 
             s_restartRunPermanentDamageBonus01 =
                 Mathf.Clamp01(s_restartRunPermanentDamageBonus01 + Mathf.Max(0f, _restartRunPermanentDamageBonusStep));
+            GameRunModeBootstrap_V2.CarryModeForSceneReload(_gameRunMode);
             ClearPersistedRunSave();
             Time.timeScale = 1f;
             // Full scene reload resets wave index, economy defaults, bunker, and run lives.
@@ -1612,8 +1635,11 @@ namespace iStick2War_V2
 
             EnemyLootCleanup_V2.DespawnAllActiveGroundLoot();
 
-            bool clearedLastWave = _waves != null && _waves.Count > 0 && _waveIndex >= _waves.Count - 1;
-            if (clearedLastWave)
+            bool clearedLastCampaignWave = !IsSurvivalMode &&
+                                           _waves != null &&
+                                           _waves.Count > 0 &&
+                                           _waveIndex >= _waves.Count - 1;
+            if (clearedLastCampaignWave)
             {
                 EnterGameWonState();
                 return;
@@ -1920,6 +1946,11 @@ namespace iStick2War_V2
 
         private bool TryOpenGameWonDirectlyFromWave(WaveConfig_V2 wave)
         {
+            if (IsSurvivalMode)
+            {
+                return false;
+            }
+
             if (wave == null || !wave.OpenGameWonDirectly)
             {
                 return false;
@@ -2080,12 +2111,67 @@ namespace iStick2War_V2
                 SetHeroDeathGameOverUiVisible(false);
             }
 
+            if (IsSurvivalMode)
+            {
+                ApplySurvivalGameOverPresentation();
+            }
+
             Log($"WaveManager entered GameOver (heroDeath={heroDeath}).");
             ClearPersistedRunSave();
         }
 
+        private void ApplySurvivalGameOverPresentation()
+        {
+            int waveReached = CurrentWaveNumber;
+            int totalKills = _totalEnemiesKilledRun;
+            SurvivalHighScoreService_V2.TrySubmitRun(
+                waveReached,
+                totalKills,
+                out bool newBestWave,
+                out bool newBestKills);
+
+            int bestWave = SurvivalHighScoreService_V2.BestWaveReached;
+            int bestKills = SurvivalHighScoreService_V2.BestTotalKills;
+
+            if (_heroDeathTopBarTitle != null)
+            {
+                string headline = newBestWave || newBestKills ? "NEW BEST!" : "GAME OVER";
+                _heroDeathTopBarTitle.text =
+                    $"{headline} · Wave {waveReached} · {totalKills} kills";
+            }
+
+            if (_gameOverUi == null)
+            {
+                _gameOverUi = FindAnyObjectByType<GameOverUI_V2>(FindObjectsInactive.Include);
+            }
+
+            _gameOverUi?.ApplySurvivalScorePresentation(
+                waveReached,
+                totalKills,
+                bestWave,
+                bestKills,
+                newBestWave,
+                newBestKills);
+        }
+
+        private static GameRunMode_V2 ParseSavedGameMode(int rawMode)
+        {
+            if (rawMode == (int)GameRunMode_V2.Survival)
+            {
+                return GameRunMode_V2.Survival;
+            }
+
+            return GameRunMode_V2.Campaign;
+        }
+
         private void EnterGameWonState()
         {
+            if (IsSurvivalMode)
+            {
+                Log("[WaveManager_V2] EnterGameWonState ignored in Survival mode.");
+                return;
+            }
+
             SetState(WaveLoopState_V2.GameWon);
             if (_enemySpawner != null)
             {
@@ -2375,9 +2461,20 @@ namespace iStick2War_V2
             return null;
         }
 
+        private string FormatLifeOverLivesLeftMessage()
+        {
+            if (string.IsNullOrEmpty(_lifeOverLivesLeftFormat))
+            {
+                return $"{_livesRemaining}/{MaxLivesPerRun}";
+            }
+
+            return string.Format(_lifeOverLivesLeftFormat, _livesRemaining, MaxLivesPerRun);
+        }
+
         private void InvalidateLifeOverUiCache()
         {
             _lifeOverInfoText = null;
+            _lifeOverLivesLeftText = null;
             _lifeOverStartNewGameText = null;
             _lifeOverStartNewGameButton = null;
             _lifeOverGoToShopText = null;
@@ -2401,6 +2498,13 @@ namespace iStick2War_V2
                     lifeOverScope,
                     "txt_lifeOver_info",
                     "txt_shop_info");
+            }
+
+            if (_lifeOverLivesLeftText == null)
+            {
+                _lifeOverLivesLeftText = FindLifeOverTmpByNames(
+                    lifeOverScope,
+                    "txt_lifeOver_livesLeft");
             }
 
             if (_lifeOverStartNewGameText == null)
@@ -2698,10 +2802,16 @@ namespace iStick2War_V2
             ActivateLifeOverTextHierarchy();
 
             PrepareLifeOverTmp(_lifeOverInfoText, _lifeOverInfoMessage);
+            PrepareLifeOverTmp(_lifeOverLivesLeftText, FormatLifeOverLivesLeftMessage());
             PrepareLifeOverTmp(_lifeOverStartNewGameText, "Start Game");
             PrepareLifeOverTmp(_lifeOverGoToShopText, _lifeOverGoToShopLabel);
             PrepareLifeOverTmp(_lifeOverGoToMainMenuText, _lifeOverGoToMainMenuLabel);
             EnsureLifeOverLabelUiClickTargets();
+
+            if (_lifeOverLivesLeftText != null)
+            {
+                EnsureLifeOverControlVisible(_lifeOverLivesLeftText.gameObject);
+            }
 
             if (_lifeOverStartNewGameButton != null)
             {
@@ -2734,6 +2844,7 @@ namespace iStick2War_V2
         private void EnsureLifeOverLabelUiClickTargets()
         {
             LifeOverLabelUiButton_V2.EnsureInfoLabelNonBlocking(_lifeOverInfoText);
+            LifeOverLabelUiButton_V2.EnsureInfoLabelNonBlocking(_lifeOverLivesLeftText);
             LifeOverLabelUiButton_V2.EnsureOnLabel(
                 _lifeOverStartNewGameText,
                 LifeOverLabelUiButton_V2.LifeOverLabelAction.ContinueAfterLifeLost);
@@ -3228,6 +3339,7 @@ namespace iStick2War_V2
             ResolveLifeOverUiIfNeeded();
 
             SetLifeOverLeafActive(_lifeOverInfoText, false);
+            SetLifeOverLeafActive(_lifeOverLivesLeftText, false);
             SetLifeOverLeafActive(_lifeOverStartNewGameText, false);
             SetLifeOverLeafActive(_lifeOverGoToShopText, false);
             SetLifeOverLeafActive(_lifeOverGoToMainMenuText, false);
@@ -3280,6 +3392,7 @@ namespace iStick2War_V2
             string[] names =
             {
                 "txt_lifeOver_info",
+                "txt_lifeOver_livesLeft",
                 "txt_lifeOver_startNewGame",
                 "txt_lifeOver_goToShop",
                 "txt_lifeOver_goToMainMenu",
@@ -3321,6 +3434,7 @@ namespace iStick2War_V2
                     }
 
                     bool lifeOverOnlyName =
+                        objectName.Equals("txt_lifeOver_livesLeft", StringComparison.Ordinal) ||
                         objectName.Equals("txt_lifeOver_startNewGame", StringComparison.Ordinal) ||
                         objectName.Equals("txt_lifeOver_goToShop", StringComparison.Ordinal) ||
                         objectName.Equals("txt_lifeOver_goToMainMenu", StringComparison.Ordinal) ||
@@ -3358,6 +3472,7 @@ namespace iStick2War_V2
             string[] textNames =
             {
                 "txt_lifeOver_info",
+                "txt_lifeOver_livesLeft",
                 "txt_lifeOver_startNewGame",
                 "txt_lifeOver_goToShop",
                 "txt_lifeOver_goToMainMenu",
@@ -3396,6 +3511,7 @@ namespace iStick2War_V2
                     }
 
                     bool lifeOverOnlyName =
+                        objectName.Equals("txt_lifeOver_livesLeft", StringComparison.Ordinal) ||
                         objectName.Equals("txt_lifeOver_startNewGame", StringComparison.Ordinal) ||
                         objectName.Equals("txt_lifeOver_goToShop", StringComparison.Ordinal) ||
                         objectName.Equals("txt_lifeOver_goToMainMenu", StringComparison.Ordinal) ||
@@ -4325,7 +4441,9 @@ namespace iStick2War_V2
                 return null;
             }
 
-            int idx = Mathf.Clamp(_waveIndex, 0, _waves.Count - 1);
+            int idx = IsSurvivalMode
+                ? Mathf.Abs(_waveIndex) % _waves.Count
+                : Mathf.Clamp(_waveIndex, 0, _waves.Count - 1);
             return _waves[idx];
         }
 
@@ -4573,6 +4691,7 @@ namespace iStick2War_V2
                 _topBarReloadText.gameObject.SetActive(showReloadPrompt);
                 if (showReloadPrompt)
                 {
+                    _topBarReloadText.text = _reloadPromptText;
                     if (_reloadPromptPulse)
                     {
                         float period = Mathf.Max(0.08f, _reloadPromptPulsePeriodSeconds);

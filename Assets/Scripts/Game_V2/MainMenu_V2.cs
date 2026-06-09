@@ -49,6 +49,7 @@ namespace iStick2War_V2
         private const string TmpContinueName = "txt_mainmenu_continue";
         private const string TmpContinueAltName = "txt_mainMenu_continue";
         private const string DefaultSettingsPanelName = "Settings V2";
+        private const string DefaultHighScorePanelName = "HighScore V2";
         private const string DefaultSettingsBackButtonName = "TextBTN_MediumGoBack";
         private const string MainMenuBackgroundObjectName = "bkg_main_menu";
         private const string MainMenuCanvasName = "MainMenu-canvas";
@@ -72,7 +73,10 @@ namespace iStick2War_V2
             "TestButton_Settings_Pressed",
             "MainMenu_Btn_Continue",
             "MainMenu_Btn_StartGame",
-            "MainMenu_Btn_Settings"
+            "MainMenu_Btn_StartCampaign",
+            "MainMenu_Btn_Settings",
+            "MainMenu_Btn_StartSurvivalMode",
+            "MainMenu_Btn_HighScore"
         };
         private static readonly string[] DefaultMenuObjectNames =
         {
@@ -99,8 +103,12 @@ namespace iStick2War_V2
         [SerializeField] private GameObject _settingsPanel;
         [Tooltip("Resolved at runtime when _settingsPanel is unset (MainMenuScene default).")]
         [SerializeField] private string _settingsPanelObjectName = DefaultSettingsPanelName;
+        [Header("High score")]
+        [SerializeField] private GameObject _highScorePanel;
+        [Tooltip("Resolved at runtime when _highScorePanel is unset (MainMenuScene default).")]
+        [SerializeField] private string _highScorePanelObjectName = DefaultHighScorePanelName;
         [SerializeField] private bool _pauseTimeWhileMenuOpen = true;
-        [Tooltip("Real-time pause before Settings V2 opens/closes so pressed TextBTN states stay visible.")]
+        [Tooltip("Real-time pause before overlay panels open/close so pressed button states stay visible.")]
         [SerializeField] private float _settingsOpenDelaySeconds = 0.2f;
 
         [Header("World-space TextBTN (optional)")]
@@ -120,8 +128,11 @@ namespace iStick2War_V2
         private Coroutine _loadGameplaySceneRoutine;
         private Coroutine _showSettingsRoutine;
         private Coroutine _hideSettingsRoutine;
+        private Coroutine _showHighScoreRoutine;
+        private Coroutine _hideHighScoreRoutine;
         private readonly Dictionary<string, bool> _menuButtonActiveBeforeSettings = new Dictionary<string, bool>();
         private bool _settingsMenuButtonsHideStateCaptured;
+        private bool _loggedMissingHighScorePanel;
 
         // True when the menu is active and HandlePlay has not run this session
         // (automation / tests: use with WaveManager_V2 Preparing, not only Time.timeScale).
@@ -161,6 +172,21 @@ namespace iStick2War_V2
             layout.ApplyIfNeeded();
         }
 
+        private static void RefreshMainMenuButtonLayout()
+        {
+            GameObject canvasGo = GameObject.Find("MainMenu-canvas");
+            if (canvasGo == null)
+            {
+                return;
+            }
+
+            MainMenuCanvasLayout_V2 layout = canvasGo.GetComponent<MainMenuCanvasLayout_V2>();
+            if (layout != null)
+            {
+                layout.RefreshButtonLayout();
+            }
+        }
+
         private static void EnsureMenuCameraAspectFitter()
         {
             Camera camera = Camera.main;
@@ -182,6 +208,7 @@ namespace iStick2War_V2
         {
             ResolveReferencesIfNeeded();
             PrepareSettingsPanelForMenuBoot();
+            PrepareHighScorePanelForMenuBoot();
             if (_playButton != null)
             {
                 _playButton.onClick.AddListener(HandlePlay);
@@ -198,17 +225,28 @@ namespace iStick2War_V2
             }
 
             RefreshContinueAvailability();
+            RefreshSurvivalHighScoreLabel();
         }
 
         private void LateUpdate()
         {
-            if (_gameStarted || _settingsPanel == null || !_settingsPanel.activeSelf)
+            if (_gameStarted || !IsMainMenuOverlayOpen())
             {
                 return;
             }
 
-            // Keep menu TextBTN hidden while settings stay open (pressed siblings can re-enable same frame).
+            // Keep menu buttons hidden while an overlay panel stays open.
             ApplyMainMenuButtonsHiddenForSettings(saveState: false);
+        }
+
+        private bool IsMainMenuOverlayOpen()
+        {
+            if (_settingsPanel != null && _settingsPanel.activeSelf)
+            {
+                return true;
+            }
+
+            return _highScorePanel != null && _highScorePanel.activeSelf;
         }
 
         private void OnDestroy()
@@ -233,7 +271,18 @@ namespace iStick2War_V2
         {
             ResolveButtonsIfNeeded();
             ResolveSettingsPanelIfNeeded();
+            ResolveHighScorePanelIfNeeded();
             WireWorldNavButtonsIfNeeded();
+        }
+
+        private void ResolveHighScorePanelIfNeeded()
+        {
+            if (_highScorePanel != null || string.IsNullOrWhiteSpace(_highScorePanelObjectName))
+            {
+                return;
+            }
+
+            _highScorePanel = FindNamedObjectInScene(_highScorePanelObjectName);
         }
 
         private void ResolveSettingsPanelIfNeeded()
@@ -263,9 +312,23 @@ namespace iStick2War_V2
             RestoreMainMenuButtonsAfterSettings();
         }
 
+        private void PrepareHighScorePanelForMenuBoot()
+        {
+            if (_highScorePanel == null)
+            {
+                return;
+            }
+
+            if (_highScorePanel.activeSelf)
+            {
+                _highScorePanel.SetActive(false);
+            }
+        }
+
         private void WireWorldNavButtonsIfNeeded()
         {
             EnsureWorldNavButton(_worldPlayButtonObjectName, MainMenuNavButton_V2.MenuAction.Play);
+            EnsureWorldNavButton("TextBTN_MediumSurvival", MainMenuNavButton_V2.MenuAction.PlaySurvival);
             EnsureWorldNavButton(_worldContinueButtonObjectName, MainMenuNavButton_V2.MenuAction.Continue);
             EnsureWorldNavButton(_worldSettingsButtonObjectName, MainMenuNavButton_V2.MenuAction.Settings);
             EnsureWorldNavButton(DefaultSettingsBackButtonName, MainMenuNavButton_V2.MenuAction.CloseSettings);
@@ -278,10 +341,16 @@ namespace iStick2War_V2
         private void WireUiNavButtonsIfNeeded()
         {
             EnsureUiNavButton("MainMenu_Btn_StartGame", MainMenuNavButton_V2.MenuAction.Play);
+            EnsureUiNavButton("MainMenu_Btn_StartCampaign", MainMenuNavButton_V2.MenuAction.Play);
+            EnsureUiNavButton("MainMenu_Btn_Survival", MainMenuNavButton_V2.MenuAction.PlaySurvival);
+            EnsureUiNavButton("MainMenu_Btn_StartSurvivalMode", MainMenuNavButton_V2.MenuAction.PlaySurvival);
+            EnsureUiNavButton("TestButton_Survival", MainMenuNavButton_V2.MenuAction.PlaySurvival);
+            EnsureUiNavButton("MainMenu_Btn_HighScore", MainMenuNavButton_V2.MenuAction.ShowHighScore);
             EnsureUiNavButton("MainMenu_Btn_Continue", MainMenuNavButton_V2.MenuAction.Continue);
             EnsureUiNavButton("MainMenu_Btn_Settings", MainMenuNavButton_V2.MenuAction.Settings);
             EnsureUiNavButton("TestButton_Settings", MainMenuNavButton_V2.MenuAction.Settings);
             EnsureUiNavButton("Settings_Btn_GoBack", MainMenuNavButton_V2.MenuAction.CloseSettings);
+            EnsureUiNavButton("HighScore_Btn_GoBack", MainMenuNavButton_V2.MenuAction.CloseHighScore);
         }
 
         private void EnsureUiNavButton(string objectName, MainMenuNavButton_V2.MenuAction action)
@@ -512,21 +581,38 @@ namespace iStick2War_V2
             return null;
         }
 
-        // For automation (): runs the same path as Play if the menu has not already started the run.
-        // False if Play was already committed for this menu session (no-op).
-        public bool TryHandlePlayFromAutomation()
+        // For automation: starts Campaign or Survival when the menu has not already started the run.
+        public bool TryHandleStartRunFromAutomation(GameRunMode_V2 mode)
         {
             if (_gameStarted)
             {
                 return false;
             }
 
-            HandlePlay();
+            if (mode == GameRunMode_V2.Survival)
+            {
+                HandlePlaySurvival();
+            }
+            else
+            {
+                HandlePlayCampaign();
+            }
+
             return true;
         }
 
-        // Called from UI Button or MainMenuNavButton_V2 (world Collider2D).
-        public void HandlePlay()
+        // Back-compat: automation callers that only start Campaign.
+        public bool TryHandlePlayFromAutomation() =>
+            TryHandleStartRunFromAutomation(GameRunMode_V2.Campaign);
+
+        // Campaign (15 waves). Back-compat alias for automation/tests.
+        public void HandlePlay() => HandlePlayCampaign();
+
+        public void HandlePlayCampaign() => StartNewRun(GameRunMode_V2.Campaign);
+
+        public void HandlePlaySurvival() => StartNewRun(GameRunMode_V2.Survival);
+
+        private void StartNewRun(GameRunMode_V2 mode)
         {
             if (_gameStarted)
             {
@@ -535,6 +621,7 @@ namespace iStick2War_V2
 
             AudioManager_V2.PlayMenuClick();
             _gameStarted = true;
+            GameRunModeBootstrap_V2.SetPendingNewRunMode(mode);
             RunSaveService_V2.ClearSave();
 
             // Unity does not reset timeScale when loading scenes; ReturnToMainMenu loads with timeScale 0.
@@ -603,6 +690,8 @@ namespace iStick2War_V2
             {
                 _continueButton.gameObject.SetActive(hasSave);
             }
+
+            RefreshMainMenuButtonLayout();
         }
 
         private void SetNamedSceneObjectActive(string objectName, bool active)
@@ -684,6 +773,7 @@ namespace iStick2War_V2
                 return;
             }
 
+            CloseHighScorePanelImmediatelyIfOpen();
             AudioManager_V2.PlayMenuClick();
             ApplyMainMenuButtonsHiddenForSettings(saveState: true);
             _showSettingsRoutine = StartCoroutine(ShowSettingsAfterDelay());
@@ -710,7 +800,7 @@ namespace iStick2War_V2
 
             _settingsPanel.SetActive(true);
             HideMainMenuButtonsForSettings();
-            EnsureSettingsUiCanvasesVisible();
+            EnsureOverlayUiCanvasesVisible(_settingsPanel);
             EnsureSettingsPanelLayout();
             EnsureUiNavButton("Settings_Btn_GoBack", MainMenuNavButton_V2.MenuAction.CloseSettings);
             AudioManager_V2.PlaySettingsSuccess();
@@ -815,7 +905,10 @@ namespace iStick2War_V2
             for (int i = 0; i < navButtons.Length; i++)
             {
                 MainMenuNavUiButton_V2 nav = navButtons[i];
-                if (nav == null || nav.IsReturnToMainMenuAction() || nav.IsCloseSettingsAction())
+                if (nav == null ||
+                    nav.IsReturnToMainMenuAction() ||
+                    nav.IsCloseSettingsAction() ||
+                    nav.IsCloseHighScoreAction())
                 {
                     continue;
                 }
@@ -864,6 +957,171 @@ namespace iStick2War_V2
             }
 
             _menuButtonActiveBeforeSettings[objectName] = wasActive;
+        }
+
+        public void HandleShowHighScore()
+        {
+            if (_showHighScoreRoutine != null)
+            {
+                return;
+            }
+
+            ResolveHighScorePanelIfNeeded();
+            if (_highScorePanel == null)
+            {
+                if (!_loggedMissingHighScorePanel)
+                {
+                    _loggedMissingHighScorePanel = true;
+                    Debug.Log(
+                        "[MainMenu_V2] High score: assign _highScorePanel or add a '" +
+                        DefaultHighScorePanelName + "' root in the scene.");
+                }
+
+                return;
+            }
+
+            if (_highScorePanel.activeSelf)
+            {
+                return;
+            }
+
+            CloseSettingsPanelImmediatelyIfOpen();
+            AudioManager_V2.PlayMenuClick();
+            ApplyMainMenuButtonsHiddenForSettings(saveState: true);
+            _showHighScoreRoutine = StartCoroutine(ShowHighScoreAfterDelay());
+        }
+
+        private IEnumerator ShowHighScoreAfterDelay()
+        {
+            float delay = Mathf.Max(0f, _settingsOpenDelaySeconds);
+            if (delay > 0f)
+            {
+                yield return new WaitForSecondsRealtime(delay);
+            }
+
+            _showHighScoreRoutine = null;
+            OpenHighScorePanelNow();
+        }
+
+        private void OpenHighScorePanelNow()
+        {
+            if (_highScorePanel == null || _highScorePanel.activeSelf)
+            {
+                return;
+            }
+
+            _highScorePanel.SetActive(true);
+            HideMainMenuButtonsForSettings();
+            EnsureOverlayUiCanvasesVisible(_highScorePanel);
+            EnsureHighScorePanelPresenter();
+            EnsureUiNavButton("HighScore_Btn_GoBack", MainMenuNavButton_V2.MenuAction.CloseHighScore);
+            AudioManager_V2.PlaySettingsSuccess();
+        }
+
+        private void EnsureHighScorePanelPresenter()
+        {
+            if (_highScorePanel == null)
+            {
+                return;
+            }
+
+            HighScorePanel_V2 presenter = _highScorePanel.GetComponent<HighScorePanel_V2>();
+            if (presenter == null)
+            {
+                presenter = _highScorePanel.AddComponent<HighScorePanel_V2>();
+            }
+
+            presenter.Refresh();
+        }
+
+        public void HandleHideHighScore()
+        {
+            if (_hideHighScoreRoutine != null)
+            {
+                return;
+            }
+
+            ResolveHighScorePanelIfNeeded();
+            if (_highScorePanel == null || !_highScorePanel.activeSelf)
+            {
+                return;
+            }
+
+            if (_showHighScoreRoutine != null)
+            {
+                StopCoroutine(_showHighScoreRoutine);
+                _showHighScoreRoutine = null;
+            }
+
+            AudioManager_V2.PlayMenuClick();
+            _hideHighScoreRoutine = StartCoroutine(HideHighScoreAfterDelay());
+        }
+
+        private IEnumerator HideHighScoreAfterDelay()
+        {
+            float delay = Mathf.Max(0f, _settingsOpenDelaySeconds);
+            if (delay > 0f)
+            {
+                yield return new WaitForSecondsRealtime(delay);
+            }
+
+            _hideHighScoreRoutine = null;
+            CloseHighScorePanelNow();
+        }
+
+        private void CloseHighScorePanelNow()
+        {
+            if (_highScorePanel != null && _highScorePanel.activeSelf)
+            {
+                _highScorePanel.SetActive(false);
+            }
+
+            RestoreMainMenuButtonsAfterSettings();
+            ResetMenuNavButtonVisuals();
+        }
+
+        private void CloseSettingsPanelImmediatelyIfOpen()
+        {
+            if (_settingsPanel == null || !_settingsPanel.activeSelf)
+            {
+                return;
+            }
+
+            if (_showSettingsRoutine != null)
+            {
+                StopCoroutine(_showSettingsRoutine);
+                _showSettingsRoutine = null;
+            }
+
+            if (_hideSettingsRoutine != null)
+            {
+                StopCoroutine(_hideSettingsRoutine);
+                _hideSettingsRoutine = null;
+            }
+
+            CloseSettingsPanelNow();
+        }
+
+        private void CloseHighScorePanelImmediatelyIfOpen()
+        {
+            if (_highScorePanel == null || !_highScorePanel.activeSelf)
+            {
+                return;
+            }
+
+            if (_showHighScoreRoutine != null)
+            {
+                StopCoroutine(_showHighScoreRoutine);
+                _showHighScoreRoutine = null;
+            }
+
+            if (_hideHighScoreRoutine != null)
+            {
+                StopCoroutine(_hideHighScoreRoutine);
+                _hideHighScoreRoutine = null;
+            }
+
+            CloseHighScorePanelNow();
         }
 
         // Called from UI Button or MainMenuNavButton_V2 (TextBTN_MediumGoBack).
@@ -938,15 +1196,15 @@ namespace iStick2War_V2
             }
         }
 
-        // LifeOver-canvas under Settings V2 was copied with scale 0 and no camera; UI shows in Scene view but not Game view.
-        private void EnsureSettingsUiCanvasesVisible()
+        // Overlay roots copied from LifeOver may have scale 0 and no camera; fix before Game view display.
+        private static void EnsureOverlayUiCanvasesVisible(GameObject overlayRoot)
         {
-            if (_settingsPanel == null)
+            if (overlayRoot == null)
             {
                 return;
             }
 
-            Canvas[] canvases = _settingsPanel.GetComponentsInChildren<Canvas>(true);
+            Canvas[] canvases = overlayRoot.GetComponentsInChildren<Canvas>(true);
             for (int i = 0; i < canvases.Length; i++)
             {
                 Canvas canvas = canvases[i];
@@ -1024,6 +1282,11 @@ namespace iStick2War_V2
                 _settingsPanel.SetActive(false);
             }
 
+            if (_highScorePanel != null)
+            {
+                _highScorePanel.SetActive(false);
+            }
+
             RestoreMainMenuButtonsAfterSettings();
 
             if (_pauseTimeWhileMenuOpen)
@@ -1032,6 +1295,21 @@ namespace iStick2War_V2
             }
 
             RefreshContinueAvailability();
+            RefreshSurvivalHighScoreLabel();
+        }
+
+        private static void RefreshSurvivalHighScoreLabel()
+        {
+            MainMenuSurvivalHighScoreLabel_V2[] labels =
+                FindObjectsByType<MainMenuSurvivalHighScoreLabel_V2>(FindObjectsInactive.Include);
+            for (int i = 0; i < labels.Length; i++)
+            {
+                MainMenuSurvivalHighScoreLabel_V2 label = labels[i];
+                if (label != null)
+                {
+                    label.Refresh();
+                }
+            }
         }
 
         private void ShowByNameFallback()
@@ -1108,6 +1386,7 @@ namespace iStick2War_V2
             _settingsMenuButtonsHideStateCaptured = false;
             RestoreMainMenuUiColumnVisibleByDefault();
             RestoreMainMenuUiNavButtonsVisibleByDefault();
+            RefreshMainMenuButtonLayout();
         }
 
         // Fallback when no cached state exists (e.g. stale hide pass overwrote active flags).
@@ -1138,6 +1417,9 @@ namespace iStick2War_V2
             {
                 "MainMenu_Btn_Continue",
                 "MainMenu_Btn_StartGame",
+                "MainMenu_Btn_StartCampaign",
+                "MainMenu_Btn_StartSurvivalMode",
+                "MainMenu_Btn_HighScore",
                 "MainMenu_Btn_Settings",
             };
 

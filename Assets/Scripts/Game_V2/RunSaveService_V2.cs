@@ -15,7 +15,7 @@ namespace iStick2War_V2
      */
     public static class RunSaveService_V2
     {
-        public const int CurrentFormatVersion = 1;
+        public const int CurrentFormatVersion = 2;
         private const string SaveFolderName = "iStick2War_V2";
         private const string SaveFileName = "run_save.json";
 

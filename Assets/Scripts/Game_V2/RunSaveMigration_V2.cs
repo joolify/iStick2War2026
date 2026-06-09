@@ -57,9 +57,9 @@ namespace iStick2War_V2
                 case 0:
                     MigrateFrom0To1(ref save);
                     return true;
-                // case 1:
-                //     MigrateFrom1To2(ref save);
-                //     return true;
+                case 1:
+                    MigrateFrom1To2(ref save);
+                    return true;
                 default:
                     return save.formatVersion >= RunSaveService_V2.CurrentFormatVersion;
             }
@@ -86,11 +86,20 @@ namespace iStick2War_V2
             save.formatVersion = 1;
         }
 
-        // Example stub for the next format bump — uncomment when CurrentFormatVersion becomes 2.
-        // private static void MigrateFrom1To2(ref RunSaveFile_V2 save)
-        // {
-        //     // e.g. save.newField = defaultValue;
-        //     save.formatVersion = 2;
-        // }
+        private static void MigrateFrom1To2(ref RunSaveFile_V2 save)
+        {
+            // Pre-survival saves are campaign runs.
+            if (save.gameMode < 0 || save.gameMode > (int)GameRunMode_V2.Survival)
+            {
+                save.gameMode = (int)GameRunMode_V2.Campaign;
+            }
+
+            if (save.totalEnemiesKilledRun < 0)
+            {
+                save.totalEnemiesKilledRun = 0;
+            }
+
+            save.formatVersion = 2;
+        }
     }
 }

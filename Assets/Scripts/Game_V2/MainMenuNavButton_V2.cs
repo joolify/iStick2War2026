@@ -39,9 +39,12 @@ namespace iStick2War_V2
         public enum MenuAction
         {
             Play,
+            PlaySurvival,
             Continue,
             Settings,
             CloseSettings,
+            ShowHighScore,
+            CloseHighScore,
             // Load dedicated main menu scene.
             ReturnToMainMenu
         }
@@ -63,7 +66,8 @@ namespace iStick2War_V2
         private bool _labelRestCached;
 
         internal bool IsReturnToMainMenuAction() => _action == MenuAction.ReturnToMainMenu;
-        internal bool IsPlayAction() => _action == MenuAction.Play;
+        internal bool IsPlayAction() =>
+            _action == MenuAction.Play || _action == MenuAction.PlaySurvival;
 
         private void Awake()
         {
@@ -177,7 +181,11 @@ namespace iStick2War_V2
 
             if (action == MenuAction.Play)
             {
-                _mainMenu.HandlePlay();
+                _mainMenu.HandlePlayCampaign();
+            }
+            else if (action == MenuAction.PlaySurvival)
+            {
+                _mainMenu.HandlePlaySurvival();
             }
             else if (action == MenuAction.Continue)
             {
@@ -193,7 +201,19 @@ namespace iStick2War_V2
                 _latchPressedVisual = true;
                 _mainMenu.HandleHideSettings();
             }
+            else if (action == MenuAction.ShowHighScore)
+            {
+                _latchPressedVisual = true;
+                _mainMenu.HandleShowHighScore();
+            }
+            else if (action == MenuAction.CloseHighScore)
+            {
+                _latchPressedVisual = true;
+                _mainMenu.HandleHideHighScore();
+            }
         }
+
+        internal bool IsCloseHighScoreAction() => GetEffectiveAction() == MenuAction.CloseHighScore;
 
         private MenuAction GetEffectiveAction()
         {
@@ -217,9 +237,30 @@ namespace iStick2War_V2
             }
 
             if (buttonName.Equals("TextBTN_MediumStartGame", StringComparison.OrdinalIgnoreCase) ||
-                buttonName.Equals("btn_main_menu_play", StringComparison.OrdinalIgnoreCase))
+                buttonName.Equals("btn_main_menu_play", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("MainMenu_Btn_StartCampaign", StringComparison.OrdinalIgnoreCase))
             {
                 action = MenuAction.Play;
+                return true;
+            }
+
+            if (buttonName.Equals("TextBTN_MediumSurvival", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("MainMenu_Btn_Survival", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("MainMenu_Btn_StartSurvivalMode", StringComparison.OrdinalIgnoreCase))
+            {
+                action = MenuAction.PlaySurvival;
+                return true;
+            }
+
+            if (buttonName.Equals("MainMenu_Btn_HighScore", StringComparison.OrdinalIgnoreCase))
+            {
+                action = MenuAction.ShowHighScore;
+                return true;
+            }
+
+            if (buttonName.Equals("HighScore_Btn_GoBack", StringComparison.OrdinalIgnoreCase))
+            {
+                action = MenuAction.CloseHighScore;
                 return true;
             }
 

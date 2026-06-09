@@ -219,6 +219,10 @@ namespace iStick2War_V2
             public bool autoHeroInWaveAnyHadTarget;
             public string autoHeroInWaveLastTargetKindWhenHadTarget;
             public string autoHeroInWaveLastTargetParatrooperStateWhenHadTarget;
+            // AutoHero scheduled suicide test: 0 = off; 1-based wave when bot stops shooting and exposes itself.
+            public int autoHeroScheduledDeathWaveConfigured;
+            public bool autoHeroScheduledDeathModeActive;
+            public int autoHeroScheduledDeathActivatedOnWave;
             public string sceneProfileId;
             public float heroPosX;
             public float heroPosY;
@@ -419,6 +423,9 @@ namespace iStick2War_V2
             public bool autoHeroInWaveAnyHadTarget;
             public string autoHeroInWaveLastTargetKindWhenHadTarget;
             public string autoHeroInWaveLastTargetParatrooperStateWhenHadTarget;
+            public int autoHeroScheduledDeathWaveConfigured;
+            public bool autoHeroScheduledDeathModeActive;
+            public int autoHeroScheduledDeathActivatedOnWave;
 
             // when a scene profile applier is active; empty otherwise.
             public string sceneProfileId;
@@ -1129,6 +1136,13 @@ namespace iStick2War_V2
                     autoHero.TelemetryInWaveLastParatrooperStateWhenHadTarget ?? "";
             }
 
+            int autoHeroScheduledDeathWaveConfigured =
+                autoHero != null && autoHero.isActiveAndEnabled ? autoHero.TelemetryScheduledDeathWaveConfigured : 0;
+            bool autoHeroScheduledDeathModeActive =
+                autoHero != null && autoHero.isActiveAndEnabled && autoHero.TelemetryScheduledDeathModeActive;
+            int autoHeroScheduledDeathActivatedOnWave =
+                autoHero != null && autoHero.isActiveAndEnabled ? autoHero.TelemetryScheduledDeathActivatedOnWave : 0;
+
             string sceneProfileIdValue = GameplaySceneRules_V2.IsActive ? GameplaySceneRules_V2.ProfileId : "";
             int bunkerHpSnap = _waveManager != null ? _waveManager.BunkerHealth : -1;
             int bunkerMaxSnap = _waveManager != null ? _waveManager.BunkerMaxHealth : -1;
@@ -1254,6 +1268,9 @@ namespace iStick2War_V2
                 autoHeroInWaveAnyHadTarget = autoHeroInWaveAnyHadTarget,
                 autoHeroInWaveLastTargetKindWhenHadTarget = autoHeroInWaveLastTargetKindWhenHadTarget,
                 autoHeroInWaveLastTargetParatrooperStateWhenHadTarget = autoHeroInWaveLastParatrooperStateWhenHadTarget,
+                autoHeroScheduledDeathWaveConfigured = autoHeroScheduledDeathWaveConfigured,
+                autoHeroScheduledDeathModeActive = autoHeroScheduledDeathModeActive,
+                autoHeroScheduledDeathActivatedOnWave = autoHeroScheduledDeathActivatedOnWave,
                 sceneProfileId = sceneProfileIdValue,
                 bunkerBreached = bunkerBreached,
                 bunkerCriticalLow = bunkerCriticalLow,
@@ -1744,6 +1761,15 @@ namespace iStick2War_V2
                     },
                     new TelemetryGlossaryEntry
                     {
+                        property =
+                            "autoHeroScheduledDeathWaveConfigured / autoHeroScheduledDeathModeActive / autoHeroScheduledDeathActivatedOnWave",
+                        meaning =
+                            "Scheduled suicide test on AutoHero_V2: configured wave (0=off, 1-based CurrentWaveNumber), whether suicide mode " +
+                            "is active at row write time, and the wave when suicide mode first engaged this run (0 if never). " +
+                            "While active the bot does not shoot and leaves bunker cover; autoHeroTargetKind is often scheduled_death."
+                    },
+                    new TelemetryGlossaryEntry
+                    {
                         property = "sceneProfileId",
                         meaning =
                             "GameplaySceneRules_V2.ProfileId when GameplaySceneProfileApplier_V2 is active (built-in or asset); " +
@@ -2014,6 +2040,12 @@ namespace iStick2War_V2
                 autoHero != null && autoHero.isActiveAndEnabled
                     ? autoHero.TelemetryInWaveLastParatrooperStateWhenHadTarget ?? ""
                     : "";
+            int autoHeroScheduledDeathWaveConfigured =
+                autoHero != null && autoHero.isActiveAndEnabled ? autoHero.TelemetryScheduledDeathWaveConfigured : 0;
+            bool autoHeroScheduledDeathModeActive =
+                autoHero != null && autoHero.isActiveAndEnabled && autoHero.TelemetryScheduledDeathModeActive;
+            int autoHeroScheduledDeathActivatedOnWave =
+                autoHero != null && autoHero.isActiveAndEnabled ? autoHero.TelemetryScheduledDeathActivatedOnWave : 0;
             string sceneProfileIdValue = GameplaySceneRules_V2.IsActive ? GameplaySceneRules_V2.ProfileId : "";
             float px = 0f;
             float py = 0f;
@@ -2101,6 +2133,9 @@ namespace iStick2War_V2
                 autoHeroInWaveAnyHadTarget = autoHeroInWaveAnyHadTarget,
                 autoHeroInWaveLastTargetKindWhenHadTarget = autoHeroInWaveLastTargetKindWhenHadTarget,
                 autoHeroInWaveLastTargetParatrooperStateWhenHadTarget = autoHeroInWaveLastParatrooperStateWhenHadTarget,
+                autoHeroScheduledDeathWaveConfigured = autoHeroScheduledDeathWaveConfigured,
+                autoHeroScheduledDeathModeActive = autoHeroScheduledDeathModeActive,
+                autoHeroScheduledDeathActivatedOnWave = autoHeroScheduledDeathActivatedOnWave,
                 sceneProfileId = sceneProfileIdValue,
                 heroPosX = px,
                 heroPosY = py,

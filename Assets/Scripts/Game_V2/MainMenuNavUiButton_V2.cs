@@ -53,6 +53,9 @@ namespace iStick2War_V2
         internal bool IsCloseSettingsAction() =>
             GetEffectiveAction() == MainMenuNavButton_V2.MenuAction.CloseSettings;
 
+        internal bool IsCloseHighScoreAction() =>
+            GetEffectiveAction() == MainMenuNavButton_V2.MenuAction.CloseHighScore;
+
         private void Awake()
         {
             _button = GetComponent<Button>();
@@ -203,7 +206,11 @@ namespace iStick2War_V2
 
             if (action == MainMenuNavButton_V2.MenuAction.Play)
             {
-                _mainMenu.HandlePlay();
+                _mainMenu.HandlePlayCampaign();
+            }
+            else if (action == MainMenuNavButton_V2.MenuAction.PlaySurvival)
+            {
+                _mainMenu.HandlePlaySurvival();
             }
             else if (action == MainMenuNavButton_V2.MenuAction.Continue)
             {
@@ -218,6 +225,16 @@ namespace iStick2War_V2
             {
                 _latchPressedVisual = true;
                 _mainMenu.HandleHideSettings();
+            }
+            else if (action == MainMenuNavButton_V2.MenuAction.ShowHighScore)
+            {
+                _latchPressedVisual = true;
+                _mainMenu.HandleShowHighScore();
+            }
+            else if (action == MainMenuNavButton_V2.MenuAction.CloseHighScore)
+            {
+                _latchPressedVisual = true;
+                _mainMenu.HandleHideHighScore();
             }
         }
 
@@ -271,9 +288,31 @@ namespace iStick2War_V2
             if (buttonName.Equals("TextBTN_MediumStartGame", StringComparison.OrdinalIgnoreCase) ||
                 buttonName.Equals("btn_main_menu_play", StringComparison.OrdinalIgnoreCase) ||
                 buttonName.Equals("TestButton_Play", StringComparison.OrdinalIgnoreCase) ||
-                buttonName.Equals("MainMenu_Btn_StartGame", StringComparison.OrdinalIgnoreCase))
+                buttonName.Equals("MainMenu_Btn_StartGame", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("MainMenu_Btn_StartCampaign", StringComparison.OrdinalIgnoreCase))
             {
                 action = MainMenuNavButton_V2.MenuAction.Play;
+                return true;
+            }
+
+            if (buttonName.Equals("TextBTN_MediumSurvival", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("MainMenu_Btn_Survival", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("MainMenu_Btn_StartSurvivalMode", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("TestButton_Survival", StringComparison.OrdinalIgnoreCase))
+            {
+                action = MainMenuNavButton_V2.MenuAction.PlaySurvival;
+                return true;
+            }
+
+            if (buttonName.Equals("MainMenu_Btn_HighScore", StringComparison.OrdinalIgnoreCase))
+            {
+                action = MainMenuNavButton_V2.MenuAction.ShowHighScore;
+                return true;
+            }
+
+            if (buttonName.Equals("HighScore_Btn_GoBack", StringComparison.OrdinalIgnoreCase))
+            {
+                action = MainMenuNavButton_V2.MenuAction.CloseHighScore;
                 return true;
             }
 
@@ -465,7 +504,8 @@ namespace iStick2War_V2
             if (buttonName.Equals("TextBTN_MediumStartGame", StringComparison.OrdinalIgnoreCase) ||
                 buttonName.Equals("btn_main_menu_play", StringComparison.OrdinalIgnoreCase) ||
                 buttonName.Equals("TestButton_Play", StringComparison.OrdinalIgnoreCase) ||
-                buttonName.Equals("MainMenu_Btn_StartGame", StringComparison.OrdinalIgnoreCase))
+                buttonName.Equals("MainMenu_Btn_StartGame", StringComparison.OrdinalIgnoreCase) ||
+                buttonName.Equals("MainMenu_Btn_StartCampaign", StringComparison.OrdinalIgnoreCase))
             {
                 return new[] { "txt_mainMenu_startGame", "txt_mainmenu_play" };
             }
