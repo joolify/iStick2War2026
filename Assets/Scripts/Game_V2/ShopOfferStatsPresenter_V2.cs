@@ -78,6 +78,7 @@ namespace iStick2War_V2
         private GameObject _statsPanelRoot;
         private IReadOnlyList<ShopOfferConfig_V2> _configuredOffers;
         private bool _bindingsResolved;
+        private float _gridLineSpacing = 14f;
 
         public void ResolveBindings(
             Func<string, TMP_Text> findLabelText,
@@ -117,6 +118,11 @@ namespace iStick2War_V2
             }
 
             _bindingsResolved = true;
+        }
+
+        public void ConfigureGridTypography(float lineSpacing)
+        {
+            _gridLineSpacing = lineSpacing;
         }
 
         public void SetWarningText(TMP_Text warningText, Color color)
@@ -253,8 +259,8 @@ namespace iStick2War_V2
                 case ShopOfferKind_V2.HealthPack:
                     if (hero != null && !waveManager.IsHeroHealthFull())
                     {
-                        lines.Add(
-                            $"Warning: Hero HP below max ({hero.GetCurrentHealth()}/{hero.GetMaxHealth()})");
+                        lines.Add("Warning: Hero HP below max");
+                        lines.Add($"({hero.GetCurrentHealth()}/{hero.GetMaxHealth()})");
                     }
 
                     break;
@@ -263,8 +269,8 @@ namespace iStick2War_V2
                 case ShopOfferKind_V2.BunkerMaxUpgrade:
                     if (!waveManager.IsBunkerFullHealth())
                     {
-                        lines.Add(
-                            $"Warning: Bunker HP below max ({waveManager.BunkerHealth}/{waveManager.BunkerMaxHealth})");
+                        lines.Add("Warning: Bunker HP below max");
+                        lines.Add($"({waveManager.BunkerHealth}/{waveManager.BunkerMaxHealth})");
                     }
 
                     break;
@@ -353,6 +359,29 @@ namespace iStick2War_V2
             return $"{mag} mag + {reserve} rsv ({mag + reserve}/{maxMag + maxReserve})";
         }
 
+        // ShopGrid cells are narrow; put the total on its own line instead of awkward word wrap.
+        public static string FormatOwnedWeaponAmmoDisplayForShopGrid(
+            WeaponType weaponType,
+            int mag,
+            int maxMag,
+            int reserve,
+            int maxReserve)
+        {
+            string singleLine = FormatOwnedWeaponAmmoDisplay(
+                weaponType,
+                mag,
+                maxMag,
+                reserve,
+                maxReserve);
+            int totalStart = singleLine.LastIndexOf('(');
+            if (totalStart <= 0)
+            {
+                return singleLine;
+            }
+
+            return singleLine.Substring(0, totalStart).TrimEnd() + "\n" + singleLine.Substring(totalStart);
+        }
+
         private static ShopStatTier_V2 GetAmmoFillTier(int currentTotal, int maxTotal)
         {
             if (maxTotal <= 0)
@@ -398,7 +427,12 @@ namespace iStick2War_V2
                 return false;
             }
 
-            display = FormatOwnedWeaponAmmoDisplay(weapon.WeaponType, mag, maxMag, reserve, maxReserve);
+            display = FormatOwnedWeaponAmmoDisplayForShopGrid(
+                weapon.WeaponType,
+                mag,
+                maxMag,
+                reserve,
+                maxReserve);
             int currentTotal = mag + reserve;
             int maxTotal = maxMag + maxReserve;
             if (weapon.WeaponType == WeaponType.Bazooka)
@@ -508,7 +542,7 @@ namespace iStick2War_V2
             ShowRow(row, label, value, tier);
         }
 
-        private static void ShowRow(StatRow row, string label, string value, ShopStatTier_V2 tier)
+        private void ShowRow(StatRow row, string label, string value, ShopStatTier_V2 tier)
         {
             if (row == null || !RowHasBinding(row))
             {
@@ -539,7 +573,7 @@ namespace iStick2War_V2
 
         // Informational stat rows (hero HP before/after): one combined black line on the label TMP.
         // Shop V2 ShopGrid uses one cell per TMP; a separate value cell would land on another row.
-        private static void ShowInfoRow(StatRow row, string label, string value)
+        private void ShowInfoRow(StatRow row, string label, string value)
         {
             if (row == null || !RowHasBinding(row))
             {
@@ -687,29 +721,31 @@ namespace iStick2War_V2
             }
         }
 
-        private static void SetPlainText(TMP_Text textField, string value)
-        {
-            if (textField != null)
-            {
-                textField.text = value ?? string.Empty;
-            }
-        }
-
-        private static readonly Color StatLabelColor = Color.black;
-
-        private static void SetLabelText(TMP_Text textField, string value)
+        private void SetPlainText(TMP_Text textField, string value)
         {
             if (textField == null)
             {
                 return;
             }
 
-            textField.text = value ?? string.Empty;
+            AssignShopGridText(textField, value ?? string.Empty);
+        }
+
+        private static readonly Color StatLabelColor = Color.black;
+
+        private void SetLabelText(TMP_Text textField, string value)
+        {
+            if (textField == null)
+            {
+                return;
+            }
+
+            AssignShopGridText(textField, value ?? string.Empty);
             textField.color = StatLabelColor;
             EnsureTmpFaceColorWhite(textField);
         }
 
-        private static void SetCombinedLabelValueText(
+        private void SetCombinedLabelValueText(
             TMP_Text textField,
             string label,
             string value,
@@ -722,7 +758,9 @@ namespace iStick2War_V2
 
             Color tierColor = ShopStatTierColors_V2.GetColor(tier);
             string tierHex = ColorUtility.ToHtmlStringRGB(tierColor);
-            textField.text = $"<color=#000000>{label}:</color> <color=#{tierHex}>{value}</color>";
+            string richText =
+                $"<color=#000000>{label}:</color> <color=#{tierHex}>{value ?? string.Empty}</color>";
+            AssignShopGridText(textField, richText);
             textField.color = Color.white;
             EnsureTmpFaceColorWhite(textField);
         }
@@ -736,15 +774,62 @@ namespace iStick2War_V2
             }
         }
 
-        private static void SetTierValue(TMP_Text valueField, string value, ShopStatTier_V2 tier)
+        private void SetTierValue(TMP_Text valueField, string value, ShopStatTier_V2 tier)
         {
             if (valueField == null)
             {
                 return;
             }
 
-            valueField.text = value ?? string.Empty;
+            AssignShopGridText(valueField, value ?? string.Empty);
             valueField.color = ShopStatTierColors_V2.GetColor(tier);
+        }
+
+        private void AssignShopGridText(TMP_Text textField, string content)
+        {
+            if (textField == null)
+            {
+                return;
+            }
+
+            ApplyGridTypography(textField);
+            textField.text = ApplyGridLineHeightMarkup(content, textField);
+            textField.ForceMeshUpdate();
+        }
+
+        private void ApplyGridTypography(TMP_Text textField)
+        {
+            if (textField == null)
+            {
+                return;
+            }
+
+            textField.lineSpacing = _gridLineSpacing;
+        }
+
+        // TMP lineSpacing does not affect rich-text line breaks; <line-height> controls intra-text rows.
+        private string ApplyGridLineHeightMarkup(string content, TMP_Text textField)
+        {
+            if (string.IsNullOrEmpty(content) || !ContainsExplicitLineBreak(content))
+            {
+                return content ?? string.Empty;
+            }
+
+            float percent = GetGridLineHeightPercent(textField);
+            return $"<line-height={percent:0.#}%>{content}</line-height>";
+        }
+
+        private float GetGridLineHeightPercent(TMP_Text textField)
+        {
+            float fontSize = Mathf.Max(1f, textField.fontSize);
+            return 100f + (_gridLineSpacing / fontSize * 100f);
+        }
+
+        private static bool ContainsExplicitLineBreak(string content)
+        {
+            return content.IndexOf('\n') >= 0 ||
+                   content.IndexOf("<br>", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   content.IndexOf("<br/>", System.StringComparison.OrdinalIgnoreCase) >= 0;
         }
     }
 }

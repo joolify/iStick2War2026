@@ -48,6 +48,11 @@ namespace iStick2War_V2
 
         [Header("Shop stat warnings")]
         [SerializeField] private Color _shopWarningTextColor = new Color(0.9f, 0.2f, 0.2f, 1f);
+
+        [Header("Shop grid typography")]
+        [Tooltip("Extra line gap inside multi-line ShopGrid TMP (maps to TMP <line-height>). Also copied to TMP lineSpacing.")]
+        [SerializeField] private float _shopGridLineSpacing = 14f;
+
         [SerializeField] private bool _debugShopNavigationLogs;
 
         private WaveManager_V2 _waveManager;
@@ -493,7 +498,9 @@ namespace iStick2War_V2
 
             ResolveOfferStatsIfNeeded();
             RebuildOfferStatBaselinesIfNeeded();
+            _offerStatsPresenter.ConfigureGridTypography(_shopGridLineSpacing);
             _offerStatsPresenter.Refresh(offer, _waveManager);
+            ApplyShopGridTmpLineSpacing();
         }
 
         private void ResolveOfferStatsIfNeeded()
@@ -504,6 +511,7 @@ namespace iStick2War_V2
             }
 
             _statTmpBindingUsed.Clear();
+            _offerStatsPresenter.ConfigureGridTypography(_shopGridLineSpacing);
             _offerStatsPresenter.ResolveBindings(
                 FindShopStatLabelTmpForBinding,
                 FindShopStatValueTmpForBinding,
@@ -670,6 +678,7 @@ namespace iStick2War_V2
             }
 
             _shopGridScope = FindNamedChildRecursive(_uiScope, "ShopGrid");
+            ApplyShopGridTmpLineSpacing();
 
             if (_titleText == null)
             {
@@ -707,6 +716,24 @@ namespace iStick2War_V2
             }
 
             _didResolveUi = true;
+        }
+
+        private void ApplyShopGridTmpLineSpacing()
+        {
+            if (_shopGridScope == null)
+            {
+                return;
+            }
+
+            TMP_Text[] texts = _shopGridScope.GetComponentsInChildren<TMP_Text>(true);
+            for (int i = 0; i < texts.Length; i++)
+            {
+                TMP_Text text = texts[i];
+                if (text != null)
+                {
+                    text.lineSpacing = _shopGridLineSpacing;
+                }
+            }
         }
 
         private void SetChromeVisible(bool visible)
