@@ -30,4 +30,4 @@ MonoBehaviour:
   _openGameOverDirectly: 0
   _openGameWonDirectly: 0
   _openGameErrorDirectly: 0
-  _openSwedishPlaneSupplyDirectly: 1
+  _openSwedishPlaneSupplyDirectly: 0

@@ -537,6 +537,7 @@ namespace iStick2War_V2
         private void Start()
         {
             AudioManager_V2.EnsureInstance();
+            EnsureMobileGameplayBootstrap();
             ResetRunLivesForNewRun();
             EnsureHeartLifeBar();
             EnsureGameOverContinueUi();
@@ -1656,7 +1657,7 @@ namespace iStick2War_V2
             }
         }
 
-        private void CompleteWave()
+        private void CompleteWave(bool forceOpenShop = false)
         {
             WaveConfig_V2 wave = GetCurrentWaveConfig();
             if (wave == null)
@@ -1676,18 +1677,26 @@ namespace iStick2War_V2
                                            _waves != null &&
                                            _waves.Count > 0 &&
                                            _waveIndex >= _waves.Count - 1;
-            if (clearedLastCampaignWave)
+            if (clearedLastCampaignWave && !forceOpenShop)
             {
                 EnterGameWonState();
                 return;
             }
 
-            if (IsSurvivalMode)
+            if (IsSurvivalMode && !forceOpenShop)
             {
                 BeginSurvivalSupplyIntermission(wave);
                 return;
             }
 
+            OpenShopIntermissionAfterWave(wave);
+        }
+
+        private void OpenShopIntermissionAfterWave(WaveConfig_V2 wave)
+        {
+            _devSwedishPlaneSupplyAwaitingAdvance = false;
+            _swedishPlaneSupplyIntermissionActive = false;
+            NotifySwedishPlaneSupplyIntermissionChanged();
             ApplyBetweenWavePressureReset();
             AudioManager_V2.PlayWaveComplete();
 
@@ -1703,9 +1712,12 @@ namespace iStick2War_V2
                 _shopPanel.Show();
                 _shopPanel.Refresh();
             }
+
             Log($"Wave {CurrentWaveNumber} cleared. reward={reward}, currency={_currency}");
             EmitMetaChanged();
             PersistRunSaveIfPossible();
+            ApplyGameplayHudVisibility();
+            RefreshHeroWaveLoopCombatGate();
         }
 
         private void BeginSurvivalSupplyIntermission(WaveConfig_V2 wave, Action onPassComplete = null)
@@ -2012,7 +2024,7 @@ namespace iStick2War_V2
             _hasScalingForActiveWave = true;
             _inWaveEnteredUnscaledTime = Time.unscaledTime;
             Log($"Wave {CurrentWaveNumber} skipped (OpenShopDirectly). Opening shop.");
-            CompleteWave();
+            CompleteWave(forceOpenShop: true);
             return true;
         }
 
@@ -4860,6 +4872,11 @@ namespace iStick2War_V2
                 }
 
                 bool showReloadPrompt = _hero.ShouldShowReloadPrompt();
+                if (GamePlatform_V2.ShouldUseMobileReloadUi)
+                {
+                    showReloadPrompt = false;
+                }
+
                 _topBarReloadText.gameObject.SetActive(showReloadPrompt);
                 if (showReloadPrompt)
                 {
@@ -4925,6 +4942,24 @@ namespace iStick2War_V2
             }
 
             EnsureGameplayOverlayBranchActive(_topBarWaveText.transform);
+        }
+
+        private static void EnsureMobileGameplayBootstrap()
+        {
+            MobileGameplayBootstrap_V2 existing =
+                FindAnyObjectByType<MobileGameplayBootstrap_V2>(FindObjectsInactive.Include);
+            if (existing != null)
+            {
+                return;
+            }
+
+            WaveManager_V2 waveManager = FindAnyObjectByType<WaveManager_V2>(FindObjectsInactive.Include);
+            if (waveManager == null)
+            {
+                return;
+            }
+
+            waveManager.gameObject.AddComponent<MobileGameplayBootstrap_V2>();
         }
 
         // Keeps HUD-Canvas / HUD-Sprites-Canvas in sync with loop state (hidden while shop is open).

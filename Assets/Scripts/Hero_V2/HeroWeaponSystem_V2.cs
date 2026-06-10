@@ -553,6 +553,16 @@ namespace iStick2War_V2
             return !isDisabled && !_model.isDead && _inventory.ContainsWeaponType(weaponType);
         }
 
+        public int GetUnlockedWeaponCount()
+        {
+            if (isDisabled || _model.isDead)
+            {
+                return 0;
+            }
+
+            return _inventory.WeaponCount;
+        }
+
         /// <summary>True if that weapon is in the loadout and has rounds in mag or reserve (reload possible).</summary>
         public bool HasUsableAmmoForWeaponType(WeaponType weaponType)
         {

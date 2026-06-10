@@ -26,6 +26,7 @@ namespace iStick2War_V2
         [SerializeField] private float _pickupRadiusFallbackMultiplier = 1.6f;
         [SerializeField] private float _pickupBoundsPadding = 0.12f;
         [SerializeField] private float _landPickupEnableFallbackSeconds = 0.55f;
+        [SerializeField] private float _mobileAutoPickupDelaySeconds = 2f;
         [SerializeField] private float _maxLifetimeSeconds = 90f;
 
         private SwedishPlanePowerUpModel_V2 _model;
@@ -44,6 +45,8 @@ namespace iStick2War_V2
         private bool _hasTargetGroundY;
         private int _groundLayerMask;
         private float _landStateEnteredAt = -1f;
+        private float _pickupEnabledAt = -1f;
+        private bool _mobileAutoPickupTriggered;
         private bool _deployClipFinished;
         private bool _descentFinished;
         private static HeroModel_V2 s_cachedHeroModel;
@@ -104,6 +107,8 @@ namespace iStick2War_V2
             _model.rolledOffer = offer;
             _model.pickupEnabled = false;
             _landStateEnteredAt = -1f;
+            _pickupEnabledAt = -1f;
+            _mobileAutoPickupTriggered = false;
             _deployClipFinished = false;
             _descentFinished = false;
             _expireAt = Time.time + Mathf.Max(8f, _maxLifetimeSeconds);
@@ -156,6 +161,7 @@ namespace iStick2War_V2
                 LockTouchdownRootY();
                 TryEnablePickupAfterLandFallback();
                 TryProximityPickup();
+                TryMobileTimedAutoPickup();
             }
 
             if (Time.time >= _expireAt)
@@ -381,9 +387,59 @@ namespace iStick2War_V2
             }
 
             _model.pickupEnabled = true;
+            _pickupEnabledAt = Time.time;
             EnsurePickupPhysics();
             SetPickupTriggerCollidersEnabled(true);
             ApplyHeroWalkThroughIgnoreCollisions();
+            TryMobileOverlapPickupImmediately();
+        }
+
+        private void TryMobileOverlapPickupImmediately()
+        {
+            if (!GamePlatform_V2.UseMobileGameplayRules)
+            {
+                return;
+            }
+
+            Hero_V2 hero = ResolveHero();
+            if (hero == null || hero.IsDead())
+            {
+                return;
+            }
+
+            if (!IsHeroWithinPickupRange(hero.transform.position))
+            {
+                return;
+            }
+
+            TryPickupHero(hero);
+        }
+
+        private void TryMobileTimedAutoPickup()
+        {
+            if (!GamePlatform_V2.UseMobileGameplayRules || _mobileAutoPickupTriggered)
+            {
+                return;
+            }
+
+            if (_model == null || !_model.pickupEnabled || _pickupEnabledAt < 0f)
+            {
+                return;
+            }
+
+            if (Time.time - _pickupEnabledAt < Mathf.Max(0.1f, _mobileAutoPickupDelaySeconds))
+            {
+                return;
+            }
+
+            Hero_V2 hero = ResolveHero();
+            if (hero == null || hero.IsDead())
+            {
+                return;
+            }
+
+            _mobileAutoPickupTriggered = true;
+            TryPickupHero(hero);
         }
 
         private void TryProximityPickup()

@@ -338,6 +338,11 @@ namespace iStick2War_V2
 
         private void EnsureMovementEnabledDuringSwedishPlaneSupply()
         {
+            if (GamePlatform_V2.UseMobileGameplayRules)
+            {
+                return;
+            }
+
             if (IsDead() || _movementSystem == null)
             {
                 return;
@@ -772,9 +777,24 @@ namespace iStick2War_V2
             return _weaponSystem != null && _weaponSystem.TrySwitchToWeaponType(weaponType);
         }
 
+        public bool TrySwitchToNextWeapon()
+        {
+            return _weaponSystem != null && _weaponSystem.TrySwitchToNextWeapon();
+        }
+
+        public bool TrySwitchToPreviousWeapon()
+        {
+            return _weaponSystem != null && _weaponSystem.TrySwitchToPreviousWeapon();
+        }
+
         public bool HasUnlockedWeaponOfType(WeaponType weaponType)
         {
             return _weaponSystem != null && _weaponSystem.HasUnlockedWeaponOfType(weaponType);
+        }
+
+        public int GetUnlockedWeaponCount()
+        {
+            return _weaponSystem != null ? _weaponSystem.GetUnlockedWeaponCount() : 0;
         }
 
         public bool HasUsableAmmoForWeaponType(WeaponType weaponType)

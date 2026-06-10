@@ -387,10 +387,26 @@ namespace iStick2War_V2
             }
 
             float aimPlaneZ = _skeletonAnimation != null ? _skeletonAnimation.transform.position.z : 0f;
-            Vector3 screen = Input.mousePosition;
+            Vector3 screen;
+            if (GamePlatform_V2.UseMobileGameplayRules &&
+                MobileGameplayTouchInput_V2.Instance != null &&
+                MobileGameplayTouchInput_V2.Instance.TryGetCombatAimScreenPoint(out Vector2 touchScreen))
+            {
+                screen = touchScreen;
+            }
+            else
+            {
+                screen = Input.mousePosition;
+            }
+
             screen.z = cam.WorldToScreenPoint(new Vector3(0f, 0f, aimPlaneZ)).z;
             Vector3 w = cam.ScreenToWorldPoint(screen);
             Vector2 mouseWorld = new Vector2(w.x, w.y);
+
+            if (GamePlatform_V2.UseMobileGameplayRules)
+            {
+                return mouseWorld;
+            }
 
             float sensitivity = GameSettings_V2.MouseSensitivity;
             if (Mathf.Approximately(sensitivity, 1f))
@@ -886,13 +902,13 @@ namespace iStick2War_V2
                 return;
             }
 
-            // Desktop-only cursor flip. Mobile/touch uses different aim handling unless bot override is active.
-#if (UNITY_IPHONE || UNITY_ANDROID) && !UNITY_EDITOR
-            if (!_overrideAimWorld.HasValue)
+            // Flip toward aim on desktop and mobile touch aim.
+            if (!_overrideAimWorld.HasValue &&
+                GamePlatform_V2.UseMobileGameplayRules &&
+                (MobileGameplayTouchInput_V2.Instance == null || !MobileGameplayTouchInput_V2.Instance.CombatTouchHeld))
             {
                 return;
             }
-#endif
             Camera cam = _cam != null ? _cam : Camera.main;
             if (cam == null)
             {

@@ -100,8 +100,76 @@ namespace iStick2War_V2
                 return;
             }
 
-            ReadMovement();
-            ReadCombatInput();
+            if (GamePlatform_V2.UseMobileGameplayRules)
+            {
+                ReadMobileInput();
+            }
+            else
+            {
+                ReadMovement();
+                ReadCombatInput();
+                ApplyQueuedWeaponSwitchButtons();
+            }
+
+            ApplyQueuedReloadButton();
+        }
+
+        private void ApplyQueuedWeaponSwitchButtons()
+        {
+            MobileGameplayTouchInput_V2 touch = MobileGameplayTouchInput_V2.Instance;
+            if (touch == null)
+            {
+                return;
+            }
+
+            if (touch.ConsumeSwitchNextWeapon())
+            {
+                IsSwitchNextWeaponPressed = true;
+            }
+
+            if (touch.ConsumeSwitchPreviousWeapon())
+            {
+                IsSwitchPreviousWeaponPressed = true;
+            }
+        }
+
+        private void ApplyQueuedReloadButton()
+        {
+            MobileGameplayTouchInput_V2 touch = MobileGameplayTouchInput_V2.Instance;
+            if (touch == null)
+            {
+                return;
+            }
+
+            if (touch.ConsumeReload())
+            {
+                IsReloadPressed = true;
+            }
+        }
+
+        private void ReadMobileInput()
+        {
+            MoveInput = Vector2.zero;
+            IsJumpPressed = false;
+            IsReloadPressed = false;
+            DirectWeaponSlot = -1;
+
+            MobileGameplayTouchInput_V2 touch = MobileGameplayTouchInput_V2.Instance;
+            if (touch == null)
+            {
+                IsShootingPressed = false;
+                IsShootingHeld = false;
+                IsShootingReleased = false;
+                IsSwitchNextWeaponPressed = false;
+                IsSwitchPreviousWeaponPressed = false;
+                return;
+            }
+
+            IsShootingPressed = touch.CombatTouchBeganThisFrame;
+            IsShootingHeld = touch.CombatTouchHeld;
+            IsShootingReleased = touch.CombatTouchEndedThisFrame;
+            IsSwitchNextWeaponPressed = touch.ConsumeSwitchNextWeapon();
+            IsSwitchPreviousWeaponPressed = touch.ConsumeSwitchPreviousWeapon();
         }
 
         // -------------------------
