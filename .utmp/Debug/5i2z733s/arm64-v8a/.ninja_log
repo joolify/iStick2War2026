@@ -1,0 +1,10 @@
+# ninja log v5
+90	5119	8028207937978658	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	ec755144e1453639
+76	5169	8028207938489095	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	8c3f25543eb7f447
+2	5200	8028207938707342	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	799baea5c81dfdb9
+105	5205	8028207938762986	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	81d099affad52f6f
+44	5231	8028207939300141	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	472cabd27dc5d072
+61	5491	8028207941882671	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	610eb47cf437730b
+29	5563	8028207942596864	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	29743b00e3784889
+290	5585	8028207942840076	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	1e843768dedb9ac4
+5586	5855	8028207945645423	C:/repos/iStick2War2026/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/Debug/5i2z733s/obj/arm64-v8a/libgame.so	67ab2a264da76bcc

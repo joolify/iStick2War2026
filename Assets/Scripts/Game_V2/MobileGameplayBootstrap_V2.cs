@@ -4,7 +4,8 @@ using UnityEngine.EventSystems;
 namespace iStick2War_V2
 {
     /*
-     * MobileGameplayBootstrap_V2 — enables mobile touch rules, touch input host, weapon arrows, and reload canvas.
+     * MobileGameplayBootstrap_V2 - enables mobile touch rules, touch input host, weapon arrows, and reload canvas.
+     * Ensures EventSystem uses StandaloneInputModule when the project runs on legacy Input Manager (Android build).
      * Optional Force Mobile In Editor for desktop playtests with touch emulation (mouse hold = shoot/aim).
      */
     [DisallowMultipleComponent]
@@ -64,13 +65,15 @@ namespace iStick2War_V2
 
         private static void EnsureEventSystemExists()
         {
-            if (FindAnyObjectByType<EventSystem>(FindObjectsInactive.Include) != null)
+            EventSystem eventSystem = FindAnyObjectByType<EventSystem>(FindObjectsInactive.Include);
+            if (eventSystem == null)
             {
+                GameObject eventSystemGo = new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
+                eventSystemGo.hideFlags = HideFlags.None;
                 return;
             }
 
-            GameObject eventSystem = new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
-            eventSystem.hideFlags = HideFlags.None;
+            LegacyUiEventSystemUtility_V2.EnsureLegacyUiInputModule(eventSystem.gameObject);
         }
     }
 }

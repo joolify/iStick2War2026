@@ -48,6 +48,31 @@ namespace iStick2War_V2
             Canvas.ForceUpdateCanvases();
         }
 
+        // Scale 0 and missing worldCamera break GraphicRaycaster hits on LifeOver / shop canvases saved in scenes.
+        public static void EnsureCanvasReceivesInput(Canvas canvas)
+        {
+            if (canvas == null)
+            {
+                return;
+            }
+
+            SanitizeRectTransform(canvas.transform as RectTransform);
+            canvas.enabled = true;
+
+            if (canvas.renderMode == RenderMode.ScreenSpaceCamera && canvas.worldCamera == null)
+            {
+                Camera mainCamera = Camera.main;
+                if (mainCamera != null)
+                {
+                    canvas.worldCamera = mainCamera;
+                }
+                else
+                {
+                    canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                }
+            }
+        }
+
         public static void SanitizeRectTransform(RectTransform rect)
         {
             if (rect == null)

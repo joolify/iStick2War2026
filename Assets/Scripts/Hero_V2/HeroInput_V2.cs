@@ -66,6 +66,9 @@ namespace iStick2War_V2
         private Vector2 _botMove;
         private bool _botShootHeld;
         private bool _botReloadPressed;
+        private bool _manualReloadFromUi;
+        private bool _manualSwitchNextWeaponFromUi;
+        private bool _manualSwitchPreviousWeaponFromUi;
 
         /// <summary>When true, <see cref="Tick"/> uses the last bot frame instead of Unity input.</summary>
         public void SetBotDriving(bool enabled)
@@ -79,6 +82,22 @@ namespace iStick2War_V2
             _botMove = move;
             _botShootHeld = shootHeld;
             _botReloadPressed = reloadPressed;
+        }
+
+        // Mobile reload UI can fire after HeroInput_V2.Tick in the same frame; keep a one-frame latch.
+        public void RequestManualReloadFromUi()
+        {
+            _manualReloadFromUi = true;
+        }
+
+        public void RequestSwitchNextWeaponFromUi()
+        {
+            _manualSwitchNextWeaponFromUi = true;
+        }
+
+        public void RequestSwitchPreviousWeaponFromUi()
+        {
+            _manualSwitchPreviousWeaponFromUi = true;
         }
 
         // -------------------------
@@ -97,10 +116,8 @@ namespace iStick2War_V2
                 IsSwitchPreviousWeaponPressed = false;
                 DirectWeaponSlot = -1;
                 IsJumpPressed = false;
-                return;
             }
-
-            if (GamePlatform_V2.UseMobileGameplayRules)
+            else if (GamePlatform_V2.UseMobileGameplayRules)
             {
                 ReadMobileInput();
             }
@@ -108,10 +125,12 @@ namespace iStick2War_V2
             {
                 ReadMovement();
                 ReadCombatInput();
-                ApplyQueuedWeaponSwitchButtons();
             }
 
+            ApplyQueuedWeaponSwitchButtons();
             ApplyQueuedReloadButton();
+            ApplyManualReloadFromUi();
+            ApplyManualWeaponSwitchFromUi();
         }
 
         private void ApplyQueuedWeaponSwitchButtons()
@@ -147,12 +166,40 @@ namespace iStick2War_V2
             }
         }
 
+        private void ApplyManualReloadFromUi()
+        {
+            if (!_manualReloadFromUi)
+            {
+                return;
+            }
+
+            IsReloadPressed = true;
+            _manualReloadFromUi = false;
+        }
+
+        private void ApplyManualWeaponSwitchFromUi()
+        {
+            if (_manualSwitchNextWeaponFromUi)
+            {
+                IsSwitchNextWeaponPressed = true;
+                _manualSwitchNextWeaponFromUi = false;
+            }
+
+            if (_manualSwitchPreviousWeaponFromUi)
+            {
+                IsSwitchPreviousWeaponPressed = true;
+                _manualSwitchPreviousWeaponFromUi = false;
+            }
+        }
+
         private void ReadMobileInput()
         {
             MoveInput = Vector2.zero;
             IsJumpPressed = false;
             IsReloadPressed = false;
             DirectWeaponSlot = -1;
+            IsSwitchNextWeaponPressed = false;
+            IsSwitchPreviousWeaponPressed = false;
 
             MobileGameplayTouchInput_V2 touch = MobileGameplayTouchInput_V2.Instance;
             if (touch == null)
@@ -168,8 +215,6 @@ namespace iStick2War_V2
             IsShootingPressed = touch.CombatTouchBeganThisFrame;
             IsShootingHeld = touch.CombatTouchHeld;
             IsShootingReleased = touch.CombatTouchEndedThisFrame;
-            IsSwitchNextWeaponPressed = touch.ConsumeSwitchNextWeapon();
-            IsSwitchPreviousWeaponPressed = touch.ConsumeSwitchPreviousWeapon();
         }
 
         // -------------------------

@@ -22,6 +22,7 @@ namespace iStick2War_V2
      */
     [AddComponentMenu("iStick2War/Life Over Nav UI Button V2")]
     [RequireComponent(typeof(Button))]
+    [DefaultExecutionOrder(-50)]
     public sealed class LifeOverNavUiButton_V2 :
         MonoBehaviour,
         IPointerDownHandler,
@@ -61,6 +62,12 @@ namespace iStick2War_V2
 
         private void OnEnable()
         {
+            if (GetComponent<GameOverNavUiButton_V2>() != null)
+            {
+                enabled = false;
+                return;
+            }
+
             _labelRestCached = false;
             _button = GetComponent<Button>();
             ResolveVisualPairIfNeeded();
@@ -80,6 +87,16 @@ namespace iStick2War_V2
             }
 
             ShowNormalVisual();
+        }
+
+        private void Update()
+        {
+            if (!Application.isPlaying || !isActiveAndEnabled)
+            {
+                return;
+            }
+
+            TryHandleDirectPointerClick();
         }
 
         internal void Configure(WaveManager_V2 waveManager, LifeOverNavButton_V2.LifeOverAction action)
@@ -180,6 +197,62 @@ namespace iStick2War_V2
             _latchPressedVisual = true;
             ShowPressedVisual();
             _delayedActionRoutine = StartCoroutine(DelayedExecuteAction());
+        }
+
+        private void TryHandleDirectPointerClick()
+        {
+            if (GetComponent<GameOverNavUiButton_V2>() != null)
+            {
+                return;
+            }
+
+            if (_button == null || !_button.isActiveAndEnabled || !_button.interactable)
+            {
+                return;
+            }
+
+            RectTransform buttonRect = transform as RectTransform;
+            if (buttonRect == null)
+            {
+                return;
+            }
+
+            Camera eventCamera = ResolveEventCamera();
+
+            for (int i = 0; i < Input.touchCount; i++)
+            {
+                Touch touch = Input.GetTouch(i);
+                if (touch.phase != TouchPhase.Ended)
+                {
+                    continue;
+                }
+
+                if (!RectTransformUtility.RectangleContainsScreenPoint(buttonRect, touch.position, eventCamera))
+                {
+                    continue;
+                }
+
+                HandleClick();
+                return;
+            }
+
+            if (Input.touchCount == 0 &&
+                Input.GetMouseButtonUp(0) &&
+                RectTransformUtility.RectangleContainsScreenPoint(buttonRect, Input.mousePosition, eventCamera))
+            {
+                HandleClick();
+            }
+        }
+
+        private Camera ResolveEventCamera()
+        {
+            Canvas canvas = GetComponentInParent<Canvas>();
+            if (canvas == null || canvas.renderMode == RenderMode.ScreenSpaceOverlay)
+            {
+                return null;
+            }
+
+            return canvas.worldCamera != null ? canvas.worldCamera : Camera.main;
         }
 
         private IEnumerator DelayedExecuteAction()

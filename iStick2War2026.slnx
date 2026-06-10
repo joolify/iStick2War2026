@@ -9,6 +9,8 @@
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="iStick2War.PlayModeTests.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
+  <Project Path="iStick2War.Game.Editor.csproj" />
   <Project Path="spine-unity-examples-editor.csproj" />
+  <Project Path="iStick2War.Hero.Editor.csproj" />
   <Project Path="Assembly-CSharp-Editor-firstpass.csproj" />
 </Solution>

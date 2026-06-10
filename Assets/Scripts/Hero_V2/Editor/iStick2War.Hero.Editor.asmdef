@@ -1,0 +1,19 @@
+{
+    "name": "iStick2War.Hero.Editor",
+    "rootNamespace": "",
+    "references": [
+        "iStick2War.Game",
+        "spine-unity"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

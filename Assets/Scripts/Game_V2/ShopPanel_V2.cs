@@ -192,6 +192,7 @@ namespace iStick2War_V2
             _statTmpBindingUsed.Clear();
             _didResolveOfferStats = false;
             BindCanvasShopButtons();
+            RefitShopNavButtons();
             Refresh();
             _waveManager?.ApplyGameplayHudVisibility();
         }
@@ -612,6 +613,19 @@ namespace iStick2War_V2
             EnsureShopNavUiButton("Shop_Btn_StartGame", ShopTextButtonBehavior.StartNextWave);
         }
 
+        private void RefitShopNavButtons()
+        {
+            ShopNavArrowUiButton_V2[] navButtons = GetComponentsInChildren<ShopNavArrowUiButton_V2>(true);
+            for (int i = 0; i < navButtons.Length; i++)
+            {
+                ShopNavArrowUiButton_V2 navButton = navButtons[i];
+                if (navButton != null)
+                {
+                    navButton.RefitHitTarget();
+                }
+            }
+        }
+
         private void EnsureShopNavUiButton(string exactName, ShopTextButtonBehavior behavior)
         {
             GameObject target = FindShopObjectByName(exactName);
@@ -750,11 +764,7 @@ namespace iStick2War_V2
             Canvas[] canvases = chrome.GetComponentsInChildren<Canvas>(true);
             for (int i = 0; i < canvases.Length; i++)
             {
-                Canvas canvas = canvases[i];
-                if (canvas != null)
-                {
-                    canvas.enabled = true;
-                }
+                GameplayHudLayoutUtility_V2.EnsureCanvasReceivesInput(canvases[i]);
             }
         }
 

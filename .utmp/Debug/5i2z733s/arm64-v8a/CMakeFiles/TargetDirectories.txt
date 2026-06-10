@@ -1,0 +1,5 @@
+C:/repos/iStick2War2026/.utmp/Debug/5i2z733s/arm64-v8a/CMakeFiles/edit_cache.dir
+C:/repos/iStick2War2026/.utmp/Debug/5i2z733s/arm64-v8a/CMakeFiles/rebuild_cache.dir
+C:/repos/iStick2War2026/.utmp/Debug/5i2z733s/arm64-v8a/GameActivity/CMakeFiles/game.dir
+C:/repos/iStick2War2026/.utmp/Debug/5i2z733s/arm64-v8a/GameActivity/CMakeFiles/edit_cache.dir
+C:/repos/iStick2War2026/.utmp/Debug/5i2z733s/arm64-v8a/GameActivity/CMakeFiles/rebuild_cache.dir

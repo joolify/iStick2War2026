@@ -817,6 +817,21 @@ namespace iStick2War_V2
             return _weaponSystem != null && _weaponSystem.IsReloading();
         }
 
+        public void RequestManualReloadFromUi()
+        {
+            _input?.RequestManualReloadFromUi();
+        }
+
+        public void RequestSwitchNextWeaponFromUi()
+        {
+            _input?.RequestSwitchNextWeaponFromUi();
+        }
+
+        public void RequestSwitchPreviousWeaponFromUi()
+        {
+            _input?.RequestSwitchPreviousWeaponFromUi();
+        }
+
         /// <summary>Used by <see cref="GameplaySceneProfileApplier_V2"/> (e.g. Colt-only runs) after hero systems exist.</summary>
         public void ApplySceneWeaponAllowlist(IReadOnlyList<WeaponType> allowedWeaponTypes)
         {

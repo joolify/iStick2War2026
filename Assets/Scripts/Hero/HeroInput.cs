@@ -300,14 +300,8 @@ namespace iStick2War
             bool isTriggerUp = false;
 
 #if (UNITY_IPHONE || UNITY_ANDROID) && !UNITY_EDITOR
-            if (Input.touchCount == 1 && (joystick.Vertical > 0 || joystick.Horizontal > 0))
-            {
-                isTriggerDown = false;
-            }
-            else
-            {
-                isTriggerDown = Input.touchCount > 0 && (touch.phase == TouchPhase.Began || touch.phase == TouchPhase.Moved || touch.phase == TouchPhase.Stationary);
-            }
+            // Legacy mobile joystick removed; shipped scenes use Hero_V2 touch input instead.
+            isTriggerDown = Input.touchCount > 0 && (touch.phase == TouchPhase.Began || touch.phase == TouchPhase.Moved || touch.phase == TouchPhase.Stationary);
             isTriggerUp = Input.touchCount > 0 && touch.phase == TouchPhase.Ended;
 #else
 
@@ -365,7 +359,7 @@ namespace iStick2War
         {
             var jump = false;
 #if (UNITY_IPHONE || UNITY_ANDROID) && !UNITY_EDITOR
-            jump = joystick.Vertical >= 0.5f;
+            jump = false;
 #else
             jump = Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.W);
 #endif
@@ -480,7 +474,7 @@ namespace iStick2War
         {
             var crouch = false;
 #if (UNITY_IPHONE || UNITY_ANDROID) && !UNITY_EDITOR
-            crouch = joystick.Vertical <= -0.5f;
+            crouch = false;
 #else
             crouch = Input.GetKeyDown(KeyCode.S);
 #endif
@@ -502,10 +496,7 @@ namespace iStick2War
         {
             Vector2 directionalInput = Vector2.zero;
 #if (UNITY_IPHONE || UNITY_ANDROID) && !UNITY_EDITOR
-            if (joystick.Horizontal >= .2f || joystick.Horizontal <= -.2f )
-            {
-               directionalInput = new Vector2(joystick.Horizontal, 0f);
-            }
+            directionalInput = Vector2.zero;
 #else
             directionalInput = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
 #endif

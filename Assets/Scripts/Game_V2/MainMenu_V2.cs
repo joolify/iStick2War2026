@@ -658,6 +658,7 @@ namespace iStick2War_V2
 
             AudioManager_V2.PlayMenuClick();
             _gameStarted = true;
+            WaveManager_V2.CancelPendingSavedRunLoad();
             GameRunModeBootstrap_V2.SetPendingNewRunMode(mode);
             RunSaveService_V2.ClearSave();
 

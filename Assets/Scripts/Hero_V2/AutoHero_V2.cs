@@ -326,6 +326,12 @@ namespace iStick2War_V2
                 return;
             }
 
+            // Main menu Play / Continue already chose the run mode — do not override it.
+            if (GameRunModeBootstrap_V2.HasPendingNewRunMode)
+            {
+                return;
+            }
+
             GameRunModeBootstrap_V2.SetPendingNewRunMode(_automationGameRunMode);
         }
 

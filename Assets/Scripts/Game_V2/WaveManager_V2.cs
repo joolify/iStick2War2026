@@ -363,6 +363,12 @@ namespace iStick2War_V2
             MarkGameplayEnteredFromMainMenu();
         }
 
+        // Fresh Campaign/Survival start must not restore an old Continue snapshot.
+        public static void CancelPendingSavedRunLoad()
+        {
+            s_loadSavedRunPending = false;
+        }
+
         public static bool HasSavedRunAvailable() => RunSaveService_V2.HasSave();
 
         // Call from MainMenu_V2 after Play: shows Wave N for _topBarWaveTextVisibleSeconds, then fades out.
@@ -570,6 +576,7 @@ namespace iStick2War_V2
 
             _gameRunMode = GameRunModeBootstrap_V2.ConsumePendingNewRunMode();
             _totalEnemiesKilledRun = 0;
+            Log($"[WaveManager_V2] Fresh run. gameMode={_gameRunMode}");
             EnterPreparingState();
             if (s_notifyGameplayFromMainMenuPending)
             {
@@ -609,6 +616,8 @@ namespace iStick2War_V2
             if (!RunSaveService_V2.TryLoad(out RunSaveFile_V2 save))
             {
                 Log("[WaveManager_V2] Continue requested but no valid run save was found.");
+                _gameRunMode = GameRunModeBootstrap_V2.ConsumePendingNewRunMode();
+                _totalEnemiesKilledRun = 0;
                 EnterPreparingState();
                 EmitMetaChanged();
                 RefreshTopBar();
@@ -1685,10 +1694,12 @@ namespace iStick2War_V2
 
             if (IsSurvivalMode && !forceOpenShop)
             {
+                Log($"[WaveManager_V2] Wave {CurrentWaveNumber} cleared -> Survival supply pass (gameMode={_gameRunMode}).");
                 BeginSurvivalSupplyIntermission(wave);
                 return;
             }
 
+            Log($"[WaveManager_V2] Wave {CurrentWaveNumber} cleared -> Campaign shop (gameMode={_gameRunMode}).");
             OpenShopIntermissionAfterWave(wave);
         }
 
@@ -3073,7 +3084,7 @@ namespace iStick2War_V2
             Canvas canvasComponent = canvas.GetComponent<Canvas>();
             if (canvasComponent != null)
             {
-                canvasComponent.enabled = true;
+                GameplayHudLayoutUtility_V2.EnsureCanvasReceivesInput(canvasComponent);
             }
 
             DeactivateDuplicateLifeOverCanvases(canvas);
@@ -4042,6 +4053,7 @@ namespace iStick2War_V2
                 SetTransformHierarchyActive(_heroDeathGameOverRoot.transform, true);
             }
 
+            EnsureGameOverCanvasReceivesInput();
             EnsureGameOverNavUiButtonClickTargets();
 
             if (_heroDeathContinueButton != null)
@@ -4179,6 +4191,35 @@ namespace iStick2War_V2
             return FindGameObjectInLoadedScenes(exactName);
         }
 
+        private static void EnsureTerminalChromeCanvasReceivesInput(GameObject chromeRoot)
+        {
+            if (chromeRoot == null)
+            {
+                return;
+            }
+
+            Canvas[] canvases = chromeRoot.GetComponentsInChildren<Canvas>(true);
+            for (int i = 0; i < canvases.Length; i++)
+            {
+                GameplayHudLayoutUtility_V2.EnsureCanvasReceivesInput(canvases[i]);
+            }
+        }
+
+        private static void EnsureGameOverCanvasReceivesInput()
+        {
+            EnsureTerminalChromeCanvasReceivesInput(FindGameOverChromeRoot());
+        }
+
+        private static void EnsureGameWonCanvasReceivesInput()
+        {
+            EnsureTerminalChromeCanvasReceivesInput(FindGameWonChromeRoot());
+        }
+
+        private static void EnsureGameErrorCanvasReceivesInput()
+        {
+            EnsureTerminalChromeCanvasReceivesInput(FindGameErrorChromeRoot());
+        }
+
         private static void EnsureGameOverNavUiButtonClickTargets()
         {
             EnsureGameOverNavUiButtonOnTarget(
@@ -4213,6 +4254,7 @@ namespace iStick2War_V2
             LifeOverNavUiButton_V2 lifeOverUi = target.GetComponent<LifeOverNavUiButton_V2>();
             if (lifeOverUi != null)
             {
+                lifeOverUi.enabled = false;
                 global::UnityEngine.Object.Destroy(lifeOverUi);
             }
 
@@ -4418,6 +4460,12 @@ namespace iStick2War_V2
 
         private void SetGameWonUiVisible(bool visible)
         {
+            if (visible)
+            {
+                EnsureGameWonCanvasReceivesInput();
+                EnsureGameWonNavUiButtonClickTargets();
+            }
+
             if (_gameWonRoot != null)
             {
                 _gameWonRoot.SetActive(visible);
@@ -4477,6 +4525,12 @@ namespace iStick2War_V2
 
         private void SetGameErrorUiVisible(bool visible)
         {
+            if (visible)
+            {
+                EnsureGameErrorCanvasReceivesInput();
+                EnsureGameErrorNavUiButtonClickTargets();
+            }
+
             if (_gameErrorRoot != null)
             {
                 _gameErrorRoot.SetActive(visible);

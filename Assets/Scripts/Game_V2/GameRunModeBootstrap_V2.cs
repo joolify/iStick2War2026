@@ -14,6 +14,8 @@ namespace iStick2War_V2
         private static bool _hasPendingMode;
         private static GameRunMode_V2 _pendingMode = GameRunMode_V2.Campaign;
 
+        public static bool HasPendingNewRunMode => _hasPendingMode;
+
         public static void SetPendingNewRunMode(GameRunMode_V2 mode)
         {
             _pendingMode = mode;

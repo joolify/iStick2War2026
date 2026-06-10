@@ -1,0 +1,1 @@
+C:\repos\iStick2War2026\Library\Bee\Android\Prj\IL2CPP\Gradle\unityLibrary\build\intermediates\cxx\Debug\5i2z733s\obj\arm64-v8a

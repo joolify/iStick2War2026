@@ -3,10 +3,12 @@
     "rootNamespace": "iStick2War.Tests.PlayMode",
     "references": [
         "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
         "iStick2War.Game"
     ],
-    "includePlatforms": [],
-    "excludePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "allowUnsafeCode": false,
     "overrideReferences": true,
     "precompiledReferences": [

@@ -4,13 +4,14 @@ using UnityEngine.UI;
 namespace iStick2War_V2
 {
     /*
-     * PhoneWeaponArrowsCanvasLayout_V2 — bottom-left weapon switch buttons for mobile.
+     * PhoneWeaponArrowsCanvasLayout_V2 - bottom-left weapon switch buttons for mobile.
      * Expects PhoneWeaponArrowsCanvas with LeftArrowButton and RightArrowButton.
+     * Direct touch/mouse on button rects when EventSystem input is misconfigured on device builds.
      *
      * NAVIGATION: MobileGameplayTouchInput_V2.cs, HeroInput_V2.cs
      */
     [DisallowMultipleComponent]
-    [DefaultExecutionOrder(-350)]
+    [DefaultExecutionOrder(-50)]
     [ExecuteAlways]
     public sealed class PhoneWeaponArrowsCanvasLayout_V2 : MonoBehaviour
     {
@@ -28,6 +29,8 @@ namespace iStick2War_V2
         private bool _wired;
         private Hero_V2 _hero;
         private int _lastVisibleWeaponCount = -1;
+        private RectTransform _leftArrowButtonRect;
+        private RectTransform _rightArrowButtonRect;
 
         private void Awake()
         {
@@ -65,6 +68,16 @@ namespace iStick2War_V2
             RefreshWeaponSwitchButtonVisibility();
         }
 
+        private void Update()
+        {
+            if (!Application.isPlaying || !isActiveAndEnabled || !ShouldShowCanvas())
+            {
+                return;
+            }
+
+            TryHandleDirectWeaponSwitchPointer();
+        }
+
         private bool ShouldShowCanvas()
         {
             return GamePlatform_V2.ShouldShowPhoneWeaponArrows || _showOnDesktopForTesting;
@@ -86,7 +99,11 @@ namespace iStick2War_V2
             Canvas canvas = GetComponent<Canvas>();
             if (canvas != null)
             {
-                canvas.enabled = true;
+                GameplayHudLayoutUtility_V2.EnsureCanvasReceivesInput(canvas);
+                if (canvas.sortingOrder < 250)
+                {
+                    canvas.sortingOrder = 250;
+                }
             }
 
             StretchFull(canvasRect);
@@ -131,6 +148,8 @@ namespace iStick2War_V2
 
             ApplyBottomLeftButtonLayout(left, leftX, y, _buttonSize);
             ApplyBottomLeftButtonLayout(right, rightX, y, _buttonSize);
+            _leftArrowButtonRect = left;
+            _rightArrowButtonRect = right;
         }
 
         private void RefreshWeaponSwitchButtonVisibility()
@@ -198,14 +217,96 @@ namespace iStick2War_V2
 
         private void OnPreviousWeaponButtonClicked()
         {
+            ResolveHero();
+            if (_hero != null)
+            {
+                _hero.RequestSwitchPreviousWeaponFromUi();
+                return;
+            }
+
             MobileGameplayTouchInput_V2.EnsureInstance();
             MobileGameplayTouchInput_V2.Instance?.QueueSwitchPreviousWeapon();
         }
 
         private void OnNextWeaponButtonClicked()
         {
+            ResolveHero();
+            if (_hero != null)
+            {
+                _hero.RequestSwitchNextWeaponFromUi();
+                return;
+            }
+
             MobileGameplayTouchInput_V2.EnsureInstance();
             MobileGameplayTouchInput_V2.Instance?.QueueSwitchNextWeapon();
+        }
+
+        private void TryHandleDirectWeaponSwitchPointer()
+        {
+            if (_leftArrowButtonRect == null || _rightArrowButtonRect == null)
+            {
+                Transform safeArea = transform.Find("SafeAreaRoot");
+                if (safeArea != null)
+                {
+                    _leftArrowButtonRect = FindButtonRect(safeArea, LeftArrowButtonName);
+                    _rightArrowButtonRect = FindButtonRect(safeArea, RightArrowButtonName);
+                }
+            }
+
+            if (TryHandleDirectPointerOnButton(_leftArrowButtonRect, OnPreviousWeaponButtonClicked))
+            {
+                return;
+            }
+
+            TryHandleDirectPointerOnButton(_rightArrowButtonRect, OnNextWeaponButtonClicked);
+        }
+
+        private static bool TryHandleDirectPointerOnButton(RectTransform buttonRect, UnityEngine.Events.UnityAction onClicked)
+        {
+            if (buttonRect == null || !buttonRect.gameObject.activeInHierarchy)
+            {
+                return false;
+            }
+
+            Camera eventCamera = ResolveEventCamera(buttonRect);
+
+            for (int i = 0; i < Input.touchCount; i++)
+            {
+                Touch touch = Input.GetTouch(i);
+                if (touch.phase != TouchPhase.Ended)
+                {
+                    continue;
+                }
+
+                if (!RectTransformUtility.RectangleContainsScreenPoint(buttonRect, touch.position, eventCamera))
+                {
+                    continue;
+                }
+
+                onClicked?.Invoke();
+                return true;
+            }
+
+            if (Input.touchCount == 0 &&
+                Input.GetMouseButtonUp(0) &&
+                RectTransformUtility.RectangleContainsScreenPoint(buttonRect, Input.mousePosition, eventCamera))
+            {
+                onClicked?.Invoke();
+                return true;
+            }
+
+            return false;
+        }
+
+        private static Camera ResolveEventCamera(RectTransform buttonRect)
+        {
+            Canvas canvas = buttonRect != null ? buttonRect.GetComponentInParent<Canvas>() : null;
+            if (canvas == null || canvas.renderMode == RenderMode.ScreenSpaceOverlay)
+            {
+                return null;
+            }
+
+            return canvas.worldCamera != null ? canvas.worldCamera : Camera.main;
         }
 
         private static void WireButton(Transform root, string buttonName, UnityEngine.Events.UnityAction onClick)
