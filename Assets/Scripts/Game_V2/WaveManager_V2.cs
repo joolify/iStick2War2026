@@ -445,16 +445,21 @@ namespace iStick2War_V2
                 return false;
             }
 
-            Vector2 p = GetHeroWorldPointForBunkerCheck(hero);
-
-            if (_bunkerHeroSafeZoneCollider != null)
+            // Primary sidescroller rule: hero left of bunker_front blocks +X enemy small-arms.
+            if (IsHeroBehindBunkerFrontCover(hero))
             {
-                return _bunkerHeroSafeZoneCollider.OverlapPoint(p);
+                return true;
             }
 
-            BunkerInteriorZone_V2 zone =
-                FindAnyObjectByType<BunkerInteriorZone_V2>(FindObjectsInactive.Include);
-            if (zone != null && zone.ContainsWorldPoint(p))
+            Vector2 p = GetHeroWorldPointForBunkerCheck(hero);
+
+            if (TryIsPointInsideConfiguredBunkerSafeVolume(p))
+            {
+                return true;
+            }
+
+            Vector2 rootPos = hero.transform.position;
+            if ((rootPos - p).sqrMagnitude > 0.0001f && TryIsPointInsideConfiguredBunkerSafeVolume(rootPos))
             {
                 return true;
             }
@@ -462,15 +467,102 @@ namespace iStick2War_V2
             return FallbackHeroInsideBunkerRootColliderBounds(p);
         }
 
+        private bool TryIsPointInsideConfiguredBunkerSafeVolume(Vector2 worldPoint)
+        {
+            if (_bunkerHeroSafeZoneCollider != null)
+            {
+                return _bunkerHeroSafeZoneCollider.OverlapPoint(worldPoint);
+            }
+
+            BunkerInteriorZone_V2 zone =
+                FindAnyObjectByType<BunkerInteriorZone_V2>(FindObjectsInactive.Include);
+            return zone != null && zone.ContainsWorldPoint(worldPoint);
+        }
+
+        // Feet / ground colliders can sit below bunker art; torso or root position is the gameplay anchor.
         private static Vector2 GetHeroWorldPointForBunkerCheck(Hero_V2 hero)
         {
-            Collider2D c = hero.GetComponentInChildren<Collider2D>();
-            if (c != null)
+            if (hero == null)
             {
-                return c.bounds.center;
+                return Vector2.zero;
+            }
+
+            Collider2D primary = HeroBodyPart_V2.ResolvePrimaryCombatCollider(hero);
+            if (primary != null)
+            {
+                return primary.bounds.center;
+            }
+
+            Collider2D any = hero.GetComponentInChildren<Collider2D>();
+            if (any != null)
+            {
+                return any.bounds.center;
             }
 
             return hero.transform.position;
+        }
+
+        // Enemies (paratroopers, aircraft) approach from +X; cover protects heroes at/left of bunker_front max X.
+        private static bool IsHeroBehindBunkerFrontCover(Hero_V2 hero)
+        {
+            if (hero == null)
+            {
+                return false;
+            }
+
+            Collider2D frontCover = ResolveActiveBunkerFrontCoverCollider();
+            if (frontCover == null)
+            {
+                return false;
+            }
+
+            const float marginWorldX = 0.22f;
+            float heroX = hero.transform.position.x;
+            return heroX <= frontCover.bounds.max.x + marginWorldX;
+        }
+
+        private static Collider2D ResolveActiveBunkerFrontCoverCollider()
+        {
+            BunkerHitbox_V2[] markers = FindObjectsByType<BunkerHitbox_V2>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None);
+            if (markers == null || markers.Length == 0)
+            {
+                return null;
+            }
+
+            Collider2D best = null;
+            float bestMaxX = float.NegativeInfinity;
+            for (int i = 0; i < markers.Length; i++)
+            {
+                BunkerHitbox_V2 marker = markers[i];
+                if (marker == null)
+                {
+                    continue;
+                }
+
+                Collider2D col = marker.GetComponent<Collider2D>();
+                if (col == null || !col.enabled || !marker.gameObject.activeInHierarchy)
+                {
+                    continue;
+                }
+
+                string objectName = marker.gameObject.name;
+                bool isFront = objectName.IndexOf("bunker_front", StringComparison.OrdinalIgnoreCase) >= 0;
+                if (!isFront && markers.Length > 1)
+                {
+                    continue;
+                }
+
+                float maxX = col.bounds.max.x;
+                if (maxX > bestMaxX)
+                {
+                    bestMaxX = maxX;
+                    best = col;
+                }
+            }
+
+            return best;
         }
 
         private bool FallbackHeroInsideBunkerRootColliderBounds(Vector2 p)
